@@ -29,6 +29,16 @@ export default function Dashboard() {
     (p) => p.end_date && new Date(p.end_date) < new Date() && p.status !== 'done'
   ).length;
   const awaitingApproval = tasks.filter((t) => t.stage === 'aprovacao').length;
+  const overdueTasks = tasks.filter(
+    (t) => t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
+  ).length;
+  const myOverdueTasks = tasks.filter(
+    (t) =>
+      t.due_date &&
+      t.stage !== 'finalizado' &&
+      t.assignee_id === profile?.id &&
+      new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
+  ).length;
 
   const [budget, setBudget] = useState<{ planned: number; spent: number } | null>(null);
   useEffect(() => {
@@ -72,6 +82,16 @@ export default function Dashboard() {
         <div className="stat-card">
           <div className="stat-num">{awaitingApproval}</div>
           <div className="stat-label">Aguardando aprovação</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num" style={{ color: overdueTasks > 0 ? 'var(--red)' : undefined }}>
+            {overdueTasks}
+          </div>
+          <div className="stat-label">Demandas atrasadas</div>
+          {myOverdueTasks > 0 && <div className="stat-trend warn">{myOverdueTasks} suas</div>}
+          <Link to="/demandas" style={{ fontSize: 11, color: 'var(--violet)' }}>
+            Ver demandas →
+          </Link>
         </div>
       </div>
 

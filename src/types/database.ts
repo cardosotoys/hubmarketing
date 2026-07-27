@@ -1,4 +1,13 @@
 export type Role = 'diretoria' | 'equipe' | 'administrador';
+export type Department = 'diretoria' | 'growth' | 'coordenacao' | 'design' | 'assistente';
+export const DEPARTMENTS: Department[] = ['diretoria', 'growth', 'coordenacao', 'design', 'assistente'];
+export const DEPARTMENT_LABELS: Record<Department, string> = {
+  diretoria: 'Diretoria',
+  growth: 'Growth / Marketing Digital',
+  coordenacao: 'Coordenação',
+  design: 'Design',
+  assistente: 'Assistente',
+};
 export type ProjectStatus = 'planning' | 'active' | 'paused' | 'done';
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
 export type Stage =
@@ -13,6 +22,7 @@ export interface Profile {
   id: string;
   name: string;
   role: Role;
+  department: Department;
   job_title: string;
   avatar_initials: string;
   created_at: string;
@@ -68,11 +78,14 @@ export interface Comment {
 
 export interface Task {
   id: string;
-  project_id: string;
+  project_id: string | null;
   stage: Stage;
   title: string;
   priority: Priority;
   assignee_id: string | null;
+  start_date: string | null;
+  due_date: string | null;
+  delay_reason: string;
   position: number;
   created_at: string;
   updated_at: string;
@@ -92,6 +105,7 @@ export interface ActivityLogEntry {
   project_id: string | null;
   campaign_id: string | null;
   campaign_task_id: string | null;
+  task_id: string | null;
   actor_id: string | null;
   action_text: string;
   detail: string;
@@ -640,3 +654,59 @@ export const ROLE_LABELS: Record<Role, string> = {
   equipe: 'Equipe',
   administrador: 'Administrador',
 };
+
+export const PRIORITIES: Priority[] = ['urgent', 'high', 'medium', 'low'];
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  urgent: 'Urgente',
+  high: 'Alta',
+  medium: 'Média',
+  low: 'Baixa',
+};
+
+export interface IaPrompt {
+  id: string;
+  brand_id: string | null;
+  category: string;
+  title: string;
+  body: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IaTemplate {
+  id: string;
+  brand_id: string | null;
+  category: string;
+  name: string;
+  description: string;
+  body: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IaPersona {
+  id: string;
+  brand_id: string | null;
+  name: string;
+  description: string;
+  pains: string;
+  goals: string;
+  tone_notes: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IaBrandVoice {
+  id: string;
+  brand_id: string;
+  archetype: string;
+  tone_of_voice: string;
+  dos: string;
+  donts: string;
+  sample_phrases: string;
+  updated_by: string | null;
+  updated_at: string;
+}

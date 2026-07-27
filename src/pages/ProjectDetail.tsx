@@ -260,6 +260,8 @@ export default function ProjectDetail() {
       {tab === 'resumo' && (
         <ResumoTab
           project={project}
+          tasks={tasks}
+          profilesById={profilesById}
           checklist={checklist}
           comments={comments}
           members={members}
@@ -278,6 +280,7 @@ export default function ProjectDetail() {
           tasks={tasks}
           profilesById={profilesById}
           editable
+          terminalStages={['finalizado']}
           onStageChange={changeStage}
           onCreate={createTask}
           onEdit={setEditingTask}
@@ -312,6 +315,8 @@ export default function ProjectDetail() {
 
 function ResumoTab({
   project,
+  tasks,
+  profilesById,
   checklist,
   comments,
   members,
@@ -324,6 +329,8 @@ function ResumoTab({
   onSaveSummary,
 }: {
   project: ProjectWithBrand;
+  tasks: Task[];
+  profilesById: Record<string, Profile>;
   checklist: ChecklistItem[];
   comments: CommentWithAuthor[];
   members: MemberWithProfile[];
@@ -335,6 +342,9 @@ function ResumoTab({
   onRemoveMember: (memberId: string) => void;
   onSaveSummary: (fields: Partial<Project>) => void;
 }) {
+  const overdueTasks = tasks.filter(
+    (t) => t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
+  );
   const [editing, setEditing] = useState(false);
   const [objective, setObjective] = useState(project.objective);
   const [status, setStatus] = useState<ProjectStatus>(project.status);
@@ -378,6 +388,27 @@ function ResumoTab({
   return (
     <div className="info-grid">
       <div>
+        {overdueTasks.length > 0 && (
+          <div className="panel" style={{ borderColor: 'var(--red)' }}>
+            <h4 style={{ color: 'var(--red)' }}>🔴 {overdueTasks.length} demanda(s) atrasada(s)</h4>
+            {overdueTasks.map((t) => {
+              const days = Math.round(
+                (new Date(new Date().toDateString()).getTime() - new Date(t.due_date! + 'T00:00').getTime()) / 86400000
+              );
+              return (
+                <div className="field-row" key={t.id}>
+                  <span className="k">{t.title}</span>
+                  <span style={{ textAlign: 'right' }}>
+                    {profilesById[t.assignee_id ?? '']?.name ?? 'Sem responsável'} · {days}d atrasada
+                    {t.delay_reason && (
+                      <span style={{ display: 'block', color: 'var(--text-faint)', fontSize: 11 }}>{t.delay_reason}</span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="panel">
           <h4>Objetivo</h4>
           {editing ? (

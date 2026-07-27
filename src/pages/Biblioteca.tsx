@@ -42,6 +42,7 @@ function FolderRow({
   allFolders,
   depth,
   selectedId,
+  canEdit,
   onSelect,
   onCreateChild,
   onRename,
@@ -51,6 +52,7 @@ function FolderRow({
   allFolders: LibraryFolder[];
   depth: number;
   selectedId: string | null;
+  canEdit: boolean;
   onSelect: (id: string) => void;
   onCreateChild: (parentId: string, name: string) => void;
   onRename: (id: string, name: string) => void;
@@ -120,22 +122,26 @@ function FolderRow({
             )}
           </span>
         )}
-        <span className="ic" style={{ cursor: 'pointer' }} title="Nova subpasta" onClick={() => setAddingChild((v) => !v)}>
-          +
-        </span>
-        <span className="ic" style={{ cursor: 'pointer' }} title="Renomear" onClick={() => setRenaming(true)}>
-          ✎
-        </span>
-        <span
-          className="ic"
-          style={{ cursor: 'pointer', color: 'var(--red)' }}
-          title="Excluir"
-          onClick={() => {
-            if (window.confirm(`Excluir "${folder.name}" e tudo dentro dela?`)) onDelete(folder.id);
-          }}
-        >
-          ✕
-        </span>
+        {canEdit && (
+          <>
+            <span className="ic" style={{ cursor: 'pointer' }} title="Nova subpasta" onClick={() => setAddingChild((v) => !v)}>
+              +
+            </span>
+            <span className="ic" style={{ cursor: 'pointer' }} title="Renomear" onClick={() => setRenaming(true)}>
+              ✎
+            </span>
+            <span
+              className="ic"
+              style={{ cursor: 'pointer', color: 'var(--red)' }}
+              title="Excluir"
+              onClick={() => {
+                if (window.confirm(`Excluir "${folder.name}" e tudo dentro dela?`)) onDelete(folder.id);
+              }}
+            >
+              ✕
+            </span>
+          </>
+        )}
       </div>
       {addingChild && (
         <div style={{ paddingLeft: 10 + (depth + 1) * 20, marginBottom: 6, paddingTop: 2 }}>
@@ -157,6 +163,7 @@ function FolderRow({
           allFolders={allFolders}
           depth={depth + 1}
           selectedId={selectedId}
+          canEdit={canEdit}
           onSelect={onSelect}
           onCreateChild={onCreateChild}
           onRename={onRename}
@@ -260,6 +267,7 @@ export default function Biblioteca() {
   const info = DRIVE_INFO[drive];
   const roots = folders.filter((f) => f.parent_id === null).sort((a, b) => a.position - b.position);
   const selectedFolder = folders.find((f) => f.id === selectedId) ?? null;
+  const canEdit = profile?.department !== 'assistente';
 
   return (
     <div className="page">
@@ -301,28 +309,31 @@ export default function Biblioteca() {
                   allFolders={folders}
                   depth={0}
                   selectedId={selectedId}
+                  canEdit={canEdit}
                   onSelect={setSelectedId}
                   onCreateChild={createFolder}
                   onRename={renameFolder}
                   onDelete={deleteFolder}
                 />
               ))}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!newRootName.trim()) return;
-                  createFolder(null, newRootName.trim());
-                  setNewRootName('');
-                }}
-                style={{ marginTop: 8 }}
-              >
-                <input
-                  placeholder="+ nova pasta de topo…"
-                  value={newRootName}
-                  onChange={(e) => setNewRootName(e.target.value)}
-                  style={inputStyle(true)}
-                />
-              </form>
+              {canEdit && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newRootName.trim()) return;
+                    createFolder(null, newRootName.trim());
+                    setNewRootName('');
+                  }}
+                  style={{ marginTop: 8 }}
+                >
+                  <input
+                    placeholder="+ nova pasta de topo…"
+                    value={newRootName}
+                    onChange={(e) => setNewRootName(e.target.value)}
+                    style={inputStyle(true)}
+                  />
+                </form>
+              )}
             </div>
           )}
         </div>
@@ -338,12 +349,14 @@ export default function Biblioteca() {
                     <a href={l.url} target="_blank" rel="noreferrer" style={{ color: 'var(--violet)', fontSize: 11.5 }}>
                       abrir ↗
                     </a>
-                    <span
-                      style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--text-faint)' }}
-                      onClick={() => deleteLink(l.id)}
-                    >
-                      ✕
-                    </span>
+                    {canEdit && (
+                      <span
+                        style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--text-faint)' }}
+                        onClick={() => deleteLink(l.id)}
+                      >
+                        ✕
+                      </span>
+                    )}
                   </div>
                 ))}
                 {links.length === 0 && (
@@ -351,13 +364,15 @@ export default function Biblioteca() {
                     Nenhum link anexado ainda.
                   </div>
                 )}
-                <form onSubmit={addLink} style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                  <input placeholder="Nome do arquivo/pasta" value={linkName} onChange={(e) => setLinkName(e.target.value)} style={inputStyle()} />
-                  <input placeholder="Link do Drive" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} style={inputStyle()} />
-                  <button className="btn sm" type="submit">
-                    Anexar link
-                  </button>
-                </form>
+                {canEdit && (
+                  <form onSubmit={addLink} style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                    <input placeholder="Nome do arquivo/pasta" value={linkName} onChange={(e) => setLinkName(e.target.value)} style={inputStyle()} />
+                    <input placeholder="Link do Drive" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} style={inputStyle()} />
+                    <button className="btn sm" type="submit">
+                      Anexar link
+                    </button>
+                  </form>
+                )}
               </>
             ) : (
               <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0 }}>

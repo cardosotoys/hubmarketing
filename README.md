@@ -42,11 +42,38 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   existe (Relatórios global + Resumo já cobrem os números; Auditoria seria idêntica ao Histórico de hoje). Não
   há aba de IA por campanha — decidido para não gerar custo de API sem uso real definido; a IA global (`/ia`)
   segue como estava, só mock.
-- **Fase 2, ainda mock**: IA (a global, em `/ia`) e Brand da Cardoso (só o brandbook institucional — Cardoso
-  não tem um manual de marca de consumidor como Playmi/Tópi; me manda o PDF se/quando existir que eu
-  aprofundo). A própria Biblioteca ainda não está ligada de verdade ao Google Drive — hoje as pastas/links são
-  geridos manualmente no Hub; ligar isso à API do Drive (para o link aparecer sozinho quando alguém sobe um
-  arquivo lá) é o próximo passo, e depende de habilitar a API no Google Workspace da Cardoso.
+- **Fase 2, ainda mock**: Brand da Cardoso (só o brandbook institucional — Cardoso não tem um manual de marca
+  de consumidor como Playmi/Tópi; me manda o PDF se/quando existir que eu aprofundo). A própria Biblioteca
+  ainda não está ligada de verdade ao Google Drive — hoje as pastas/links são geridos manualmente no Hub;
+  ligar isso à API do Drive (para o link aparecer sozinho quando alguém sobe um arquivo lá) é o próximo passo,
+  e depende de habilitar a API no Google Workspace da Cardoso.
+- **Demandas com prazo e atraso rastreado**: toda demanda (de projeto ou avulsa) pode ter início/prazo. Quando
+  passa do prazo sem ser concluída, aparece um badge "🔴 atrasada" no kanban, e quem edita a demanda precisa
+  preencher o motivo do atraso (campo obrigatório) — isso fica visível pra Diretoria e pra quem mais acompanha
+  o projeto, direto no Resumo do projeto e no Dashboard (contador de demandas atrasadas, visível a todo mundo,
+  não só Diretoria).
+- **Demandas avulsas**: em Demandas → "+ Nova demanda" agora dá pra criar uma demanda sem vínculo com nenhum
+  projeto (algo pontual), escolhendo "Sem projeto" no formulário.
+- **Auditoria com escopo pessoal**: deixou de ser só da Diretoria. Diretoria/Administrador continuam vendo o
+  feed completo de todo o time; Equipe agora também acessa Auditoria, mas vê só o que ela mesma fez, mais tudo
+  que aconteceu nos projetos e campanhas em que participa (como membro, responsável por alguma demanda, ou
+  papel de RACI numa campanha).
+- **IA — módulo real**: deixou de ser mock. Prompts, templates, personas e brand voice das 3 marcas agora são
+  de verdade (criar/editar/excluir), já populados com um acervo inicial cobrindo growth, social media, trade
+  marketing, CRM, design e planejamento. Ainda sem resposta automática de IA — isso segue dependendo de
+  conectar uma API de verdade, quando fizer sentido.
+- **Responsivo para mobile**: menu vira gaveta com hambúrguer, grids empilham, kanban/tabelas/Gantt ganham
+  scroll horizontal em vez de quebrar, formulários com campos lado a lado empilham em telas estreitas. Sem IA
+  por campanha (removida por decisão explícita, para não gerar custo de API sem uso definido).
+- **Departamentos** (visibilidade de menu por função, além do papel de privilégio Diretoria/Equipe/
+  Administrador que já existia): cada pessoa tem um **departamento** — Diretoria, Growth, Coordenação, Design
+  ou Assistente — que decide quais módulos aparecem pro dia a dia dela. Diretoria/Growth/Coordenação veem
+  tudo; Design não vê Redes Sociais nem Relatórios (e, dentro de cada campanha, só Resumo/Planejamento/
+  Produtos/Cronograma/Criativos/Conteúdos/Histórico); Assistente vê Biblioteca/Produtos/Brand mas só consulta
+  (sem criar/editar/excluir, reforçado tanto na tela quanto no banco), não vê Relatórios, e dentro de cada
+  campanha só tem Resumo/Demandas/Cronograma/Calendário Editorial/Conteúdos/Histórico. Configurações e
+  Auditoria continuam controladas só pelo papel de privilégio (Diretoria/Administrador), independente do
+  departamento. Ajuste o departamento de cada pessoa em **Configurações → Usuários**.
 
 ## 1. Criar o projeto no Supabase
 
@@ -106,7 +133,17 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
     `campaign_influencers`, `campaign_trade_actions`, `campaign_marketplace_entries`, `campaign_leads`,
     `campaign_media_investments`, e adiciona a coluna `campaign_id` em `social_posts` (pra ligar posts de Redes
     Sociais a uma campanha sem duplicar dado).
-14. Pegue as duas chaves de conexão:
+14. Rode também [`supabase/migrations/0011_departments.sql`](supabase/migrations/0011_departments.sql) — adiciona
+    a coluna `department` em `profiles` (padrão `growth` pra quem já existe) e restringe `products`/
+    `library_folders`/`library_links` para que o departamento `assistente` só possa ler, não escrever.
+15. Rode também [`supabase/migrations/0012_task_delays.sql`](supabase/migrations/0012_task_delays.sql) — libera
+    `tasks.project_id` (demanda avulsa não precisa mais de projeto), adiciona `start_date`/`due_date`/
+    `delay_reason`, e a coluna `task_id` em `activity_log`.
+16. Rode também [`supabase/migrations/0013_ia_module.sql`](supabase/migrations/0013_ia_module.sql) — cria
+    `ia_prompts`, `ia_templates`, `ia_personas` e `ia_brand_voice`, já populadas com um acervo inicial real
+    (prompts e templates cobrindo growth, social, trade, CRM, design e planejamento; personas de consumidor e
+    trade; brand voice derivado do que já está documentado em Brand).
+17. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -175,6 +212,9 @@ supabase/migrations/0007_campaigns.sql           tabelas campaigns/campaign_mile
 supabase/migrations/0008_calendar_events.sql     tabela calendar_events (eventos avulsos do Calendário)
 supabase/migrations/0009_campaign_workspace.sql  reset + schema novo do Campaign Workspace (campanhas, objetivos, KPIs, demandas/RACI, riscos, decisões…)
 supabase/migrations/0010_campaign_wave2.sql      criativos, conteúdos, influenciadores, trade, marketplace, CRM, mídia paga + campaign_id em social_posts
+supabase/migrations/0011_departments.sql         coluna department em profiles + restrição de escrita (assistente) em products/library_*
+supabase/migrations/0012_task_delays.sql         tasks.project_id opcional + start_date/due_date/delay_reason + task_id em activity_log
+supabase/migrations/0013_ia_module.sql           ia_prompts/ia_templates/ia_personas/ia_brand_voice + acervo inicial real
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado
@@ -183,12 +223,12 @@ src/hooks/useProjectsOverview.ts                 dados agregados de projetos usa
 src/hooks/useCampaignWorkspaceData.ts            dados da campanha ativa (usado pelo CampaignWorkspace)
 src/components/                                  Sidebar, Topbar, KanbanBoard (drag-and-drop, genérico), ProjectCard, Modal,
                                                   TaskEditModal, AuditItemEditModal, CampaignTaskDrawer, etc.
-src/pages/                                        páginas da Fase 1 + Calendário/Relatórios reais
+src/pages/                                        páginas da Fase 1 + Calendário/Relatórios/IA reais
 src/pages/campaigns/                             Campaign Workspace — Resumo, Planejamento, Objetivos, Produtos, Roadmap, KPIs,
                                                   Cronograma, Demandas, Criativos, Conteúdos, Calendário Editorial, Social,
                                                   Influenciadores, Trade, Marketplace, CRM, Mídia Paga, Financeiro, Aprovações,
                                                   Riscos, Decisões, Histórico, Configurações
-src/pages/phase2/                                 páginas ainda em modo exemplo (IA global, parte de Brand)
+src/pages/phase2/                                 páginas ainda em modo exemplo (Brand da Cardoso)
 ```
 
 ## Próximos passos (Fase 2)

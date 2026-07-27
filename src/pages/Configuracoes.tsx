@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { ROLE_LABELS, type Profile, type Role } from '../types/database';
+import { DEPARTMENTS, DEPARTMENT_LABELS, ROLE_LABELS, type Department, type Profile, type Role } from '../types/database';
 
 const STABS = ['usuarios', 'perfis', 'categorias', 'tags', 'status', 'templates'] as const;
 const STAB_LABELS: Record<(typeof STABS)[number], string> = {
@@ -37,6 +37,11 @@ export default function Configuracoes() {
     if (!error) setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
   }
 
+  async function changeDepartment(userId: string, department: Department) {
+    const { error } = await supabase.from('profiles').update({ department }).eq('id', userId);
+    if (!error) setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, department } : u)));
+  }
+
   return (
     <div className="page">
       <h1 className="page-title">Configurações</h1>
@@ -59,6 +64,7 @@ export default function Configuracoes() {
                   <tr>
                     <th>Usuário</th>
                     <th>Papel</th>
+                    <th>Departamento</th>
                     <th>Cargo</th>
                     <th></th>
                   </tr>
@@ -71,6 +77,19 @@ export default function Configuracoes() {
                         <td>{u.name}</td>
                         <td>
                           <span className="pill">{ROLE_LABELS[u.role]}</span>
+                        </td>
+                        <td>
+                          {restricted ? (
+                            <span className="pill">{DEPARTMENT_LABELS[u.department]}</span>
+                          ) : (
+                            <select value={u.department} onChange={(e) => changeDepartment(u.id, e.target.value as Department)}>
+                              {DEPARTMENTS.map((d) => (
+                                <option key={d} value={d}>
+                                  {DEPARTMENT_LABELS[d]}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </td>
                         <td>{u.job_title || '—'}</td>
                         <td>

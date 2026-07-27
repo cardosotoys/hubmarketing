@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppLayout from './components/AppLayout';
 import RequireRole from './components/RequireRole';
+import RequireDepartment from './components/RequireDepartment';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -17,7 +18,7 @@ import Biblioteca from './pages/Biblioteca';
 import Campaigns from './pages/Campaigns';
 import Calendario from './pages/Calendario';
 import Relatorios from './pages/Relatorios';
-import Ia from './pages/phase2/Ia';
+import Ia from './pages/Ia';
 import Brand from './pages/phase2/Brand';
 import CampaignWorkspace from './pages/campaigns/CampaignWorkspace';
 import CampaignResumo from './pages/campaigns/CampaignResumo';
@@ -63,14 +64,7 @@ export default function App() {
             <Route path="projetos/:id" element={<ProjectDetail />} />
             <Route path="demandas" element={<Demandas />} />
             <Route path="relatorio-diario" element={<RelatorioDiario />} />
-            <Route
-              path="auditoria"
-              element={
-                <RequireRole roles={['diretoria']}>
-                  <Auditoria />
-                </RequireRole>
-              }
-            />
+            <Route path="auditoria" element={<Auditoria />} />
             <Route path="perfil" element={<Perfil />} />
             <Route
               path="configuracoes"
@@ -81,41 +75,188 @@ export default function App() {
               }
             />
             <Route path="calendario" element={<Calendario />} />
-            <Route path="redes-sociais" element={<RedesSociais />} />
+            <Route
+              path="redes-sociais"
+              element={
+                <RequireDepartment extraFor={['assistente']}>
+                  <RedesSociais />
+                </RequireDepartment>
+              }
+            />
             <Route path="biblioteca" element={<Biblioteca />} />
             <Route path="produtos" element={<Produtos />} />
             <Route path="campanhas" element={<Campaigns />} />
             <Route path="campanhas/:id" element={<CampaignWorkspace />}>
               <Route index element={<Navigate to="resumo" replace />} />
               <Route path="resumo" element={<CampaignResumo />} />
-              <Route path="planejamento" element={<CampaignPlanejamento />} />
-              <Route path="objetivos" element={<CampaignObjetivos />} />
-              <Route path="produtos" element={<CampaignProdutos />} />
+              <Route
+                path="planejamento"
+                element={
+                  <RequireDepartment extraFor={['design']} redirectTo="../resumo">
+                    <CampaignPlanejamento />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="objetivos"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignObjetivos />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="produtos"
+                element={
+                  <RequireDepartment extraFor={['design']} redirectTo="../resumo">
+                    <CampaignProdutos />
+                  </RequireDepartment>
+                }
+              />
               <Route path="cronograma" element={<CampaignCronograma />} />
-              <Route path="demandas" element={<CampaignDemandas />} />
-              <Route path="financeiro" element={<CampaignFinanceiro />} />
-              <Route path="kpis" element={<CampaignKpis />} />
-              <Route path="aprovacoes" element={<CampaignAprovacoes />} />
-              <Route path="riscos" element={<CampaignRiscos />} />
-              <Route path="decisoes" element={<CampaignDecisoes />} />
+              <Route
+                path="demandas"
+                element={
+                  <RequireDepartment extraFor={['assistente']} redirectTo="../resumo">
+                    <CampaignDemandas />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="financeiro"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignFinanceiro />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="kpis"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignKpis />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="aprovacoes"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignAprovacoes />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="riscos"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignRiscos />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="decisoes"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignDecisoes />
+                  </RequireDepartment>
+                }
+              />
               <Route path="historico" element={<CampaignHistorico />} />
-              <Route path="roadmap" element={<CampaignRoadmap />} />
-              <Route path="criativos" element={<CampaignCriativos />} />
+              <Route
+                path="roadmap"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignRoadmap />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="criativos"
+                element={
+                  <RequireDepartment extraFor={['design']} redirectTo="../resumo">
+                    <CampaignCriativos />
+                  </RequireDepartment>
+                }
+              />
               <Route path="conteudos" element={<CampaignConteudos />} />
-              <Route path="calendario-editorial" element={<CampaignCalendarioEditorial />} />
-              <Route path="social" element={<CampaignSocial />} />
-              <Route path="influenciadores" element={<CampaignInfluenciadores />} />
-              <Route path="trade" element={<CampaignTrade />} />
-              <Route path="marketplace" element={<CampaignMarketplace />} />
-              <Route path="crm" element={<CampaignCrm />} />
-              <Route path="midia-paga" element={<CampaignMidiaPaga />} />
-              <Route path="configuracoes" element={<CampaignConfiguracoes />} />
+              <Route
+                path="calendario-editorial"
+                element={
+                  <RequireDepartment extraFor={['assistente']} redirectTo="../resumo">
+                    <CampaignCalendarioEditorial />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="social"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignSocial />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="influenciadores"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignInfluenciadores />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="trade"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignTrade />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="marketplace"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignMarketplace />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="crm"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignCrm />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="midia-paga"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignMidiaPaga />
+                  </RequireDepartment>
+                }
+              />
+              <Route
+                path="configuracoes"
+                element={
+                  <RequireDepartment redirectTo="../resumo">
+                    <CampaignConfiguracoes />
+                  </RequireDepartment>
+                }
+              />
               {CAMPAIGN_COMING_SOON.map((item) => (
                 <Route key={item.path} path={item.path} element={<CampaignComingSoon title={item.title} description={item.description} />} />
               ))}
             </Route>
             <Route path="ia" element={<Ia />} />
-            <Route path="relatorios" element={<Relatorios />} />
+            <Route
+              path="relatorios"
+              element={
+                <RequireDepartment>
+                  <Relatorios />
+                </RequireDepartment>
+              }
+            />
             <Route path="brand" element={<Brand />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

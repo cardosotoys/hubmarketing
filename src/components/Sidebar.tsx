@@ -2,19 +2,19 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { ROLE_LABELS } from '../types/database';
+import { ROLE_LABELS, type Department } from '../types/database';
 
-const NAV = [
+const NAV: { to: string; label: string; icon: string; end?: boolean; hideFor?: Department[] }[] = [
   { to: '/', label: 'Dashboard', icon: '▣', end: true },
   { to: '/projetos', label: 'Projetos', icon: '◧' },
   { to: '/demandas', label: 'Demandas', icon: '☰' },
   { to: '/calendario', label: 'Calendário', icon: '▦' },
-  { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎' },
+  { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎', hideFor: ['design'] },
   { to: '/biblioteca', label: 'Biblioteca', icon: '▤' },
   { to: '/produtos', label: 'Produtos', icon: '◫' },
   { to: '/campanhas', label: 'Campanhas', icon: '◆' },
   { to: '/ia', label: 'IA', icon: '✦' },
-  { to: '/relatorios', label: 'Relatórios', icon: '▥' },
+  { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'] },
   { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎' },
   { to: '/brand', label: 'Brand', icon: '◈' },
 ];
@@ -22,8 +22,9 @@ const NAV = [
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { profile, signOut } = useAuth();
   const role = profile?.role ?? 'equipe';
+  const department = profile?.department ?? 'growth';
   const seesConfig = role === 'diretoria' || role === 'administrador';
-  const seesAudit = role === 'diretoria';
+  const visibleNav = NAV.filter((item) => !item.hideFor?.includes(department));
   const [openTasks, setOpenTasks] = useState<number | null>(null);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </button>
       </div>
 
-      {NAV.map((item) => (
+      {visibleNav.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -77,12 +78,10 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </div>
       )}
 
-      {seesAudit && (
-        <NavLink to="/auditoria" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <span className="ic">◷</span>
-          <span>Auditoria</span>
-        </NavLink>
-      )}
+      <NavLink to="/auditoria" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+        <span className="ic">◷</span>
+        <span>Auditoria</span>
+      </NavLink>
 
       <NavLink to="/perfil" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
         <span className="ic">◉</span>

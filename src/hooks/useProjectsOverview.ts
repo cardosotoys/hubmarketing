@@ -6,7 +6,7 @@ export interface ProjectWithBrand extends Project {
   brand: Brand;
 }
 
-type TaskStub = Pick<Task, 'id' | 'project_id' | 'stage' | 'assignee_id'>;
+type TaskStub = Pick<Task, 'id' | 'project_id' | 'stage' | 'assignee_id' | 'due_date'>;
 
 export function useProjectsOverview() {
   const [projects, setProjects] = useState<ProjectWithBrand[]>([]);
@@ -19,7 +19,7 @@ export function useProjectsOverview() {
     setError(null);
     const [projectsRes, tasksRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(*)').order('created_at', { ascending: false }),
-      supabase.from('tasks').select('id, project_id, stage, assignee_id'),
+      supabase.from('tasks').select('id, project_id, stage, assignee_id, due_date'),
     ]);
     if (projectsRes.error) setError(projectsRes.error.message);
     else setProjects((projectsRes.data as ProjectWithBrand[]) ?? []);

@@ -49,6 +49,7 @@ export default function Produtos() {
   });
 
   const reviewCount = products.filter((p) => p.needs_review).length;
+  const canEdit = profile?.department !== 'assistente';
 
   return (
     <div className="page">
@@ -120,9 +121,11 @@ export default function Produtos() {
 
       <div className="section-head">
         <h2>{filtered.length} produtos</h2>
-        <button className="btn" onClick={() => setShowNew(true)}>
-          + Novo produto
-        </button>
+        {canEdit && (
+          <button className="btn" onClick={() => setShowNew(true)}>
+            + Novo produto
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -142,7 +145,7 @@ export default function Produtos() {
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} onClick={() => setEditing(p)} style={{ cursor: 'pointer' }}>
+              <tr key={p.id} onClick={() => canEdit && setEditing(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
                 <td className="mono">{p.code}</td>
                 <td>
                   {p.name}

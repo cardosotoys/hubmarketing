@@ -12,6 +12,12 @@ interface KanbanItem {
   priority: string;
   assignee_id: string | null;
   title: string;
+  due_date?: string | null;
+}
+
+function isOverdue(t: KanbanItem, terminalStages?: string[]) {
+  if (!terminalStages || !t.due_date || terminalStages.includes(t.stage)) return false;
+  return new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
 }
 
 export default function KanbanBoard<T extends KanbanItem>({
@@ -20,6 +26,7 @@ export default function KanbanBoard<T extends KanbanItem>({
   editable,
   cols = 6,
   stages,
+  terminalStages,
   onStageChange,
   onCreate,
   onEdit,
@@ -30,6 +37,7 @@ export default function KanbanBoard<T extends KanbanItem>({
   editable: boolean;
   cols?: number;
   stages?: { key: T['stage']; label: string }[];
+  terminalStages?: string[];
   onStageChange?: (taskId: string, stage: T['stage']) => void;
   onCreate?: (title: string) => void;
   onEdit?: (task: T) => void;
@@ -106,6 +114,9 @@ export default function KanbanBoard<T extends KanbanItem>({
                 style={onEdit ? { cursor: 'pointer' } : undefined}
               >
                 <div className="t">{t.title}</div>
+                {isOverdue(t, terminalStages) && (
+                  <div style={{ fontSize: 10, color: 'var(--red)', fontWeight: 700, marginBottom: 6 }}>🔴 atrasada</div>
+                )}
                 {renderExtra?.(t)}
                 <div className="task-foot">
                   <span className={`prio ${t.priority as Priority}`}>{t.priority}</span>

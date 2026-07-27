@@ -1,23 +1,28 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import type { Department } from '../../types/database';
 
 interface WorkspaceNavItem {
   to: string;
   label: string;
   icon: string;
   built: boolean;
+  extraFor?: Department[];
 }
 
+const FULL_ACCESS: Department[] = ['diretoria', 'growth', 'coordenacao'];
+
 const NAV: WorkspaceNavItem[] = [
-  { to: 'resumo', label: 'Resumo', icon: '▣', built: true },
-  { to: 'planejamento', label: 'Planejamento', icon: '✎', built: true },
+  { to: 'resumo', label: 'Resumo', icon: '▣', built: true, extraFor: ['design', 'assistente'] },
+  { to: 'planejamento', label: 'Planejamento', icon: '✎', built: true, extraFor: ['design'] },
   { to: 'objetivos', label: 'Objetivos', icon: '◎', built: true },
-  { to: 'produtos', label: 'Produtos', icon: '◫', built: true },
+  { to: 'produtos', label: 'Produtos', icon: '◫', built: true, extraFor: ['design'] },
   { to: 'roadmap', label: 'Roadmap', icon: '↝', built: true },
-  { to: 'cronograma', label: 'Cronograma', icon: '▤', built: true },
-  { to: 'demandas', label: 'Demandas', icon: '☰', built: true },
-  { to: 'criativos', label: 'Criativos', icon: '◈', built: true },
-  { to: 'conteudos', label: 'Conteúdos', icon: '▥', built: true },
-  { to: 'calendario-editorial', label: 'Calendário Editorial', icon: '▦', built: true },
+  { to: 'cronograma', label: 'Cronograma', icon: '▤', built: true, extraFor: ['design', 'assistente'] },
+  { to: 'demandas', label: 'Demandas', icon: '☰', built: true, extraFor: ['assistente'] },
+  { to: 'criativos', label: 'Criativos', icon: '◈', built: true, extraFor: ['design'] },
+  { to: 'conteudos', label: 'Conteúdos', icon: '▥', built: true, extraFor: ['design', 'assistente'] },
+  { to: 'calendario-editorial', label: 'Calendário Editorial', icon: '▦', built: true, extraFor: ['assistente'] },
   { to: 'social', label: 'Social Media', icon: '◉', built: true },
   { to: 'influenciadores', label: 'Influenciadores', icon: '✦', built: true },
   { to: 'trade', label: 'Trade Marketing', icon: '⬠', built: true },
@@ -31,15 +36,19 @@ const NAV: WorkspaceNavItem[] = [
   { to: 'aprovacoes', label: 'Aprovações', icon: '✓', built: true },
   { to: 'riscos', label: 'Riscos', icon: '⚠', built: true },
   { to: 'decisoes', label: 'Decisões', icon: '◈', built: true },
-  { to: 'historico', label: 'Histórico', icon: '◷', built: true },
+  { to: 'historico', label: 'Histórico', icon: '◷', built: true, extraFor: ['design', 'assistente'] },
   { to: 'auditoria', label: 'Auditoria', icon: '◷', built: false },
   { to: 'configuracoes', label: 'Configurações', icon: '⚙', built: true },
 ];
 
 export default function CampaignSidebar() {
+  const { profile } = useAuth();
+  const department = profile?.department ?? 'growth';
+  const visibleNav = NAV.filter((item) => FULL_ACCESS.includes(department) || item.extraFor?.includes(department));
+
   return (
     <div className="workspace-sidebar">
-      {NAV.map((item) => (
+      {visibleNav.map((item) => (
         <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
           <span className="ic">{item.icon}</span>
           <span>{item.label}</span>
