@@ -1,0 +1,150 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useProjectsOverview } from '../hooks/useProjectsOverview';
+import { supabase } from '../lib/supabaseClient';
+import ProjectCard from '../components/ProjectCard';
+import type { ProjectStatus } from '../types/database';
+
+function formatBRL(n: number) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+const STATUS_CHART: { status: ProjectStatus; label: string; color: string }[] = [
+  { status: 'active', label: 'Em execução', color: 'var(--green)' },
+  { status: 'planning', label: 'Planejamento', color: 'var(--violet)' },
+  { status: 'paused', label: 'Atenção', color: 'var(--yellow)' },
+  { status: 'done', label: 'Finalizado', color: 'var(--text-faint)' },
+];
+
+export default function Dashboard() {
+  const { profile } = useAuth();
+  const { projects, tasks, loading, error, percentFor } = useProjectsOverview();
+  const seesFinancial = profile?.role === 'diretoria';
+
+  const activeProjects = projects.filter((p) => p.status === 'active').length;
+  const openTasks = tasks.filter((t) => t.stage !== 'finalizado').length;
+  const myOpenTasks = tasks.filter((t) => t.assignee_id === profile?.id && t.stage !== 'finalizado').length;
+  const overdue = projects.filter(
+    (p) => p.end_date && new Date(p.end_date) < new Date() && p.status !== 'done'
+  ).length;
+  const awaitingApproval = tasks.filter((t) => t.stage === 'aprovacao').length;
+
+  const [budget, setBudget] = useState<{ planned: number; spent: number } | null>(null);
+  useEffect(() => {
+    if (profile?.role !== 'diretoria') return;
+    supabase
+      .from('campaign_budget_items')
+      .select('planned_amount, spent_amount')
+      .then(({ data }) => {
+        const planned = (data ?? []).reduce((s, b) => s + Number(b.planned_amount), 0);
+        const spent = (data ?? []).reduce((s, b) => s + Number(b.spent_amount), 0);
+        setBudget({ planned, spent });
+      });
+  }, [profile?.role]);
+
+  return (
+    <div className="page">
+      <h1 className="page-title">Dashboard</h1>
+      <div className="page-sub">Visão consolidada de Cardoso, Playmi e Tópi.</div>
+
+      {error && (
+        <div className="banner error">
+          <span className="ic">⚠</span>
+          <span>Não foi possível carregar os dados: {error}</span>
+        </div>
+      )}
+
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-num">{activeProjects}</div>
+          <div className="stat-label">Projetos ativos</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{openTasks}</div>
+          <div className="stat-label">Demandas abertas</div>
+          {myOpenTasks > 0 && <div className="stat-trend">{myOpenTasks} atribuídas a você</div>}
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{projects.length}</div>
+          <div className="stat-label">Projetos no total</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{awaitingApproval}</div>
+          <div className="stat-label">Aguardando aprovação</div>
+        </div>
+      </div>
+
+      {seesFinancial ? (
+        <>
+          <div className="stat-grid" style={{ marginTop: 12 }}>
+            <div className="stat-card">
+              <div className="stat-num">{overdue}</div>
+              <div className="stat-label">Projetos atrasados</div>
+              {overdue > 0 && <div className="stat-trend warn">Verificar prazos</div>}
+            </div>
+            <div className="stat-card">
+              <div className="stat-num">{budget ? formatBRL(budget.spent) : '—'}</div>
+              <div className="stat-label">Verba executada (campanhas)</div>
+              {budget && budget.planned > 0 && (
+                <div className={`stat-trend ${budget.spent > budget.planned ? 'warn' : 'up'}`}>
+                  {Math.round((budget.spent / budget.planned) * 100)}% de {formatBRL(budget.planned)}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="banner" style={{ marginTop: 14 }}>
+            <span className="ic">◆</span>
+            <span>
+              Dashboard executivo — visível apenas para Diretoria.{' '}
+              <Link to="/relatorios" style={{ color: 'var(--violet)' }}>
+                Ver relatório completo →
+              </Link>
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="banner soon" style={{ marginTop: 0 }}>
+          <span className="ic">🔒</span>
+          <span>Indicadores financeiros e dashboard executivo visíveis apenas para Diretoria.</span>
+        </div>
+      )}
+
+      <div className="section-head">
+        <h2>Por status</h2>
+      </div>
+      <div className="grid4">
+        {STATUS_CHART.map((s) => (
+          <div className="card" key={s.status}>
+            <h4 style={{ color: s.color }}>● {s.label}</h4>
+            <p>{projects.filter((p) => p.status === s.status).length} projetos</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="section-head">
+        <h2>Projetos recentes</h2>
+        <Link className="btn ghost" to="/projetos">
+          Ver todos →
+        </Link>
+      </div>
+      {loading ? (
+        <div className="page-sub">Carregando…</div>
+      ) : projects.length === 0 ? (
+        <div className="locked-banner">
+          <span className="ic">◐</span>Nenhum projeto cadastrado ainda.{' '}
+          <Link to="/projetos" style={{ color: 'var(--violet)' }}>
+            Criar o primeiro
+          </Link>
+          .
+        </div>
+      ) : (
+        <div className="project-grid">
+          {projects.slice(0, 6).map((p) => (
+            <ProjectCard key={p.id} project={p} brand={p.brand} percent={percentFor(p.id)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
