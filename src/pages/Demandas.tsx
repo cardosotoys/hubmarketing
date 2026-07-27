@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
@@ -7,12 +8,23 @@ import TaskEditModal from '../components/TaskEditModal';
 import Modal from '../components/Modal';
 import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Profile, type Project, type Stage, type Task } from '../types/database';
 
-type TaskWithProject = Task & { project: { name: string } | null };
+type TaskWithProject = Task & { project: { id: string; name: string } | null };
 type GroupBy = 'none' | 'assignee' | 'project' | 'priority';
 
 function isTaskOverdue(t: Task) {
   if (!t.due_date || t.stage === 'finalizado') return false;
   return new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
+}
+
+function formatBRL(n: number) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function cronogramaLabel(t: Task) {
+  if (!t.start_date && !t.due_date) return '—';
+  const fmt = (d: string) => new Date(d + 'T00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  if (t.start_date && t.due_date) return `${fmt(t.start_date)} – ${fmt(t.due_date)}`;
+  return fmt(t.start_date ?? t.due_date!);
 }
 
 export default function Demandas() {
@@ -25,17 +37,24 @@ export default function Demandas() {
   const [showNew, setShowNew] = useState(false);
   const [view, setView] = useState<'kanban' | 'lista'>('kanban');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [tasksRes, profilesRes, projectsRes] = await Promise.all([
-      supabase.from('tasks').select('*, project:projects(name)').order('position'),
+    const [tasksRes, profilesRes, projectsRes, filesRes] = await Promise.all([
+      supabase.from('tasks').select('*, project:projects(id, name)').order('position'),
       supabase.from('profiles').select('*'),
       supabase.from('projects').select('*').order('name'),
+      supabase.from('project_files').select('task_id').not('task_id', 'is', null),
     ]);
     setTasks((tasksRes.data as TaskWithProject[]) ?? []);
     setProfiles((profilesRes.data as Profile[]) ?? []);
     setProjects((projectsRes.data as Project[]) ?? []);
+    const counts: Record<string, number> = {};
+    ((filesRes.data as { task_id: string }[]) ?? []).forEach((f) => {
+      counts[f.task_id] = (counts[f.task_id] ?? 0) + 1;
+    });
+    setFileCounts(counts);
     setLoading(false);
   }, []);
 
@@ -80,7 +99,7 @@ export default function Demandas() {
 
   async function saveTask(taskId: string, fields: Partial<Task>) {
     const task = tasks.find((t) => t.id === taskId);
-    await supabase.from('tasks').update(fields).eq('id', taskId);
+    await supabase.from('tasks').update({ ...fields, updated_by: profile?.id }).eq('id', taskId);
     if (profile) {
       await logActivity({ actorId: profile.id, actionText: 'Demanda editada', projectId: task?.project_id ?? undefined, taskId });
     }
@@ -141,10 +160,17 @@ export default function Demandas() {
           renderExtra={(t) => {
             const withProject = t as TaskWithProject;
             return withProject.project ? (
-              <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 6 }}>
+              <Link
+                to={`/projetos/${withProject.project.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="pill"
+                style={{ display: 'inline-block', marginBottom: 6, background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
+              >
                 {withProject.project.name}
-              </div>
-            ) : null;
+              </Link>
+            ) : (
+              <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 6 }}>Avulsa</div>
+            );
           }}
         />
       ) : (
@@ -156,16 +182,35 @@ export default function Demandas() {
                 {g.items.map((t) => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
                     <td>{t.title}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{t.project?.name ?? 'Avulsa'}</td>
+                    <td>
+                      {t.project ? (
+                        <Link
+                          to={`/projetos/${t.project.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="pill"
+                          style={{ background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
+                        >
+                          {t.project.name}
+                        </Link>
+                      ) : (
+                        <span style={{ color: 'var(--text-faint)' }}>Avulsa</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`prio ${t.priority}`}>{t.priority}</span>
                     </td>
                     <td style={{ color: 'var(--text-faint)' }}>{STAGES.find((s) => s.key === t.stage)?.label}</td>
                     <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>
-                      {t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}
+                    <td style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.notes || '—'}
                     </td>
+                    <td style={{ color: 'var(--text-faint)' }}>{t.budget != null ? formatBRL(Number(t.budget)) : '—'}</td>
+                    <td style={{ color: 'var(--text-faint)' }}>{fileCounts[t.id] ? `📎 ${fileCounts[t.id]}` : '—'}</td>
+                    <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{cronogramaLabel(t)}</td>
                     <td>{isTaskOverdue(t) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                    <td style={{ color: 'var(--text-faint)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                      {t.updated_by ? profilesById[t.updated_by]?.name : '—'} · {new Date(t.updated_at).toLocaleDateString('pt-BR')}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -174,10 +219,11 @@ export default function Demandas() {
         ))
       )}
 
-      {editingTask && (
+      {editingTask && profile && (
         <TaskEditModal
           task={editingTask}
           profiles={profiles}
+          actorId={profile.id}
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}
           onDelete={() => deleteTask(editingTask.id, editingTask.title, editingTask.project_id)}

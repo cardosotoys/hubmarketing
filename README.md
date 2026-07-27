@@ -57,6 +57,12 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 - **Visão em lista nas Demandas**: tanto no board global (Demandas) quanto na aba Demandas de cada Projeto,
   agora dá pra alternar entre Kanban e Lista (tabela com prazo, atraso e agrupamento por responsável/projeto/
   prioridade) — mesmo padrão já usado nas campanhas.
+- **Demanda no padrão Monday**: cada demanda agora tem Notas, Orçamento, Arquivos anexados (link, sem upload) e
+  registro de quem fez a última atualização e quando — tudo visível tanto no modal de edição quanto na visão em
+  lista. No board global, o projeto de cada demanda vira uma etiqueta clicável (ou "Avulsa", se não tiver
+  projeto), fácil de identificar de onde ela vem.
+- **Menu lateral organizado por seção**: Visão geral, Trabalho, Marca & Conteúdo, Campanhas, Registro e Sistema
+  — mais fácil de navegar com o número maior de módulos.
 - **Auditoria com escopo pessoal**: deixou de ser só da Diretoria. Diretoria/Administrador continuam vendo o
   feed completo de todo o time; Equipe agora também acessa Auditoria, mas vê só o que ela mesma fez, mais tudo
   que aconteceu nos projetos e campanhas em que participa (como membro, responsável por alguma demanda, ou
@@ -146,7 +152,10 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
     `ia_prompts`, `ia_templates`, `ia_personas` e `ia_brand_voice`, já populadas com um acervo inicial real
     (prompts e templates cobrindo growth, social, trade, CRM, design e planejamento; personas de consumidor e
     trade; brand voice derivado do que já está documentado em Brand).
-17. Pegue as duas chaves de conexão:
+17. Rode também [`supabase/migrations/0014_task_fields.sql`](supabase/migrations/0014_task_fields.sql) —
+    adiciona `notes`/`budget`/`updated_by` em `tasks`, e libera `project_files.project_id` + adiciona `task_id`
+    (pra anexar arquivo direto numa demanda, com ou sem projeto).
+18. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -218,6 +227,7 @@ supabase/migrations/0010_campaign_wave2.sql      criativos, conteúdos, influenc
 supabase/migrations/0011_departments.sql         coluna department em profiles + restrição de escrita (assistente) em products/library_*
 supabase/migrations/0012_task_delays.sql         tasks.project_id opcional + start_date/due_date/delay_reason + task_id em activity_log
 supabase/migrations/0013_ia_module.sql           ia_prompts/ia_templates/ia_personas/ia_brand_voice + acervo inicial real
+supabase/migrations/0014_task_fields.sql         tasks.notes/budget/updated_by + project_files.task_id (arquivo por demanda)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

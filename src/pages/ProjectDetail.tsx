@@ -114,8 +114,8 @@ export default function ProjectDetail() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   async function saveTask(taskId: string, fields: Partial<Task>) {
-    await supabase.from('tasks').update(fields).eq('id', taskId);
-    if (profile) await logActivity({ actorId: profile.id, actionText: 'Demanda editada', projectId: id });
+    await supabase.from('tasks').update({ ...fields, updated_by: profile?.id }).eq('id', taskId);
+    if (profile) await logActivity({ actorId: profile.id, actionText: 'Demanda editada', projectId: id, taskId });
     setEditingTask(null);
     load();
   }
@@ -330,6 +330,17 @@ export default function ProjectDetail() {
                         return acc;
                       }, {})
                     ).map(([label, items]) => ({ label, items }));
+              const fileCounts: Record<string, number> = {};
+              files.forEach((f) => {
+                if (f.task_id) fileCounts[f.task_id] = (fileCounts[f.task_id] ?? 0) + 1;
+              });
+              const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+              const cronograma = (t: Task) => {
+                if (!t.start_date && !t.due_date) return '—';
+                const fmt = (d: string) => new Date(d + 'T00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                if (t.start_date && t.due_date) return `${fmt(t.start_date)} – ${fmt(t.due_date)}`;
+                return fmt(t.start_date ?? t.due_date!);
+              };
               return groups.map((g) => (
                 <div key={g.label}>
                   {g.label && <h4 style={{ fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 6px 0' }}>{g.label}</h4>}
@@ -345,10 +356,16 @@ export default function ProjectDetail() {
                             </td>
                             <td style={{ color: 'var(--text-faint)' }}>{STAGES.find((s) => s.key === t.stage)?.label}</td>
                             <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
-                            <td style={{ color: 'var(--text-faint)' }}>
-                              {t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}
+                            <td style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {t.notes || '—'}
                             </td>
+                            <td style={{ color: 'var(--text-faint)' }}>{t.budget != null ? fmtBRL(Number(t.budget)) : '—'}</td>
+                            <td style={{ color: 'var(--text-faint)' }}>{fileCounts[t.id] ? `📎 ${fileCounts[t.id]}` : '—'}</td>
+                            <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{cronograma(t)}</td>
                             <td>{overdue && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                            <td style={{ color: 'var(--text-faint)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                              {t.updated_by ? profilesById[t.updated_by]?.name : '—'} · {new Date(t.updated_at).toLocaleDateString('pt-BR')}
+                            </td>
                           </tr>
                         );
                       })}
@@ -361,10 +378,11 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {editingTask && (
+      {editingTask && profile && (
         <TaskEditModal
           task={editingTask}
           profiles={allProfiles}
+          actorId={profile.id}
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}
           onDelete={() => deleteTask(editingTask.id, editingTask.title)}

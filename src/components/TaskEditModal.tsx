@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Modal from './Modal';
-import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Profile, type Stage, type Task } from '../types/database';
+import { supabase } from '../lib/supabaseClient';
+import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type ProjectFile, type Profile, type Stage, type Task } from '../types/database';
 
 function computeOverdue(dueDate: string, stage: Stage) {
   if (stage === 'finalizado') return false;
@@ -10,12 +11,14 @@ function computeOverdue(dueDate: string, stage: Stage) {
 export default function TaskEditModal({
   task,
   profiles,
+  actorId,
   onClose,
   onSave,
   onDelete,
 }: {
   task: Task;
   profiles: Profile[];
+  actorId: string;
   onClose: () => void;
   onSave: (fields: Partial<Task>) => void;
   onDelete: () => void;
@@ -27,9 +30,25 @@ export default function TaskEditModal({
   const [startDate, setStartDate] = useState(task.start_date ?? '');
   const [dueDate, setDueDate] = useState(task.due_date ?? '');
   const [delayReason, setDelayReason] = useState(task.delay_reason ?? '');
+  const [notes, setNotes] = useState(task.notes ?? '');
+  const [budget, setBudget] = useState(task.budget?.toString() ?? '');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
+  const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [fileName, setFileName] = useState('');
+  const [fileUrl, setFileUrl] = useState('');
+
+  useEffect(() => {
+    supabase
+      .from('project_files')
+      .select('*')
+      .eq('task_id', task.id)
+      .order('created_at')
+      .then(({ data }) => setFiles((data as ProjectFile[]) ?? []));
+  }, [task.id]);
+
   const overdue = dueDate ? computeOverdue(dueDate, stage) : false;
+  const updatedByName = profiles.find((p) => p.id === task.updated_by)?.name;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,15 +61,47 @@ export default function TaskEditModal({
       start_date: startDate || null,
       due_date: dueDate || null,
       delay_reason: delayReason,
+      notes,
+      budget: budget ? Number(budget) : null,
     });
+  }
+
+  async function addFile(e: FormEvent) {
+    e.preventDefault();
+    if (!fileName.trim() || !fileUrl.trim()) return;
+    await supabase.from('project_files').insert({
+      task_id: task.id,
+      project_id: task.project_id,
+      name: fileName.trim(),
+      url: fileUrl.trim(),
+      added_by: actorId,
+    });
+    setFileName('');
+    setFileUrl('');
+    const { data } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
+    setFiles((data as ProjectFile[]) ?? []);
+  }
+
+  async function deleteFile(id: string) {
+    await supabase.from('project_files').delete().eq('id', id);
+    setFiles((prev) => prev.filter((f) => f.id !== id));
   }
 
   return (
     <Modal title="Editar demanda" onClose={onClose}>
+      {(task.updated_by || task.created_at) && (
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '-6px 0 12px 0' }}>
+          Última atualização: {updatedByName ?? 'ninguém ainda'} · {new Date(task.updated_at).toLocaleString('pt-BR')}
+        </p>
+      )}
       <form onSubmit={handleSubmit}>
         <div className="form-field">
           <label htmlFor="te-title">Título</label>
           <input id="te-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="form-field">
+          <label htmlFor="te-notes">Notas</label>
+          <textarea id="te-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
@@ -72,6 +123,10 @@ export default function TaskEditModal({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="te-budget">Orçamento</label>
+            <input id="te-budget" type="number" placeholder="R$" value={budget} onChange={(e) => setBudget(e.target.value)} />
           </div>
         </div>
         <div className="form-field">
@@ -140,6 +195,28 @@ export default function TaskEditModal({
           </div>
         )}
       </form>
+
+      <div className="panel" style={{ marginTop: 14 }}>
+        <h4>Arquivos</h4>
+        {files.map((f) => (
+          <div className="field-row" key={f.id}>
+            <a href={f.url} target="_blank" rel="noreferrer">
+              {f.name}
+            </a>
+            <button className="btn ghost sm" onClick={() => deleteFile(f.id)}>
+              ✕
+            </button>
+          </div>
+        ))}
+        {files.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum arquivo anexado ainda.</p>}
+        <form onSubmit={addFile} className="responsive-row" style={{ marginTop: 8 }}>
+          <input placeholder="Nome" value={fileName} onChange={(e) => setFileName(e.target.value)} style={{ flex: 1 }} />
+          <input placeholder="Link (Drive, etc.)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} style={{ flex: 2 }} />
+          <button className="btn sm" type="submit">
+            Anexar
+          </button>
+        </form>
+      </div>
     </Modal>
   );
 }

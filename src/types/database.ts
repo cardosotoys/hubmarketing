@@ -86,6 +86,9 @@ export interface Task {
   start_date: string | null;
   due_date: string | null;
   delay_reason: string;
+  notes: string;
+  budget: number | null;
+  updated_by: string | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -93,7 +96,8 @@ export interface Task {
 
 export interface ProjectFile {
   id: string;
-  project_id: string;
+  project_id: string | null;
+  task_id: string | null;
   name: string;
   url: string;
   added_by: string | null;

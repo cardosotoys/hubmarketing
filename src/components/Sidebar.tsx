@@ -4,19 +4,61 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { ROLE_LABELS, type Department } from '../types/database';
 
-const NAV: { to: string; label: string; icon: string; end?: boolean; hideFor?: Department[] }[] = [
-  { to: '/', label: 'Dashboard', icon: '▣', end: true },
-  { to: '/projetos', label: 'Projetos', icon: '◧' },
-  { to: '/demandas', label: 'Demandas', icon: '☰' },
-  { to: '/calendario', label: 'Calendário', icon: '▦' },
-  { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎', hideFor: ['design'] },
-  { to: '/biblioteca', label: 'Biblioteca', icon: '▤' },
-  { to: '/produtos', label: 'Produtos', icon: '◫' },
-  { to: '/campanhas', label: 'Campanhas', icon: '◆' },
-  { to: '/ia', label: 'IA', icon: '✦' },
-  { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'] },
-  { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎' },
-  { to: '/brand', label: 'Brand', icon: '◈' },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: string;
+  end?: boolean;
+  hideFor?: Department[];
+  requiresConfig?: boolean;
+}
+
+const SECTIONS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Visão geral',
+    items: [
+      { to: '/', label: 'Dashboard', icon: '▣', end: true },
+      { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'] },
+    ],
+  },
+  {
+    label: 'Trabalho',
+    items: [
+      { to: '/projetos', label: 'Projetos', icon: '◧' },
+      { to: '/demandas', label: 'Demandas', icon: '☰' },
+      { to: '/calendario', label: 'Calendário', icon: '▦' },
+    ],
+  },
+  {
+    label: 'Marca & conteúdo',
+    items: [
+      { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎', hideFor: ['design'] },
+      { to: '/biblioteca', label: 'Biblioteca', icon: '▤' },
+      { to: '/produtos', label: 'Produtos', icon: '◫' },
+      { to: '/brand', label: 'Brand', icon: '◈' },
+    ],
+  },
+  {
+    label: 'Campanhas',
+    items: [
+      { to: '/campanhas', label: 'Campanhas', icon: '◆' },
+      { to: '/ia', label: 'IA', icon: '✦' },
+    ],
+  },
+  {
+    label: 'Registro',
+    items: [
+      { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎' },
+      { to: '/auditoria', label: 'Auditoria', icon: '◷' },
+    ],
+  },
+  {
+    label: 'Sistema',
+    items: [
+      { to: '/configuracoes', label: 'Configurações', icon: '⚙', requiresConfig: true },
+      { to: '/perfil', label: 'Perfil', icon: '◉' },
+    ],
+  },
 ];
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -24,7 +66,6 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const role = profile?.role ?? 'equipe';
   const department = profile?.department ?? 'growth';
   const seesConfig = role === 'diretoria' || role === 'administrador';
-  const visibleNav = NAV.filter((item) => !item.hideFor?.includes(department));
   const [openTasks, setOpenTasks] = useState<number | null>(null);
 
   useEffect(() => {
@@ -48,45 +89,39 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </button>
       </div>
 
-      {visibleNav.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <span className="ic">{item.icon}</span>
-          <span>{item.label}</span>
-          {item.to === '/demandas' && openTasks !== null && openTasks > 0 && (
-            <span className="badge">{openTasks}</span>
-          )}
-        </NavLink>
-      ))}
-
-      {seesConfig ? (
-        <NavLink to="/configuracoes" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <span className="ic">⚙</span>
-          <span>Configurações</span>
-        </NavLink>
-      ) : (
-        <div className="nav-locked">
-          <span className="ic">⚙</span>
-          <span>Configurações</span>
-          <span className="ic" style={{ marginLeft: 'auto' }}>
-            🔒
-          </span>
-        </div>
-      )}
-
-      <NavLink to="/auditoria" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-        <span className="ic">◷</span>
-        <span>Auditoria</span>
-      </NavLink>
-
-      <NavLink to="/perfil" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-        <span className="ic">◉</span>
-        <span>Perfil</span>
-      </NavLink>
+      {SECTIONS.map((section) => {
+        const items = section.items.filter((item) => !item.hideFor?.includes(department));
+        if (items.length === 0) return null;
+        return (
+          <div key={section.label}>
+            <div className="nav-label">{section.label}</div>
+            {items.map((item) =>
+              item.requiresConfig && !seesConfig ? (
+                <div className="nav-locked" key={item.to}>
+                  <span className="ic">{item.icon}</span>
+                  <span>{item.label}</span>
+                  <span className="ic" style={{ marginLeft: 'auto' }}>
+                    🔒
+                  </span>
+                </div>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                >
+                  <span className="ic">{item.icon}</span>
+                  <span>{item.label}</span>
+                  {item.to === '/demandas' && openTasks !== null && openTasks > 0 && (
+                    <span className="badge">{openTasks}</span>
+                  )}
+                </NavLink>
+              )
+            )}
+          </div>
+        );
+      })}
 
       <div className="sidebar-footer">
         <div className="user-footer">
