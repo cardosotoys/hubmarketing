@@ -237,7 +237,7 @@ function KpiFormModal({
           <label htmlFor="kpi-name">Nome</label>
           <input id="kpi-name" required placeholder="Ex: ROAS, CTR, Leads…" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="kpi-target">Meta</label>
             <input id="kpi-target" type="number" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} />

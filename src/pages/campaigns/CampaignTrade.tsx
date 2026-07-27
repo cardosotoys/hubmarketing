@@ -137,7 +137,7 @@ function TradeFormModal({
           <label htmlFor="tr-channel">Canal / rede</label>
           <input id="tr-channel" value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="Varejo, atacado, PDV…" />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="tr-start">Início</label>
             <input id="tr-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />

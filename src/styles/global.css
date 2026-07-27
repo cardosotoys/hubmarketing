@@ -1285,3 +1285,159 @@ table.simple tr:hover td {
   color: var(--text-faint);
   font-size: 13px;
 }
+
+/* Fileira flex genérica (campos de form, controles de cabeçalho de seção…) — empilha em telas estreitas */
+.responsive-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Botão hamburguer — só aparece em telas estreitas */
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Backdrop atrás da sidebar quando ela vira gaveta no mobile */
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ============================================================
+   Responsivo (tablet/celular)
+   ============================================================ */
+
+@media (max-width: 880px) {
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 70;
+    width: 250px;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 65;
+  }
+
+  .content {
+    padding: 16px 14px 40px 14px;
+  }
+
+  .topbar {
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .search-bar {
+    display: none;
+  }
+  .user-chip span {
+    display: none;
+  }
+
+  .stat-grid,
+  .grid3,
+  .grid4,
+  .project-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .board {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 4px;
+  }
+  .board .col {
+    min-width: 230px;
+    flex-shrink: 0;
+  }
+
+  table.simple {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+  }
+
+  .drawer {
+    width: 100%;
+  }
+
+  .responsive-row {
+    flex-direction: column;
+  }
+
+  .brand-tabs,
+  .filters-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+
+  /* Campaign workspace: sidebar secundária vira tira horizontal com scroll */
+  .workspace-shell {
+    flex-direction: column;
+  }
+  .workspace-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    position: static;
+    max-height: none;
+    padding-bottom: 6px;
+    gap: 4px;
+  }
+  .workspace-sidebar .nav-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .workspace-header-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .workspace-actions {
+    flex-wrap: wrap;
+  }
+  .cal-grid {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 600px) {
+  .stat-grid,
+  .grid3,
+  .grid4,
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+}

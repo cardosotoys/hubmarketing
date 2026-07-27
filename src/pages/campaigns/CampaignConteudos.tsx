@@ -135,7 +135,7 @@ function ContentFormModal({
           <label htmlFor="ct-title">Título</label>
           <input id="ct-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="ct-type">Tipo</label>
             <select id="ct-type" value={contentType} onChange={(e) => setContentType(e.target.value as ContentType)}>

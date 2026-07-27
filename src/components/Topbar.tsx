@@ -6,7 +6,7 @@ import type { ActivityLogEntry } from '../types/database';
 
 type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
 
-export default function Topbar({ breadcrumb }: { breadcrumb: string }) {
+export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string; onMenuClick: () => void }) {
   const { profile } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [recent, setRecent] = useState<ActivityWithActor[]>([]);
@@ -23,6 +23,9 @@ export default function Topbar({ breadcrumb }: { breadcrumb: string }) {
 
   return (
     <div className="topbar">
+      <button className="hamburger-btn" onClick={onMenuClick}>
+        ☰
+      </button>
       <div className="breadcrumb">
         <b>{breadcrumb}</b>
       </div>

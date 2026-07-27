@@ -160,7 +160,7 @@ function MediaFormModal({
           <label htmlFor="mi-channel">Canal</label>
           <input id="mi-channel" required value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="Google, Meta, TikTok…" />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="mi-planned">Previsto</label>
             <input id="mi-planned" type="number" value={planned} onChange={(e) => setPlanned(e.target.value)} />
@@ -174,7 +174,7 @@ function MediaFormModal({
             <input id="mi-revenue" type="number" value={revenue} onChange={(e) => setRevenue(e.target.value)} />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="mi-impressions">Impressões</label>
             <input id="mi-impressions" type="number" value={impressions} onChange={(e) => setImpressions(e.target.value)} />
@@ -188,7 +188,7 @@ function MediaFormModal({
             <input id="mi-conversions" type="number" value={conversions} onChange={(e) => setConversions(e.target.value)} />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="mi-start">Período início</label>
             <input id="mi-start" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />

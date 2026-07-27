@@ -19,7 +19,7 @@ const NAV = [
   { to: '/brand', label: 'Brand', icon: '◈' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { profile, signOut } = useAuth();
   const role = profile?.role ?? 'equipe';
   const seesConfig = role === 'diretoria' || role === 'administrador';
@@ -35,13 +35,16 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar${open ? ' open' : ''}`}>
       <div className="brand">
         <div className="brand-mark">C</div>
         <div>
           <div className="brand-name">Cardoso Hub</div>
           <div className="brand-sub mono">marketing · estrutura</div>
         </div>
+        <button className="hamburger-btn" style={{ marginLeft: 'auto' }} onClick={onClose}>
+          ✕
+        </button>
       </div>
 
       {NAV.map((item) => (

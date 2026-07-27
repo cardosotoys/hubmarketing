@@ -151,7 +151,7 @@ function LeadFormModal({
           <label htmlFor="ld-name">Nome</label>
           <input id="ld-name" required value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="ld-company">Empresa</label>
             <input id="ld-company" value={company} onChange={(e) => setCompany(e.target.value)} />
@@ -165,7 +165,7 @@ function LeadFormModal({
           <label htmlFor="ld-source">Origem</label>
           <input id="ld-source" value={source} onChange={(e) => setSource(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="ld-value">Valor</label>
             <input id="ld-value" type="number" value={value} onChange={(e) => setValue(e.target.value)} />

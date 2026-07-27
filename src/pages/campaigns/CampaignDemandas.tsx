@@ -111,7 +111,7 @@ export default function CampaignDemandas() {
     <div>
       <div className="section-head">
         <h2>{tasks.length} demandas</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
             <option value="none">Sem agrupamento</option>
             <option value="assignee">Agrupar por responsável</option>

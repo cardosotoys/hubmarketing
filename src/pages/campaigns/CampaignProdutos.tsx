@@ -78,7 +78,7 @@ export default function CampaignProdutos() {
 
       <div className="panel" style={{ marginTop: 16 }}>
         <h4>Vincular produto do catálogo</h4>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <input placeholder="Buscar por nome…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
           <select value={pick} onChange={(e) => setPick(e.target.value)} style={{ flex: 2 }}>
             <option value="">Escolher produto…</option>

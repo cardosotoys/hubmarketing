@@ -127,7 +127,7 @@ function InfluencerFormModal({
           <label htmlFor="inf-name">Nome</label>
           <input id="inf-name" required value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="inf-platform">Plataforma</label>
             <input id="inf-platform" value={platform} onChange={(e) => setPlatform(e.target.value)} placeholder="Instagram, TikTok…" />
@@ -141,7 +141,7 @@ function InfluencerFormModal({
           <label htmlFor="inf-deliverables">Entregáveis</label>
           <textarea id="inf-deliverables" rows={2} value={deliverables} onChange={(e) => setDeliverables(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="inf-fee">Cachê</label>
             <input id="inf-fee" type="number" value={fee} onChange={(e) => setFee(e.target.value)} />

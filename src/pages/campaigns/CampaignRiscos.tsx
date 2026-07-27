@@ -180,7 +180,7 @@ function RiskFormModal({
           <label htmlFor="risk-desc">Descrição</label>
           <textarea id="risk-desc" required rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="risk-prob">Probabilidade</label>
             <select id="risk-prob" value={probability} onChange={(e) => setProbability(e.target.value as RiskProbability)}>

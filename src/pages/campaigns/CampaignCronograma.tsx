@@ -131,7 +131,7 @@ export default function CampaignCronograma() {
     <div>
       <div className="section-head">
         <h2>Cronograma</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="filters-row" style={{ margin: 0 }}>
             <div className={`filter-chip${zoom === 'semanal' ? ' active' : ''}`} onClick={() => setZoom('semanal')}>
               Semanal

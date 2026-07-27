@@ -183,7 +183,7 @@ function ObjectiveFormModal({
           <label htmlFor="obj-indicator">Indicador</label>
           <input id="obj-indicator" value={indicator} onChange={(e) => setIndicator(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="obj-target">Meta</label>
             <input id="obj-target" type="number" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} />
@@ -197,7 +197,7 @@ function ObjectiveFormModal({
             <input id="obj-unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="%, R$, un." />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="obj-weight">Peso</label>
             <input id="obj-weight" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} />
@@ -218,7 +218,7 @@ function ObjectiveFormModal({
             ))}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="obj-due">Prazo</label>
             <input id="obj-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />

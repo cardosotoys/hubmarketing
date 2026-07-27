@@ -185,7 +185,7 @@ export default function CampaignTaskDrawer({ task, campaignId, profiles, product
             <label htmlFor="td-desc">Descrição</label>
             <textarea id="td-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="responsive-row">
             <div className="form-field" style={{ flex: 1 }}>
               <label htmlFor="td-dept">Departamento</label>
               <input id="td-dept" value={department} onChange={(e) => setDepartment(e.target.value)} />
@@ -206,7 +206,7 @@ export default function CampaignTaskDrawer({ task, campaignId, profiles, product
           <h4 style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-faint)', margin: '14px 0 6px 0' }}>
             Prioridade & impacto
           </h4>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="responsive-row">
             <div className="form-field" style={{ flex: 1 }}>
               <label htmlFor="td-priority">Prioridade</label>
               <select id="td-priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
@@ -302,7 +302,7 @@ export default function CampaignTaskDrawer({ task, campaignId, profiles, product
           <h4 style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-faint)', margin: '14px 0 6px 0' }}>
             Prazo & horas
           </h4>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="responsive-row">
             <div className="form-field" style={{ flex: 1 }}>
               <label htmlFor="td-start">Início</label>
               <input id="td-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />

@@ -92,7 +92,7 @@ export default function CampaignSocial() {
       {unlinked.length > 0 && (
         <div className="panel" style={{ marginTop: 16 }}>
           <h4>Vincular post existente desta marca</h4>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="responsive-row">
             <select value={pick} onChange={(e) => setPick(e.target.value)} style={{ flex: 1 }}>
               <option value="">Escolher post…</option>
               {unlinked.map((p) => (
