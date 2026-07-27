@@ -37,6 +37,8 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
   const [tab, setTab] = useState<Tab>('resumo');
+  const [demandasView, setDemandasView] = useState<'kanban' | 'lista'>('kanban');
+  const [demandasGroupBy, setDemandasGroupBy] = useState<'none' | 'assignee' | 'priority'>('none');
 
   const [project, setProject] = useState<ProjectWithBrand | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
@@ -276,15 +278,87 @@ export default function ProjectDetail() {
       )}
 
       {tab === 'demandas' && (
-        <KanbanBoard
-          tasks={tasks}
-          profilesById={profilesById}
-          editable
-          terminalStages={['finalizado']}
-          onStageChange={changeStage}
-          onCreate={createTask}
-          onEdit={setEditingTask}
-        />
+        <div>
+          <div className="section-head">
+            <h2>{tasks.length} demandas</h2>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {demandasView === 'lista' && (
+                <select value={demandasGroupBy} onChange={(e) => setDemandasGroupBy(e.target.value as typeof demandasGroupBy)}>
+                  <option value="none">Sem agrupamento</option>
+                  <option value="assignee">Agrupar por responsável</option>
+                  <option value="priority">Agrupar por prioridade</option>
+                </select>
+              )}
+              <div className="filters-row" style={{ margin: 0 }}>
+                <div className={`filter-chip${demandasView === 'kanban' ? ' active' : ''}`} onClick={() => setDemandasView('kanban')}>
+                  Kanban
+                </div>
+                <div className={`filter-chip${demandasView === 'lista' ? ' active' : ''}`} onClick={() => setDemandasView('lista')}>
+                  Lista
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {demandasView === 'kanban' ? (
+            <KanbanBoard
+              tasks={tasks}
+              profilesById={profilesById}
+              editable
+              terminalStages={['finalizado']}
+              onStageChange={changeStage}
+              onCreate={createTask}
+              onEdit={setEditingTask}
+            />
+          ) : (
+            (() => {
+              const groupLabel = (t: Task) =>
+                demandasGroupBy === 'assignee'
+                  ? t.assignee_id
+                    ? profilesById[t.assignee_id]?.name ?? '—'
+                    : 'Sem responsável'
+                  : demandasGroupBy === 'priority'
+                    ? t.priority
+                    : '';
+              const groups =
+                demandasGroupBy === 'none'
+                  ? [{ label: '', items: tasks }]
+                  : Object.entries(
+                      tasks.reduce<Record<string, Task[]>>((acc, t) => {
+                        const key = groupLabel(t);
+                        (acc[key] ??= []).push(t);
+                        return acc;
+                      }, {})
+                    ).map(([label, items]) => ({ label, items }));
+              return groups.map((g) => (
+                <div key={g.label}>
+                  {g.label && <h4 style={{ fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 6px 0' }}>{g.label}</h4>}
+                  <table className="simple">
+                    <tbody>
+                      {g.items.map((t) => {
+                        const overdue = t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
+                        return (
+                          <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
+                            <td>{t.title}</td>
+                            <td>
+                              <span className={`prio ${t.priority}`}>{t.priority}</span>
+                            </td>
+                            <td style={{ color: 'var(--text-faint)' }}>{STAGES.find((s) => s.key === t.stage)?.label}</td>
+                            <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
+                            <td style={{ color: 'var(--text-faint)' }}>
+                              {t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}
+                            </td>
+                            <td>{overdue && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ));
+            })()
+          )}
+        </div>
       )}
 
       {editingTask && (

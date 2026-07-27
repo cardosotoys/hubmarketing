@@ -54,6 +54,9 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   não só Diretoria).
 - **Demandas avulsas**: em Demandas → "+ Nova demanda" agora dá pra criar uma demanda sem vínculo com nenhum
   projeto (algo pontual), escolhendo "Sem projeto" no formulário.
+- **Visão em lista nas Demandas**: tanto no board global (Demandas) quanto na aba Demandas de cada Projeto,
+  agora dá pra alternar entre Kanban e Lista (tabela com prazo, atraso e agrupamento por responsável/projeto/
+  prioridade) — mesmo padrão já usado nas campanhas.
 - **Auditoria com escopo pessoal**: deixou de ser só da Diretoria. Diretoria/Administrador continuam vendo o
   feed completo de todo o time; Equipe agora também acessa Auditoria, mas vê só o que ela mesma fez, mais tudo
   que aconteceu nos projetos e campanhas em que participa (como membro, responsável por alguma demanda, ou
