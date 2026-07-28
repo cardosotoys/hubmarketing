@@ -214,7 +214,10 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 22. Rode também [`supabase/migrations/0019_mpm_schema.sql`](supabase/migrations/0019_mpm_schema.sql) — cria todo
     o schema do **Monitor de Preços** (veja a seção [Monitor de Preços (MPM)](#monitor-de-preços-mpm) mais
     abaixo pra terminar a configuração — tem uma Edge Function pra publicar e um cron pra agendar).
-23. Pegue as duas chaves de conexão:
+23. Rode também [`supabase/migrations/0020_mpm_ml_auth.sql`](supabase/migrations/0020_mpm_ml_auth.sql) — adiciona
+    as colunas de token OAuth do Mercado Livre em `mpm_settings` (o ML bloqueou busca sem login, então precisa
+    de autorização — passo a passo completo na seção [Monitor de Preços (MPM)](#monitor-de-preços-mpm)).
+24. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -269,21 +272,57 @@ Ela precisa ser publicada e agendada separadamente — a tela do Hub (`/monitor-
 migration `0019_mpm_schema.sql` rodar, mas sem a Edge Function agendada nada é buscado automaticamente (dá pra
 testar clicando em "Sincronizar agora" na tela, que chama a function na hora).
 
-1. **Instale o Supabase CLI** (se ainda não tiver): `npm install -g supabase`.
-2. **Conecte ao seu projeto**: `supabase login` e depois `supabase link --project-ref <seu-project-ref>`
+1. **Instale/rode o Supabase CLI via `npx`** (não precisa instalar global — em alguns Macs `npm install -g`
+   dá erro de permissão): `npx supabase login`, depois `npx supabase link --project-ref <seu-project-ref>`
    (o project-ref é o mesmo ID que aparece na URL `https://<project-ref>.supabase.co`).
-3. **Publique a function**: rode, na raiz do repositório:
+2. **Publique a function**: rode, na raiz do repositório:
    ```bash
-   supabase functions deploy mpm-sync
+   npx supabase functions deploy mpm-sync
    ```
-4. **(Opcional) Ative e-mail de alerta**: crie uma conta grátis/barata no [Resend](https://resend.com), pegue a
+3. **Rode também a migration `0020_mpm_ml_auth.sql`** — o Mercado Livre passou a exigir OAuth até pra busca
+   pública (bloqueou acesso anônimo com erro 403), então precisamos guardar um token de acesso. Essa migration
+   adiciona as colunas de token em `mpm_settings`.
+4. **Autentique com o Mercado Livre (passo único, precisa ser feito uma vez)**:
+   - Crie um app grátis em [developers.mercadolivre.com.br/devcenter](https://developers.mercadolivre.com.br/devcenter)
+     (loga com qualquer conta ML). Em **Redirect URI**, coloque a URL do próprio Hub, ex.:
+     `https://cardoso-marketing.vercel.app`. Anote o **Client ID** e o **Client Secret** gerados.
+   - Abra no navegador (trocando `<CLIENT_ID>`):
+     `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=<CLIENT_ID>&redirect_uri=https://cardoso-marketing.vercel.app`
+   - Autorize com a conta ML. Você vai cair de volta no Hub com `?code=TG-...` na barra de endereço — copie esse
+     código na hora (ele expira rápido e só serve uma vez).
+   - Troque o código pelos tokens (rode no Terminal, trocando os valores):
+     ```bash
+     curl -X POST https://api.mercadolibre.com/oauth/token \
+       -H "accept: application/json" -H "content-type: application/x-www-form-urlencoded" \
+       -d "grant_type=authorization_code" -d "client_id=SEU_CLIENT_ID" -d "client_secret=SEU_CLIENT_SECRET" \
+       -d "code=O_CODE_COPIADO" -d "redirect_uri=https://cardoso-marketing.vercel.app"
+     ```
+   - A resposta traz `access_token` e `refresh_token`. Salve os dois no **SQL Editor** do Supabase:
+     ```sql
+     update mpm_settings set
+       ml_access_token = 'COLE_O_ACCESS_TOKEN',
+       ml_access_token_expires_at = now() + interval '6 hours',
+       ml_refresh_token = 'COLE_O_REFRESH_TOKEN'
+     where id = true;
+     ```
+   - Guarde `client_id`/`client_secret` como secrets da function (o `refresh_token` já fica salvo no banco e se
+     renova sozinho daqui pra frente — o Mercado Livre troca ele a cada uso, por isso mora no banco, não num
+     secret fixo):
+     ```bash
+     npx supabase secrets set ML_CLIENT_ID=seu_client_id
+     ```
+     ```bash
+     npx supabase secrets set ML_CLIENT_SECRET=seu_client_secret
+     ```
+   - Redeploy a function pra pegar essa lógica nova: `npx supabase functions deploy mpm-sync`.
+5. **(Opcional) Ative e-mail de alerta**: crie uma conta grátis/barata no [Resend](https://resend.com), pegue a
    API key e rode:
    ```bash
-   supabase secrets set RESEND_API_KEY=re_sua_chave_aqui
+   npx supabase secrets set RESEND_API_KEY=re_sua_chave_aqui
    ```
    Sem isso, o alerta por e-mail fica preparado mas não envia nada (o webhook e a notificação interna no Hub
    funcionam sem precisar disso).
-5. **Agende a execução** com `pg_cron` + `pg_net` — no **SQL Editor** do Supabase, rode (trocando
+6. **Agende a execução** com `pg_cron` + `pg_net` — no **SQL Editor** do Supabase, rode (trocando
    `<project-ref>` e `<service-role-key>` pelos valores reais do seu projeto, em **Settings → API**):
    ```sql
    create extension if not exists pg_cron;
@@ -309,16 +348,16 @@ testar clicando em "Sincronizar agora" na tela, que chama a function na hora).
    em hora não gera busca de hora em hora, só verifica se já passou o intervalo configurado (padrão: 24h).
    **Nunca** cole a `service-role-key` em nenhum arquivo do repositório — ela só deve existir dentro do SQL
    Editor do Supabase.
-6. Na tela **Monitor de Preços → Produtos monitorados**, adicione os produtos que quer acompanhar (só produtos
+7. Na tela **Monitor de Preços → Produtos monitorados**, adicione os produtos que quer acompanhar (só produtos
    adicionados aqui são pesquisados — o resto do catálogo fica de fora). Preencha o **preço mínimo permitido**
    e, se quiser, palavras-chave/sinônimos pra melhorar a busca. Vale também preencher **EAN** e **imagem
    oficial** de cada produto na tela de Produtos — ajuda a bater o anúncio certo com mais confiança.
 
-**v1 é só Mercado Livre** (API pública oficial, sem custo) **e zero IA** (anúncio duvidoso vai pra fila de
-revisão manual na própria tela, com botões Confirmar/Rejeitar) — decisões tomadas pra manter custo operacional
-baixo e alta confiabilidade. A arquitetura (marketplace como campo extensível, camada de validação separada da
-de busca) já está pronta pra adicionar Amazon/Shopee/Google Shopping e reativar IA de validação no futuro, sem
-precisar reescrever nada.
+**v1 é só Mercado Livre** (via OAuth deles, sem custo — só a autorização inicial acima) **e zero IA** (anúncio
+duvidoso vai pra fila de revisão manual na própria tela, com botões Confirmar/Rejeitar) — decisões tomadas pra
+manter custo operacional baixo e alta confiabilidade. A arquitetura (marketplace como campo extensível, camada
+de validação separada da de busca) já está pronta pra adicionar Amazon/Shopee/Google Shopping e reativar IA de
+validação no futuro, sem precisar reescrever nada.
 
 ## Scripts
 
@@ -351,7 +390,8 @@ supabase/migrations/0016_packaging_project.sql   tasks.product_id + projeto "Con
 supabase/migrations/0017_project_templates.sql   project_templates + checklist/tasks padrão + 4 modelos reais
 supabase/migrations/0018_daily_reports_edit.sql  update/delete em daily_reports (autor ou Diretoria/Administrador)
 supabase/migrations/0019_mpm_schema.sql          schema completo do Monitor de Preços (produtos, anúncios, histórico, alertas)
-supabase/functions/mpm-sync/index.ts             Edge Function que busca, valida e compara preços (Mercado Livre)
+supabase/migrations/0020_mpm_ml_auth.sql         colunas de token OAuth do Mercado Livre em mpm_settings
+supabase/functions/mpm-sync/index.ts             Edge Function que autentica, busca, valida e compara preços (Mercado Livre)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

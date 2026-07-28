@@ -1,5 +1,8 @@
 // Market Price Monitor — robô de busca/validação/alerta.
-// v1: só Mercado Livre (API pública oficial, sem Playwright/IA — decisão de arquitetura).
+// v1: só Mercado Livre (sem Playwright/IA — decisão de arquitetura). O ML bloqueou busca
+// anônima, então autenticamos via OAuth (authorization_code + refresh_token). O refresh_token
+// do ML é rotativo — muda a cada uso — por isso ele fica guardado em mpm_settings (não dá pra
+// usar um secret estático); só client_id/client_secret são secrets fixos.
 // Chamado por um cron do Postgres (pg_cron + pg_net) a cada hora; ele mesmo decide se já é
 // hora de rodar de verdade, olhando mpm_settings.search_interval_hours — assim o intervalo é
 // ajustável pelo Hub sem precisar reagendar o cron.
@@ -78,9 +81,56 @@ interface MlSearchItem {
   installments?: { quantity: number; amount: number } | null;
 }
 
-async function searchMercadoLivre(query: string): Promise<MlSearchItem[]> {
+async function getMercadoLivreAccessToken(supabase: SupabaseClient, settings: any): Promise<string> {
+  const bufferMs = 5 * 60 * 1000;
+  if (
+    settings?.ml_access_token &&
+    settings?.ml_access_token_expires_at &&
+    new Date(settings.ml_access_token_expires_at).getTime() > Date.now() + bufferMs
+  ) {
+    return settings.ml_access_token;
+  }
+
+  const clientId = Deno.env.get('ML_CLIENT_ID');
+  const clientSecret = Deno.env.get('ML_CLIENT_SECRET');
+  if (!clientId || !clientSecret) {
+    throw new Error('ML_CLIENT_ID / ML_CLIENT_SECRET não configurados (supabase secrets set).');
+  }
+  if (!settings?.ml_refresh_token) {
+    throw new Error('mpm_settings.ml_refresh_token vazio — falta fazer a autorização inicial do Mercado Livre.');
+  }
+
+  const res = await fetch('https://api.mercadolibre.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: settings.ml_refresh_token,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Falha ao renovar token do Mercado Livre: ${JSON.stringify(data)}`);
+  }
+
+  const expiresAt = new Date(Date.now() + (data.expires_in - 60) * 1000).toISOString();
+  await supabase
+    .from('mpm_settings')
+    .update({
+      ml_access_token: data.access_token,
+      ml_access_token_expires_at: expiresAt,
+      ml_refresh_token: data.refresh_token,
+    })
+    .eq('id', true);
+
+  return data.access_token as string;
+}
+
+async function searchMercadoLivre(query: string, accessToken: string): Promise<MlSearchItem[]> {
   const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=20`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) return [];
   const body = await res.json();
   return (body.results ?? []) as MlSearchItem[];
@@ -121,6 +171,7 @@ async function notifyEmail(email: string, subject: string, text: string) {
 
 async function runSync(supabase: SupabaseClient, runId: string) {
   const { data: settings } = await supabase.from('mpm_settings').select('*').single();
+  const accessToken = await getMercadoLivreAccessToken(supabase, settings);
   const { data: products } = await supabase
     .from('mpm_products')
     .select('*, product:products(code, name, ean, brand:brands(label))')
@@ -135,7 +186,7 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     const seenExternalIds = new Set<string>();
 
     for (const query of queries) {
-      const items = await searchMercadoLivre(query);
+      const items = await searchMercadoLivre(query, accessToken);
       for (const item of items) {
         if (seenExternalIds.has(item.id)) continue;
         seenExternalIds.add(item.id);

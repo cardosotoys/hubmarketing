@@ -15,6 +15,7 @@ dist-ssr
 # Supabase keys — nunca commitar
 .env
 .env.local
+supabase/.temp
 
 # Editor directories and files
 .vscode/*
