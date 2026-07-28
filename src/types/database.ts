@@ -280,9 +280,6 @@ export interface MpmSettings {
   alert_email: string;
   alert_webhook_url: string;
   whatsapp_number: string;
-  ml_access_token: string;
-  ml_access_token_expires_at: string | null;
-  ml_refresh_token: string;
   updated_at: string;
   updated_by: string | null;
 }

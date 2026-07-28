@@ -1,8 +1,10 @@
 // Market Price Monitor — robô de busca/validação/alerta.
-// v1: só Mercado Livre (sem Playwright/IA — decisão de arquitetura). O ML bloqueou busca
-// anônima, então autenticamos via OAuth (authorization_code + refresh_token). O refresh_token
-// do ML é rotativo — muda a cada uso — por isso ele fica guardado em mpm_settings (não dá pra
-// usar um secret estático); só client_id/client_secret são secrets fixos.
+// Fonte: SerpApi (Google Shopping) — cobre qualquer loja que o Google indexe (Mercado Livre,
+// Amazon, Shopee, lojas próprias etc.), não só um marketplace específico. Trocamos da API
+// direta do Mercado Livre pra cá porque o ML bloqueia busca de app terceiro por política,
+// mesmo autenticado via OAuth.
+// Zero IA (decisão de arquitetura): anúncio duvidoso vai pra fila de revisão manual em vez de
+// chamada de IA — o score de confiança é 100% determinístico (EAN/SKU/palavras-chave).
 // Chamado por um cron do Postgres (pg_cron + pg_net) a cada hora; ele mesmo decide se já é
 // hora de rodar de verdade, olhando mpm_settings.search_interval_hours — assim o intervalo é
 // ajustável pelo Hub sem precisar reagendar o cron.
@@ -70,70 +72,45 @@ function scoreMatch(p: MpmProductRow, title: string): number {
   return Math.round((matched / nameTokens.size) * 100);
 }
 
-interface MlSearchItem {
-  id: string;
+interface ShoppingResultItem {
   title: string;
-  price: number;
-  permalink: string;
-  thumbnail: string;
-  seller?: { nickname?: string; id?: number };
-  shipping?: { free_shipping?: boolean };
-  installments?: { quantity: number; amount: number } | null;
+  price?: string;
+  extracted_price?: number;
+  source?: string;
+  product_link?: string;
+  link?: string;
+  thumbnail?: string;
+  delivery?: string;
 }
 
-async function getMercadoLivreAccessToken(supabase: SupabaseClient, settings: any): Promise<string> {
-  const bufferMs = 5 * 60 * 1000;
-  if (
-    settings?.ml_access_token &&
-    settings?.ml_access_token_expires_at &&
-    new Date(settings.ml_access_token_expires_at).getTime() > Date.now() + bufferMs
-  ) {
-    return settings.ml_access_token;
-  }
+type Marketplace = 'mercado_livre' | 'amazon' | 'shopee' | 'google_shopping' | 'google_search';
 
-  const clientId = Deno.env.get('ML_CLIENT_ID');
-  const clientSecret = Deno.env.get('ML_CLIENT_SECRET');
-  if (!clientId || !clientSecret) {
-    throw new Error('ML_CLIENT_ID / ML_CLIENT_SECRET não configurados (supabase secrets set).');
-  }
-  if (!settings?.ml_refresh_token) {
-    throw new Error('mpm_settings.ml_refresh_token vazio — falta fazer a autorização inicial do Mercado Livre.');
-  }
-
-  const res = await fetch('https://api.mercadolibre.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: settings.ml_refresh_token,
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(`Falha ao renovar token do Mercado Livre: ${JSON.stringify(data)}`);
-  }
-
-  const expiresAt = new Date(Date.now() + (data.expires_in - 60) * 1000).toISOString();
-  await supabase
-    .from('mpm_settings')
-    .update({
-      ml_access_token: data.access_token,
-      ml_access_token_expires_at: expiresAt,
-      ml_refresh_token: data.refresh_token,
-    })
-    .eq('id', true);
-
-  return data.access_token as string;
+function detectMarketplace(item: ShoppingResultItem): Marketplace {
+  const haystack = `${item.source ?? ''} ${item.product_link ?? item.link ?? ''}`.toLowerCase();
+  if (haystack.includes('mercadolivre') || haystack.includes('mercadolibre')) return 'mercado_livre';
+  if (haystack.includes('amazon')) return 'amazon';
+  if (haystack.includes('shopee')) return 'shopee';
+  return 'google_shopping';
 }
 
-async function searchMercadoLivre(query: string, accessToken: string): Promise<MlSearchItem[]> {
-  const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=20`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+async function searchGoogleShopping(query: string): Promise<ShoppingResultItem[]> {
+  const apiKey = Deno.env.get('SERPAPI_KEY');
+  if (!apiKey) {
+    throw new Error('SERPAPI_KEY não configurada (supabase secrets set).');
+  }
+  const url = `https://serpapi.com/search?engine=google_shopping&q=${encodeURIComponent(query)}&gl=br&hl=pt&api_key=${apiKey}`;
+  const res = await fetch(url);
   if (!res.ok) return [];
   const body = await res.json();
-  return (body.results ?? []) as MlSearchItem[];
+  return (body.shopping_results ?? []) as ShoppingResultItem[];
+}
+
+function extractPrice(item: ShoppingResultItem): number | null {
+  if (typeof item.extracted_price === 'number') return item.extracted_price;
+  if (!item.price) return null;
+  const digits = item.price.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function notifyWebhook(webhookUrl: string, payload: unknown) {
@@ -171,7 +148,6 @@ async function notifyEmail(email: string, subject: string, text: string) {
 
 async function runSync(supabase: SupabaseClient, runId: string) {
   const { data: settings } = await supabase.from('mpm_settings').select('*').single();
-  const accessToken = await getMercadoLivreAccessToken(supabase, settings);
   const { data: products } = await supabase
     .from('mpm_products')
     .select('*, product:products(code, name, ean, brand:brands(label))')
@@ -186,36 +162,41 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     const seenExternalIds = new Set<string>();
 
     for (const query of queries) {
-      const items = await searchMercadoLivre(query, accessToken);
+      const items = await searchGoogleShopping(query);
       for (const item of items) {
-        if (seenExternalIds.has(item.id)) continue;
-        seenExternalIds.add(item.id);
+        const price = extractPrice(item);
+        const externalId = item.product_link ?? item.link;
+        if (price == null || !externalId) continue;
+        if (seenExternalIds.has(externalId)) continue;
+        seenExternalIds.add(externalId);
 
         const score = scoreMatch(p, item.title);
         if (score < 50) continue;
 
+        const marketplace = detectMarketplace(item);
+
         const { data: existing } = await supabase
           .from('mpm_listings')
           .select('*')
-          .eq('marketplace', 'mercado_livre')
-          .eq('external_id', item.id)
+          .eq('marketplace', marketplace)
+          .eq('external_id', externalId)
           .maybeSingle();
 
         const humanReviewed = existing && ['confirmed_match', 'rejected'].includes(existing.match_status);
         const matchStatus = humanReviewed ? existing.match_status : score >= 80 ? 'high_confidence' : 'needs_review';
-        const isViolation = ['high_confidence', 'confirmed_match'].includes(matchStatus) && item.price < p.min_price;
+        const isViolation = ['high_confidence', 'confirmed_match'].includes(matchStatus) && price < p.min_price;
 
         const listingFields = {
           mpm_product_id: p.id,
-          marketplace: 'mercado_livre' as const,
-          external_id: item.id,
-          store_name: item.seller?.nickname ?? (item.seller?.id ? `Vendedor #${item.seller.id}` : 'Desconhecida'),
+          marketplace,
+          external_id: externalId,
+          store_name: item.source ?? 'Desconhecida',
           title: item.title,
-          url: item.permalink,
-          image_url: item.thumbnail,
-          shipping_price: item.shipping?.free_shipping ? 0 : null,
-          installment_info: item.installments ? `${item.installments.quantity}x de R$${item.installments.amount}` : '',
-          current_price: item.price,
+          url: externalId,
+          image_url: item.thumbnail ?? '',
+          shipping_price: null,
+          installment_info: item.delivery ?? '',
+          current_price: price,
           match_status: matchStatus,
           match_score: score,
           is_violation: isViolation,
@@ -232,11 +213,11 @@ async function runSync(supabase: SupabaseClient, runId: string) {
 
         listingsFound++;
 
-        const diffAmount = p.min_price - item.price;
+        const diffAmount = p.min_price - price;
         const diffPercent = (diffAmount / p.min_price) * 100;
         await supabase.from('mpm_price_history').insert({
           listing_id: upserted.id,
-          price: item.price,
+          price,
           min_price_at_check: p.min_price,
           is_violation: isViolation,
           diff_amount: isViolation ? diffAmount : null,
@@ -255,20 +236,20 @@ async function runSync(supabase: SupabaseClient, runId: string) {
           if (openAlert) {
             await supabase
               .from('mpm_alerts')
-              .update({ price: item.price, min_price: p.min_price, diff_amount: diffAmount, diff_percent: diffPercent })
+              .update({ price, min_price: p.min_price, diff_amount: diffAmount, diff_percent: diffPercent })
               .eq('id', openAlert.id);
           } else {
             let notifiedWebhook = false;
             let notifiedEmail = false;
             const payload = {
               product: p.product?.name,
-              marketplace: 'mercado_livre',
+              marketplace,
               store: listingFields.store_name,
-              price: item.price,
+              price,
               min_price: p.min_price,
               diff_amount: diffAmount,
               diff_percent: diffPercent,
-              url: item.permalink,
+              url: externalId,
             };
             if (settings?.alert_webhook_url) {
               notifiedWebhook = await notifyWebhook(settings.alert_webhook_url, payload);
@@ -277,13 +258,13 @@ async function runSync(supabase: SupabaseClient, runId: string) {
               notifiedEmail = await notifyEmail(
                 settings.alert_email,
                 `Violação de preço: ${p.product?.name}`,
-                `${listingFields.store_name} está vendendo "${p.product?.name}" por R$${item.price} (mínimo permitido: R$${p.min_price}). Link: ${item.permalink}`
+                `${listingFields.store_name} está vendendo "${p.product?.name}" por R$${price} (mínimo permitido: R$${p.min_price}). Link: ${externalId}`
               );
             }
             await supabase.from('mpm_alerts').insert({
               mpm_product_id: p.id,
               listing_id: upserted.id,
-              price: item.price,
+              price,
               min_price: p.min_price,
               diff_amount: diffAmount,
               diff_percent: diffPercent,
