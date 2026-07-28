@@ -477,6 +477,23 @@ h1.page-title {
   color: var(--text);
   border-color: var(--text-faint);
 }
+.chip-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.chip-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: var(--text);
+  min-width: 200px;
+}
 
 /* Submarca tabs */
 .brand-tabs {

@@ -104,6 +104,32 @@ export interface Task {
   updated_at: string;
 }
 
+export interface ProjectTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  default_priority: Priority;
+  objective: string;
+  created_at: string;
+}
+
+export interface ProjectTemplateChecklistItem {
+  id: string;
+  template_id: string;
+  label: string;
+  position: number;
+}
+
+export interface ProjectTemplateTask {
+  id: string;
+  template_id: string;
+  title: string;
+  stage: Stage;
+  priority: Priority;
+  position: number;
+}
+
 export interface ProjectFile {
   id: string;
   project_id: string | null;

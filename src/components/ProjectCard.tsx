@@ -6,13 +6,29 @@ export default function ProjectCard({
   project,
   brand,
   percent,
+  onDuplicate,
 }: {
   project: Project;
   brand: Brand;
   percent: number;
+  onDuplicate?: () => void;
 }) {
   return (
-    <Link to={`/projetos/${project.id}`} className="project-card">
+    <Link to={`/projetos/${project.id}`} className="project-card" style={{ position: 'relative' }}>
+      {onDuplicate && (
+        <button
+          className="btn ghost sm"
+          title="Duplicar projeto"
+          style={{ position: 'absolute', top: 10, right: 10, padding: '2px 8px' }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDuplicate();
+          }}
+        >
+          ⧉
+        </button>
+      )}
       <div className="brand-strip" style={{ background: brand.color }} />
       <span
         className="pill"

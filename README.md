@@ -102,6 +102,16 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   direto da demanda (não é um campo duplicado que pode ficar desatualizado). Das 109 demandas importadas, 91
   já vieram linkadas automaticamente pelo código de referência do produto; as outras 18 são SKUs novos ainda
   não cadastrados no catálogo.
+- **Projetos: filtro, ordenação, agrupamento e modelos (estilo Monday)**: a barra de ferramentas em Projetos
+  agora é real — **pesquisar** (nome/subtítulo/categoria/ref), **Pessoa** (quem criou o projeto), **Status**,
+  **Prioridade**, **Categoria**, **Ordenar** (recentes/nome/prioridade/prazo/progresso), **Agrupar por** (marca/
+  status/prioridade/categoria/responsável) e **Ocultar concluídos**. Cada card de projeto ganhou um botão
+  **Duplicar** (⧉) que copia o projeto (dados, checklist e demandas — com estágio resetado para "Recebido") pra
+  um projeto novo, pronto pra ajustar datas e responsáveis. E tem uma aba nova **Modelos**: 4 modelos prontos
+  (Lançamento de Produto Novo, Conferência/Aprovação de Embalagem, Auditoria de Mídias, Ação de Trade Marketing/
+  PDV), cada um com checklist e demandas padrão — ao criar um projeto você pode "começar de um modelo" e o
+  checklist + as demandas já vêm prontos. Dá pra criar, editar e excluir modelos (inclusive os seus próprios)
+  direto pela aba Modelos.
 
 ## 1. Criar o projeto no Supabase
 
@@ -181,7 +191,11 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
     adiciona `tasks.product_id` (liga uma demanda a um produto do catálogo) e já cria o projeto **"Conferência
     de Embalagens"** com as 109 demandas importadas do quadro do Monday, 91 delas já linkadas ao produto certo
     pelo código de referência (as outras 18 são SKUs novos que ainda não estão no Banco de Produtos).
-20. Pegue as duas chaves de conexão:
+20. Rode também [`supabase/migrations/0017_project_templates.sql`](supabase/migrations/0017_project_templates.sql) —
+    cria `project_templates`/`project_template_checklist_items`/`project_template_tasks` e já semeia 4 modelos
+    reais (Lançamento de Produto Novo, Conferência/Aprovação de Embalagem, Auditoria de Mídias, Ação de Trade
+    Marketing/PDV), cada um com checklist e demandas padrão prontos.
+21. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -256,6 +270,7 @@ supabase/migrations/0013_ia_module.sql           ia_prompts/ia_templates/ia_pers
 supabase/migrations/0014_task_fields.sql         tasks.notes/budget/updated_by + project_files.task_id (arquivo por demanda)
 supabase/migrations/0015_task_comments.sql       task_comments (chat interno por demanda, com menção @pessoa)
 supabase/migrations/0016_packaging_project.sql   tasks.product_id + projeto "Conferência de Embalagens" (import Monday)
+supabase/migrations/0017_project_templates.sql   project_templates + checklist/tasks padrão + 4 modelos reais
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado
