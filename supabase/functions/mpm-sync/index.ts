@@ -100,8 +100,10 @@ async function searchGoogleShopping(query: string): Promise<ShoppingResultItem[]
   }
   const url = `https://serpapi.com/search?engine=google_shopping&q=${encodeURIComponent(query)}&gl=br&hl=pt&api_key=${apiKey}`;
   const res = await fetch(url);
-  if (!res.ok) return [];
   const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`SerpApi falhou pra query "${query}" (HTTP ${res.status}): ${body?.error ?? JSON.stringify(body)}`);
+  }
   return (body.shopping_results ?? []) as ShoppingResultItem[];
 }
 
