@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { normalizeUrl } from '../lib/url';
 import StatusTag from '../components/StatusTag';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskEditModal from '../components/TaskEditModal';
@@ -176,7 +177,7 @@ export default function ProjectDetail() {
 
   async function addFile(name: string, url: string) {
     if (!id || !profile) return;
-    await supabase.from('project_files').insert({ project_id: id, name, url, added_by: profile.id });
+    await supabase.from('project_files').insert({ project_id: id, name, url: normalizeUrl(url), added_by: profile.id });
     await logActivity({ actorId: profile.id, actionText: 'Arquivo anexado', detail: name, projectId: id });
     load();
   }
@@ -345,6 +346,20 @@ export default function ProjectDetail() {
                 <div key={g.label}>
                   {g.label && <h4 style={{ fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 6px 0' }}>{g.label}</h4>}
                   <table className="simple">
+                    <thead>
+                      <tr>
+                        <th>Tarefa</th>
+                        <th>Prioridade</th>
+                        <th>Estágio</th>
+                        <th>Responsável</th>
+                        <th>Notas</th>
+                        <th>Orçamento</th>
+                        <th>Arquivos</th>
+                        <th>Cronograma</th>
+                        <th>Atraso</th>
+                        <th>Última atualização</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {g.items.map((t) => {
                         const overdue = t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());

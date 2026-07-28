@@ -2,14 +2,27 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import type { ActivityLogEntry } from '../types/database';
+import type { ActivityLogEntry, TaskComment } from '../types/database';
 
 type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
+type MentionRow = TaskComment & { author: { name: string } | null; task: { title: string } | null };
 
 export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string; onMenuClick: () => void }) {
   const { profile } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [recent, setRecent] = useState<ActivityWithActor[]>([]);
+  const [mentions, setMentions] = useState<MentionRow[]>([]);
+
+  useEffect(() => {
+    if (!profile) return;
+    supabase
+      .from('task_comments')
+      .select('*, author:profiles(name), task:tasks(title)')
+      .contains('mentioned_ids', [profile.id])
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => setMentions((data as MentionRow[] | null) ?? []));
+  }, [profile]);
 
   useEffect(() => {
     if (!showNotif) return;
@@ -40,7 +53,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         </Link>
         <div className="icon-btn" onClick={() => setShowNotif((s) => !s)}>
           🔔
-          <span className="pip"></span>
+          {mentions.length > 0 && <span className="pip"></span>}
         </div>
         <Link className="user-chip" to="/perfil">
           <div className="avatar">{profile?.avatar_initials ?? '··'}</div>
@@ -50,6 +63,16 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
 
       {showNotif && (
         <div className="notif-panel">
+          {mentions.length > 0 && (
+            <>
+              <div className="head">Menções pra você</div>
+              {mentions.map((m) => (
+                <div className="item" key={m.id}>
+                  <b>{m.author?.name ?? 'Alguém'}</b> te marcou em "{m.task?.title ?? 'uma demanda'}": {m.body}
+                </div>
+              ))}
+            </>
+          )}
           <div className="head">Atividade recente</div>
           {recent.length === 0 && <div className="item">Nada por aqui ainda.</div>}
           {recent.map((r) => (

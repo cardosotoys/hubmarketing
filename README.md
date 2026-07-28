@@ -83,6 +83,16 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   campanha só tem Resumo/Demandas/Cronograma/Calendário Editorial/Conteúdos/Histórico. Configurações e
   Auditoria continuam controladas só pelo papel de privilégio (Diretoria/Administrador), independente do
   departamento. Ajuste o departamento de cada pessoa em **Configurações → Usuários**.
+- **Visão em lista com cabeçalho**: as tabelas de Demandas (globais, por projeto e por campanha) agora têm
+  título em cima de cada coluna — antes só as células apareciam, sem indicar o que cada uma significava.
+- **Chat interno na demanda**: dentro de cada demanda (modal de edição) tem um painel de **Comentários**, com
+  opção de marcar colegas (chips "@Nome" clicáveis acima do campo de texto) — quem é marcado vê um aviso
+  "Menções pra você" no sino de notificações do Topbar. Comentário postado não pode ser editado nem excluído
+  (igual ao padrão já usado nos comentários de Projeto e Campanha).
+- **Correção de link quebrado**: links colados sem `http://`/`https://` (ex.: `www.exemplo.com`) agora recebem
+  o protocolo automaticamente ao salvar, em qualquer lugar do Hub onde se cola um link manual (arquivos de
+  demanda/projeto, documentos de campanha, links da Biblioteca) — antes, um link assim virava uma navegação
+  interna quebrada (404) em vez de abrir o site de verdade.
 
 ## 1. Criar o projeto no Supabase
 
@@ -155,7 +165,10 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 17. Rode também [`supabase/migrations/0014_task_fields.sql`](supabase/migrations/0014_task_fields.sql) —
     adiciona `notes`/`budget`/`updated_by` em `tasks`, e libera `project_files.project_id` + adiciona `task_id`
     (pra anexar arquivo direto numa demanda, com ou sem projeto).
-18. Pegue as duas chaves de conexão:
+18. Rode também [`supabase/migrations/0015_task_comments.sql`](supabase/migrations/0015_task_comments.sql) —
+    cria `task_comments` (comentários dentro de cada demanda, com `mentioned_ids` pra marcar colegas — quem é
+    marcado vê um aviso no sino de notificações do Topbar).
+19. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -228,6 +241,7 @@ supabase/migrations/0011_departments.sql         coluna department em profiles +
 supabase/migrations/0012_task_delays.sql         tasks.project_id opcional + start_date/due_date/delay_reason + task_id em activity_log
 supabase/migrations/0013_ia_module.sql           ia_prompts/ia_templates/ia_personas/ia_brand_voice + acervo inicial real
 supabase/migrations/0014_task_fields.sql         tasks.notes/budget/updated_by + project_files.task_id (arquivo por demanda)
+supabase/migrations/0015_task_comments.sql       task_comments (chat interno por demanda, com menção @pessoa)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

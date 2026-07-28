@@ -76,6 +76,15 @@ export interface Comment {
   created_at: string;
 }
 
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  author_id: string;
+  body: string;
+  mentioned_ids: string[];
+  created_at: string;
+}
+
 export interface Task {
   id: string;
   project_id: string | null;

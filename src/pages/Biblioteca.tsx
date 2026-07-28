@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent, type KeyboardEvent } 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { normalizeUrl } from '../lib/url';
 import type { DriveKey, LibraryFolder, LibraryLink } from '../types/database';
 
 const DRIVE_INFO: Record<DriveKey, { label: string; color: string; formula: string; example: string }> = {
@@ -245,7 +246,7 @@ export default function Biblioteca() {
     await supabase.from('library_links').insert({
       folder_id: selectedId,
       name: linkName.trim(),
-      url: linkUrl.trim(),
+      url: normalizeUrl(linkUrl),
       added_by: profile.id,
     });
     await logActivity({ actorId: profile.id, actionText: 'Link anexado na Biblioteca', detail: linkName.trim() });

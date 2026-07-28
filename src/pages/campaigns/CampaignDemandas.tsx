@@ -167,6 +167,16 @@ export default function CampaignDemandas() {
               <h4 style={{ fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 6px 0' }}>{g.label}</h4>
             )}
             <table className="simple">
+              <thead>
+                <tr>
+                  <th>Tarefa</th>
+                  <th>Prioridade</th>
+                  <th>Estágio</th>
+                  <th>Responsável</th>
+                  <th>Prazo</th>
+                  <th>Bloqueio</th>
+                </tr>
+              </thead>
               <tbody>
                 {g.items.map((t) => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerTask(t)}>

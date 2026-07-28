@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { logActivity } from '../../lib/activityLog';
+import { normalizeUrl } from '../../lib/url';
 import { useCampaignWorkspace } from '../../context/CampaignWorkspaceContext';
 import type { Campaign, CampaignChecklistItem, CampaignDocument, Product } from '../../types/database';
 
@@ -156,7 +157,7 @@ export default function CampaignPlanejamento() {
   async function addDocument(e: FormEvent) {
     e.preventDefault();
     if (!docName.trim() || !docUrl.trim() || !profile) return;
-    await supabase.from('campaign_documents').insert({ campaign_id: campaign.id, name: docName.trim(), url: docUrl.trim(), added_by: profile.id });
+    await supabase.from('campaign_documents').insert({ campaign_id: campaign.id, name: docName.trim(), url: normalizeUrl(docUrl), added_by: profile.id });
     setDocName('');
     setDocUrl('');
     loadExtras();

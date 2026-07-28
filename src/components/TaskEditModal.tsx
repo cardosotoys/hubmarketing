@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import { supabase } from '../lib/supabaseClient';
-import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type ProjectFile, type Profile, type Stage, type Task } from '../types/database';
+import { normalizeUrl } from '../lib/url';
+import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type ProjectFile, type Profile, type Stage, type Task, type TaskComment } from '../types/database';
 
 function computeOverdue(dueDate: string, stage: Stage) {
   if (stage === 'finalizado') return false;
@@ -38,6 +39,10 @@ export default function TaskEditModal({
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
 
+  const [comments, setComments] = useState<(TaskComment & { author: { name: string } | null })[]>([]);
+  const [commentBody, setCommentBody] = useState('');
+  const [mentionIds, setMentionIds] = useState<string[]>([]);
+
   useEffect(() => {
     supabase
       .from('project_files')
@@ -45,7 +50,38 @@ export default function TaskEditModal({
       .eq('task_id', task.id)
       .order('created_at')
       .then(({ data }) => setFiles((data as ProjectFile[]) ?? []));
+    loadComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);
+
+  async function loadComments() {
+    const { data } = await supabase
+      .from('task_comments')
+      .select('*, author:profiles(name)')
+      .eq('task_id', task.id)
+      .order('created_at');
+    setComments((data as (TaskComment & { author: { name: string } | null })[]) ?? []);
+  }
+
+  function toggleMention(id: string) {
+    setMentionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function addComment(e: FormEvent) {
+    e.preventDefault();
+    if (!commentBody.trim()) return;
+    const mentionTags = mentionIds.map((id) => `@${profiles.find((p) => p.id === id)?.name ?? ''}`).join(' ');
+    const body = mentionTags ? `${mentionTags} ${commentBody.trim()}` : commentBody.trim();
+    await supabase.from('task_comments').insert({
+      task_id: task.id,
+      author_id: actorId,
+      body,
+      mentioned_ids: mentionIds,
+    });
+    setCommentBody('');
+    setMentionIds([]);
+    loadComments();
+  }
 
   const overdue = dueDate ? computeOverdue(dueDate, stage) : false;
   const updatedByName = profiles.find((p) => p.id === task.updated_by)?.name;
@@ -73,7 +109,7 @@ export default function TaskEditModal({
       task_id: task.id,
       project_id: task.project_id,
       name: fileName.trim(),
-      url: fileUrl.trim(),
+      url: normalizeUrl(fileUrl),
       added_by: actorId,
     });
     setFileName('');
@@ -215,6 +251,54 @@ export default function TaskEditModal({
           <button className="btn sm" type="submit">
             Anexar
           </button>
+        </form>
+      </div>
+
+      <div className="panel">
+        <h4>Comentários</h4>
+        {comments.map((c) => (
+          <div className="comment" key={c.id}>
+            <div className="comment-head">
+              <span className="name">{c.author?.name ?? 'Alguém'}</span>
+              <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}</span>
+            </div>
+            <div className="body">{c.body}</div>
+          </div>
+        ))}
+        {comments.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum comentário ainda.</p>}
+
+        <form onSubmit={addComment} style={{ marginTop: 8 }}>
+          <div className="form-field">
+            <label>Marcar pessoas</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {profiles.map((p) => (
+                <span
+                  key={p.id}
+                  className="pill"
+                  onClick={() => toggleMention(p.id)}
+                  style={{
+                    cursor: 'pointer',
+                    background: mentionIds.includes(p.id) ? 'var(--accent-dim)' : 'var(--surface-2)',
+                    color: mentionIds.includes(p.id) ? 'var(--accent)' : 'var(--text-faint)',
+                    border: mentionIds.includes(p.id) ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  }}
+                >
+                  @{p.name}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="responsive-row">
+            <input
+              placeholder="Escrever um comentário… marque alguém acima pra chamar atenção"
+              value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button className="btn sm" type="submit">
+              Comentar
+            </button>
+          </div>
         </form>
       </div>
     </Modal>

@@ -178,6 +178,21 @@ export default function Demandas() {
           <div key={g.label}>
             {g.label && <h4 style={{ fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 6px 0' }}>{g.label}</h4>}
             <table className="simple">
+              <thead>
+                <tr>
+                  <th>Tarefa</th>
+                  <th>Projeto</th>
+                  <th>Prioridade</th>
+                  <th>Estágio</th>
+                  <th>Responsável</th>
+                  <th>Notas</th>
+                  <th>Orçamento</th>
+                  <th>Arquivos</th>
+                  <th>Cronograma</th>
+                  <th>Atraso</th>
+                  <th>Última atualização</th>
+                </tr>
+              </thead>
               <tbody>
                 {g.items.map((t) => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
