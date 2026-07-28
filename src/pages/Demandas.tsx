@@ -44,8 +44,12 @@ export default function Demandas() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    let tasksQuery = supabase.from('tasks').select('*, project:projects(id, name)').order('position');
+    if (profile?.role === 'equipe') {
+      tasksQuery = tasksQuery.eq('assignee_id', profile.id);
+    }
     const [tasksRes, profilesRes, projectsRes, filesRes, productsRes] = await Promise.all([
-      supabase.from('tasks').select('*, project:projects(id, name)').order('position'),
+      tasksQuery,
       supabase.from('profiles').select('*'),
       supabase.from('projects').select('*').order('name'),
       supabase.from('project_files').select('task_id').not('task_id', 'is', null),
@@ -61,7 +65,7 @@ export default function Demandas() {
     });
     setFileCounts(counts);
     setLoading(false);
-  }, []);
+  }, [profile?.id, profile?.role]);
 
   useEffect(() => {
     load();
@@ -142,6 +146,7 @@ export default function Demandas() {
       <div className="page-sub">
         Fluxo: Recebido → Planejamento → Produção → Revisão → Aprovação → Finalizado. Demandas podem estar ligadas a um
         projeto ou ser avulsas (algo pontual, sem vínculo).
+        {profile?.role === 'equipe' && ' Aqui aparecem só as demandas atribuídas a você.'}
       </div>
 
       <div className="section-head">

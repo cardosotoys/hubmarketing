@@ -24,7 +24,7 @@ import type {
   Stage,
   Task,
 } from '../types/database';
-import { CORRECTION_STATUSES, STAGES } from '../types/database';
+import { CORRECTION_STATUSES, PRIORITIES, PRIORITY_LABELS, STAGES } from '../types/database';
 
 type ProjectWithBrand = Project & { brand: Brand };
 type ProductWithBrand = Product & { brand: Brand };
@@ -40,6 +40,12 @@ export default function ProjectDetail() {
   const [tab, setTab] = useState<Tab>('resumo');
   const [demandasView, setDemandasView] = useState<'kanban' | 'lista'>('kanban');
   const [demandasGroupBy, setDemandasGroupBy] = useState<'none' | 'assignee' | 'priority'>('none');
+  const [demandasSearch, setDemandasSearch] = useState('');
+  const [demandasAssignee, setDemandasAssignee] = useState('all');
+  const [demandasPriority, setDemandasPriority] = useState('all');
+  const [demandasStage, setDemandasStage] = useState('all');
+  const [demandasSort, setDemandasSort] = useState<'recent' | 'title' | 'priority' | 'prazo'>('recent');
+  const [demandasHideDone, setDemandasHideDone] = useState(false);
 
   const [project, setProject] = useState<ProjectWithBrand | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
@@ -113,6 +119,34 @@ export default function ProjectDetail() {
 
   const profilesById = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const filteredTasks = tasks
+    .filter((t) => {
+      if (demandasHideDone && t.stage === 'finalizado') return false;
+      if (demandasAssignee === 'none' && t.assignee_id) return false;
+      if (demandasAssignee !== 'all' && demandasAssignee !== 'none' && t.assignee_id !== demandasAssignee) return false;
+      if (demandasPriority !== 'all' && t.priority !== demandasPriority) return false;
+      if (demandasStage !== 'all' && t.stage !== demandasStage) return false;
+      if (demandasSearch.trim()) {
+        const q = demandasSearch.trim().toLowerCase();
+        if (!t.title.toLowerCase().includes(q) && !t.notes.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (demandasSort === 'title') return a.title.localeCompare(b.title, 'pt-BR');
+      if (demandasSort === 'priority') {
+        const order: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+        return order[a.priority] - order[b.priority];
+      }
+      if (demandasSort === 'prazo') {
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return a.due_date.localeCompare(b.due_date);
+      }
+      return a.position - b.position;
+    });
 
   async function saveTask(taskId: string, fields: Partial<Task>) {
     await supabase.from('tasks').update({ ...fields, updated_by: profile?.id }).eq('id', taskId);
@@ -280,8 +314,51 @@ export default function ProjectDetail() {
 
       {tab === 'demandas' && (
         <div>
+          <div className="filters-row">
+            <input
+              className="chip-input"
+              placeholder="⌕ Pesquisar…"
+              value={demandasSearch}
+              onChange={(e) => setDemandasSearch(e.target.value)}
+            />
+            <select className="chip-select" value={demandasAssignee} onChange={(e) => setDemandasAssignee(e.target.value)}>
+              <option value="all">Responsável: todos</option>
+              <option value="none">Sem responsável</option>
+              {allProfiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <select className="chip-select" value={demandasPriority} onChange={(e) => setDemandasPriority(e.target.value)}>
+              <option value="all">Prioridade: todas</option>
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {PRIORITY_LABELS[p]}
+                </option>
+              ))}
+            </select>
+            <select className="chip-select" value={demandasStage} onChange={(e) => setDemandasStage(e.target.value)}>
+              <option value="all">Estágio: todos</option>
+              {STAGES.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <select className="chip-select" value={demandasSort} onChange={(e) => setDemandasSort(e.target.value as typeof demandasSort)}>
+              <option value="recent">Ordenar: posição</option>
+              <option value="title">Ordenar: título (A-Z)</option>
+              <option value="priority">Ordenar: prioridade</option>
+              <option value="prazo">Ordenar: prazo</option>
+            </select>
+            <div className={`filter-chip${demandasHideDone ? ' active' : ''}`} onClick={() => setDemandasHideDone((v) => !v)}>
+              {demandasHideDone ? '◐ Mostrando ativas' : '◎ Ocultar finalizadas'}
+            </div>
+          </div>
+
           <div className="section-head">
-            <h2>{tasks.length} demandas</h2>
+            <h2>{filteredTasks.length} demandas</h2>
             <div style={{ display: 'flex', gap: 8 }}>
               {demandasView === 'lista' && (
                 <select value={demandasGroupBy} onChange={(e) => setDemandasGroupBy(e.target.value as typeof demandasGroupBy)}>
@@ -303,7 +380,7 @@ export default function ProjectDetail() {
 
           {demandasView === 'kanban' ? (
             <KanbanBoard
-              tasks={tasks}
+              tasks={filteredTasks}
               profilesById={profilesById}
               editable
               terminalStages={['finalizado']}
@@ -323,9 +400,9 @@ export default function ProjectDetail() {
                     : '';
               const groups =
                 demandasGroupBy === 'none'
-                  ? [{ label: '', items: tasks }]
+                  ? [{ label: '', items: filteredTasks }]
                   : Object.entries(
-                      tasks.reduce<Record<string, Task[]>>((acc, t) => {
+                      filteredTasks.reduce<Record<string, Task[]>>((acc, t) => {
                         const key = groupLabel(t);
                         (acc[key] ??= []).push(t);
                         return acc;

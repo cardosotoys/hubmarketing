@@ -112,6 +112,14 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   PDV), cada um com checklist e demandas padrão — ao criar um projeto você pode "começar de um modelo" e o
   checklist + as demandas já vêm prontos. Dá pra criar, editar e excluir modelos (inclusive os seus próprios)
   direto pela aba Modelos.
+- **Barra de ferramentas também dentro de cada projeto**: a aba Demandas de um projeto ganhou a mesma barra de
+  pesquisa/filtro (responsável, prioridade, estágio) e ordenação (posição/título/prioridade/prazo) + ocultar
+  finalizadas — funciona tanto no Kanban quanto na Lista do projeto.
+- **Relatório Diário editável**: agora dá pra editar ou excluir um relatório já registrado (✎ / ✕ na tabela).
+  Cada pessoa só mexe no próprio relatório; Diretoria e Administrador podem editar/excluir qualquer um.
+- **Demandas: visibilidade por papel**: o board global de Demandas agora respeita o papel de cada pessoa —
+  Diretoria e Administrador continuam vendo todas as demandas; Equipe vê só as demandas atribuídas a ela mesma
+  (evita ruído com o trabalho de outras pessoas do time).
 
 ## 1. Criar o projeto no Supabase
 
@@ -195,7 +203,10 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
     cria `project_templates`/`project_template_checklist_items`/`project_template_tasks` e já semeia 4 modelos
     reais (Lançamento de Produto Novo, Conferência/Aprovação de Embalagem, Auditoria de Mídias, Ação de Trade
     Marketing/PDV), cada um com checklist e demandas padrão prontos.
-21. Pegue as duas chaves de conexão:
+21. Rode também [`supabase/migrations/0018_daily_reports_edit.sql`](supabase/migrations/0018_daily_reports_edit.sql) —
+    libera `update`/`delete` em `daily_reports` pro próprio autor (ou Diretoria/Administrador), pra dar pra
+    editar/excluir um relatório diário já registrado.
+22. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -271,6 +282,7 @@ supabase/migrations/0014_task_fields.sql         tasks.notes/budget/updated_by +
 supabase/migrations/0015_task_comments.sql       task_comments (chat interno por demanda, com menção @pessoa)
 supabase/migrations/0016_packaging_project.sql   tasks.product_id + projeto "Conferência de Embalagens" (import Monday)
 supabase/migrations/0017_project_templates.sql   project_templates + checklist/tasks padrão + 4 modelos reais
+supabase/migrations/0018_daily_reports_edit.sql  update/delete em daily_reports (autor ou Diretoria/Administrador)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

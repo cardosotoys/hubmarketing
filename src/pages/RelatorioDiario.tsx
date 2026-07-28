@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import Modal from '../components/Modal';
 import type { DailyReport, Project } from '../types/database';
 
 type ReportRow = DailyReport & {
@@ -17,7 +18,10 @@ export default function RelatorioDiario() {
   const [saving, setSaving] = useState(false);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingReport, setEditingReport] = useState<ReportRow | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
+  const isPrivileged = profile?.role === 'diretoria' || profile?.role === 'administrador';
   const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 
   const load = useCallback(async () => {
@@ -67,6 +71,12 @@ export default function RelatorioDiario() {
     });
     setSummary('');
     setSaving(false);
+    load();
+  }
+
+  async function handleDelete(reportId: string) {
+    await supabase.from('daily_reports').delete().eq('id', reportId);
+    setConfirmingDeleteId(null);
     load();
   }
 
@@ -139,20 +149,46 @@ export default function RelatorioDiario() {
               <th>Projeto</th>
               <th>Resumo</th>
               <th>Data</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {reports.map((r) => (
-              <tr key={r.id}>
-                <td>{r.user?.name ?? '—'}</td>
-                <td>{r.project?.name ?? '—'}</td>
-                <td>{r.summary}</td>
-                <td className="mono">{new Date(r.created_at).toLocaleString('pt-BR')}</td>
-              </tr>
-            ))}
+            {reports.map((r) => {
+              const canManage = isPrivileged || r.user_id === profile?.id;
+              return (
+                <tr key={r.id}>
+                  <td>{r.user?.name ?? '—'}</td>
+                  <td>{r.project?.name ?? '—'}</td>
+                  <td>{r.summary}</td>
+                  <td className="mono">{new Date(r.created_at).toLocaleString('pt-BR')}</td>
+                  <td>
+                    {canManage &&
+                      (confirmingDeleteId === r.id ? (
+                        <span style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn ghost sm" onClick={() => setConfirmingDeleteId(null)}>
+                            Cancelar
+                          </button>
+                          <button className="btn sm" style={{ background: 'var(--red)' }} onClick={() => handleDelete(r.id)}>
+                            Confirmar
+                          </button>
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn ghost sm" onClick={() => setEditingReport(r)}>
+                            ✎
+                          </button>
+                          <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => setConfirmingDeleteId(r.id)}>
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                  </td>
+                </tr>
+              );
+            })}
             {reports.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ color: 'var(--text-faint)' }}>
+                <td colSpan={5} style={{ color: 'var(--text-faint)' }}>
                   Nenhum relatório registrado ainda.
                 </td>
               </tr>
@@ -160,6 +196,86 @@ export default function RelatorioDiario() {
           </tbody>
         </table>
       )}
+
+      {editingReport && (
+        <EditReportModal
+          report={editingReport}
+          projects={projects}
+          onClose={() => setEditingReport(null)}
+          onSaved={() => {
+            setEditingReport(null);
+            load();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function EditReportModal({
+  report,
+  projects,
+  onClose,
+  onSaved,
+}: {
+  report: ReportRow;
+  projects: Project[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [projectId, setProjectId] = useState(report.project_id ?? '');
+  const [summary, setSummary] = useState(report.summary);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!summary.trim()) return;
+    setSaving(true);
+    const { error: err } = await supabase
+      .from('daily_reports')
+      .update({ project_id: projectId || null, summary: summary.trim() })
+      .eq('id', report.id);
+    setSaving(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <Modal title="Editar relatório" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="form-field">
+          <label htmlFor="er-project">Projeto</label>
+          <select id="er-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="er-summary">Resumo</label>
+          <textarea id="er-summary" rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} />
+        </div>
+        {error && (
+          <div className="banner error">
+            <span className="ic">✕</span>
+            <span>{error}</span>
+          </div>
+        )}
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn" disabled={saving}>
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
