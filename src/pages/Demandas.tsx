@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
@@ -29,12 +29,14 @@ function cronogramaLabel(t: Task) {
 
 export default function Demandas() {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
+  const [focusComments, setFocusComments] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [view, setView] = useState<'kanban' | 'lista'>('kanban');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
@@ -64,6 +66,23 @@ export default function Demandas() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const taskId = searchParams.get('task');
+    if (!taskId || tasks.length === 0) return;
+    const target = tasks.find((t) => t.id === taskId);
+    if (target) {
+      setEditingTask(target);
+      setFocusComments(searchParams.get('focus') === 'comments');
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('task');
+      next.delete('focus');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
   const profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
 
@@ -243,7 +262,11 @@ export default function Demandas() {
           profiles={profiles}
           products={products}
           actorId={profile.id}
-          onClose={() => setEditingTask(null)}
+          focusComments={focusComments}
+          onClose={() => {
+            setEditingTask(null);
+            setFocusComments(false);
+          }}
           onSave={(fields) => saveTask(editingTask.id, fields)}
           onDelete={() => deleteTask(editingTask.id, editingTask.title, editingTask.project_id)}
         />

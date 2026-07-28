@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
@@ -14,6 +14,7 @@ export default function TaskEditModal({
   profiles,
   products,
   actorId,
+  focusComments,
   onClose,
   onSave,
   onDelete,
@@ -22,10 +23,12 @@ export default function TaskEditModal({
   profiles: Profile[];
   products?: Product[];
   actorId: string;
+  focusComments?: boolean;
   onClose: () => void;
   onSave: (fields: Partial<Task>) => void;
   onDelete: () => void;
 }) {
+  const commentsRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(task.title);
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [stage, setStage] = useState<Stage>(task.stage);
@@ -65,6 +68,14 @@ export default function TaskEditModal({
       .order('created_at');
     setComments((data as (TaskComment & { author: { name: string } | null })[]) ?? []);
   }
+
+  useEffect(() => {
+    if (!focusComments) return;
+    const timer = setTimeout(() => {
+      commentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [focusComments]);
 
   function toggleMention(id: string) {
     setMentionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -271,7 +282,7 @@ export default function TaskEditModal({
         </form>
       </div>
 
-      <div className="panel">
+      <div className="panel" ref={commentsRef} style={focusComments ? { border: '1px solid var(--accent)' } : undefined}>
         <h4>Comentários</h4>
         {comments.map((c) => (
           <div className="comment" key={c.id}>
