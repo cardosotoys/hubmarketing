@@ -309,7 +309,17 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     .eq('id', runId);
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   const supabase = createClient(supabaseUrl, serviceRoleKey);
   let bodyForce = false;
   if (req.method === 'POST') {
@@ -330,7 +340,7 @@ Deno.serve(async (req) => {
     const hoursSince = (Date.now() - new Date(lastRun.started_at).getTime()) / (1000 * 60 * 60);
     if (hoursSince < settings.search_interval_hours) {
       return new Response(JSON.stringify({ skipped: true, reason: 'not due yet', hoursSince }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
   }
@@ -344,7 +354,7 @@ Deno.serve(async (req) => {
   try {
     await runSync(supabase, run.id);
     return new Response(JSON.stringify({ ok: true, run_id: run.id }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     await supabase
@@ -353,7 +363,7 @@ Deno.serve(async (req) => {
       .eq('id', run.id);
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
