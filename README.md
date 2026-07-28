@@ -93,6 +93,15 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   o protocolo automaticamente ao salvar, em qualquer lugar do Hub onde se cola um link manual (arquivos de
   demanda/projeto, documentos de campanha, links da Biblioteca) — antes, um link assim virava uma navegação
   interna quebrada (404) em vez de abrir o site de verdade.
+- **Conferência de Embalagens (projeto real + status automático no Banco de Produtos)**: criado o projeto
+  "Conferência de Embalagens" com as 109 demandas extraídas do quadro do Monday (grupos "Em Avaliação",
+  "Produtos Importados - China", "Aprovados" e "Pendentes"), cada uma com prioridade, prazo e estágio
+  já preenchidos. Cada demanda pode ser vinculada a um produto do catálogo (campo **Produto (embalagem)** no
+  modal de edição) — quando vinculada, o **Banco de Produtos** mostra automaticamente uma coluna "Embalagem"
+  com o estágio atual da demanda (Recebido/Planejamento/Produção/Revisão/Aprovação/Finalizado), sempre lida
+  direto da demanda (não é um campo duplicado que pode ficar desatualizado). Das 109 demandas importadas, 91
+  já vieram linkadas automaticamente pelo código de referência do produto; as outras 18 são SKUs novos ainda
+  não cadastrados no catálogo.
 
 ## 1. Criar o projeto no Supabase
 
@@ -168,7 +177,11 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 18. Rode também [`supabase/migrations/0015_task_comments.sql`](supabase/migrations/0015_task_comments.sql) —
     cria `task_comments` (comentários dentro de cada demanda, com `mentioned_ids` pra marcar colegas — quem é
     marcado vê um aviso no sino de notificações do Topbar).
-19. Pegue as duas chaves de conexão:
+19. Rode também [`supabase/migrations/0016_packaging_project.sql`](supabase/migrations/0016_packaging_project.sql) —
+    adiciona `tasks.product_id` (liga uma demanda a um produto do catálogo) e já cria o projeto **"Conferência
+    de Embalagens"** com as 109 demandas importadas do quadro do Monday, 91 delas já linkadas ao produto certo
+    pelo código de referência (as outras 18 são SKUs novos que ainda não estão no Banco de Produtos).
+20. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -242,6 +255,7 @@ supabase/migrations/0012_task_delays.sql         tasks.project_id opcional + sta
 supabase/migrations/0013_ia_module.sql           ia_prompts/ia_templates/ia_personas/ia_brand_voice + acervo inicial real
 supabase/migrations/0014_task_fields.sql         tasks.notes/budget/updated_by + project_files.task_id (arquivo por demanda)
 supabase/migrations/0015_task_comments.sql       task_comments (chat interno por demanda, com menção @pessoa)
+supabase/migrations/0016_packaging_project.sql   tasks.product_id + projeto "Conferência de Embalagens" (import Monday)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

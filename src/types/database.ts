@@ -88,6 +88,7 @@ export interface TaskComment {
 export interface Task {
   id: string;
   project_id: string | null;
+  product_id: string | null;
   stage: Stage;
   title: string;
   priority: Priority;

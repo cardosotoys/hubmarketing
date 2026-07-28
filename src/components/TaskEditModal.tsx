@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
-import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type ProjectFile, type Profile, type Stage, type Task, type TaskComment } from '../types/database';
+import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Product, type ProjectFile, type Profile, type Stage, type Task, type TaskComment } from '../types/database';
 
 function computeOverdue(dueDate: string, stage: Stage) {
   if (stage === 'finalizado') return false;
@@ -12,6 +12,7 @@ function computeOverdue(dueDate: string, stage: Stage) {
 export default function TaskEditModal({
   task,
   profiles,
+  products,
   actorId,
   onClose,
   onSave,
@@ -19,6 +20,7 @@ export default function TaskEditModal({
 }: {
   task: Task;
   profiles: Profile[];
+  products?: Product[];
   actorId: string;
   onClose: () => void;
   onSave: (fields: Partial<Task>) => void;
@@ -28,6 +30,7 @@ export default function TaskEditModal({
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [stage, setStage] = useState<Stage>(task.stage);
   const [assigneeId, setAssigneeId] = useState(task.assignee_id ?? '');
+  const [productId, setProductId] = useState(task.product_id ?? '');
   const [startDate, setStartDate] = useState(task.start_date ?? '');
   const [dueDate, setDueDate] = useState(task.due_date ?? '');
   const [delayReason, setDelayReason] = useState(task.delay_reason ?? '');
@@ -94,6 +97,7 @@ export default function TaskEditModal({
       priority,
       stage,
       assignee_id: assigneeId || null,
+      product_id: productId || null,
       start_date: startDate || null,
       due_date: dueDate || null,
       delay_reason: delayReason,
@@ -176,6 +180,19 @@ export default function TaskEditModal({
             ))}
           </select>
         </div>
+        {products && products.length > 0 && (
+          <div className="form-field">
+            <label htmlFor="te-product">Produto (embalagem)</label>
+            <select id="te-product" value={productId} onChange={(e) => setProductId(e.target.value)}>
+              <option value="">Sem produto vinculado</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code} - {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="te-start">Início</label>

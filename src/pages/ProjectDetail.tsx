@@ -397,6 +397,7 @@ export default function ProjectDetail() {
         <TaskEditModal
           task={editingTask}
           profiles={allProfiles}
+          products={allProducts}
           actorId={profile.id}
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}

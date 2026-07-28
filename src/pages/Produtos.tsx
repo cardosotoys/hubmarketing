@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import Modal from '../components/Modal';
-import type { Brand, Product } from '../types/database';
+import { STAGES, PRIORITY_LABELS, type Brand, type Product, type Stage, type Priority } from '../types/database';
 
 type ProductWithBrand = Product & { brand: Brand };
+type PackagingTaskStub = { id: string; project_id: string; product_id: string; stage: Stage; priority: Priority; updated_at: string };
 
 export default function Produtos() {
   const { profile } = useAuth();
@@ -17,17 +19,32 @@ export default function Produtos() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [editing, setEditing] = useState<ProductWithBrand | null>(null);
+  const [packagingTasks, setPackagingTasks] = useState<PackagingTaskStub[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [productsRes, brandsRes] = await Promise.all([
+    const [productsRes, brandsRes, packagingRes] = await Promise.all([
       supabase.from('products').select('*, brand:brands(*)').order('code'),
       supabase.from('brands').select('*'),
+      supabase
+        .from('tasks')
+        .select('id, project_id, product_id, stage, priority, updated_at')
+        .not('product_id', 'is', null)
+        .order('updated_at', { ascending: false }),
     ]);
     setProducts((productsRes.data as ProductWithBrand[]) ?? []);
     setBrands((brandsRes.data as Brand[]) ?? []);
+    setPackagingTasks((packagingRes.data as PackagingTaskStub[] | null) ?? []);
     setLoading(false);
   }, []);
+
+  const packagingByProduct = useMemo(() => {
+    const map = new Map<string, PackagingTaskStub>();
+    for (const t of packagingTasks) {
+      if (!map.has(t.product_id)) map.set(t.product_id, t);
+    }
+    return map;
+  }, [packagingTasks]);
 
   useEffect(() => {
     load();
@@ -140,44 +157,66 @@ export default function Produtos() {
               <th>Marca</th>
               <th>Faixa etária</th>
               <th>Dimensões</th>
+              <th>Embalagem</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => (
-              <tr key={p.id} onClick={() => canEdit && setEditing(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
-                <td className="mono">{p.code}</td>
-                <td>
-                  {p.name}
-                  {p.licensed && (
-                    <span className="pill" style={{ marginLeft: 6 }}>
-                      licenciado
+            {filtered.map((p) => {
+              const pkg = packagingByProduct.get(p.id);
+              const pkgStage = pkg && STAGES.find((s) => s.key === pkg.stage);
+              return (
+                <tr key={p.id} onClick={() => canEdit && setEditing(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
+                  <td className="mono">{p.code}</td>
+                  <td>
+                    {p.name}
+                    {p.licensed && (
+                      <span className="pill" style={{ marginLeft: 6 }}>
+                        licenciado
+                      </span>
+                    )}
+                  </td>
+                  <td>{p.line || '—'}</td>
+                  <td>
+                    <span
+                      className="pill"
+                      style={{ background: 'transparent', border: '1px solid var(--border)', color: p.brand?.color }}
+                    >
+                      {p.brand?.label}
                     </span>
-                  )}
-                </td>
-                <td>{p.line || '—'}</td>
-                <td>
-                  <span
-                    className="pill"
-                    style={{ background: 'transparent', border: '1px solid var(--border)', color: p.brand?.color }}
-                  >
-                    {p.brand?.label}
-                  </span>
-                </td>
-                <td>{p.age_range || '—'}</td>
-                <td className="mono">{p.dimensions || '—'}</td>
-                <td>
-                  {p.needs_review && (
-                    <span className="pill" style={{ background: 'var(--yellow-dim)', color: 'var(--yellow)' }}>
-                      revisar
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td>{p.age_range || '—'}</td>
+                  <td className="mono">{p.dimensions || '—'}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    {pkg ? (
+                      <Link
+                        to={`/projetos/${pkg.project_id}`}
+                        className="pill"
+                        style={{
+                          background: pkg.stage === 'finalizado' ? 'var(--green-dim)' : 'var(--violet-dim)',
+                          color: pkg.stage === 'finalizado' ? 'var(--green)' : 'var(--violet)',
+                        }}
+                        title={`Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}
+                      >
+                        {pkgStage?.label ?? pkg.stage}
+                      </Link>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td>
+                    {p.needs_review && (
+                      <span className="pill" style={{ background: 'var(--yellow-dim)', color: 'var(--yellow)' }}>
+                        revisar
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ color: 'var(--text-faint)' }}>
+                <td colSpan={8} style={{ color: 'var(--text-faint)' }}>
                   Nenhum produto encontrado para esse filtro.
                 </td>
               </tr>

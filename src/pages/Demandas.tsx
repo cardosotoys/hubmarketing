@@ -6,7 +6,7 @@ import { logActivity } from '../lib/activityLog';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskEditModal from '../components/TaskEditModal';
 import Modal from '../components/Modal';
-import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Profile, type Project, type Stage, type Task } from '../types/database';
+import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Product, type Profile, type Project, type Stage, type Task } from '../types/database';
 
 type TaskWithProject = Task & { project: { id: string; name: string } | null };
 type GroupBy = 'none' | 'assignee' | 'project' | 'priority';
@@ -32,6 +32,7 @@ export default function Demandas() {
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -41,15 +42,17 @@ export default function Demandas() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [tasksRes, profilesRes, projectsRes, filesRes] = await Promise.all([
+    const [tasksRes, profilesRes, projectsRes, filesRes, productsRes] = await Promise.all([
       supabase.from('tasks').select('*, project:projects(id, name)').order('position'),
       supabase.from('profiles').select('*'),
       supabase.from('projects').select('*').order('name'),
       supabase.from('project_files').select('task_id').not('task_id', 'is', null),
+      supabase.from('products').select('*').order('code'),
     ]);
     setTasks((tasksRes.data as TaskWithProject[]) ?? []);
     setProfiles((profilesRes.data as Profile[]) ?? []);
     setProjects((projectsRes.data as Project[]) ?? []);
+    setProducts((productsRes.data as Product[]) ?? []);
     const counts: Record<string, number> = {};
     ((filesRes.data as { task_id: string }[]) ?? []).forEach((f) => {
       counts[f.task_id] = (counts[f.task_id] ?? 0) + 1;
@@ -238,6 +241,7 @@ export default function Demandas() {
         <TaskEditModal
           task={editingTask}
           profiles={profiles}
+          products={products}
           actorId={profile.id}
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}
