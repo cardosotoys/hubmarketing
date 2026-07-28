@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { normalizeUrl } from '../lib/url';
 import Modal from '../components/Modal';
 import { STAGES, PRIORITY_LABELS, type Brand, type Product, type Stage, type Priority } from '../types/database';
 
@@ -273,6 +274,8 @@ function ProductFormModal({
   const [line, setLine] = useState(product?.line ?? '');
   const [ageRange, setAgeRange] = useState(product?.age_range ?? '');
   const [dimensions, setDimensions] = useState(product?.dimensions ?? '');
+  const [ean, setEan] = useState(product?.ean ?? '');
+  const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
   const [needsReview, setNeedsReview] = useState(product?.needs_review ?? false);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -286,7 +289,17 @@ function ProductFormModal({
     }
     setSaving(true);
     setError(null);
-    const fields = { code, name, brand_id: brandId, line, age_range: ageRange, dimensions, needs_review: needsReview };
+    const fields = {
+      code,
+      name,
+      brand_id: brandId,
+      line,
+      age_range: ageRange,
+      dimensions,
+      ean,
+      image_url: imageUrl ? normalizeUrl(imageUrl) : '',
+      needs_review: needsReview,
+    };
     const { error } = isEdit
       ? await supabase.from('products').update(fields).eq('id', product!.id)
       : await supabase.from('products').insert(fields);
@@ -348,6 +361,16 @@ function ProductFormModal({
         <div className="form-field">
           <label htmlFor="np-dims">Dimensões</label>
           <input id="np-dims" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
+        </div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-ean">EAN</label>
+            <input id="np-ean" value={ean} onChange={(e) => setEan(e.target.value)} placeholder="Código de barras" />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-image">Imagem oficial (link)</label>
+            <input id="np-image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
+          </div>
         </div>
         {isEdit && (
           <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

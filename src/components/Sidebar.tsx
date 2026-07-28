@@ -35,6 +35,7 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
       { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎', hideFor: ['design'] },
       { to: '/biblioteca', label: 'Biblioteca', icon: '▤' },
       { to: '/produtos', label: 'Produtos', icon: '◫' },
+      { to: '/monitor-precos', label: 'Monitor de Preços', icon: '⌁', hideFor: ['design', 'assistente'] },
       { to: '/brand', label: 'Brand', icon: '◈' },
     ],
   },

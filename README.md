@@ -120,6 +120,11 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 - **Demandas: visibilidade por papel**: o board global de Demandas agora respeita o papel de cada pessoa —
   Diretoria e Administrador continuam vendo todas as demandas; Equipe vê só as demandas atribuídas a ela mesma
   (evita ruído com o trabalho de outras pessoas do time).
+- **Monitor de Preços (MPM) — v1**: módulo novo que monitora automaticamente os preços dos produtos Cardoso/
+  Playmi/Tópi no Mercado Livre e alerta quando um anúncio está abaixo do preço mínimo permitido. Arquitetura
+  100% dentro do Supabase (Edge Function agendada por `pg_cron`, sem servidor novo pra manter) e zero custo de
+  IA (anúncio duvidoso vai pra revisão manual em vez de chamada de IA) — decisões tomadas com o time. Veja a
+  seção [Monitor de Preços (MPM)](#monitor-de-preços-mpm) pra terminar a configuração.
 
 ## 1. Criar o projeto no Supabase
 
@@ -206,7 +211,10 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 21. Rode também [`supabase/migrations/0018_daily_reports_edit.sql`](supabase/migrations/0018_daily_reports_edit.sql) —
     libera `update`/`delete` em `daily_reports` pro próprio autor (ou Diretoria/Administrador), pra dar pra
     editar/excluir um relatório diário já registrado.
-22. Pegue as duas chaves de conexão:
+22. Rode também [`supabase/migrations/0019_mpm_schema.sql`](supabase/migrations/0019_mpm_schema.sql) — cria todo
+    o schema do **Monitor de Preços** (veja a seção [Monitor de Preços (MPM)](#monitor-de-preços-mpm) mais
+    abaixo pra terminar a configuração — tem uma Edge Function pra publicar e um cron pra agendar).
+23. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -253,6 +261,65 @@ Abra o endereço mostrado no terminal e entre com um e-mail/senha criado no pass
    valores do `.env` local.
 4. Deploy. O Vercel detecta automaticamente que é um projeto Vite (`npm run build`, saída em `dist/`).
 
+## Monitor de Preços (MPM)
+
+O módulo de Monitor de Preços tem uma parte que roda fora do Vite/Vercel: uma **Edge Function** do Supabase
+(`supabase/functions/mpm-sync`) que faz a busca no Mercado Livre, valida o match e detecta violação de preço.
+Ela precisa ser publicada e agendada separadamente — a tela do Hub (`/monitor-precos`) já funciona assim que a
+migration `0019_mpm_schema.sql` rodar, mas sem a Edge Function agendada nada é buscado automaticamente (dá pra
+testar clicando em "Sincronizar agora" na tela, que chama a function na hora).
+
+1. **Instale o Supabase CLI** (se ainda não tiver): `npm install -g supabase`.
+2. **Conecte ao seu projeto**: `supabase login` e depois `supabase link --project-ref <seu-project-ref>`
+   (o project-ref é o mesmo ID que aparece na URL `https://<project-ref>.supabase.co`).
+3. **Publique a function**: rode, na raiz do repositório:
+   ```bash
+   supabase functions deploy mpm-sync
+   ```
+4. **(Opcional) Ative e-mail de alerta**: crie uma conta grátis/barata no [Resend](https://resend.com), pegue a
+   API key e rode:
+   ```bash
+   supabase secrets set RESEND_API_KEY=re_sua_chave_aqui
+   ```
+   Sem isso, o alerta por e-mail fica preparado mas não envia nada (o webhook e a notificação interna no Hub
+   funcionam sem precisar disso).
+5. **Agende a execução** com `pg_cron` + `pg_net` — no **SQL Editor** do Supabase, rode (trocando
+   `<project-ref>` e `<service-role-key>` pelos valores reais do seu projeto, em **Settings → API**):
+   ```sql
+   create extension if not exists pg_cron;
+   create extension if not exists pg_net;
+
+   select cron.schedule(
+     'mpm-sync-hourly',
+     '0 * * * *',
+     $$
+     select net.http_post(
+       url := 'https://<project-ref>.supabase.co/functions/v1/mpm-sync',
+       headers := jsonb_build_object(
+         'Authorization', 'Bearer <service-role-key>',
+         'Content-Type', 'application/json'
+       ),
+       body := '{}'::jsonb
+     );
+     $$
+   );
+   ```
+   Isso roda a checagem **de hora em hora**, mas a própria function decide se já é hora de buscar de verdade
+   (olhando `mpm_settings.search_interval_hours`, ajustável na aba Configurações da tela) — então rodar de hora
+   em hora não gera busca de hora em hora, só verifica se já passou o intervalo configurado (padrão: 24h).
+   **Nunca** cole a `service-role-key` em nenhum arquivo do repositório — ela só deve existir dentro do SQL
+   Editor do Supabase.
+6. Na tela **Monitor de Preços → Produtos monitorados**, adicione os produtos que quer acompanhar (só produtos
+   adicionados aqui são pesquisados — o resto do catálogo fica de fora). Preencha o **preço mínimo permitido**
+   e, se quiser, palavras-chave/sinônimos pra melhorar a busca. Vale também preencher **EAN** e **imagem
+   oficial** de cada produto na tela de Produtos — ajuda a bater o anúncio certo com mais confiança.
+
+**v1 é só Mercado Livre** (API pública oficial, sem custo) **e zero IA** (anúncio duvidoso vai pra fila de
+revisão manual na própria tela, com botões Confirmar/Rejeitar) — decisões tomadas pra manter custo operacional
+baixo e alta confiabilidade. A arquitetura (marketplace como campo extensível, camada de validação separada da
+de busca) já está pronta pra adicionar Amazon/Shopee/Google Shopping e reativar IA de validação no futuro, sem
+precisar reescrever nada.
+
 ## Scripts
 
 ```bash
@@ -283,6 +350,8 @@ supabase/migrations/0015_task_comments.sql       task_comments (chat interno por
 supabase/migrations/0016_packaging_project.sql   tasks.product_id + projeto "Conferência de Embalagens" (import Monday)
 supabase/migrations/0017_project_templates.sql   project_templates + checklist/tasks padrão + 4 modelos reais
 supabase/migrations/0018_daily_reports_edit.sql  update/delete em daily_reports (autor ou Diretoria/Administrador)
+supabase/migrations/0019_mpm_schema.sql          schema completo do Monitor de Preços (produtos, anúncios, histórico, alertas)
+supabase/functions/mpm-sync/index.ts             Edge Function que busca, valida e compara preços (Mercado Livre)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

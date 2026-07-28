@@ -172,8 +172,116 @@ export interface Product {
   licensed: boolean;
   needs_review: boolean;
   catalog_page: number | null;
+  ean: string;
+  image_url: string;
   created_at: string;
   updated_at: string;
+}
+
+export type MpmMarketplace = 'mercado_livre' | 'amazon' | 'shopee' | 'google_shopping' | 'google_search';
+export const MPM_MARKETPLACE_LABELS: Record<MpmMarketplace, string> = {
+  mercado_livre: 'Mercado Livre',
+  amazon: 'Amazon',
+  shopee: 'Shopee',
+  google_shopping: 'Google Shopping',
+  google_search: 'Google Search',
+};
+
+export type MpmMatchStatus = 'high_confidence' | 'needs_review' | 'confirmed_match' | 'rejected';
+export const MPM_MATCH_STATUS_LABELS: Record<MpmMatchStatus, string> = {
+  high_confidence: 'Confiança alta',
+  needs_review: 'Revisão manual',
+  confirmed_match: 'Confirmado',
+  rejected: 'Rejeitado',
+};
+
+export type MpmAlertStatus = 'new' | 'acknowledged' | 'resolved';
+
+export interface MpmProduct {
+  id: string;
+  product_id: string;
+  min_price: number;
+  suggested_price: number | null;
+  keywords: string[];
+  synonyms: string[];
+  monitoring_status: 'active' | 'paused';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MpmListing {
+  id: string;
+  mpm_product_id: string;
+  marketplace: MpmMarketplace;
+  external_id: string;
+  store_name: string;
+  title: string;
+  url: string;
+  image_url: string;
+  shipping_price: number | null;
+  installment_info: string;
+  current_price: number;
+  match_status: MpmMatchStatus;
+  match_score: number;
+  is_violation: boolean;
+  first_seen_at: string;
+  last_checked_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MpmPriceHistory {
+  id: string;
+  listing_id: string;
+  price: number;
+  min_price_at_check: number;
+  is_violation: boolean;
+  diff_amount: number | null;
+  diff_percent: number | null;
+  collected_at: string;
+}
+
+export interface MpmAlert {
+  id: string;
+  mpm_product_id: string;
+  listing_id: string;
+  price: number;
+  min_price: number;
+  diff_amount: number;
+  diff_percent: number;
+  status: MpmAlertStatus;
+  notified_internal: boolean;
+  notified_email: boolean;
+  notified_webhook: boolean;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolved_note: string;
+  created_at: string;
+}
+
+export interface MpmSyncRun {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: 'running' | 'success' | 'error';
+  products_checked: number;
+  listings_found: number;
+  violations_found: number;
+  error_message: string;
+}
+
+export interface MpmSettings {
+  id: boolean;
+  search_interval_hours: number;
+  sources: MpmMarketplace[];
+  alert_email: string;
+  alert_webhook_url: string;
+  whatsapp_number: string;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface AuditItem {
