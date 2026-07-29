@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import Modal from '../components/Modal';
-import { CAMPAIGN_STATUSES, type Brand, type Campaign, type CampaignStatus, type Priority } from '../types/database';
+import { CAMPAIGN_STATUSES, type Brand, type Campaign, type CampaignStatus, type Category, type Priority } from '../types/database';
 
 type CampaignWithRelations = Campaign & { brand: Brand };
 
@@ -22,6 +22,7 @@ export default function Campaigns() {
   const { profile } = useAuth();
   const [campaigns, setCampaigns] = useState<CampaignWithRelations[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
   const [brandFilter, setBrandFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | CampaignStatus>('all');
   const [loading, setLoading] = useState(true);
@@ -29,12 +30,14 @@ export default function Campaigns() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [campaignsRes, brandsRes] = await Promise.all([
+    const [campaignsRes, brandsRes, categoriesRes] = await Promise.all([
       supabase.from('campaigns').select('*, brand:brands(*)').order('start_date', { ascending: true }),
       supabase.from('brands').select('*'),
+      supabase.from('categories').select('*').eq('scope', 'campanha').order('label'),
     ]);
     setCampaigns((campaignsRes.data as CampaignWithRelations[]) ?? []);
     setBrands((brandsRes.data as Brand[]) ?? []);
+    setCategoryOptions((categoriesRes.data as Category[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -122,6 +125,7 @@ export default function Campaigns() {
       {showNew && profile && (
         <NewCampaignModal
           brands={brands}
+          categoryOptions={categoryOptions}
           actorId={profile.id}
           onClose={() => setShowNew(false)}
           onCreated={() => {
@@ -139,11 +143,13 @@ const PRIORITY_LABELS: Record<Priority, string> = { urgent: 'Urgente', high: 'Al
 
 function NewCampaignModal({
   brands,
+  categoryOptions,
   actorId,
   onClose,
   onCreated,
 }: {
   brands: Brand[];
+  categoryOptions: Category[];
   actorId: string;
   onClose: () => void;
   onCreated: () => void;
@@ -208,12 +214,14 @@ function NewCampaignModal({
         </div>
         <div className="form-field">
           <label htmlFor="nc-category">Categoria</label>
-          <input
-            id="nc-category"
-            placeholder="Ex: Dia das Crianças, Black Friday, Licenciamento…"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
+          <select id="nc-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">Sem categoria</option>
+            {categoryOptions.map((c) => (
+              <option key={c.id} value={c.label}>
+                {c.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="form-field">
           <label htmlFor="nc-priority">Prioridade</label>

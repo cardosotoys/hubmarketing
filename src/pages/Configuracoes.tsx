@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
+  CAMPAIGN_STATUSES,
   DEPARTMENTS,
   DEPARTMENT_LABELS,
   MODULE_KEYS,
   MODULE_LABELS,
   ROLE_LABELS,
+  type Category,
+  type CategoryScope,
   type Department,
   type ModuleKey,
   type Profile,
@@ -136,9 +140,16 @@ export default function Configuracoes() {
             ) : (
               <PermissoesView users={users} isDiretoria={isDiretoria} onSetOverride={setModuleOverride} />
             )
+          ) : stab === 'categorias' ? (
+            <CategoriasView />
+          ) : stab === 'status' ? (
+            <StatusView />
+          ) : stab === 'templates' ? (
+            <TemplatesView />
           ) : (
             <div className="locked-banner">
-              <span className="ic">◐</span>Estrutura reservada — detalha junto com o módulo correspondente (Fase 2).
+              <span className="ic">◐</span>Estrutura reservada — sem uso concreto identificado ainda (avise se
+              precisar de algo aqui).
             </div>
           )}
         </div>
@@ -229,6 +240,158 @@ function PermissoesView({
             </tbody>
           </table>
         ))}
+    </div>
+  );
+}
+
+function CategoriasView() {
+  const [scope, setScope] = useState<CategoryScope>('projeto');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newLabel, setNewLabel] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from('categories').select('*').order('label');
+    setCategories((data as Category[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filtered = categories.filter((c) => c.scope === scope);
+
+  async function addCategory(e: FormEvent) {
+    e.preventDefault();
+    if (!newLabel.trim()) return;
+    const { error: err } = await supabase.from('categories').insert({ scope, label: newLabel.trim() });
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setError(null);
+    setNewLabel('');
+    load();
+  }
+
+  async function renameCategory(id: string, label: string) {
+    if (!label.trim()) return;
+    await supabase.from('categories').update({ label: label.trim() }).eq('id', id);
+    load();
+  }
+
+  async function deleteCategory(id: string) {
+    await supabase.from('categories').delete().eq('id', id);
+    load();
+  }
+
+  return (
+    <div>
+      <div className="page-sub" style={{ marginBottom: 14 }}>
+        Lista gerenciável usada nos seletores de categoria de Projetos e Campanhas — evita duplicata tipo
+        "Embalagens" vs "embalagem" digitadas cada vez de um jeito.
+      </div>
+      <div className="brand-tabs">
+        <div className={`brand-tab${scope === 'projeto' ? ' active' : ''}`} onClick={() => setScope('projeto')}>
+          Projetos
+        </div>
+        <div className={`brand-tab${scope === 'campanha' ? ' active' : ''}`} onClick={() => setScope('campanha')}>
+          Campanhas
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="page-sub">Carregando…</div>
+      ) : (
+        <div className="panel" style={{ maxWidth: 420 }}>
+          {filtered.map((c) => (
+            <div className="field-row" key={c.id}>
+              <input
+                defaultValue={c.label}
+                onBlur={(e) => e.target.value !== c.label && renameCategory(c.id, e.target.value)}
+                style={{ flex: 1, marginRight: 8 }}
+              />
+              <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => deleteCategory(c.id)}>
+                ✕
+              </button>
+            </div>
+          ))}
+          {filtered.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>Nenhuma categoria ainda.</div>}
+          <form onSubmit={addCategory} className="responsive-row" style={{ marginTop: 10 }}>
+            <input placeholder="+ nova categoria…" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} style={{ flex: 1 }} />
+            <button className="btn sm" type="submit">
+              Adicionar
+            </button>
+          </form>
+          {error && (
+            <div className="banner error" style={{ marginTop: 8 }}>
+              <span className="ic">✕</span>
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusView() {
+  return (
+    <div>
+      <div className="page-sub" style={{ marginBottom: 14 }}>
+        Os status de Projetos e Campanhas são estados fixos (têm regra de negócio amarrada — ex.: etapa final
+        exige responsável) e não são editáveis por aqui. Isso aqui é só a referência de quais existem hoje.
+        Se precisar de status configuráveis de verdade, é uma mudança de estrutura maior — avise que a gente
+        avalia, igual foi feito com as etapas de projeto.
+      </div>
+      <div className="panel">
+        <h4>Projetos</h4>
+        <div className="field-row">
+          <span className="k">Planejamento</span>
+          <span>Padrão ao criar</span>
+        </div>
+        <div className="field-row">
+          <span className="k">Ativo</span>
+          <span>Em execução</span>
+        </div>
+        <div className="field-row">
+          <span className="k">Atenção</span>
+          <span>Pausado / precisa de atenção</span>
+        </div>
+        <div className="field-row">
+          <span className="k">Concluído</span>
+          <span>Finalizado</span>
+        </div>
+      </div>
+      <div className="panel">
+        <h4>Campanhas</h4>
+        {CAMPAIGN_STATUSES.map((s) => (
+          <div className="field-row" key={s.key}>
+            <span className="k">{s.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TemplatesView() {
+  return (
+    <div>
+      <div className="page-sub" style={{ marginBottom: 14 }}>
+        Modelos de projeto já têm CRUD completo dentro do próprio módulo Projetos — criar, editar etapas e
+        demandas padrão, excluir — pra não duplicar em dois lugares.
+      </div>
+      <Link className="btn" to="/projetos">
+        Ir pra Projetos → Modelos
+      </Link>
+      <div className="page-sub" style={{ marginTop: 14 }}>
+        Campanhas ainda não têm um sistema de modelo equivalente — se fizer sentido criar um (pra não montar o
+        briefing/objetivos/riscos do zero toda vez), me avise que eu desenho separado.
+      </div>
     </div>
   );
 }

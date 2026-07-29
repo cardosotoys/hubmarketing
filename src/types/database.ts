@@ -1,5 +1,13 @@
 export type Role = 'diretoria' | 'equipe' | 'administrador';
 export type Theme = 'dark' | 'light';
+export type CategoryScope = 'projeto' | 'campanha';
+
+export interface Category {
+  id: string;
+  scope: CategoryScope;
+  label: string;
+  created_at: string;
+}
 export type Department = 'diretoria' | 'growth' | 'coordenacao' | 'design' | 'assistente';
 export const DEPARTMENTS: Department[] = ['diretoria', 'growth', 'coordenacao', 'design', 'assistente'];
 export const DEPARTMENT_LABELS: Record<Department, string> = {

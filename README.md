@@ -173,6 +173,13 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   e um botão de **exportar CSV**. Pra quem não é Diretoria/Administrador, Projetos/Demandas/Auditoria já saem
   filtrados só pro que a pessoa participa (efeito direto da regra de visibilidade por participação) e o
   Relatório Diário mostra só os próprios registros.
+- **Configurações → Categorias, Status, Templates**: "categoria" em Projetos e Campanhas era texto livre (cada
+  pessoa digitava do seu jeito) — agora é uma lista de verdade, gerenciável em Configurações → Categorias (uma
+  lista pra Projetos, outra pra Campanhas), e os formulários de criar projeto/campanha/modelo viraram seletor em
+  vez de campo aberto. A migration já semeia a lista com as categorias que já estavam em uso nos dados reais,
+  ninguém perde o que já digitou. **Status** virou só uma referência (não editável — status de projeto/campanha
+  tem regra de negócio amarrada, mudar isso é uma migration bem maior, tipo a das etapas editáveis). **Templates**
+  aponta pra Projetos → Modelos, que já tem CRUD completo — evitei duplicar.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
@@ -368,7 +375,9 @@ A partir da migration `0025`:
     Perfil).
 30. Rode também [`supabase/migrations/0028_ia_skills.sql`](supabase/migrations/0028_ia_skills.sql) — cria a
     tabela `ia_skills` (biblioteca de Skills dentro do módulo IA).
-31. Pegue as duas chaves de conexão:
+31. Rode também [`supabase/migrations/0029_categories.sql`](supabase/migrations/0029_categories.sql) — cria a
+    tabela `categories` e já semeia com as categorias que já estavam em uso em Projetos/Campanhas.
+32. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -533,6 +542,7 @@ supabase/migrations/0026_ui_preferences.sql      profiles.theme (modo claro/escu
 supabase/migrations/0027_profile_details.sql     profiles.avatar_url/phone/bio + bucket de Storage avatars
 src/components/Avatar.tsx                        foto real (avatar_url) com fallback pras iniciais
 supabase/migrations/0028_ia_skills.sql           tabela ia_skills (biblioteca de Skills no módulo IA)
+supabase/migrations/0029_categories.sql          tabela categories (Projetos/Campanhas) + seed a partir dos dados reais
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

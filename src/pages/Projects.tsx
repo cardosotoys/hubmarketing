@@ -9,6 +9,7 @@ import {
   PRIORITIES,
   PRIORITY_LABELS,
   type Brand,
+  type Category,
   type Priority,
   type Profile,
   type ProjectStage,
@@ -38,6 +39,7 @@ export default function Projects() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
   const [brandFilter, setBrandFilter] = useState<string>('all');
   const [showNew, setShowNew] = useState(false);
   const [view, setView] = useState<View>('projetos');
@@ -52,14 +54,16 @@ export default function Projects() {
   const [hideDone, setHideDone] = useState(false);
 
   const loadExtras = useCallback(async () => {
-    const [brandsRes, profilesRes, templatesRes] = await Promise.all([
+    const [brandsRes, profilesRes, templatesRes, categoriesRes] = await Promise.all([
       supabase.from('brands').select('*'),
       supabase.from('profiles').select('*'),
       supabase.from('project_templates').select('*').order('name'),
+      supabase.from('categories').select('*').eq('scope', 'projeto').order('label'),
     ]);
     setBrands((brandsRes.data as Brand[]) ?? []);
     setProfiles((profilesRes.data as Profile[]) ?? []);
     setTemplates((templatesRes.data as ProjectTemplate[]) ?? []);
+    setCategoryOptions((categoriesRes.data as Category[]) ?? []);
   }, []);
 
   useEffect(() => {
@@ -221,6 +225,7 @@ export default function Projects() {
       {view === 'modelos' ? (
         <TemplatesView
           templates={templates}
+          categoryOptions={categoryOptions}
           canEdit={profile?.department !== 'assistente'}
           onReload={loadExtras}
         />
@@ -348,6 +353,7 @@ export default function Projects() {
         <NewProjectModal
           brands={brands}
           templates={templates}
+          categoryOptions={categoryOptions}
           actorId={profile.id}
           onClose={() => setShowNew(false)}
           onCreated={() => {
@@ -363,12 +369,14 @@ export default function Projects() {
 function NewProjectModal({
   brands,
   templates,
+  categoryOptions,
   actorId,
   onClose,
   onCreated,
 }: {
   brands: Brand[];
   templates: ProjectTemplate[];
+  categoryOptions: Category[];
   actorId: string;
   onClose: () => void;
   onCreated: () => void;
@@ -515,7 +523,14 @@ function NewProjectModal({
         </div>
         <div className="form-field">
           <label htmlFor="np-category">Categoria</label>
-          <input id="np-category" value={category} onChange={(e) => setCategory(e.target.value)} />
+          <select id="np-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">Sem categoria</option>
+            {categoryOptions.map((c) => (
+              <option key={c.id} value={c.label}>
+                {c.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="form-field">
           <label htmlFor="np-priority">Prioridade</label>
@@ -570,10 +585,12 @@ function NewProjectModal({
 
 function TemplatesView({
   templates,
+  categoryOptions,
   canEdit,
   onReload,
 }: {
   templates: ProjectTemplate[];
+  categoryOptions: Category[];
   canEdit: boolean;
   onReload: () => void;
 }) {
@@ -615,6 +632,7 @@ function TemplatesView({
 
       {showNew && (
         <TemplateFormModal
+          categoryOptions={categoryOptions}
           onClose={() => setShowNew(false)}
           onCreated={(created) => {
             onReload();
@@ -626,6 +644,7 @@ function TemplatesView({
       {editing && (
         <TemplateFormModal
           template={editing}
+          categoryOptions={categoryOptions}
           onClose={() => {
             setEditing(null);
             onReload();
@@ -639,10 +658,12 @@ function TemplatesView({
 
 function TemplateFormModal({
   template,
+  categoryOptions,
   onClose,
   onCreated,
 }: {
   template?: ProjectTemplate;
+  categoryOptions: Category[];
   onClose: () => void;
   onCreated: (created: ProjectTemplate) => void;
 }) {
@@ -817,7 +838,14 @@ function TemplateFormModal({
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="tpl-category">Categoria</label>
-            <input id="tpl-category" value={category} onChange={(e) => setCategory(e.target.value)} />
+            <select id="tpl-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">Sem categoria</option>
+              {categoryOptions.map((c) => (
+                <option key={c.id} value={c.label}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="tpl-priority">Prioridade padrão</label>
