@@ -14,6 +14,10 @@ export default function Auditoria() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const isPrivileged = profile?.role === 'diretoria' || profile?.role === 'administrador';
+  const [search, setSearch] = useState('');
+  const [actorFilter, setActorFilter] = useState('all');
+  const [contextFilter, setContextFilter] = useState('all');
+  const [periodDays, setPeriodDays] = useState('all');
 
   useEffect(() => {
     if (!profile) return;
@@ -65,6 +69,28 @@ export default function Auditoria() {
     load();
   }, [profile, isPrivileged]);
 
+  const actors = Array.from(new Set(rows.map((r) => r.actor?.name).filter((n): n is string => Boolean(n)))).sort();
+  const contexts = Array.from(
+    new Set(rows.map((r) => r.project?.name ?? r.campaign?.name).filter((n): n is string => Boolean(n)))
+  ).sort();
+
+  const filteredRows = rows.filter((r) => {
+    if (actorFilter !== 'all' && r.actor?.name !== actorFilter) return false;
+    const context = r.project?.name ?? r.campaign?.name;
+    if (contextFilter !== 'all' && context !== contextFilter) return false;
+    if (periodDays !== 'all') {
+      const days = Number(periodDays);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      if (new Date(r.created_at) < cutoff) return false;
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      if (!r.action_text.toLowerCase().includes(q) && !r.detail.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="page">
       <h1 className="page-title">Auditoria</h1>
@@ -74,9 +100,41 @@ export default function Auditoria() {
           : 'Tudo o que você fez, e tudo o que aconteceu em projetos e campanhas nos quais você participa.'}
       </div>
 
+      {!loading && (
+        <div className="filters-row">
+          <input className="chip-input" placeholder="⌕ Pesquisar ação ou detalhe…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <select className="chip-select" value={actorFilter} onChange={(e) => setActorFilter(e.target.value)}>
+            <option value="all">Pessoa: todas</option>
+            {actors.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+          <select className="chip-select" value={contextFilter} onChange={(e) => setContextFilter(e.target.value)}>
+            <option value="all">Projeto/Campanha: todos</option>
+            {contexts.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select className="chip-select" value={periodDays} onChange={(e) => setPeriodDays(e.target.value)}>
+            <option value="all">Período: tudo</option>
+            <option value="1">Último dia</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <div className="page-sub">Carregando…</div>
       ) : (
+        <>
+        <div className="section-head">
+          <h2>{filteredRows.length} atividades</h2>
+        </div>
         <table className="simple">
           <thead>
             <tr>
@@ -88,7 +146,7 @@ export default function Auditoria() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {filteredRows.map((r) => (
               <tr key={r.id}>
                 <td>{r.action_text}</td>
                 <td>{r.actor?.name ?? 'Sistema'}</td>
@@ -97,15 +155,16 @@ export default function Auditoria() {
                 <td>{r.detail || '—'}</td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {filteredRows.length === 0 && (
               <tr>
                 <td colSpan={5} style={{ color: 'var(--text-faint)' }}>
-                  Nenhuma atividade registrada ainda.
+                  Nenhuma atividade encontrada pra esse filtro.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        </>
       )}
     </div>
   );
