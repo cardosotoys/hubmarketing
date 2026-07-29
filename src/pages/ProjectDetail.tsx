@@ -8,6 +8,9 @@ import StatusTag from '../components/StatusTag';
 import KanbanBoard from '../components/KanbanBoard';
 import TaskEditModal from '../components/TaskEditModal';
 import AuditItemEditModal from '../components/AuditItemEditModal';
+import ProjectPlanejamento from './projects/ProjectPlanejamento';
+import ProjectFinanceiro from './projects/ProjectFinanceiro';
+import ProjectRiscos from './projects/ProjectRiscos';
 import type {
   ActivityLogEntry,
   AuditItem,
@@ -32,7 +35,7 @@ type CommentWithAuthor = Comment & { author: { name: string } | null };
 type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
 type MemberWithProfile = ProjectMember & { user: { name: string; job_title: string } | null };
 
-type Tab = 'resumo' | 'demandas' | 'arquivos' | 'historico' | 'correcoes';
+type Tab = 'resumo' | 'planejamento' | 'demandas' | 'financeiro' | 'riscos' | 'arquivos' | 'historico' | 'correcoes';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -341,7 +344,10 @@ export default function ProjectDetail() {
         {(
           [
             ['resumo', 'Resumo'],
+            ['planejamento', 'Planejamento'],
             ['demandas', 'Demandas'],
+            ['financeiro', 'Financeiro'],
+            ['riscos', 'Riscos'],
             ...(auditItems.length > 0 ? [['correcoes', 'Correções'] as [Tab, string]] : []),
             ['arquivos', 'Arquivos'],
             ['historico', 'Histórico'],
@@ -371,6 +377,12 @@ export default function ProjectDetail() {
           onSaveSummary={saveSummary}
         />
       )}
+
+      {tab === 'planejamento' && <ProjectPlanejamento project={project} onSave={saveSummary} />}
+
+      {tab === 'financeiro' && profile && <ProjectFinanceiro projectId={project.id} actorId={profile.id} />}
+
+      {tab === 'riscos' && profile && <ProjectRiscos projectId={project.id} actorId={profile.id} profiles={allProfiles} />}
 
       {tab === 'demandas' && (
         <div>

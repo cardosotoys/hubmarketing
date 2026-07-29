@@ -139,6 +139,12 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   [Etapas editáveis](#etapas-editáveis) pra detalhes. Consequência direta: o **board global de Demandas** deixou
   de ter Kanban (projetos diferentes agora podem ter etapas incompatíveis entre si) e virou uma lista agrupável
   por projeto/responsável/prioridade — o Kanban continua existindo normalmente **dentro de cada projeto**.
+- **Workspace de Projeto (Planejamento, Financeiro, Riscos)**: cada Projeto ganhou 3 abas novas, no mesmo nível
+  de profundidade que já existia em Campanhas — **Planejamento** (briefing completo: contexto, público/
+  stakeholders, mensagem/posicionamento, estratégia), **Financeiro** (itens de verba previsto x executado) e
+  **Riscos** (mapa de calor probabilidade × impacto + decision log). As tabelas de verba/riscos/decisões são
+  as mesmas já usadas por Campanhas — reaproveitadas, não duplicadas. Ver seção
+  [Workspace de Projeto](#workspace-de-projeto).
 
 ## Etapas editáveis
 
@@ -161,6 +167,23 @@ avulsas sem projeto). Isso significa:
   prioridade. O Kanban continua funcionando normalmente dentro da aba Demandas de cada projeto.
 - Dado existente (o projeto "Conferência de Embalagens" e os 4 modelos antigos) foi migrado automaticamente
   pela `0022` — cada um ganhou sua cópia própria das 6 etapas clássicas, sem perder nenhuma demanda.
+
+## Workspace de Projeto
+
+A partir da migration `0024`, cada Projeto passa a ter a mesma profundidade operacional que já existia só em
+Campanhas, em 3 abas novas na página do projeto:
+
+- **Planejamento**: briefing completo, salvo direto em colunas novas da tabela `projects` (`description`,
+  `problem`, `opportunity`, `target_audience`, `personas`, `competitors`, `stakeholders`, `message_main`,
+  `tone_of_voice`, `promise`, `value_proposition`, `differentiators`, `strategy`, `restrictions`,
+  `assumptions`). O campo "Objetivo" continua editável na aba Resumo, como já era.
+- **Financeiro**: itens de verba (previsto x executado), usando a mesma tabela `campaign_budget_items` de
+  Campanhas — ela ganhou uma coluna `project_id` (opcional, ao lado de `campaign_id`) para isso.
+- **Riscos**: mapa de calor (probabilidade × impacto) + lista de riscos, e logo abaixo um decision log — usando
+  `campaign_risks` e `campaign_decisions`, que ganharam a mesma coluna `project_id` opcional.
+
+Em todos os três casos, **cada linha pertence a uma campanha OU a um projeto, nunca aos dois** (garantido por um
+`check` no banco) — nenhum dado de Campanhas foi alterado ou migrado, a mudança é só aditiva.
 
 ## 1. Criar o projeto no Supabase
 
@@ -267,7 +290,13 @@ avulsas sem projeto). Isso significa:
     Embalagens China, Feira Reval, Feira Ri Happy, Uniformes promotores/fábrica, Show room, Painéis/Avisos da
     fábrica, Display Fofush, Site comercial/conteúdo, Manual de marca), cada um com sua própria lista de etapas
     (não mais limitada aos 6 valores fixos) e demandas padrão já posicionadas certinho.
-26. Pegue as duas chaves de conexão:
+26. Rode também [`supabase/migrations/0024_project_workspace.sql`](supabase/migrations/0024_project_workspace.sql)
+    — dá a cada Projeto a mesma profundidade operacional das Campanhas: campos de briefing completo direto na
+    tabela `projects`, e reaproveita as tabelas `campaign_budget_items`/`campaign_risks`/`campaign_decisions`
+    (que passam a aceitar `project_id` além de `campaign_id`, nunca os dois ao mesmo tempo) pra Financeiro/
+    Riscos/Decisões de projeto. Não mexe em nenhum dado de Campanhas já existente. Veja a seção
+    [Workspace de Projeto](#workspace-de-projeto) mais abaixo.
+27. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -424,6 +453,8 @@ supabase/migrations/0021_mpm_drop_ml_oauth.sql   remove colunas de OAuth do ML (
 supabase/functions/mpm-sync/index.ts             Edge Function que busca (SerpApi/Google Shopping), valida e compara preços
 supabase/migrations/0022_editable_stages.sql     tabelas stages/project_template_stages (etapas editáveis por projeto) + backfill
 supabase/migrations/0023_new_project_templates.sql  15 modelos novos, cada um com etapas e demandas próprias
+supabase/migrations/0024_project_workspace.sql   briefing em projects + project_id em campaign_budget_items/campaign_risks/campaign_decisions
+src/pages/projects/                              abas novas de Projeto (Planejamento, Financeiro, Riscos) que reaproveitam tabelas de Campanhas
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

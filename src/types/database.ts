@@ -59,6 +59,21 @@ export interface Project {
   end_date: string | null;
   ref: string;
   objective: string;
+  description: string;
+  problem: string;
+  opportunity: string;
+  target_audience: string;
+  personas: string;
+  competitors: string;
+  message_main: string;
+  tone_of_voice: string;
+  promise: string;
+  value_proposition: string;
+  differentiators: string;
+  strategy: string;
+  restrictions: string;
+  assumptions: string;
+  stakeholders: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -583,7 +598,8 @@ export const BUDGET_CATEGORIES = ['Mídia paga', 'Produção', 'Evento', 'Influe
 
 export interface CampaignBudgetItem {
   id: string;
-  campaign_id: string;
+  campaign_id: string | null;
+  project_id: string | null;
   description: string;
   category: string;
   planned_amount: number;
@@ -606,7 +622,8 @@ export const RISK_STATUSES: { key: RiskStatus; label: string }[] = [
 
 export interface CampaignRisk {
   id: string;
-  campaign_id: string;
+  campaign_id: string | null;
+  project_id: string | null;
   description: string;
   probability: RiskProbability;
   impact: RiskImpact;
@@ -621,7 +638,8 @@ export interface CampaignRisk {
 
 export interface CampaignDecision {
   id: string;
-  campaign_id: string;
+  campaign_id: string | null;
+  project_id: string | null;
   context: string;
   alternatives: string;
   choice: string;
