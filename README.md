@@ -150,6 +150,10 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   lateral ganhou um botão de recolher (vira uma régua só de ícones) e um toggle pra ver todos os módulos numa
   lista única em vez de agrupados por seção — ambos lembrados no navegador. O agrupamento de Demandas também
   trocou de `<select>` por chips clicáveis, mais rápido de bater o olho.
+- **Perfil mais completo**: agora dá pra trocar a foto de verdade (upload real, guardado no Storage do
+  Supabase — some no bucket `avatars`, um por pessoa), e editar nome, cargo, telefone e uma bio curta direto
+  na tela. A foto aparece também no menu lateral e no topo — some do jeito antigo (só iniciais) quando a
+  pessoa ainda não subiu uma.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
@@ -340,7 +344,10 @@ A partir da migration `0025`:
     vai precisar ser liberada manualmente ali. Veja a seção [Permissões](#permissões).
 28. Rode também [`supabase/migrations/0026_ui_preferences.sql`](supabase/migrations/0026_ui_preferences.sql) —
     adiciona `profiles.theme` (modo claro/escuro por pessoa, padrão `dark`).
-29. Pegue as duas chaves de conexão:
+29. Rode também [`supabase/migrations/0027_profile_details.sql`](supabase/migrations/0027_profile_details.sql) —
+    adiciona `avatar_url`/`phone`/`bio` em `profiles` e cria o bucket de Storage `avatars` (foto real do
+    Perfil).
+30. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -502,6 +509,8 @@ src/pages/projects/                              abas novas de Projeto (Planejam
 supabase/migrations/0025_permissions.sql         visibilidade de projetos/demandas por participação (RLS) + hidden_modules/extra_modules em profiles
 src/components/ModuleGate.tsx                    guarda de rota que só checa profiles.hidden_modules (usado nas rotas sem regra de papel/depto)
 supabase/migrations/0026_ui_preferences.sql      profiles.theme (modo claro/escuro por pessoa)
+supabase/migrations/0027_profile_details.sql     profiles.avatar_url/phone/bio + bucket de Storage avatars
+src/components/Avatar.tsx                        foto real (avatar_url) com fallback pras iniciais
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

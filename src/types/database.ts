@@ -76,6 +76,9 @@ export interface Profile {
   department: Department;
   job_title: string;
   avatar_initials: string;
+  avatar_url: string;
+  phone: string;
+  bio: string;
   hidden_modules: string[];
   extra_modules: string[];
   theme: Theme;

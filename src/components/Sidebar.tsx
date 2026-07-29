@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import Avatar from './Avatar';
 import { ROLE_LABELS, type Department, type ModuleKey, type Role } from '../types/database';
 
 interface NavItem {
@@ -186,7 +187,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
       <div className="sidebar-footer">
         <div className="user-footer">
-          <div className="avatar">{profile?.avatar_initials ?? '··'}</div>
+          <Avatar profile={profile} />
           <div className="meta">
             <div className="name">{profile?.name ?? '…'}</div>
             <div className="role">

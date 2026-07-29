@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import Avatar from './Avatar';
 import type { ActivityLogEntry, TaskComment } from '../types/database';
 
 type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
@@ -63,7 +64,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
           {mentions.length > 0 && <span className="pip"></span>}
         </div>
         <Link className="user-chip" to="/perfil">
-          <div className="avatar">{profile?.avatar_initials ?? '··'}</div>
+          <Avatar profile={profile} />
           <span>{profile?.name ?? '…'}</span>
         </Link>
       </div>
