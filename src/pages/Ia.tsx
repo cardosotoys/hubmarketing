@@ -2,9 +2,67 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import Modal from '../components/Modal';
-import type { Brand, IaBrandVoice, IaPersona, IaPrompt, IaTemplate } from '../types/database';
+import type { Brand, IaBrandVoice, IaPersona, IaPrompt, IaSkill, IaTemplate } from '../types/database';
 
-type Tab = 'prompts' | 'templates' | 'personas' | 'voz';
+type Tab = 'prompts' | 'skills' | 'templates' | 'personas' | 'voz';
+
+function TextBlockViewModal({
+  title,
+  meta,
+  body,
+  onEdit,
+  onClose,
+}: {
+  title: string;
+  meta?: string;
+  body: string;
+  onEdit: () => void;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await navigator.clipboard.writeText(body);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <Modal title={title} onClose={onClose}>
+      {meta && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>{meta}</div>}
+      <pre
+        style={{
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: 14,
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: 'var(--text)',
+          fontFamily: 'inherit',
+          maxHeight: '50vh',
+          overflowY: 'auto',
+          margin: 0,
+        }}
+      >
+        {body}
+      </pre>
+      <div className="modal-actions">
+        <button type="button" className="btn ghost" onClick={onClose}>
+          Fechar
+        </button>
+        <button type="button" className="btn ghost" onClick={copy}>
+          {copied ? '✓ Copiado' : 'Copiar'}
+        </button>
+        <button type="button" className="btn" onClick={onEdit}>
+          Editar
+        </button>
+      </div>
+    </Modal>
+  );
+}
 
 export default function Ia() {
   const [tab, setTab] = useState<Tab>('prompts');
@@ -21,14 +79,15 @@ export default function Ia() {
     <div className="page">
       <h1 className="page-title">IA</h1>
       <div className="page-sub">
-        Prompts prontos, templates, personas e brand voice das 3 marcas — acervo real do time, sem resposta
-        automática ainda (isso depende de conectar uma API de IA de verdade mais pra frente).
+        Prompts prontos, skills, templates, personas e brand voice das 3 marcas — acervo real do time, sem
+        resposta automática ainda (isso depende de conectar uma API de IA de verdade mais pra frente).
       </div>
 
       <div className="detail-tabs">
         {(
           [
             ['prompts', 'Prompts'],
+            ['skills', 'Skills'],
             ['templates', 'Templates'],
             ['personas', 'Personas'],
             ['voz', 'Brand Voice'],
@@ -41,6 +100,7 @@ export default function Ia() {
       </div>
 
       {tab === 'prompts' && <PromptsTab brands={brands} />}
+      {tab === 'skills' && <SkillsTab brands={brands} />}
       {tab === 'templates' && <TemplatesTab brands={brands} />}
       {tab === 'personas' && <PersonasTab brands={brands} />}
       {tab === 'voz' && <BrandVoiceTab brands={brands} />}
@@ -61,6 +121,7 @@ function PromptsTab({ brands }: { brands: Brand[] }) {
   const { profile } = useAuth();
   const [prompts, setPrompts] = useState<IaPrompt[]>([]);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [viewing, setViewing] = useState<IaPrompt | null>(null);
   const [editing, setEditing] = useState<IaPrompt | 'new' | null>(null);
 
   async function load() {
@@ -97,12 +158,25 @@ function PromptsTab({ brands }: { brands: Brand[] }) {
 
       <div className="grid3">
         {filtered.map((p) => (
-          <div className="card" key={p.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(p)}>
+          <div className="card" key={p.id} style={{ cursor: 'pointer' }} onClick={() => setViewing(p)}>
             <h4>{p.title}</h4>
             <p style={{ color: 'var(--text-faint)', fontSize: 11 }}>
               {p.category} · {brandLabel(brands, p.brand_id)}
             </p>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', maxHeight: 80, overflow: 'hidden' }}>{p.body}</p>
+            <p
+              style={{
+                fontSize: 12,
+                color: 'var(--text-dim)',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                whiteSpace: 'pre-wrap',
+                display: '-webkit-box',
+                WebkitLineClamp: 4,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {p.body}
+            </p>
           </div>
         ))}
         {filtered.length === 0 && (
@@ -111,6 +185,19 @@ function PromptsTab({ brands }: { brands: Brand[] }) {
           </div>
         )}
       </div>
+
+      {viewing && (
+        <TextBlockViewModal
+          title={viewing.title}
+          meta={`${viewing.category} · ${brandLabel(brands, viewing.brand_id)}`}
+          body={viewing.body}
+          onClose={() => setViewing(null)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(null);
+          }}
+        />
+      )}
 
       {editing && (
         <PromptFormModal
@@ -197,6 +284,186 @@ function PromptFormModal({
         {confirmingDelete ? (
           <div className="banner error">
             <span>Excluir este prompt?</span>
+            <button type="button" className="btn ghost sm" onClick={() => setConfirmingDelete(false)}>
+              Cancelar
+            </button>
+            <button type="button" className="btn sm" onClick={handleDelete}>
+              Excluir
+            </button>
+          </div>
+        ) : (
+          <div className="modal-actions">
+            {isEdit && (
+              <button type="button" className="btn ghost" onClick={() => setConfirmingDelete(true)}>
+                Excluir
+              </button>
+            )}
+            <button type="button" className="btn ghost" onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn">
+              {isEdit ? 'Salvar' : 'Criar'}
+            </button>
+          </div>
+        )}
+      </form>
+    </Modal>
+  );
+}
+
+// ============================================================
+// Skills
+// ============================================================
+
+function SkillsTab({ brands }: { brands: Brand[] }) {
+  const { profile } = useAuth();
+  const [skills, setSkills] = useState<IaSkill[]>([]);
+  const [viewing, setViewing] = useState<IaSkill | null>(null);
+  const [editing, setEditing] = useState<IaSkill | 'new' | null>(null);
+
+  async function load() {
+    const { data } = await supabase.from('ia_skills').select('*').order('category').order('name');
+    setSkills((data as IaSkill[]) ?? []);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  return (
+    <div>
+      <div className="page-sub" style={{ marginBottom: 14 }}>
+        Instruções reutilizáveis pra tarefas específicas — mais focadas que um prompt solto (ex.: "revisar
+        copy pro tom de voz Tópi", "gerar pauta de calendário editorial"). Acesse quando precisar em vez de
+        reescrever do zero.
+      </div>
+      <div className="section-head">
+        <h2>{skills.length} skills</h2>
+        <button className="btn" onClick={() => setEditing('new')}>
+          + Nova skill
+        </button>
+      </div>
+
+      <div className="grid3">
+        {skills.map((s) => (
+          <div className="card" key={s.id} style={{ cursor: 'pointer' }} onClick={() => setViewing(s)}>
+            <h4>{s.name}</h4>
+            <p style={{ color: 'var(--text-faint)', fontSize: 11 }}>
+              {s.category} · {brandLabel(brands, s.brand_id)}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>{s.description}</p>
+          </div>
+        ))}
+        {skills.length === 0 && (
+          <div className="locked-banner">
+            <span className="ic">◐</span>Nenhuma skill cadastrada ainda.
+          </div>
+        )}
+      </div>
+
+      {viewing && (
+        <TextBlockViewModal
+          title={viewing.name}
+          meta={`${viewing.category} · ${brandLabel(brands, viewing.brand_id)}`}
+          body={viewing.body}
+          onClose={() => setViewing(null)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(null);
+          }}
+        />
+      )}
+
+      {editing && (
+        <SkillFormModal
+          skill={editing === 'new' ? null : editing}
+          brands={brands}
+          actorId={profile?.id ?? ''}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SkillFormModal({
+  skill,
+  brands,
+  actorId,
+  onClose,
+  onSaved,
+}: {
+  skill: IaSkill | null;
+  brands: Brand[];
+  actorId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = Boolean(skill);
+  const [name, setName] = useState(skill?.name ?? '');
+  const [category, setCategory] = useState(skill?.category ?? '');
+  const [brandId, setBrandId] = useState(skill?.brand_id ?? '');
+  const [description, setDescription] = useState(skill?.description ?? '');
+  const [body, setBody] = useState(skill?.body ?? '');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const fields = { name: name.trim(), category: category.trim(), brand_id: brandId || null, description, body };
+    if (isEdit && skill) {
+      await supabase.from('ia_skills').update(fields).eq('id', skill.id);
+    } else {
+      await supabase.from('ia_skills').insert({ ...fields, created_by: actorId });
+    }
+    onSaved();
+  }
+
+  async function handleDelete() {
+    if (!skill) return;
+    await supabase.from('ia_skills').delete().eq('id', skill.id);
+    onSaved();
+  }
+
+  return (
+    <Modal title={isEdit ? 'Editar skill' : 'Nova skill'} onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="form-field">
+          <label htmlFor="sk-name">Nome</label>
+          <input id="sk-name" required value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="sk-category">Categoria</label>
+            <input id="sk-category" required value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Revisão, Planejamento…" />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="sk-brand">Marca</label>
+            <select id="sk-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
+              <option value="">Geral (todas as marcas)</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="form-field">
+          <label htmlFor="sk-desc">Descrição curta</label>
+          <input id="sk-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <div className="form-field">
+          <label htmlFor="sk-body">Instruções da skill</label>
+          <textarea id="sk-body" required rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
+        </div>
+
+        {confirmingDelete ? (
+          <div className="banner error">
+            <span>Excluir esta skill?</span>
             <button type="button" className="btn ghost sm" onClick={() => setConfirmingDelete(false)}>
               Cancelar
             </button>

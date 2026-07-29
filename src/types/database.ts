@@ -900,6 +900,18 @@ export interface IaTemplate {
   updated_at: string;
 }
 
+export interface IaSkill {
+  id: string;
+  brand_id: string | null;
+  category: string;
+  name: string;
+  description: string;
+  body: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IaPersona {
   id: string;
   brand_id: string | null;
