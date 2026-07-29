@@ -167,6 +167,12 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
 - **Auditoria com filtros**: já mostrava tudo o que a pessoa fez + tudo em projetos/campanhas onde participa
   (Diretoria/Administrador veem tudo); agora tem barra de busca (ação/detalhe), filtro por pessoa, por projeto/
   campanha e por período — pra não depender de rolar a tabela toda procurando.
+- **Relatórios reconstruído**: era uma parede única de números de módulos diferentes empilhados sem contexto —
+  virou uma tela por aba (Projetos, Demandas, Auditoria de Mídias, Redes Sociais, Relatório Diário, Campanhas,
+  Financeiro pra Diretoria), cada uma com uma frase explicando o que aquele número cobre, uma tabela detalhada
+  e um botão de **exportar CSV**. Pra quem não é Diretoria/Administrador, Projetos/Demandas/Auditoria já saem
+  filtrados só pro que a pessoa participa (efeito direto da regra de visibilidade por participação) e o
+  Relatório Diário mostra só os próprios registros.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
