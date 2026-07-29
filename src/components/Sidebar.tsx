@@ -78,6 +78,22 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const hiddenModules = profile?.hidden_modules ?? [];
   const extraModules = profile?.extra_modules ?? [];
   const [openTasks, setOpenTasks] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === '1');
+  const [flat, setFlat] = useState(() => localStorage.getItem('sidebar-flat') === '1');
+
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      localStorage.setItem('sidebar-collapsed', v ? '0' : '1');
+      return !v;
+    });
+  }
+
+  function toggleFlat() {
+    setFlat((v) => {
+      localStorage.setItem('sidebar-flat', v ? '0' : '1');
+      return !v;
+    });
+  }
 
   function isVisible(item: NavItem): boolean {
     if (hiddenModules.includes(item.moduleKey)) return false;
@@ -99,8 +115,37 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
     loadOpenTasks();
   }, []);
 
+  function renderItem(item: NavItem) {
+    if (item.requiresConfig && !seesConfig) {
+      return (
+        <div className="nav-locked" key={item.to} title={collapsed ? item.label : undefined}>
+          <span className="ic">{item.icon}</span>
+          <span className="nav-label-text">{item.label}</span>
+          <span className="ic" style={{ marginLeft: 'auto' }}>
+            🔒
+          </span>
+        </div>
+      );
+    }
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.end}
+        title={collapsed ? item.label : undefined}
+        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+      >
+        <span className="ic">{item.icon}</span>
+        <span className="nav-label-text">{item.label}</span>
+        {item.to === '/demandas' && openTasks !== null && openTasks > 0 && <span className="badge">{openTasks}</span>}
+      </NavLink>
+    );
+  }
+
+  const visibleItems = SECTIONS.flatMap((s) => s.items).filter(isVisible);
+
   return (
-    <div className={`sidebar${open ? ' open' : ''}`}>
+    <div className={`sidebar${open ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}>
       <div className="brand">
         <div className="brand-mark">C</div>
         <div>
@@ -110,41 +155,34 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <button className="hamburger-btn" style={{ marginLeft: 'auto' }} onClick={onClose}>
           ✕
         </button>
+        <button
+          className="collapse-btn"
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          style={{ marginLeft: collapsed ? 0 : 'auto' }}
+          onClick={toggleCollapsed}
+        >
+          {collapsed ? '»' : '«'}
+        </button>
       </div>
 
-      {SECTIONS.map((section) => {
-        const items = section.items.filter(isVisible);
-        if (items.length === 0) return null;
-        return (
-          <div key={section.label}>
-            <div className="nav-label">{section.label}</div>
-            {items.map((item) =>
-              item.requiresConfig && !seesConfig ? (
-                <div className="nav-locked" key={item.to}>
-                  <span className="ic">{item.icon}</span>
-                  <span>{item.label}</span>
-                  <span className="ic" style={{ marginLeft: 'auto' }}>
-                    🔒
-                  </span>
-                </div>
-              ) : (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                >
-                  <span className="ic">{item.icon}</span>
-                  <span>{item.label}</span>
-                  {item.to === '/demandas' && openTasks !== null && openTasks > 0 && (
-                    <span className="badge">{openTasks}</span>
-                  )}
-                </NavLink>
-              )
-            )}
-          </div>
-        );
-      })}
+      {!collapsed && (
+        <div className="sidebar-view-toggle filter-chip" onClick={toggleFlat}>
+          {flat ? '☰ Ver agrupado' : '▤ Ver tudo numa lista'}
+        </div>
+      )}
+
+      {flat
+        ? visibleItems.map(renderItem)
+        : SECTIONS.map((section) => {
+            const items = section.items.filter(isVisible);
+            if (items.length === 0) return null;
+            return (
+              <div key={section.label}>
+                <div className="nav-label">{section.label}</div>
+                {items.map(renderItem)}
+              </div>
+            );
+          })}
 
       <div className="sidebar-footer">
         <div className="user-footer">

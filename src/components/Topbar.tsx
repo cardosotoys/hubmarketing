@@ -8,7 +8,7 @@ type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
 type MentionRow = TaskComment & { author: { name: string } | null; task: { title: string } | null };
 
 export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string; onMenuClick: () => void }) {
-  const { profile } = useAuth();
+  const { profile, setTheme } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [recent, setRecent] = useState<ActivityWithActor[]>([]);
   const [mentions, setMentions] = useState<MentionRow[]>([]);
@@ -48,6 +48,13 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         <kbd>⌘K</kbd>
       </div>
       <div className="topbar-right">
+        <div
+          className="icon-btn"
+          title={profile?.theme === 'light' ? 'Mudar pro modo escuro' : 'Mudar pro modo claro'}
+          onClick={() => setTheme(profile?.theme === 'light' ? 'dark' : 'light')}
+        >
+          {profile?.theme === 'light' ? '☾' : '☀'}
+        </div>
         <Link className="icon-btn" to="/demandas">
           ☰
         </Link>

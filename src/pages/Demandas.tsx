@@ -146,13 +146,25 @@ export default function Demandas() {
 
       <div className="section-head">
         <h2>{tasks.length} demandas</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
-            <option value="project">Agrupar por projeto</option>
-            <option value="none">Sem agrupamento</option>
-            <option value="assignee">Agrupar por responsável</option>
-            <option value="priority">Agrupar por prioridade</option>
-          </select>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="group-toggle">
+            {(
+              [
+                ['project', 'Projeto'],
+                ['none', 'Sem agrupar'],
+                ['assignee', 'Responsável'],
+                ['priority', 'Prioridade'],
+              ] as [GroupBy, string][]
+            ).map(([key, label]) => (
+              <div
+                key={key}
+                className={`filter-chip${groupBy === key ? ' active' : ''}`}
+                onClick={() => setGroupBy(key)}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
           <button className="btn" onClick={() => setShowNew(true)}>
             + Nova demanda
           </button>

@@ -145,6 +145,11 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   **Riscos** (mapa de calor probabilidade × impacto + decision log). As tabelas de verba/riscos/decisões são
   as mesmas já usadas por Campanhas — reaproveitadas, não duplicadas. Ver seção
   [Workspace de Projeto](#workspace-de-projeto).
+- **Modo claro/escuro por usuário + sidebar moderna**: botão ☀/☾ no canto superior direito troca entre modo
+  escuro (padrão) e claro — a escolha é salva por pessoa (`profiles.theme`), não é só do navegador. A barra
+  lateral ganhou um botão de recolher (vira uma régua só de ícones) e um toggle pra ver todos os módulos numa
+  lista única em vez de agrupados por seção — ambos lembrados no navegador. O agrupamento de Demandas também
+  trocou de `<select>` por chips clicáveis, mais rápido de bater o olho.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
@@ -333,7 +338,9 @@ A partir da migration `0025`:
     Perfis & Permissões se alguém que precisa de Redes Sociais (social media, gestor de tráfego etc.) ficou sem
     acesso — o padrão mudou de "por departamento" pra "só Diretoria/Administrador", então essa pessoa provavelmente
     vai precisar ser liberada manualmente ali. Veja a seção [Permissões](#permissões).
-28. Pegue as duas chaves de conexão:
+28. Rode também [`supabase/migrations/0026_ui_preferences.sql`](supabase/migrations/0026_ui_preferences.sql) —
+    adiciona `profiles.theme` (modo claro/escuro por pessoa, padrão `dark`).
+29. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -494,6 +501,7 @@ supabase/migrations/0024_project_workspace.sql   briefing em projects + project_
 src/pages/projects/                              abas novas de Projeto (Planejamento, Financeiro, Riscos) que reaproveitam tabelas de Campanhas
 supabase/migrations/0025_permissions.sql         visibilidade de projetos/demandas por participação (RLS) + hidden_modules/extra_modules em profiles
 src/components/ModuleGate.tsx                    guarda de rota que só checa profiles.hidden_modules (usado nas rotas sem regra de papel/depto)
+supabase/migrations/0026_ui_preferences.sql      profiles.theme (modo claro/escuro por pessoa)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

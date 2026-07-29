@@ -1,4 +1,5 @@
 export type Role = 'diretoria' | 'equipe' | 'administrador';
+export type Theme = 'dark' | 'light';
 export type Department = 'diretoria' | 'growth' | 'coordenacao' | 'design' | 'assistente';
 export const DEPARTMENTS: Department[] = ['diretoria', 'growth', 'coordenacao', 'design', 'assistente'];
 export const DEPARTMENT_LABELS: Record<Department, string> = {
@@ -77,6 +78,7 @@ export interface Profile {
   avatar_initials: string;
   hidden_modules: string[];
   extra_modules: string[];
+  theme: Theme;
   created_at: string;
 }
 

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
-import type { Profile } from '../types/database';
+import type { Profile, Theme } from '../types/database';
 
 interface AuthContextValue {
   session: Session | null;
@@ -10,6 +10,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setTheme: (theme: Theme) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -23,6 +24,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (!error) setProfile(data as Profile);
   }
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = profile?.theme ?? 'dark';
+  }, [profile?.theme]);
 
   useEffect(() => {
     let active = true;
@@ -62,8 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session) await loadProfile(session.user.id);
   }
 
+  async function setTheme(theme: Theme) {
+    if (!profile) return;
+    setProfile({ ...profile, theme });
+    await supabase.from('profiles').update({ theme }).eq('id', profile.id);
+  }
+
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut, refreshProfile, setTheme }}>
       {children}
     </AuthContext.Provider>
   );
