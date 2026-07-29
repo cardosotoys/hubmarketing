@@ -16,6 +16,9 @@ export default function Produtos() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandFilter, setBrandFilter] = useState('all');
   const [lineFilter, setLineFilter] = useState('all');
+  const [ageFilter, setAgeFilter] = useState('all');
+  const [sizeFilter, setSizeFilter] = useState('all');
+  const [licensedFilter, setLicensedFilter] = useState<'all' | 'licensed' | 'own'>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -61,9 +64,23 @@ export default function Produtos() {
     return Array.from(set).sort();
   }, [products]);
 
+  const ageRanges = useMemo(() => {
+    const set = new Set(products.map((p) => p.age_range).filter(Boolean));
+    return Array.from(set).sort();
+  }, [products]);
+
+  const sizes = useMemo(() => {
+    const set = new Set(products.map((p) => p.dimensions).filter(Boolean));
+    return Array.from(set).sort();
+  }, [products]);
+
   const filtered = products.filter((p) => {
     if (brandFilter !== 'all' && p.brand?.key !== brandFilter) return false;
     if (lineFilter !== 'all' && p.line !== lineFilter) return false;
+    if (ageFilter !== 'all' && p.age_range !== ageFilter) return false;
+    if (sizeFilter !== 'all' && p.dimensions !== sizeFilter) return false;
+    if (licensedFilter === 'licensed' && !p.licensed) return false;
+    if (licensedFilter === 'own' && p.licensed) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       if (!p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
@@ -125,6 +142,60 @@ export default function Produtos() {
               {l}
             </option>
           ))}
+        </select>
+        <select
+          value={ageFilter}
+          onChange={(e) => setAgeFilter(e.target.value)}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 7,
+            color: 'var(--text-dim)',
+            padding: '5px 10px',
+            fontSize: 11.5,
+          }}
+        >
+          <option value="all">Todas as idades</option>
+          {ageRanges.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+        <select
+          value={sizeFilter}
+          onChange={(e) => setSizeFilter(e.target.value)}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 7,
+            color: 'var(--text-dim)',
+            padding: '5px 10px',
+            fontSize: 11.5,
+          }}
+        >
+          <option value="all">Todos os tamanhos</option>
+          {sizes.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          value={licensedFilter}
+          onChange={(e) => setLicensedFilter(e.target.value as typeof licensedFilter)}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 7,
+            color: 'var(--text-dim)',
+            padding: '5px 10px',
+            fontSize: 11.5,
+          }}
+        >
+          <option value="all">Licenciados e próprios</option>
+          <option value="licensed">Só licenciados</option>
+          <option value="own">Só marca própria</option>
         </select>
         <input
           placeholder="Buscar por nome ou código…"

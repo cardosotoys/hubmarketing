@@ -1085,6 +1085,16 @@ table.simple tr:hover td {
   background: var(--accent-dim);
   color: var(--accent);
 }
+.cal-cell.today {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cal-cell.today .d {
+  color: var(--accent);
+}
+.cal-cell .evt.highlight {
+  font-weight: 700;
+}
 .cal-head {
   font-size: 10px;
   text-transform: uppercase;

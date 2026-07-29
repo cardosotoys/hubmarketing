@@ -6,14 +6,27 @@ import { logActivity } from '../lib/activityLog';
 import Modal from '../components/Modal';
 import type { Brand } from '../types/database';
 
+type EventType = 'projeto' | 'demanda' | 'campanha' | 'marco' | 'post' | 'evento';
+
+const TYPE_LABELS: Record<EventType, string> = {
+  projeto: 'Projetos',
+  demanda: 'Demandas',
+  campanha: 'Campanhas',
+  marco: 'Marcos',
+  post: 'Posts',
+  evento: 'Eventos avulsos',
+};
+
 interface CalEvent {
   id?: string;
   date: string;
   label: string;
   color: string;
+  type: EventType;
   href?: string;
   deletable?: boolean;
   createdBy?: string | null;
+  highlight?: boolean;
 }
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -32,11 +45,18 @@ export default function Calendario() {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
+  const ALL_TYPES = Object.keys(TYPE_LABELS) as EventType[];
+  const [typeFilter, setTypeFilter] = useState<EventType[]>(ALL_TYPES);
+
+  function toggleType(t: EventType) {
+    setTypeFilter((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [projectsRes, campaignsRes, milestonesRes, postsRes, ownEventsRes, brandsRes] = await Promise.all([
+    const [projectsRes, tasksRes, campaignsRes, milestonesRes, postsRes, ownEventsRes, brandsRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(color)'),
+      supabase.from('tasks').select('id, title, due_date, priority, project_id').not('due_date', 'is', null),
       supabase.from('campaigns').select('*, brand:brands(color)'),
       supabase.from('campaign_milestones').select('*, campaign:campaigns(id, name, brand:brands(color))'),
       supabase.from('social_posts').select('*, brand:brands(color)'),
@@ -45,19 +65,39 @@ export default function Calendario() {
     ]);
 
     const evts: CalEvent[] = [];
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     type ProjRow = { id: string; name: string; start_date: string | null; end_date: string | null; brand: { color: string } | null };
-    ((projectsRes.data as ProjRow[]) ?? []).forEach((p) => {
+    const projRows = (projectsRes.data as ProjRow[]) ?? [];
+    const projectsById = Object.fromEntries(projRows.map((p) => [p.id, p]));
+    projRows.forEach((p) => {
       const color = p.brand?.color ?? 'var(--violet)';
-      if (p.start_date) evts.push({ date: p.start_date, label: `Início: ${p.name}`, color, href: `/projetos/${p.id}` });
-      if (p.end_date) evts.push({ date: p.end_date, label: `Prazo: ${p.name}`, color, href: `/projetos/${p.id}` });
+      if (p.start_date) evts.push({ date: p.start_date, label: `Início: ${p.name}`, color, type: 'projeto', href: `/projetos/${p.id}` });
+      if (p.end_date) evts.push({ date: p.end_date, label: `Prazo: ${p.name}`, color, type: 'projeto', href: `/projetos/${p.id}`, highlight: p.end_date < todayStr });
+    });
+
+    type TaskRow = { id: string; title: string; due_date: string | null; priority: string; project_id: string | null };
+    ((tasksRes.data as TaskRow[]) ?? []).forEach((t) => {
+      if (!t.due_date) return;
+      const project = t.project_id ? projectsById[t.project_id] : null;
+      const color = project?.brand?.color ?? 'var(--text-dim)';
+      const overdue = t.due_date < todayStr;
+      evts.push({
+        id: t.id,
+        date: t.due_date,
+        label: project ? `${t.title} (${project.name})` : t.title,
+        color,
+        type: 'demanda',
+        href: `/demandas?task=${t.id}`,
+        highlight: overdue || t.priority === 'urgent',
+      });
     });
 
     type CampRow = { id: string; name: string; start_date: string | null; end_date: string | null; brand: { color: string } | null };
     ((campaignsRes.data as CampRow[]) ?? []).forEach((c) => {
       const color = c.brand?.color ?? 'var(--accent)';
-      if (c.start_date) evts.push({ date: c.start_date, label: `Campanha início: ${c.name}`, color, href: `/campanhas/${c.id}` });
-      if (c.end_date) evts.push({ date: c.end_date, label: `Campanha fim: ${c.name}`, color, href: `/campanhas/${c.id}` });
+      if (c.start_date) evts.push({ date: c.start_date, label: `Campanha início: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}` });
+      if (c.end_date) evts.push({ date: c.end_date, label: `Campanha fim: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}` });
     });
 
     type MilestoneRow = { id: string; title: string; date: string | null; campaign: { id: string; name: string; brand: { color: string } | null } | null };
@@ -68,7 +108,9 @@ export default function Calendario() {
         date: m.date,
         label: m.campaign ? `${m.title} (${m.campaign.name})` : m.title,
         color,
+        type: 'marco',
         href: m.campaign ? `/campanhas/${m.campaign.id}` : undefined,
+        highlight: true,
       });
     });
 
@@ -77,7 +119,7 @@ export default function Calendario() {
       if (!p.suggested_date) return;
       const color = p.brand?.color ?? 'var(--blue)';
       const short = p.caption.length > 28 ? `${p.caption.slice(0, 28)}…` : p.caption;
-      evts.push({ date: p.suggested_date, label: `Post: ${short || '(sem legenda)'}`, color, href: '/redes-sociais' });
+      evts.push({ date: p.suggested_date, label: `Post: ${short || '(sem legenda)'}`, color, type: 'post', href: '/redes-sociais' });
     });
 
     type OwnEventRow = { id: string; title: string; date: string; brand: { color: string } | null; created_by: string | null };
@@ -87,6 +129,7 @@ export default function Calendario() {
         date: e.date,
         label: e.title,
         color: e.brand?.color ?? 'var(--text-dim)',
+        type: 'evento',
         deletable: true,
         createdBy: e.created_by,
       });
@@ -113,17 +156,20 @@ export default function Calendario() {
     load();
   }
 
+  const filteredEvents = useMemo(() => events.filter((e) => typeFilter.includes(e.type)), [events, typeFilter]);
+
   const eventsByDay = useMemo(() => {
     const map: Record<string, CalEvent[]> = {};
-    events.forEach((e) => {
+    filteredEvents.forEach((e) => {
       const key = e.date;
       if (!map[key]) map[key] = [];
       map[key].push(e);
     });
     return map;
-  }, [events]);
+  }, [filteredEvents]);
 
   const { year, month } = cursor;
+  const todayKey = new Date().toISOString().slice(0, 10);
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (number | null)[] = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
@@ -184,6 +230,14 @@ export default function Calendario() {
         </button>
       </div>
 
+      <div className="group-toggle" style={{ marginBottom: 14 }}>
+        {ALL_TYPES.map((t) => (
+          <div key={t} className={`filter-chip${typeFilter.includes(t) ? ' active' : ''}`} onClick={() => toggleType(t)}>
+            {TYPE_LABELS[t]}
+          </div>
+        ))}
+      </div>
+
       <div className="cal-grid">
         {DAYS.map((d) => (
           <div className="cal-head" key={d}>
@@ -196,12 +250,14 @@ export default function Calendario() {
           if (day === null) return <div key={`blank-${i}`} className="cal-cell" style={{ opacity: 0.3 }} />;
           const key = `${year}-${pad(month + 1)}-${pad(day)}`;
           const dayEvents = eventsByDay[key] ?? [];
+          const isToday = key === todayKey;
           return (
-            <div className="cal-cell" key={key}>
+            <div className={`cal-cell${isToday ? ' today' : ''}`} key={key}>
               <div className="d">{day}</div>
               {dayEvents.map((e, idx) => {
                 const content = (
                   <>
+                    {e.highlight && '★ '}
                     {e.label}
                     {canDelete(e) && (
                       <span
@@ -217,17 +273,18 @@ export default function Calendario() {
                     )}
                   </>
                 );
+                const evtClass = `evt${e.highlight ? ' highlight' : ''}`;
                 return e.href ? (
                   <Link
                     key={e.id ?? idx}
                     to={e.href}
-                    className="evt"
+                    className={evtClass}
                     style={{ background: 'var(--surface-3)', color: e.color, display: 'block', textDecoration: 'none' }}
                   >
                     {content}
                   </Link>
                 ) : (
-                  <div key={e.id ?? idx} className="evt" style={{ background: 'var(--surface-3)', color: e.color }}>
+                  <div key={e.id ?? idx} className={evtClass} style={{ background: 'var(--surface-3)', color: e.color }}>
                     {content}
                   </div>
                 );

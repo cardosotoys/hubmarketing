@@ -159,6 +159,11 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   conteúdo formatado + botão de copiar — editar passou a ser uma ação separada, não a única forma de ler. Nova
   aba **Skills**: instruções reutilizáveis mais focadas que um prompt solto (ex.: "revisar copy pro tom de voz
   Tópi"), mesmo modelo de card/leitura/edição dos Prompts.
+- **Calendário mais completo**: agora mostra também o prazo das suas demandas (antes só tinha projeto/campanha/
+  post/evento avulso), tem filtro por tipo (Projetos/Demandas/Campanhas/Marcos/Posts/Eventos) e destaca com ★ os
+  itens importantes (marcos, demandas atrasadas ou urgentes) — o dia de hoje também fica com borda destacada.
+- **Produtos: mais filtros**: além de marca/linha/busca, agora dá pra filtrar por faixa etária, tamanho e
+  licenciado x marca própria.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
