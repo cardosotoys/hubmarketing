@@ -83,6 +83,35 @@ export default function MonitorPrecos() {
     load();
   }
 
+  function exportViolationsCSV() {
+    const rows = listings.filter((l) => l.is_violation && alertByListingId[l.id]);
+    const header = ['Produto', 'Marca', 'Marketplace', 'Loja', 'Preço encontrado', 'Preço mínimo', 'Diferença', 'Link'];
+    const csvEscape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const lines = rows.map((l) => {
+      const diff = (l.mpm_product?.min_price ?? 0) - l.current_price;
+      return [
+        l.mpm_product?.product?.name ?? '',
+        l.mpm_product?.product?.brand?.label ?? '',
+        MPM_MARKETPLACE_LABELS[l.marketplace],
+        l.store_name,
+        fmtBRL(l.current_price),
+        fmtBRL(l.mpm_product?.min_price ?? 0),
+        fmtBRL(diff),
+        l.url,
+      ]
+        .map((v) => csvEscape(String(v)))
+        .join(';');
+    });
+    const csv = [header.map(csvEscape).join(';'), ...lines].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alertas-mpm-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function reviewListing(listingId: string, status: 'confirmed_match' | 'rejected') {
     if (!profile) return;
     await supabase
@@ -215,6 +244,11 @@ export default function MonitorPrecos() {
 
           <div className="section-head">
             <h2>{filteredListings.length} anúncios</h2>
+            {openViolationsCount > 0 && (
+              <button className="btn ghost sm" onClick={exportViolationsCSV}>
+                ⬇ Exportar violações (CSV)
+              </button>
+            )}
           </div>
 
           <table className="simple">
@@ -598,6 +632,12 @@ function ConfiguracoesView({
         <div className="form-field">
           <label htmlFor="cfg-email">E-mail para alertas (opcional)</label>
           <input id="cfg-email" type="email" placeholder="alguem@cardosotoys.com.br" value={alertEmail} onChange={(e) => setAlertEmail(e.target.value)} />
+          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+            Se o e-mail não estiver chegando, confirme que o secret <code>RESEND_API_KEY</code> está configurado no
+            projeto Supabase (<code>supabase secrets set RESEND_API_KEY=...</code>) e que o domínio remetente
+            (<code>cardosotoys.com.br</code>) está verificado na Resend. Enquanto isso, use o botão "Exportar
+            violações (CSV)" na aba Monitoramento pra mandar manualmente pra quem for conferir.
+          </span>
         </div>
         <div className="form-field">
           <label htmlFor="cfg-webhook">Webhook para alertas (opcional)</label>

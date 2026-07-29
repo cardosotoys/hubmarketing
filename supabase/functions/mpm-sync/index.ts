@@ -69,7 +69,38 @@ function scoreMatch(p: MpmProductRow, title: string): number {
   const titleTokens = new Set(normTitle.split(' '));
   let matched = 0;
   for (const t of nameTokens) if (titleTokens.has(t)) matched++;
-  return Math.round((matched / nameTokens.size) * 100);
+
+  // Sem EAN/código pra confirmar, um único termo genérico batendo ("trator", "escolar") não
+  // é suficiente pra considerar match — exige pelo menos 2 termos em comum quando há mais de um.
+  if (matched < 2 && nameTokens.size > 1) return 0;
+
+  let score = Math.round((matched / nameTokens.size) * 100);
+
+  // Reforça com a marca: sem EAN/código, um anúncio legítimo de produto Cardoso/Playmi/Tópi
+  // quase sempre cita a marca no título. Se não citar, penaliza a pontuação (não zera, porque
+  // alguns vendedores omitem a marca) — reduz falso-positivo de nome genérico batendo com
+  // produto de outro fabricante.
+  const brandLabel = p.product?.brand?.label ?? '';
+  if (brandLabel) {
+    const brandTokens = normalize(brandLabel).split(' ').filter((t) => t.length > 2);
+    const brandFound = brandTokens.length === 0 || brandTokens.some((t) => titleTokens.has(t));
+    if (!brandFound) score = Math.round(score * 0.5);
+  }
+
+  return score;
+}
+
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const current = next++;
+      results[current] = await fn(items[current]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 interface ShoppingResultItem {
@@ -159,12 +190,24 @@ async function runSync(supabase: SupabaseClient, runId: string) {
   let violationsFound = 0;
   const rows = (products ?? []) as MpmProductRow[];
 
-  for (const p of rows) {
+  // Processa produtos em paralelo (limitado) — antes era em sequência, e com 15+ produtos ×
+  // várias buscas cada, isso estourava o tempo limite da Edge Function antes de terminar o
+  // segundo produto (por isso só 1 produto chegava a sincronizar de verdade).
+  await mapLimit(rows, 4, async (p) => {
+   try {
     const queries = buildQueries(p);
     const seenExternalIds = new Set<string>();
 
-    for (const query of queries) {
-      const items = await searchGoogleShopping(query);
+    const queryResults = await mapLimit(queries, 3, async (query) => {
+      try {
+        return await searchGoogleShopping(query);
+      } catch (err) {
+        console.error(`Busca falhou pra "${query}" (produto ${p.product?.code}):`, err);
+        return [];
+      }
+    });
+
+    for (const items of queryResults) {
       for (const item of items) {
         const price = extractPrice(item);
         const externalId = item.product_link ?? item.link;
@@ -278,7 +321,10 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         }
       }
     }
-  }
+   } catch (err) {
+     console.error(`Falha processando produto ${p.product?.code}:`, err);
+   }
+  });
 
   await supabase
     .from('mpm_sync_runs')
