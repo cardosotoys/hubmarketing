@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { CAMPAIGN_STATUSES, STAGES, type CampaignStatus, type ProjectStatus } from '../types/database';
+import { CAMPAIGN_STATUSES, type CampaignStatus, type ProjectStage, type ProjectStatus } from '../types/database';
 
 function formatBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -20,7 +20,8 @@ export default function Relatorios() {
   const [loading, setLoading] = useState(true);
 
   const [projects, setProjects] = useState<{ status: ProjectStatus; end_date: string | null }[]>([]);
-  const [tasks, setTasks] = useState<{ stage: string }[]>([]);
+  const [tasks, setTasks] = useState<{ stage_id: string }[]>([]);
+  const [stages, setStages] = useState<ProjectStage[]>([]);
   const [auditItems, setAuditItems] = useState<{ correction_status: string; risk_flag: string }[]>([]);
   const [productsCount, setProductsCount] = useState(0);
   const [socialPosts, setSocialPosts] = useState<{ status: string; brand: { label: string } | null }[]>([]);
@@ -35,9 +36,10 @@ export default function Relatorios() {
       monthStart.setDate(1);
       const monthStartStr = monthStart.toISOString().slice(0, 10);
 
-      const [projectsRes, tasksRes, auditRes, productsRes, postsRes, reportsRes, campaignsRes, budgetRes] = await Promise.all([
+      const [projectsRes, tasksRes, stagesRes, auditRes, productsRes, postsRes, reportsRes, campaignsRes, budgetRes] = await Promise.all([
         supabase.from('projects').select('status, end_date'),
-        supabase.from('tasks').select('stage'),
+        supabase.from('tasks').select('stage_id'),
+        supabase.from('stages').select('*'),
         supabase.from('audit_items').select('correction_status, risk_flag'),
         supabase.from('products').select('id', { count: 'exact', head: true }),
         supabase.from('social_posts').select('*, brand:brands(label)'),
@@ -47,7 +49,8 @@ export default function Relatorios() {
       ]);
 
       setProjects((projectsRes.data as { status: ProjectStatus; end_date: string | null }[]) ?? []);
-      setTasks((tasksRes.data as { stage: string }[]) ?? []);
+      setTasks((tasksRes.data as { stage_id: string }[]) ?? []);
+      setStages((stagesRes.data as ProjectStage[]) ?? []);
       setAuditItems((auditRes.data as { correction_status: string; risk_flag: string }[]) ?? []);
       setProductsCount(productsRes.count ?? 0);
       setSocialPosts((postsRes.data as { status: string; brand: { label: string } | null }[]) ?? []);
@@ -75,9 +78,16 @@ export default function Relatorios() {
     count: projects.filter((p) => p.status === s).length,
   }));
 
-  const tasksByStage = STAGES.map((s) => ({ ...s, count: tasks.filter((t) => t.stage === s.key).length }));
+  const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
+  const tasksByStage = Object.entries(
+    tasks.reduce<Record<string, number>>((acc, t) => {
+      const name = stagesById[t.stage_id]?.name ?? '—';
+      acc[name] = (acc[name] ?? 0) + 1;
+      return acc;
+    }, {})
+  ).map(([label, count]) => ({ key: label, label, count }));
   const totalTasks = tasks.length;
-  const doneTasks = tasks.filter((t) => t.stage === 'finalizado').length;
+  const doneTasks = tasks.filter((t) => stagesById[t.stage_id]?.is_final).length;
   const taskCompletionPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   const auditFlagged = auditItems.length;
@@ -157,7 +167,7 @@ export default function Relatorios() {
       <div className="section-head">
         <h2>Demandas por estágio</h2>
       </div>
-      <div className="board cols4" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+      <div className="board cols4" style={{ gridTemplateColumns: `repeat(${Math.max(tasksByStage.length, 1)}, 1fr)` }}>
         {tasksByStage.map((s) => (
           <div className="card" key={s.key}>
             <h4>{s.label}</h4>

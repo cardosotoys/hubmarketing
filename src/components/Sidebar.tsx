@@ -70,11 +70,15 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const [openTasks, setOpenTasks] = useState<number | null>(null);
 
   useEffect(() => {
-    supabase
-      .from('tasks')
-      .select('id', { count: 'exact', head: true })
-      .neq('stage', 'finalizado')
-      .then(({ count }) => setOpenTasks(count ?? 0));
+    async function loadOpenTasks() {
+      const [{ data: terminalStages }, { data: allTasks }] = await Promise.all([
+        supabase.from('stages').select('id').eq('is_final', true),
+        supabase.from('tasks').select('stage_id'),
+      ]);
+      const terminalIds = new Set((terminalStages ?? []).map((s) => s.id));
+      setOpenTasks((allTasks ?? []).filter((t) => !terminalIds.has(t.stage_id)).length);
+    }
+    loadOpenTasks();
   }, []);
 
   return (

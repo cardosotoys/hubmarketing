@@ -8,15 +8,15 @@ import Modal from '../components/Modal';
 import {
   PRIORITIES,
   PRIORITY_LABELS,
-  STAGES,
   type Brand,
   type Priority,
   type Profile,
+  type ProjectStage,
   type ProjectStatus,
   type ProjectTemplate,
   type ProjectTemplateChecklistItem,
+  type ProjectTemplateStage,
   type ProjectTemplateTask,
-  type Stage,
 } from '../types/database';
 
 const STATUS_OPTIONS: { key: ProjectStatus; label: string }[] = [
@@ -148,24 +148,37 @@ export default function Projects() {
       .single();
     if (insertError || !newProj) return;
 
-    const [checklistRes, tasksRes] = await Promise.all([
+    const [checklistRes, tasksRes, sourceStagesRes] = await Promise.all([
       supabase.from('checklist_items').select('label, position').eq('project_id', p.id),
       supabase.from('tasks').select('title, priority, position').eq('project_id', p.id),
+      supabase.from('stages').select('*').eq('project_id', p.id).order('position'),
     ]);
     const checklist = checklistRes.data as { label: string; position: number }[] | null;
     const tasks = tasksRes.data as { title: string; priority: Priority; position: number }[] | null;
+    const sourceStages = (sourceStagesRes.data as ProjectStage[] | null) ?? [];
     if (checklist && checklist.length > 0) {
       await supabase
         .from('checklist_items')
         .insert(checklist.map((c) => ({ project_id: newProj.id, label: c.label, position: c.position })));
     }
-    if (tasks && tasks.length > 0) {
+    if (sourceStages.length > 0) {
+      await supabase.from('stages').insert(
+        sourceStages.map((s) => ({ project_id: newProj.id, name: s.name, position: s.position, is_final: s.is_final }))
+      );
+    }
+    const { data: newStages } = await supabase
+      .from('stages')
+      .select('*')
+      .eq('project_id', newProj.id)
+      .order('position');
+    const firstStage = (newStages as ProjectStage[] | null)?.[0];
+    if (tasks && tasks.length > 0 && firstStage) {
       await supabase.from('tasks').insert(
         tasks.map((t) => ({
           project_id: newProj.id,
           title: t.title,
           priority: t.priority,
-          stage: 'recebido' as Stage,
+          stage_id: firstStage.id,
           position: t.position,
         }))
       );
@@ -399,32 +412,54 @@ function NewProjectModal({
     }
 
     if (templateId) {
-      const [checklistRes, tasksRes] = await Promise.all([
+      const [checklistRes, tasksRes, templateStagesRes] = await Promise.all([
         supabase
           .from('project_template_checklist_items')
           .select('*')
           .eq('template_id', templateId)
           .order('position'),
         supabase.from('project_template_tasks').select('*').eq('template_id', templateId).order('position'),
+        supabase.from('project_template_stages').select('*').eq('template_id', templateId).order('position'),
       ]);
       const checklistItems = (checklistRes.data as ProjectTemplateChecklistItem[]) ?? [];
       const templateTasks = (tasksRes.data as ProjectTemplateTask[]) ?? [];
+      const templateStages = (templateStagesRes.data as ProjectTemplateStage[]) ?? [];
       if (checklistItems.length > 0) {
         await supabase
           .from('checklist_items')
           .insert(checklistItems.map((c) => ({ project_id: data.id, label: c.label, position: c.position })));
       }
+      if (templateStages.length > 0) {
+        await supabase
+          .from('stages')
+          .insert(templateStages.map((s) => ({ project_id: data.id, name: s.name, position: s.position, is_final: s.is_final })));
+      }
+      const { data: newStages } = await supabase.from('stages').select('*').eq('project_id', data.id).order('position');
+      const stageIdByTemplateStage = new Map<string, string>();
+      (newStages as ProjectStage[] | null)?.forEach((s, i) => {
+        const templateStage = templateStages[i];
+        if (templateStage) stageIdByTemplateStage.set(templateStage.id, s.id);
+      });
       if (templateTasks.length > 0) {
         await supabase.from('tasks').insert(
           templateTasks.map((t) => ({
             project_id: data.id,
             title: t.title,
-            stage: t.stage,
+            stage_id: stageIdByTemplateStage.get(t.stage_template_id),
             priority: t.priority,
             position: t.position,
           }))
         );
       }
+    } else {
+      await supabase.from('stages').insert([
+        { project_id: data.id, name: 'Recebido', position: 1, is_final: false },
+        { project_id: data.id, name: 'Planejamento', position: 2, is_final: false },
+        { project_id: data.id, name: 'Produção', position: 3, is_final: false },
+        { project_id: data.id, name: 'Revisão', position: 4, is_final: false },
+        { project_id: data.id, name: 'Aprovação', position: 5, is_final: false },
+        { project_id: data.id, name: 'Finalizado', position: 6, is_final: true },
+      ]);
     }
 
     setSaving(false);
@@ -613,22 +648,78 @@ function TemplateFormModal({
   const [newChecklistLabel, setNewChecklistLabel] = useState('');
   const [tasks, setTasks] = useState<ProjectTemplateTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskStage, setNewTaskStage] = useState<Stage>('recebido');
+  const [newTaskStageId, setNewTaskStageId] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<Priority>('medium');
+  const [templateStages, setTemplateStages] = useState<ProjectTemplateStage[]>([]);
+  const [newStageName, setNewStageName] = useState('');
+  const [stageError, setStageError] = useState<string | null>(null);
+
+  const sortedTemplateStages = [...templateStages].sort((a, b) => a.position - b.position);
+  const templateStagesById = Object.fromEntries(templateStages.map((s) => [s.id, s]));
 
   const loadSubItems = useCallback(async () => {
     if (!template) return;
-    const [checklistRes, tasksRes] = await Promise.all([
+    const [checklistRes, tasksRes, stagesRes] = await Promise.all([
       supabase.from('project_template_checklist_items').select('*').eq('template_id', template.id).order('position'),
       supabase.from('project_template_tasks').select('*').eq('template_id', template.id).order('position'),
+      supabase.from('project_template_stages').select('*').eq('template_id', template.id).order('position'),
     ]);
     setChecklist((checklistRes.data as ProjectTemplateChecklistItem[]) ?? []);
     setTasks((tasksRes.data as ProjectTemplateTask[]) ?? []);
+    setTemplateStages((stagesRes.data as ProjectTemplateStage[]) ?? []);
   }, [template]);
 
   useEffect(() => {
     loadSubItems();
   }, [loadSubItems]);
+
+  useEffect(() => {
+    if (!newTaskStageId && sortedTemplateStages.length > 0) setNewTaskStageId(sortedTemplateStages[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateStages]);
+
+  async function addTemplateStage(e: FormEvent) {
+    e.preventDefault();
+    if (!template || !newStageName.trim()) return;
+    const position = sortedTemplateStages.length > 0 ? Math.max(...sortedTemplateStages.map((s) => s.position)) + 1 : 1;
+    await supabase.from('project_template_stages').insert({ template_id: template.id, name: newStageName.trim(), position, is_final: false });
+    setNewStageName('');
+    loadSubItems();
+  }
+
+  async function renameTemplateStage(stageId: string, name: string) {
+    if (!name.trim()) return;
+    await supabase.from('project_template_stages').update({ name: name.trim() }).eq('id', stageId);
+    loadSubItems();
+  }
+
+  async function toggleTemplateStageFinal(stageId: string, isFinal: boolean) {
+    await supabase.from('project_template_stages').update({ is_final: isFinal }).eq('id', stageId);
+    loadSubItems();
+  }
+
+  async function moveTemplateStage(stageId: string, direction: 'up' | 'down') {
+    const idx = sortedTemplateStages.findIndex((s) => s.id === stageId);
+    const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx < 0 || swapWith < 0 || swapWith >= sortedTemplateStages.length) return;
+    const a = sortedTemplateStages[idx];
+    const b = sortedTemplateStages[swapWith];
+    await Promise.all([
+      supabase.from('project_template_stages').update({ position: b.position }).eq('id', a.id),
+      supabase.from('project_template_stages').update({ position: a.position }).eq('id', b.id),
+    ]);
+    loadSubItems();
+  }
+
+  async function removeTemplateStage(stageId: string) {
+    if (tasks.some((t) => t.stage_template_id === stageId)) {
+      setStageError('Essa etapa ainda tem demandas padrão — remova ou mova as demandas antes de excluir a etapa.');
+      return;
+    }
+    setStageError(null);
+    await supabase.from('project_template_stages').delete().eq('id', stageId);
+    loadSubItems();
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -683,11 +774,11 @@ function TemplateFormModal({
 
   async function addTask(e: FormEvent) {
     e.preventDefault();
-    if (!template || !newTaskTitle.trim()) return;
+    if (!template || !newTaskTitle.trim() || !newTaskStageId) return;
     await supabase.from('project_template_tasks').insert({
       template_id: template.id,
       title: newTaskTitle.trim(),
-      stage: newTaskStage,
+      stage_template_id: newTaskStageId,
       priority: newTaskPriority,
       position: tasks.length,
     });
@@ -769,7 +860,47 @@ function TemplateFormModal({
 
       {isEdit && (
         <>
+          {stageError && (
+            <div className="banner error" style={{ marginTop: 14 }}>
+              <span className="ic">✕</span>
+              <span>{stageError}</span>
+            </div>
+          )}
           <div className="panel" style={{ marginTop: 14 }}>
+            <h4>Etapas deste modelo</h4>
+            {sortedTemplateStages.map((s, i) => (
+              <div className="field-row" key={s.id}>
+                <input
+                  value={s.name}
+                  onChange={(e) => setTemplateStages((prev) => prev.map((x) => (x.id === s.id ? { ...x, name: e.target.value } : x)))}
+                  onBlur={(e) => renameTemplateStage(s.id, e.target.value)}
+                  style={{ flex: 1, marginRight: 8 }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-faint)', marginRight: 8 }}>
+                  <input type="checkbox" checked={s.is_final} onChange={(e) => toggleTemplateStageFinal(s.id, e.target.checked)} style={{ width: 'auto' }} />
+                  final
+                </label>
+                <button type="button" className="btn ghost sm" disabled={i === 0} onClick={() => moveTemplateStage(s.id, 'up')}>
+                  ↑
+                </button>
+                <button type="button" className="btn ghost sm" disabled={i === sortedTemplateStages.length - 1} onClick={() => moveTemplateStage(s.id, 'down')}>
+                  ↓
+                </button>
+                <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => removeTemplateStage(s.id)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+            {sortedTemplateStages.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhuma etapa ainda.</p>}
+            <form onSubmit={addTemplateStage} className="responsive-row" style={{ marginTop: 8 }}>
+              <input placeholder="+ nova etapa…" value={newStageName} onChange={(e) => setNewStageName(e.target.value)} style={{ flex: 1 }} />
+              <button className="btn sm" type="submit">
+                Adicionar
+              </button>
+            </form>
+          </div>
+
+          <div className="panel">
             <h4>Checklist padrão</h4>
             {checklist.map((c) => (
               <div className="field-row" key={c.id}>
@@ -798,7 +929,7 @@ function TemplateFormModal({
             {tasks.map((t) => (
               <div className="field-row" key={t.id}>
                 <span className="k">
-                  {t.title} <span style={{ color: 'var(--text-faint)' }}>· {STAGES.find((s) => s.key === t.stage)?.label} · {PRIORITY_LABELS[t.priority]}</span>
+                  {t.title} <span style={{ color: 'var(--text-faint)' }}>· {templateStagesById[t.stage_template_id]?.name} · {PRIORITY_LABELS[t.priority]}</span>
                 </span>
                 <button className="btn ghost sm" onClick={() => removeTask(t.id)}>
                   ✕
@@ -813,10 +944,10 @@ function TemplateFormModal({
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 style={{ flex: 2 }}
               />
-              <select value={newTaskStage} onChange={(e) => setNewTaskStage(e.target.value as Stage)}>
-                {STAGES.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
+              <select value={newTaskStageId} onChange={(e) => setNewTaskStageId(e.target.value)}>
+                {sortedTemplateStages.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
                   </option>
                 ))}
               </select>

@@ -19,23 +19,22 @@ const STATUS_CHART: { status: ProjectStatus; label: string; color: string }[] = 
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const { projects, tasks, loading, error, percentFor } = useProjectsOverview();
+  const { projects, tasks, isTaskDone, loading, error, percentFor } = useProjectsOverview();
   const seesFinancial = profile?.role === 'diretoria';
 
   const activeProjects = projects.filter((p) => p.status === 'active').length;
-  const openTasks = tasks.filter((t) => t.stage !== 'finalizado').length;
-  const myOpenTasks = tasks.filter((t) => t.assignee_id === profile?.id && t.stage !== 'finalizado').length;
+  const openTasks = tasks.filter((t) => !isTaskDone(t)).length;
+  const myOpenTasks = tasks.filter((t) => t.assignee_id === profile?.id && !isTaskDone(t)).length;
   const overdue = projects.filter(
     (p) => p.end_date && new Date(p.end_date) < new Date() && p.status !== 'done'
   ).length;
-  const awaitingApproval = tasks.filter((t) => t.stage === 'aprovacao').length;
   const overdueTasks = tasks.filter(
-    (t) => t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
+    (t) => t.due_date && !isTaskDone(t) && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
   ).length;
   const myOverdueTasks = tasks.filter(
     (t) =>
       t.due_date &&
-      t.stage !== 'finalizado' &&
+      !isTaskDone(t) &&
       t.assignee_id === profile?.id &&
       new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
   ).length;
@@ -78,10 +77,6 @@ export default function Dashboard() {
         <div className="stat-card">
           <div className="stat-num">{projects.length}</div>
           <div className="stat-label">Projetos no total</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num">{awaitingApproval}</div>
-          <div className="stat-label">Aguardando aprovação</div>
         </div>
         <div className="stat-card">
           <div className="stat-num" style={{ color: overdueTasks > 0 ? 'var(--red)' : undefined }}>

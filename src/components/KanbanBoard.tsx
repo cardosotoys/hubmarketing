@@ -1,5 +1,5 @@
 import { useState, type DragEvent, type FormEvent, type ReactNode } from 'react';
-import { STAGES, type Priority, type Profile } from '../types/database';
+import type { Priority, Profile } from '../types/database';
 
 function initialsFor(profilesById: Record<string, Profile>, id: string | null) {
   if (!id || !profilesById[id]) return '?';
@@ -36,14 +36,14 @@ export default function KanbanBoard<T extends KanbanItem>({
   profilesById: Record<string, Profile>;
   editable: boolean;
   cols?: number;
-  stages?: { key: T['stage']; label: string }[];
+  stages: { key: T['stage']; label: string }[];
   terminalStages?: string[];
   onStageChange?: (taskId: string, stage: T['stage']) => void;
   onCreate?: (title: string) => void;
   onEdit?: (task: T) => void;
   renderExtra?: (task: T) => ReactNode;
 }) {
-  const activeStages = stages ?? (STAGES as unknown as { key: T['stage']; label: string }[]);
+  const activeStages = stages;
   const firstStageKey = activeStages[0]?.key;
 
   const [newTitle, setNewTitle] = useState('');

@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
-import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Product, type ProjectFile, type Profile, type Stage, type Task, type TaskComment } from '../types/database';
+import { PRIORITIES, PRIORITY_LABELS, type Priority, type Product, type ProjectFile, type ProjectStage, type Profile, type Task, type TaskComment } from '../types/database';
 
-function computeOverdue(dueDate: string, stage: Stage) {
-  if (stage === 'finalizado') return false;
+function computeOverdue(dueDate: string) {
   return new Date(dueDate + 'T00:00') < new Date(new Date().toDateString());
 }
 
@@ -13,6 +12,7 @@ export default function TaskEditModal({
   task,
   profiles,
   products,
+  stages,
   actorId,
   focusComments,
   onClose,
@@ -22,6 +22,7 @@ export default function TaskEditModal({
   task: Task;
   profiles: Profile[];
   products?: Product[];
+  stages: ProjectStage[];
   actorId: string;
   focusComments?: boolean;
   onClose: () => void;
@@ -31,7 +32,7 @@ export default function TaskEditModal({
   const commentsRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(task.title);
   const [priority, setPriority] = useState<Priority>(task.priority);
-  const [stage, setStage] = useState<Stage>(task.stage);
+  const [stageId, setStageId] = useState(task.stage_id);
   const [assigneeId, setAssigneeId] = useState(task.assignee_id ?? '');
   const [productId, setProductId] = useState(task.product_id ?? '');
   const [startDate, setStartDate] = useState(task.start_date ?? '');
@@ -40,6 +41,8 @@ export default function TaskEditModal({
   const [notes, setNotes] = useState(task.notes ?? '');
   const [budget, setBudget] = useState(task.budget?.toString() ?? '');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const sortedStages = [...stages].sort((a, b) => a.position - b.position);
 
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [fileName, setFileName] = useState('');
@@ -97,16 +100,22 @@ export default function TaskEditModal({
     loadComments();
   }
 
-  const overdue = dueDate ? computeOverdue(dueDate, stage) : false;
+  const selectedStage = sortedStages.find((s) => s.id === stageId);
+  const overdue = dueDate && selectedStage && !selectedStage.is_final ? computeOverdue(dueDate) : false;
   const updatedByName = profiles.find((p) => p.id === task.updated_by)?.name;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    if (selectedStage?.is_final && !assigneeId) {
+      setFormError('Esta etapa é final — atribua um responsável antes de mover a demanda pra cá.');
+      return;
+    }
+    setFormError(null);
     onSave({
       title: title.trim(),
       priority,
-      stage,
+      stage_id: stageId,
       assignee_id: assigneeId || null,
       product_id: productId || null,
       start_date: startDate || null,
@@ -157,10 +166,10 @@ export default function TaskEditModal({
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="te-stage">Estágio</label>
-            <select id="te-stage" value={stage} onChange={(e) => setStage(e.target.value as Stage)}>
-              {STAGES.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
+            <select id="te-stage" value={stageId} onChange={(e) => setStageId(e.target.value)}>
+              {sortedStages.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>
@@ -229,6 +238,13 @@ export default function TaskEditModal({
               placeholder="Explique o motivo do atraso — fica visível pra quem acompanha este projeto."
               style={{ borderColor: 'var(--red)' }}
             />
+          </div>
+        )}
+
+        {formError && (
+          <div className="banner error">
+            <span className="ic">✕</span>
+            <span>{formError}</span>
           </div>
         )}
 

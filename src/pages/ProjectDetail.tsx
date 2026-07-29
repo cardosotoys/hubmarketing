@@ -20,11 +20,11 @@ import type {
   Project,
   ProjectFile,
   ProjectMember,
+  ProjectStage,
   ProjectStatus,
-  Stage,
   Task,
 } from '../types/database';
-import { CORRECTION_STATUSES, PRIORITIES, PRIORITY_LABELS, STAGES } from '../types/database';
+import { CORRECTION_STATUSES, PRIORITIES, PRIORITY_LABELS } from '../types/database';
 
 type ProjectWithBrand = Project & { brand: Brand };
 type ProductWithBrand = Product & { brand: Brand };
@@ -51,6 +51,7 @@ export default function ProjectDetail() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [comments, setComments] = useState<CommentWithAuthor[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [stages, setStages] = useState<ProjectStage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [activity, setActivity] = useState<ActivityWithActor[]>([]);
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
@@ -68,6 +69,7 @@ export default function ProjectDetail() {
       checklistRes,
       commentsRes,
       tasksRes,
+      stagesRes,
       filesRes,
       activityRes,
       membersRes,
@@ -83,6 +85,7 @@ export default function ProjectDetail() {
         .eq('project_id', id)
         .order('created_at', { ascending: false }),
       supabase.from('tasks').select('*').eq('project_id', id).order('position'),
+      supabase.from('stages').select('*').eq('project_id', id).order('position'),
       supabase.from('project_files').select('*').eq('project_id', id).order('created_at', { ascending: false }),
       supabase
         .from('activity_log')
@@ -104,6 +107,7 @@ export default function ProjectDetail() {
     setChecklist((checklistRes.data as ChecklistItem[]) ?? []);
     setComments((commentsRes.data as CommentWithAuthor[]) ?? []);
     setTasks((tasksRes.data as Task[]) ?? []);
+    setStages((stagesRes.data as ProjectStage[]) ?? []);
     setFiles((filesRes.data as ProjectFile[]) ?? []);
     setActivity((activityRes.data as ActivityWithActor[]) ?? []);
     setMembers((membersRes.data as MemberWithProfile[]) ?? []);
@@ -118,15 +122,19 @@ export default function ProjectDetail() {
   }, [load]);
 
   const profilesById = Object.fromEntries(allProfiles.map((p) => [p.id, p]));
+  const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
+  const sortedStages = [...stages].sort((a, b) => a.position - b.position);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [stageError, setStageError] = useState<string | null>(null);
+  const [newStageName, setNewStageName] = useState('');
 
   const filteredTasks = tasks
     .filter((t) => {
-      if (demandasHideDone && t.stage === 'finalizado') return false;
+      if (demandasHideDone && stagesById[t.stage_id]?.is_final) return false;
       if (demandasAssignee === 'none' && t.assignee_id) return false;
       if (demandasAssignee !== 'all' && demandasAssignee !== 'none' && t.assignee_id !== demandasAssignee) return false;
       if (demandasPriority !== 'all' && t.priority !== demandasPriority) return false;
-      if (demandasStage !== 'all' && t.stage !== demandasStage) return false;
+      if (demandasStage !== 'all' && t.stage_id !== demandasStage) return false;
       if (demandasSearch.trim()) {
         const q = demandasSearch.trim().toLowerCase();
         if (!t.title.toLowerCase().includes(q) && !t.notes.toLowerCase().includes(q)) return false;
@@ -190,22 +198,73 @@ export default function ProjectDetail() {
 
   async function createTask(title: string) {
     if (!id || !profile) return;
-    await supabase.from('tasks').insert({ project_id: id, title, stage: 'recebido', priority: 'medium' });
+    const firstStage = sortedStages[0];
+    if (!firstStage) return;
+    await supabase.from('tasks').insert({ project_id: id, title, stage_id: firstStage.id, priority: 'medium' });
     await logActivity({ actorId: profile.id, actionText: 'Demanda criada', detail: title, projectId: id });
     load();
   }
 
-  async function changeStage(taskId: string, stage: Stage) {
+  async function changeStage(taskId: string, stageId: string) {
     if (!profile) return;
     const task = tasks.find((t) => t.id === taskId);
-    await supabase.from('tasks').update({ stage }).eq('id', taskId);
-    const stageLabel = STAGES.find((s) => s.key === stage)?.label ?? stage;
+    const targetStage = stagesById[stageId];
+    if (targetStage?.is_final && !task?.assignee_id) {
+      setStageError('Esta etapa é final — atribua um responsável à demanda antes de movê-la pra cá.');
+      return;
+    }
+    setStageError(null);
+    await supabase.from('tasks').update({ stage_id: stageId }).eq('id', taskId);
+    const stageLabel = targetStage?.name ?? stageId;
     await logActivity({
       actorId: profile.id,
       actionText: 'Demanda movida de estágio',
       detail: task ? `${task.title} → ${stageLabel}` : stageLabel,
       projectId: id,
     });
+    load();
+  }
+
+  async function addStage(e: FormEvent) {
+    e.preventDefault();
+    if (!id || !newStageName.trim()) return;
+    const position = sortedStages.length > 0 ? Math.max(...sortedStages.map((s) => s.position)) + 1 : 1;
+    await supabase.from('stages').insert({ project_id: id, name: newStageName.trim(), position, is_final: false });
+    setNewStageName('');
+    load();
+  }
+
+  async function renameStage(stageId: string, name: string) {
+    if (!name.trim()) return;
+    await supabase.from('stages').update({ name: name.trim() }).eq('id', stageId);
+    load();
+  }
+
+  async function toggleStageFinal(stageId: string, isFinal: boolean) {
+    await supabase.from('stages').update({ is_final: isFinal }).eq('id', stageId);
+    load();
+  }
+
+  async function moveStage(stageId: string, direction: 'up' | 'down') {
+    const idx = sortedStages.findIndex((s) => s.id === stageId);
+    const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx < 0 || swapWith < 0 || swapWith >= sortedStages.length) return;
+    const a = sortedStages[idx];
+    const b = sortedStages[swapWith];
+    await Promise.all([
+      supabase.from('stages').update({ position: b.position }).eq('id', a.id),
+      supabase.from('stages').update({ position: a.position }).eq('id', b.id),
+    ]);
+    load();
+  }
+
+  async function deleteStage(stageId: string) {
+    if (tasks.some((t) => t.stage_id === stageId)) {
+      setStageError('Essa etapa ainda tem demandas — mova ou exclua as demandas antes de remover a etapa.');
+      return;
+    }
+    setStageError(null);
+    await supabase.from('stages').delete().eq('id', stageId);
     load();
   }
 
@@ -299,6 +358,7 @@ export default function ProjectDetail() {
           project={project}
           tasks={tasks}
           profilesById={profilesById}
+          stagesById={stagesById}
           checklist={checklist}
           comments={comments}
           members={members}
@@ -340,9 +400,9 @@ export default function ProjectDetail() {
             </select>
             <select className="chip-select" value={demandasStage} onChange={(e) => setDemandasStage(e.target.value)}>
               <option value="all">Estágio: todos</option>
-              {STAGES.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
+              {sortedStages.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>
@@ -356,6 +416,48 @@ export default function ProjectDetail() {
               {demandasHideDone ? '◐ Mostrando ativas' : '◎ Ocultar finalizadas'}
             </div>
           </div>
+
+          {stageError && (
+            <div className="banner error">
+              <span className="ic">✕</span>
+              <span>{stageError}</span>
+            </div>
+          )}
+
+          <details className="panel" style={{ marginBottom: 14 }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>⚙ Etapas deste projeto ({sortedStages.length})</summary>
+            <div style={{ marginTop: 10 }}>
+              {sortedStages.map((s, i) => (
+                <div className="field-row" key={s.id}>
+                  <input
+                    value={s.name}
+                    onChange={(e) => setStages((prev) => prev.map((x) => (x.id === s.id ? { ...x, name: e.target.value } : x)))}
+                    onBlur={(e) => renameStage(s.id, e.target.value)}
+                    style={{ flex: 1, marginRight: 8 }}
+                  />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-faint)', marginRight: 8 }}>
+                    <input type="checkbox" checked={s.is_final} onChange={(e) => toggleStageFinal(s.id, e.target.checked)} style={{ width: 'auto' }} />
+                    final
+                  </label>
+                  <button type="button" className="btn ghost sm" disabled={i === 0} onClick={() => moveStage(s.id, 'up')}>
+                    ↑
+                  </button>
+                  <button type="button" className="btn ghost sm" disabled={i === sortedStages.length - 1} onClick={() => moveStage(s.id, 'down')}>
+                    ↓
+                  </button>
+                  <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => deleteStage(s.id)}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <form onSubmit={addStage} className="responsive-row" style={{ marginTop: 8 }}>
+                <input placeholder="+ nova etapa…" value={newStageName} onChange={(e) => setNewStageName(e.target.value)} style={{ flex: 1 }} />
+                <button className="btn sm" type="submit">
+                  Adicionar
+                </button>
+              </form>
+            </div>
+          </details>
 
           <div className="section-head">
             <h2>{filteredTasks.length} demandas</h2>
@@ -380,13 +482,14 @@ export default function ProjectDetail() {
 
           {demandasView === 'kanban' ? (
             <KanbanBoard
-              tasks={filteredTasks}
+              tasks={filteredTasks.map((t) => ({ ...t, stage: t.stage_id }))}
               profilesById={profilesById}
               editable
-              terminalStages={['finalizado']}
+              stages={sortedStages.map((s) => ({ key: s.id, label: s.name }))}
+              terminalStages={sortedStages.filter((s) => s.is_final).map((s) => s.id)}
               onStageChange={changeStage}
               onCreate={createTask}
-              onEdit={setEditingTask}
+              onEdit={(t) => setEditingTask(tasks.find((x) => x.id === t.id) ?? null)}
             />
           ) : (
             (() => {
@@ -439,14 +542,14 @@ export default function ProjectDetail() {
                     </thead>
                     <tbody>
                       {g.items.map((t) => {
-                        const overdue = t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
+                        const overdue = t.due_date && !stagesById[t.stage_id]?.is_final && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
                         return (
                           <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
                             <td>{t.title}</td>
                             <td>
                               <span className={`prio ${t.priority}`}>{t.priority}</span>
                             </td>
-                            <td style={{ color: 'var(--text-faint)' }}>{STAGES.find((s) => s.key === t.stage)?.label}</td>
+                            <td style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name}</td>
                             <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
                             <td style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {t.notes || '—'}
@@ -475,6 +578,7 @@ export default function ProjectDetail() {
           task={editingTask}
           profiles={allProfiles}
           products={allProducts}
+          stages={stages}
           actorId={profile.id}
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}
@@ -502,6 +606,7 @@ function ResumoTab({
   project,
   tasks,
   profilesById,
+  stagesById,
   checklist,
   comments,
   members,
@@ -516,6 +621,7 @@ function ResumoTab({
   project: ProjectWithBrand;
   tasks: Task[];
   profilesById: Record<string, Profile>;
+  stagesById: Record<string, ProjectStage>;
   checklist: ChecklistItem[];
   comments: CommentWithAuthor[];
   members: MemberWithProfile[];
@@ -528,7 +634,7 @@ function ResumoTab({
   onSaveSummary: (fields: Partial<Project>) => void;
 }) {
   const overdueTasks = tasks.filter(
-    (t) => t.due_date && t.stage !== 'finalizado' && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
+    (t) => t.due_date && !stagesById[t.stage_id]?.is_final && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
   );
   const [editing, setEditing] = useState(false);
   const [objective, setObjective] = useState(project.objective);

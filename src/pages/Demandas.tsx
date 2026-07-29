@@ -3,16 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
-import KanbanBoard from '../components/KanbanBoard';
 import TaskEditModal from '../components/TaskEditModal';
 import Modal from '../components/Modal';
-import { PRIORITIES, PRIORITY_LABELS, STAGES, type Priority, type Product, type Profile, type Project, type Stage, type Task } from '../types/database';
+import { PRIORITIES, PRIORITY_LABELS, type Priority, type Product, type ProjectStage, type Profile, type Project, type Task } from '../types/database';
 
 type TaskWithProject = Task & { project: { id: string; name: string } | null };
 type GroupBy = 'none' | 'assignee' | 'project' | 'priority';
 
-function isTaskOverdue(t: Task) {
-  if (!t.due_date || t.stage === 'finalizado') return false;
+function isTaskOverdue(t: Task, stagesById: Record<string, ProjectStage>) {
+  if (!t.due_date || stagesById[t.stage_id]?.is_final) return false;
   return new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
 }
 
@@ -34,12 +33,12 @@ export default function Demandas() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [stages, setStages] = useState<ProjectStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
   const [focusComments, setFocusComments] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [view, setView] = useState<'kanban' | 'lista'>('kanban');
-  const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [groupBy, setGroupBy] = useState<GroupBy>('project');
   const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
@@ -48,17 +47,19 @@ export default function Demandas() {
     if (profile?.role === 'equipe') {
       tasksQuery = tasksQuery.eq('assignee_id', profile.id);
     }
-    const [tasksRes, profilesRes, projectsRes, filesRes, productsRes] = await Promise.all([
+    const [tasksRes, profilesRes, projectsRes, filesRes, productsRes, stagesRes] = await Promise.all([
       tasksQuery,
       supabase.from('profiles').select('*'),
       supabase.from('projects').select('*').order('name'),
       supabase.from('project_files').select('task_id').not('task_id', 'is', null),
       supabase.from('products').select('*').order('code'),
+      supabase.from('stages').select('*').order('position'),
     ]);
     setTasks((tasksRes.data as TaskWithProject[]) ?? []);
     setProfiles((profilesRes.data as Profile[]) ?? []);
     setProjects((projectsRes.data as Project[]) ?? []);
     setProducts((productsRes.data as Product[]) ?? []);
+    setStages((stagesRes.data as ProjectStage[]) ?? []);
     const counts: Record<string, number> = {};
     ((filesRes.data as { task_id: string }[]) ?? []).forEach((f) => {
       counts[f.task_id] = (counts[f.task_id] ?? 0) + 1;
@@ -89,6 +90,15 @@ export default function Demandas() {
   }, [tasks]);
 
   const profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
+  const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
+  const stagesByProject: Record<string, ProjectStage[]> = {};
+  for (const s of stages) {
+    const key = s.project_id ?? 'GLOBAL';
+    (stagesByProject[key] ??= []).push(s);
+  }
+  for (const key of Object.keys(stagesByProject)) {
+    stagesByProject[key].sort((a, b) => a.position - b.position);
+  }
 
   function groupLabel(t: TaskWithProject): string {
     if (groupBy === 'assignee') return t.assignee_id ? profilesById[t.assignee_id]?.name ?? '—' : 'Sem responsável';
@@ -107,21 +117,6 @@ export default function Demandas() {
             return acc;
           }, {})
         ).map(([label, items]) => ({ label, items }));
-
-  async function changeStage(taskId: string, stage: Stage) {
-    if (!profile) return;
-    const task = tasks.find((t) => t.id === taskId);
-    await supabase.from('tasks').update({ stage }).eq('id', taskId);
-    const stageLabel = STAGES.find((s) => s.key === stage)?.label ?? stage;
-    await logActivity({
-      actorId: profile.id,
-      actionText: 'Demanda movida de estágio',
-      detail: task ? `${task.title} → ${stageLabel}` : stageLabel,
-      projectId: task?.project_id ?? undefined,
-      taskId,
-    });
-    load();
-  }
 
   async function saveTask(taskId: string, fields: Partial<Task>) {
     const task = tasks.find((t) => t.id === taskId);
@@ -152,22 +147,12 @@ export default function Demandas() {
       <div className="section-head">
         <h2>{tasks.length} demandas</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          {view === 'lista' && (
-            <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
-              <option value="none">Sem agrupamento</option>
-              <option value="assignee">Agrupar por responsável</option>
-              <option value="project">Agrupar por projeto</option>
-              <option value="priority">Agrupar por prioridade</option>
-            </select>
-          )}
-          <div className="filters-row" style={{ margin: 0 }}>
-            <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>
-              Kanban
-            </div>
-            <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>
-              Lista
-            </div>
-          </div>
+          <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
+            <option value="project">Agrupar por projeto</option>
+            <option value="none">Sem agrupamento</option>
+            <option value="assignee">Agrupar por responsável</option>
+            <option value="priority">Agrupar por prioridade</option>
+          </select>
           <button className="btn" onClick={() => setShowNew(true)}>
             + Nova demanda
           </button>
@@ -176,30 +161,6 @@ export default function Demandas() {
 
       {loading ? (
         <div className="page-sub">Carregando…</div>
-      ) : view === 'kanban' ? (
-        <KanbanBoard
-          tasks={tasks}
-          profilesById={profilesById}
-          editable
-          terminalStages={['finalizado']}
-          onStageChange={changeStage}
-          onEdit={(t) => setEditingTask(t as TaskWithProject)}
-          renderExtra={(t) => {
-            const withProject = t as TaskWithProject;
-            return withProject.project ? (
-              <Link
-                to={`/projetos/${withProject.project.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="pill"
-                style={{ display: 'inline-block', marginBottom: 6, background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
-              >
-                {withProject.project.name}
-              </Link>
-            ) : (
-              <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 6 }}>Avulsa</div>
-            );
-          }}
-        />
       ) : (
         groups.map((g) => (
           <div key={g.label}>
@@ -241,7 +202,7 @@ export default function Demandas() {
                     <td>
                       <span className={`prio ${t.priority}`}>{t.priority}</span>
                     </td>
-                    <td style={{ color: 'var(--text-faint)' }}>{STAGES.find((s) => s.key === t.stage)?.label}</td>
+                    <td style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name}</td>
                     <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
                     <td style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {t.notes || '—'}
@@ -249,7 +210,7 @@ export default function Demandas() {
                     <td style={{ color: 'var(--text-faint)' }}>{t.budget != null ? formatBRL(Number(t.budget)) : '—'}</td>
                     <td style={{ color: 'var(--text-faint)' }}>{fileCounts[t.id] ? `📎 ${fileCounts[t.id]}` : '—'}</td>
                     <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{cronogramaLabel(t)}</td>
-                    <td>{isTaskOverdue(t) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                    <td>{isTaskOverdue(t, stagesById) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
                     <td style={{ color: 'var(--text-faint)', fontSize: 11, whiteSpace: 'nowrap' }}>
                       {t.updated_by ? profilesById[t.updated_by]?.name : '—'} · {new Date(t.updated_at).toLocaleDateString('pt-BR')}
                     </td>
@@ -266,6 +227,7 @@ export default function Demandas() {
           task={editingTask}
           profiles={profiles}
           products={products}
+          stages={stagesByProject[editingTask.project_id ?? 'GLOBAL'] ?? []}
           actorId={profile.id}
           focusComments={focusComments}
           onClose={() => {
@@ -281,6 +243,7 @@ export default function Demandas() {
         <NewTaskModal
           projects={projects}
           profiles={profiles}
+          stagesByProject={stagesByProject}
           actorId={profile.id}
           onClose={() => setShowNew(false)}
           onCreated={() => {
@@ -296,12 +259,14 @@ export default function Demandas() {
 function NewTaskModal({
   projects,
   profiles,
+  stagesByProject,
   actorId,
   onClose,
   onCreated,
 }: {
   projects: Project[];
   profiles: Profile[];
+  stagesByProject: Record<string, ProjectStage[]>;
   actorId: string;
   onClose: () => void;
   onCreated: () => void;
@@ -311,10 +276,17 @@ function NewTaskModal({
   const [priority, setPriority] = useState<Priority>('medium');
   const [assigneeId, setAssigneeId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    const firstStage = (stagesByProject[projectId || 'GLOBAL'] ?? [])[0];
+    if (!firstStage) {
+      setFormError('Esse projeto ainda não tem etapas configuradas.');
+      return;
+    }
+    setFormError(null);
     const { data } = await supabase
       .from('tasks')
       .insert({
@@ -323,7 +295,7 @@ function NewTaskModal({
         priority,
         assignee_id: assigneeId || null,
         due_date: dueDate || null,
-        stage: 'recebido',
+        stage_id: firstStage.id,
       })
       .select()
       .single();
@@ -382,6 +354,12 @@ function NewTaskModal({
             <input id="nd-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
+        {formError && (
+          <div className="banner error">
+            <span className="ic">✕</span>
+            <span>{formError}</span>
+          </div>
+        )}
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={onClose}>
             Cancelar

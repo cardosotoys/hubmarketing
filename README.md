@@ -126,6 +126,41 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   Function agendada por `pg_cron`, sem servidor novo pra manter) e zero custo de IA (anúncio duvidoso vai pra
   revisão manual em vez de chamada de IA) — decisões tomadas com o time. Veja a seção
   [Monitor de Preços (MPM)](#monitor-de-preços-mpm) pra terminar a configuração.
+- **Etapas editáveis por projeto**: o antigo fluxo fixo de 6 estágios (Recebido → Planejamento → Produção →
+  Revisão → Aprovação → Finalizado) deixou de ser um valor travado no banco — agora cada projeto tem sua
+  **própria lista de etapas**, que dá pra criar, renomear, reordenar e excluir livremente (aba "⚙ Etapas deste
+  projeto", dentro de Demandas do projeto), sem afetar outros projetos. Um projeto sem etapas removidas ainda
+  bloqueia mover uma demanda pra uma etapa marcada como **final** se ela não tiver responsável atribuído. Os
+  **Modelos** (Projetos → Modelos) ganharam o mesmo poder — cada modelo agora define sua própria lista de
+  etapas (ex.: "Homologação de Amostra", "Prova de Peça", "Teste de Material", "Execução da Obra"), não mais
+  limitada aos 6 valores fixos, e 15 modelos novos, reais, já vêm prontos (Corrigir planilha de produtos,
+  Compra de materiais, Cores/Embalagens China, Feira Reval/Ri Happy, Uniformes promotores/fábrica, Show room,
+  Painéis/Avisos da fábrica, Display Fofush, Site comercial/conteúdo, Manual de marca). Ver seção
+  [Etapas editáveis](#etapas-editáveis) pra detalhes. Consequência direta: o **board global de Demandas** deixou
+  de ter Kanban (projetos diferentes agora podem ter etapas incompatíveis entre si) e virou uma lista agrupável
+  por projeto/responsável/prioridade — o Kanban continua existindo normalmente **dentro de cada projeto**.
+
+## Etapas editáveis
+
+A partir da migration `0022`, `tasks.stage` (o enum fixo) deixou de existir — cada demanda agora aponta pra uma
+linha real da tabela `stages`, que pertence a um projeto específico (ou é uma etapa "global", pra demandas
+avulsas sem projeto). Isso significa:
+
+- **Dentro de um projeto** (aba Demandas → "⚙ Etapas deste projeto"): dá pra adicionar, renomear, marcar como
+  "final" e reordenar (↑/↓) as etapas daquele projeto sem afetar nenhum outro projeto. Uma etapa só pode ser
+  excluída se não tiver nenhuma demanda nela.
+- **Modelos** (Projetos → Modelos → editar um modelo): mesma lógica, mas pra a lista de etapas *daquele modelo*
+  — ao criar um projeto a partir dele, essa lista de etapas é clonada pro projeto novo (junto com as demandas
+  padrão, já na etapa certa).
+- **Projeto criado em branco** (sem modelo): ganha automaticamente as 6 etapas clássicas (Recebido/Planejamento/
+  Produção/Revisão/Aprovação/Finalizado) como ponto de partida — editáveis normalmente depois.
+- **Regra de bloqueio**: mover uma demanda pra uma etapa marcada como **final** exige que ela já tenha um
+  responsável atribuído (evita "demanda concluída" sem dono).
+- **Board global de Demandas**: como cada projeto pode ter etapas diferentes, não faz mais sentido um Kanban
+  único pra todo mundo — a tela virou uma lista/tabela, agrupável por projeto (padrão), responsável ou
+  prioridade. O Kanban continua funcionando normalmente dentro da aba Demandas de cada projeto.
+- Dado existente (o projeto "Conferência de Embalagens" e os 4 modelos antigos) foi migrado automaticamente
+  pela `0022` — cada um ganhou sua cópia própria das 6 etapas clássicas, sem perder nenhuma demanda.
 
 ## 1. Criar o projeto no Supabase
 
@@ -220,7 +255,19 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
     `0020_mpm_ml_auth.sql`), mas eles bloqueiam busca de app terceiro por política; trocamos a fonte pra
     Google Shopping (via SerpApi) e essa migration remove as colunas que ficaram sem uso. Passo a passo
     completo de configuração na seção [Monitor de Preços (MPM)](#monitor-de-preços-mpm).
-24. Pegue as duas chaves de conexão:
+24. Rode também [`supabase/migrations/0022_editable_stages.sql`](supabase/migrations/0022_editable_stages.sql) —
+    **atenção, essa é grande**: substitui o enum fixo de 6 estágios (`recebido/planejamento/producao/revisao/
+    aprovacao/finalizado`) por uma tabela `stages` de verdade, com uma etapa real por projeto — editável (criar,
+    renomear, reordenar, remover) sem afetar outros projetos. Faz backfill automático de tudo que já existe
+    (todo projeto, incluindo "Conferência de Embalagens", e os modelos já cadastrados ganham suas próprias
+    etapas espelhando o enum antigo) — nada se perde, mas o enum antigo deixa de existir depois desta migration.
+    Veja a seção [Etapas editáveis](#etapas-editáveis) mais abaixo pra entender o que mudou na prática.
+25. Rode também [`supabase/migrations/0023_new_project_templates.sql`](supabase/migrations/0023_new_project_templates.sql)
+    — semeia **15 modelos de projeto novos** (Corrigir planilha de produtos, Compra de materiais, Cores/
+    Embalagens China, Feira Reval, Feira Ri Happy, Uniformes promotores/fábrica, Show room, Painéis/Avisos da
+    fábrica, Display Fofush, Site comercial/conteúdo, Manual de marca), cada um com sua própria lista de etapas
+    (não mais limitada aos 6 valores fixos) e demandas padrão já posicionadas certinho.
+26. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -375,6 +422,8 @@ supabase/migrations/0019_mpm_schema.sql          schema completo do Monitor de P
 supabase/migrations/0020_mpm_ml_auth.sql         (obsoleta) colunas de token OAuth do Mercado Livre — removidas na 0021
 supabase/migrations/0021_mpm_drop_ml_oauth.sql   remove colunas de OAuth do ML (trocamos a fonte pra SerpApi/Google Shopping)
 supabase/functions/mpm-sync/index.ts             Edge Function que busca (SerpApi/Google Shopping), valida e compara preços
+supabase/migrations/0022_editable_stages.sql     tabelas stages/project_template_stages (etapas editáveis por projeto) + backfill
+supabase/migrations/0023_new_project_templates.sql  15 modelos novos, cada um com etapas e demandas próprias
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

@@ -5,10 +5,10 @@ import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import { normalizeUrl } from '../lib/url';
 import Modal from '../components/Modal';
-import { STAGES, PRIORITY_LABELS, type Brand, type Product, type Stage, type Priority } from '../types/database';
+import { PRIORITY_LABELS, type Brand, type Product, type ProjectStage, type Priority } from '../types/database';
 
 type ProductWithBrand = Product & { brand: Brand };
-type PackagingTaskStub = { id: string; project_id: string; product_id: string; stage: Stage; priority: Priority; updated_at: string };
+type PackagingTaskStub = { id: string; project_id: string; product_id: string; stage_id: string; priority: Priority; updated_at: string };
 
 export default function Produtos() {
   const { profile } = useAuth();
@@ -21,23 +21,28 @@ export default function Produtos() {
   const [showNew, setShowNew] = useState(false);
   const [editing, setEditing] = useState<ProductWithBrand | null>(null);
   const [packagingTasks, setPackagingTasks] = useState<PackagingTaskStub[]>([]);
+  const [stages, setStages] = useState<ProjectStage[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [productsRes, brandsRes, packagingRes] = await Promise.all([
+    const [productsRes, brandsRes, packagingRes, stagesRes] = await Promise.all([
       supabase.from('products').select('*, brand:brands(*)').order('code'),
       supabase.from('brands').select('*'),
       supabase
         .from('tasks')
-        .select('id, project_id, product_id, stage, priority, updated_at')
+        .select('id, project_id, product_id, stage_id, priority, updated_at')
         .not('product_id', 'is', null)
         .order('updated_at', { ascending: false }),
+      supabase.from('stages').select('*'),
     ]);
     setProducts((productsRes.data as ProductWithBrand[]) ?? []);
     setBrands((brandsRes.data as Brand[]) ?? []);
     setPackagingTasks((packagingRes.data as PackagingTaskStub[] | null) ?? []);
+    setStages((stagesRes.data as ProjectStage[]) ?? []);
     setLoading(false);
   }, []);
+
+  const stagesById = useMemo(() => Object.fromEntries(stages.map((s) => [s.id, s])), [stages]);
 
   const packagingByProduct = useMemo(() => {
     const map = new Map<string, PackagingTaskStub>();
@@ -165,7 +170,7 @@ export default function Produtos() {
           <tbody>
             {filtered.map((p) => {
               const pkg = packagingByProduct.get(p.id);
-              const pkgStage = pkg && STAGES.find((s) => s.key === pkg.stage);
+              const pkgStage = pkg && stagesById[pkg.stage_id];
               return (
                 <tr key={p.id} onClick={() => canEdit && setEditing(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
                   <td className="mono">{p.code}</td>
@@ -194,12 +199,12 @@ export default function Produtos() {
                         to={`/projetos/${pkg.project_id}`}
                         className="pill"
                         style={{
-                          background: pkg.stage === 'finalizado' ? 'var(--green-dim)' : 'var(--violet-dim)',
-                          color: pkg.stage === 'finalizado' ? 'var(--green)' : 'var(--violet)',
+                          background: pkgStage?.is_final ? 'var(--green-dim)' : 'var(--violet-dim)',
+                          color: pkgStage?.is_final ? 'var(--green)' : 'var(--violet)',
                         }}
                         title={`Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}
                       >
-                        {pkgStage?.label ?? pkg.stage}
+                        {pkgStage?.name ?? '—'}
                       </Link>
                     ) : (
                       '—'

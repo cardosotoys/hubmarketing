@@ -10,13 +10,25 @@ export const DEPARTMENT_LABELS: Record<Department, string> = {
 };
 export type ProjectStatus = 'planning' | 'active' | 'paused' | 'done';
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
-export type Stage =
-  | 'recebido'
-  | 'planejamento'
-  | 'producao'
-  | 'revisao'
-  | 'aprovacao'
-  | 'finalizado';
+
+export interface ProjectStage {
+  id: string;
+  project_id: string | null;
+  name: string;
+  position: number;
+  is_final: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectTemplateStage {
+  id: string;
+  template_id: string;
+  name: string;
+  position: number;
+  is_final: boolean;
+  created_at: string;
+}
 
 export interface Profile {
   id: string;
@@ -89,7 +101,7 @@ export interface Task {
   id: string;
   project_id: string | null;
   product_id: string | null;
-  stage: Stage;
+  stage_id: string;
   title: string;
   priority: Priority;
   assignee_id: string | null;
@@ -125,7 +137,7 @@ export interface ProjectTemplateTask {
   id: string;
   template_id: string;
   title: string;
-  stage: Stage;
+  stage_template_id: string;
   priority: Priority;
   position: number;
 }
@@ -787,15 +799,6 @@ export interface CalendarEvent {
   created_by: string | null;
   created_at: string;
 }
-
-export const STAGES: { key: Stage; label: string }[] = [
-  { key: 'recebido', label: 'Recebido' },
-  { key: 'planejamento', label: 'Planejamento' },
-  { key: 'producao', label: 'Produção' },
-  { key: 'revisao', label: 'Revisão' },
-  { key: 'aprovacao', label: 'Aprovação' },
-  { key: 'finalizado', label: 'Finalizado' },
-];
 
 export const ROLE_LABELS: Record<Role, string> = {
   diretoria: 'Diretoria',
