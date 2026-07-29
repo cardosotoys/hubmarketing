@@ -145,6 +145,16 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   **Riscos** (mapa de calor probabilidade × impacto + decision log). As tabelas de verba/riscos/decisões são
   as mesmas já usadas por Campanhas — reaproveitadas, não duplicadas. Ver seção
   [Workspace de Projeto](#workspace-de-projeto).
+- **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
+  visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
+  e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
+  continuam vendo tudo. Isso é reforçado no banco (RLS), não só escondido na tela. Além disso, Configurações →
+  **Perfis & Permissões** ganhou uma tela real: pra cada pessoa, dá pra **ocultar** um módulo que o papel/
+  departamento dela normalmente liberaria, ou **liberar** um módulo extra (ex.: convidar alguém da Equipe pro
+  módulo Redes Sociais como social media) — sem precisar mudar o papel dela. Redes Sociais, por sinal, mudou
+  de padrão: agora só Diretoria/Administrador veem por padrão (antes também via automaticamente por
+  departamento) — quem precisar de acesso (social media, gestor de tráfego etc.) precisa ser liberado
+  manualmente ali. Ver seção [Permissões](#permissões).
 
 ## Etapas editáveis
 
@@ -184,6 +194,27 @@ Campanhas, em 3 abas novas na página do projeto:
 
 Em todos os três casos, **cada linha pertence a uma campanha OU a um projeto, nunca aos dois** (garantido por um
 `check` no banco) — nenhum dado de Campanhas foi alterado ou migrado, a mudança é só aditiva.
+
+## Permissões
+
+A partir da migration `0025`:
+
+- **Projetos**: só quem está em `project_members` daquele projeto o enxerga — Diretoria e Administrador continuam
+  vendo todos. Quem cria um projeto entra automaticamente como membro dele (senão deixaria de ver o próprio
+  projeto que acabou de criar). Isso é reforçado no Postgres (RLS), não só escondido na tela — abrir a URL de um
+  projeto que você não participa não funciona mais, mesmo digitando o link direto.
+- **Demandas**: dentro de um projeto que você participa, continua vendo todas as demandas daquele projeto
+  (kanban/colaboração intactos). Uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela.
+  O board global de Demandas já filtrava isso na tela pro papel "Equipe"; agora também é reforçado no banco.
+- **Dashboard e Relatórios**: como as consultas de projetos/demandas agora vêm filtradas pelo próprio banco, o
+  Dashboard e os Relatórios de quem não é Diretoria/Administrador automaticamente só contam o que essa pessoa
+  participa — não precisou de nenhum filtro extra nessas duas telas, é consequência direta da regra acima.
+- **Redes Sociais**: mudou de "liberado por departamento" pra "só Diretoria/Administrador por padrão" — quem
+  mais precisar (social media, gestor de tráfego) precisa ser liberado manualmente (ver abaixo).
+- **Configurações → Perfis & Permissões**: tela nova — escolha uma pessoa e, pra cada módulo do Hub, três
+  estados: **Padrão** (o que o papel/departamento dela já dá), **Ocultar** (remove um módulo que ela teria por
+  padrão) ou **Liberar** (dá acesso a um módulo que ela não teria por padrão — é o jeito de convidar alguém pro
+  Redes Sociais, por exemplo). Só Diretoria/Administrador podem alterar isso (reforçado no banco também).
 
 ## 1. Criar o projeto no Supabase
 
@@ -296,7 +327,13 @@ Em todos os três casos, **cada linha pertence a uma campanha OU a um projeto, n
     (que passam a aceitar `project_id` além de `campaign_id`, nunca os dois ao mesmo tempo) pra Financeiro/
     Riscos/Decisões de projeto. Não mexe em nenhum dado de Campanhas já existente. Veja a seção
     [Workspace de Projeto](#workspace-de-projeto) mais abaixo.
-27. Pegue as duas chaves de conexão:
+27. Rode também [`supabase/migrations/0025_permissions.sql`](supabase/migrations/0025_permissions.sql) — muda quem
+    enxerga projetos e demandas (só quem participa, exceto Diretoria/Administrador) e adiciona as colunas
+    `hidden_modules`/`extra_modules` em `profiles`. **Atenção**: depois de rodar essa, confira em Configurações →
+    Perfis & Permissões se alguém que precisa de Redes Sociais (social media, gestor de tráfego etc.) ficou sem
+    acesso — o padrão mudou de "por departamento" pra "só Diretoria/Administrador", então essa pessoa provavelmente
+    vai precisar ser liberada manualmente ali. Veja a seção [Permissões](#permissões).
+28. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -455,6 +492,8 @@ supabase/migrations/0022_editable_stages.sql     tabelas stages/project_template
 supabase/migrations/0023_new_project_templates.sql  15 modelos novos, cada um com etapas e demandas próprias
 supabase/migrations/0024_project_workspace.sql   briefing em projects + project_id em campaign_budget_items/campaign_risks/campaign_decisions
 src/pages/projects/                              abas novas de Projeto (Planejamento, Financeiro, Riscos) que reaproveitam tabelas de Campanhas
+supabase/migrations/0025_permissions.sql         visibilidade de projetos/demandas por participação (RLS) + hidden_modules/extra_modules em profiles
+src/components/ModuleGate.tsx                    guarda de rota que só checa profiles.hidden_modules (usado nas rotas sem regra de papel/depto)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

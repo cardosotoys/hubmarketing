@@ -30,6 +30,44 @@ export interface ProjectTemplateStage {
   created_at: string;
 }
 
+export const MODULE_KEYS = [
+  'dashboard',
+  'relatorios',
+  'projetos',
+  'demandas',
+  'calendario',
+  'redes-sociais',
+  'biblioteca',
+  'produtos',
+  'monitor-precos',
+  'brand',
+  'campanhas',
+  'ia',
+  'relatorio-diario',
+  'auditoria',
+  'configuracoes',
+  'perfil',
+] as const;
+export type ModuleKey = (typeof MODULE_KEYS)[number];
+export const MODULE_LABELS: Record<ModuleKey, string> = {
+  dashboard: 'Dashboard',
+  relatorios: 'Relatórios',
+  projetos: 'Projetos',
+  demandas: 'Demandas',
+  calendario: 'Calendário',
+  'redes-sociais': 'Redes Sociais',
+  biblioteca: 'Biblioteca',
+  produtos: 'Produtos',
+  'monitor-precos': 'Monitor de Preços',
+  brand: 'Brand',
+  campanhas: 'Campanhas',
+  ia: 'IA',
+  'relatorio-diario': 'Relatório Diário',
+  auditoria: 'Auditoria',
+  configuracoes: 'Configurações',
+  perfil: 'Perfil',
+};
+
 export interface Profile {
   id: string;
   name: string;
@@ -37,6 +75,8 @@ export interface Profile {
   department: Department;
   job_title: string;
   avatar_initials: string;
+  hidden_modules: string[];
+  extra_modules: string[];
   created_at: string;
 }
 

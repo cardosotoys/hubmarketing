@@ -21,6 +21,7 @@ export default function Dashboard() {
   const { profile } = useAuth();
   const { projects, tasks, isTaskDone, loading, error, percentFor } = useProjectsOverview();
   const seesFinancial = profile?.role === 'diretoria';
+  const seesEverything = profile?.role === 'diretoria' || profile?.role === 'administrador';
 
   const activeProjects = projects.filter((p) => p.status === 'active').length;
   const openTasks = tasks.filter((t) => !isTaskDone(t)).length;
@@ -55,7 +56,9 @@ export default function Dashboard() {
   return (
     <div className="page">
       <h1 className="page-title">Dashboard</h1>
-      <div className="page-sub">Visão consolidada de Cardoso, Playmi e Tópi.</div>
+      <div className="page-sub">
+        {seesEverything ? 'Visão consolidada de Cardoso, Playmi e Tópi.' : 'Seus projetos e demandas — só o que você participa.'}
+      </div>
 
       {error && (
         <div className="banner error">
@@ -138,7 +141,7 @@ export default function Dashboard() {
       </div>
 
       <div className="section-head">
-        <h2>Projetos recentes</h2>
+        <h2>{seesEverything ? 'Projetos recentes' : 'Meus projetos'}</h2>
         <Link className="btn ghost" to="/projetos">
           Ver todos →
         </Link>

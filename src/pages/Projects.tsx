@@ -147,6 +147,7 @@ export default function Projects() {
       .select()
       .single();
     if (insertError || !newProj) return;
+    await supabase.from('project_members').insert({ project_id: newProj.id, user_id: profile.id, role_label: '' });
 
     const [checklistRes, tasksRes, sourceStagesRes] = await Promise.all([
       supabase.from('checklist_items').select('label, position').eq('project_id', p.id),
@@ -189,6 +190,15 @@ export default function Projects() {
       detail: `a partir de "${p.name}"`,
       projectId: newProj.id,
     });
+    reload();
+  }
+
+  const canDelete = profile?.role === 'diretoria' || profile?.role === 'administrador';
+
+  async function deleteProject(p: ProjectWithBrand) {
+    if (!profile) return;
+    await supabase.from('projects').delete().eq('id', p.id);
+    await logActivity({ actorId: profile.id, actionText: 'Projeto excluído', detail: p.name });
     reload();
   }
 
@@ -324,6 +334,7 @@ export default function Projects() {
                       brand={p.brand}
                       percent={percentFor(p.id)}
                       onDuplicate={() => duplicateProject(p)}
+                      onDelete={canDelete ? () => deleteProject(p) : undefined}
                     />
                   ))}
                 </div>
@@ -410,6 +421,7 @@ function NewProjectModal({
       setFormError(error.message);
       return;
     }
+    await supabase.from('project_members').insert({ project_id: data.id, user_id: actorId, role_label: '' });
 
     if (templateId) {
       const [checklistRes, tasksRes, templateStagesRes] = await Promise.all([

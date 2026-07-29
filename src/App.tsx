@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import AppLayout from './components/AppLayout';
 import RequireRole from './components/RequireRole';
 import RequireDepartment from './components/RequireDepartment';
+import ModuleGate from './components/ModuleGate';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -60,42 +61,42 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<AppLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="projetos" element={<Projects />} />
-            <Route path="projetos/:id" element={<ProjectDetail />} />
-            <Route path="demandas" element={<Demandas />} />
-            <Route path="relatorio-diario" element={<RelatorioDiario />} />
-            <Route path="auditoria" element={<Auditoria />} />
-            <Route path="perfil" element={<Perfil />} />
+            <Route index element={<ModuleGate moduleKey="dashboard"><Dashboard /></ModuleGate>} />
+            <Route path="projetos" element={<ModuleGate moduleKey="projetos"><Projects /></ModuleGate>} />
+            <Route path="projetos/:id" element={<ModuleGate moduleKey="projetos"><ProjectDetail /></ModuleGate>} />
+            <Route path="demandas" element={<ModuleGate moduleKey="demandas"><Demandas /></ModuleGate>} />
+            <Route path="relatorio-diario" element={<ModuleGate moduleKey="relatorio-diario"><RelatorioDiario /></ModuleGate>} />
+            <Route path="auditoria" element={<ModuleGate moduleKey="auditoria"><Auditoria /></ModuleGate>} />
+            <Route path="perfil" element={<ModuleGate moduleKey="perfil"><Perfil /></ModuleGate>} />
             <Route
               path="configuracoes"
               element={
-                <RequireRole roles={['diretoria', 'administrador']}>
+                <RequireRole roles={['diretoria', 'administrador']} moduleKey="configuracoes">
                   <Configuracoes />
                 </RequireRole>
               }
             />
-            <Route path="calendario" element={<Calendario />} />
+            <Route path="calendario" element={<ModuleGate moduleKey="calendario"><Calendario /></ModuleGate>} />
             <Route
               path="redes-sociais"
               element={
-                <RequireDepartment extraFor={['assistente']}>
+                <RequireRole roles={['diretoria', 'administrador']} moduleKey="redes-sociais">
                   <RedesSociais />
-                </RequireDepartment>
+                </RequireRole>
               }
             />
-            <Route path="biblioteca" element={<Biblioteca />} />
-            <Route path="produtos" element={<Produtos />} />
+            <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
+            <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
             <Route
               path="monitor-precos"
               element={
-                <RequireDepartment>
+                <RequireDepartment moduleKey="monitor-precos">
                   <MonitorPrecos />
                 </RequireDepartment>
               }
             />
-            <Route path="campanhas" element={<Campaigns />} />
-            <Route path="campanhas/:id" element={<CampaignWorkspace />}>
+            <Route path="campanhas" element={<ModuleGate moduleKey="campanhas"><Campaigns /></ModuleGate>} />
+            <Route path="campanhas/:id" element={<ModuleGate moduleKey="campanhas"><CampaignWorkspace /></ModuleGate>}>
               <Route index element={<Navigate to="resumo" replace />} />
               <Route path="resumo" element={<CampaignResumo />} />
               <Route
@@ -257,16 +258,16 @@ export default function App() {
                 <Route key={item.path} path={item.path} element={<CampaignComingSoon title={item.title} description={item.description} />} />
               ))}
             </Route>
-            <Route path="ia" element={<Ia />} />
+            <Route path="ia" element={<ModuleGate moduleKey="ia"><Ia /></ModuleGate>} />
             <Route
               path="relatorios"
               element={
-                <RequireDepartment>
+                <RequireDepartment moduleKey="relatorios">
                   <Relatorios />
                 </RequireDepartment>
               }
             />
-            <Route path="brand" element={<Brand />} />
+            <Route path="brand" element={<ModuleGate moduleKey="brand"><Brand /></ModuleGate>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

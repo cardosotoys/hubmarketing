@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { ROLE_LABELS, type Department } from '../types/database';
+import { ROLE_LABELS, type Department, type ModuleKey, type Role } from '../types/database';
 
 interface NavItem {
   to: string;
   label: string;
   icon: string;
   end?: boolean;
+  moduleKey: ModuleKey;
   hideFor?: Department[];
+  defaultRoles?: Role[];
   requiresConfig?: boolean;
 }
 
@@ -17,47 +19,53 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Visão geral',
     items: [
-      { to: '/', label: 'Dashboard', icon: '▣', end: true },
-      { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'] },
+      { to: '/', label: 'Dashboard', icon: '▣', end: true, moduleKey: 'dashboard' },
+      { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'], moduleKey: 'relatorios' },
     ],
   },
   {
     label: 'Trabalho',
     items: [
-      { to: '/projetos', label: 'Projetos', icon: '◧' },
-      { to: '/demandas', label: 'Demandas', icon: '☰' },
-      { to: '/calendario', label: 'Calendário', icon: '▦' },
+      { to: '/projetos', label: 'Projetos', icon: '◧', moduleKey: 'projetos' },
+      { to: '/demandas', label: 'Demandas', icon: '☰', moduleKey: 'demandas' },
+      { to: '/calendario', label: 'Calendário', icon: '▦', moduleKey: 'calendario' },
     ],
   },
   {
     label: 'Marca & conteúdo',
     items: [
-      { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎', hideFor: ['design'] },
-      { to: '/biblioteca', label: 'Biblioteca', icon: '▤' },
-      { to: '/produtos', label: 'Produtos', icon: '◫' },
-      { to: '/monitor-precos', label: 'Monitor de Preços', icon: '⌁', hideFor: ['design', 'assistente'] },
-      { to: '/brand', label: 'Brand', icon: '◈' },
+      {
+        to: '/redes-sociais',
+        label: 'Redes Sociais',
+        icon: '◎',
+        defaultRoles: ['diretoria', 'administrador'],
+        moduleKey: 'redes-sociais',
+      },
+      { to: '/biblioteca', label: 'Biblioteca', icon: '▤', moduleKey: 'biblioteca' },
+      { to: '/produtos', label: 'Produtos', icon: '◫', moduleKey: 'produtos' },
+      { to: '/monitor-precos', label: 'Monitor de Preços', icon: '⌁', hideFor: ['design', 'assistente'], moduleKey: 'monitor-precos' },
+      { to: '/brand', label: 'Brand', icon: '◈', moduleKey: 'brand' },
     ],
   },
   {
     label: 'Campanhas',
     items: [
-      { to: '/campanhas', label: 'Campanhas', icon: '◆' },
-      { to: '/ia', label: 'IA', icon: '✦' },
+      { to: '/campanhas', label: 'Campanhas', icon: '◆', moduleKey: 'campanhas' },
+      { to: '/ia', label: 'IA', icon: '✦', moduleKey: 'ia' },
     ],
   },
   {
     label: 'Registro',
     items: [
-      { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎' },
-      { to: '/auditoria', label: 'Auditoria', icon: '◷' },
+      { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎', moduleKey: 'relatorio-diario' },
+      { to: '/auditoria', label: 'Auditoria', icon: '◷', moduleKey: 'auditoria' },
     ],
   },
   {
     label: 'Sistema',
     items: [
-      { to: '/configuracoes', label: 'Configurações', icon: '⚙', requiresConfig: true },
-      { to: '/perfil', label: 'Perfil', icon: '◉' },
+      { to: '/configuracoes', label: 'Configurações', icon: '⚙', requiresConfig: true, moduleKey: 'configuracoes' },
+      { to: '/perfil', label: 'Perfil', icon: '◉', moduleKey: 'perfil' },
     ],
   },
 ];
@@ -67,7 +75,17 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const role = profile?.role ?? 'equipe';
   const department = profile?.department ?? 'growth';
   const seesConfig = role === 'diretoria' || role === 'administrador';
+  const hiddenModules = profile?.hidden_modules ?? [];
+  const extraModules = profile?.extra_modules ?? [];
   const [openTasks, setOpenTasks] = useState<number | null>(null);
+
+  function isVisible(item: NavItem): boolean {
+    if (hiddenModules.includes(item.moduleKey)) return false;
+    if (extraModules.includes(item.moduleKey)) return true;
+    if (item.defaultRoles && !item.defaultRoles.includes(role)) return false;
+    if (item.hideFor?.includes(department)) return false;
+    return true;
+  }
 
   useEffect(() => {
     async function loadOpenTasks() {
@@ -95,7 +113,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       </div>
 
       {SECTIONS.map((section) => {
-        const items = section.items.filter((item) => !item.hideFor?.includes(department));
+        const items = section.items.filter(isVisible);
         if (items.length === 0) return null;
         return (
           <div key={section.label}>
