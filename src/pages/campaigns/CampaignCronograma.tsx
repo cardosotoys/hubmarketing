@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { logActivity } from '../../lib/activityLog';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import CampaignTaskDrawer from '../../components/CampaignTaskDrawer';
 import { useCampaignWorkspace } from '../../context/CampaignWorkspaceContext';
 import { CAMPAIGN_TASK_STAGES, type CampaignTask, type Product, type Profile } from '../../types/database';
@@ -31,6 +32,7 @@ function fmtDate(d: Date) {
 export default function CampaignCronograma() {
   const { profile } = useAuth();
   const { campaign } = useCampaignWorkspace();
+  const isMobile = useIsMobile();
   const [tasks, setTasks] = useState<CampaignTask[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -163,6 +165,29 @@ export default function CampaignCronograma() {
         <div className="locked-banner">
           <span className="ic">◐</span>Nenhuma demanda com início/prazo definidos ainda — abra uma demanda e preencha as
           datas para ela aparecer aqui.
+        </div>
+      ) : isMobile ? (
+        // Um Gantt horizontal não cabe em tela de celular — vira lista ordenada por data, toque
+        // abre a mesma CampaignTaskDrawer de sempre.
+        <div className="mobile-cronograma-list">
+          {[...scheduled]
+            .sort((a, b) => toDate(a.start_date!).getTime() - toDate(b.start_date!).getTime())
+            .map((t) => (
+              <div key={t.id} className="mobile-cronograma-item" onClick={() => setDrawerTask(t)}>
+                <span className="dot" style={{ background: STAGE_COLOR[t.stage] ?? 'var(--violet)' }} />
+                <div className="body">
+                  <div className="title">
+                    {t.is_milestone ? '◆ ' : ''}
+                    {t.title}
+                  </div>
+                  <div className="meta">
+                    {toDate(t.start_date!).toLocaleDateString('pt-BR')} → {toDate(t.due_date!).toLocaleDateString('pt-BR')} ·{' '}
+                    {CAMPAIGN_TASK_STAGES.find((s) => s.key === t.stage)?.label}
+                  </div>
+                  {depNamesFor(t.id).length > 0 && <div className="dep">depende de: {depNamesFor(t.id).join(', ')}</div>}
+                </div>
+              </div>
+            ))}
         </div>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>

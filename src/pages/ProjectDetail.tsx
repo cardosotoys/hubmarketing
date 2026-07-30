@@ -557,20 +557,33 @@ export default function ProjectDetail() {
                         const overdue = t.due_date && !stagesById[t.stage_id]?.is_final && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
                         return (
                           <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
-                            <td>{t.title}</td>
-                            <td>
+                            <td data-label="Tarefa">{t.title}</td>
+                            <td data-label="Prioridade">
                               <span className={`prio ${t.priority}`}>{t.priority}</span>
                             </td>
-                            <td style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name}</td>
-                            <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
-                            <td style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <td data-label="Estágio" style={{ color: 'var(--text-faint)' }}>
+                              {stagesById[t.stage_id]?.name}
+                            </td>
+                            <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>
+                              {t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}
+                            </td>
+                            <td
+                              data-label="Notas"
+                              style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            >
                               {t.notes || '—'}
                             </td>
-                            <td style={{ color: 'var(--text-faint)' }}>{t.budget != null ? fmtBRL(Number(t.budget)) : '—'}</td>
-                            <td style={{ color: 'var(--text-faint)' }}>{fileCounts[t.id] ? `📎 ${fileCounts[t.id]}` : '—'}</td>
-                            <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{cronograma(t)}</td>
-                            <td>{overdue && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
-                            <td style={{ color: 'var(--text-faint)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                            <td data-label="Orçamento" style={{ color: 'var(--text-faint)' }}>
+                              {t.budget != null ? fmtBRL(Number(t.budget)) : '—'}
+                            </td>
+                            <td data-label="Arquivos" style={{ color: 'var(--text-faint)' }}>
+                              {fileCounts[t.id] ? `📎 ${fileCounts[t.id]}` : '—'}
+                            </td>
+                            <td data-label="Cronograma" style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                              {cronograma(t)}
+                            </td>
+                            <td data-label="Atraso">{overdue && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                            <td data-label="Última atualização" style={{ color: 'var(--text-faint)', fontSize: 11, whiteSpace: 'nowrap' }}>
                               {t.updated_by ? profilesById[t.updated_by]?.name : '—'} · {new Date(t.updated_at).toLocaleDateString('pt-BR')}
                             </td>
                           </tr>

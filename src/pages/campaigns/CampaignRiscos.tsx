@@ -93,10 +93,16 @@ export default function CampaignRiscos() {
           <tbody>
             {risks.map((r) => (
               <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(r)}>
-                <td>{r.description}</td>
-                <td style={{ color: 'var(--text-faint)' }}>{r.probability} / {r.impact}</td>
-                <td style={{ color: 'var(--text-faint)' }}>{r.responsible_id ? profilesById[r.responsible_id]?.name : '—'}</td>
-                <td style={{ color: 'var(--text-faint)' }}>{RISK_STATUSES.find((s) => s.key === r.status)?.label}</td>
+                <td data-label="Risco">{r.description}</td>
+                <td data-label="Probabilidade / Impacto" style={{ color: 'var(--text-faint)' }}>
+                  {r.probability} / {r.impact}
+                </td>
+                <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>
+                  {r.responsible_id ? profilesById[r.responsible_id]?.name : '—'}
+                </td>
+                <td data-label="Status" style={{ color: 'var(--text-faint)' }}>
+                  {RISK_STATUSES.find((s) => s.key === r.status)?.label}
+                </td>
               </tr>
             ))}
           </tbody>

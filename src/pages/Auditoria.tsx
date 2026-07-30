@@ -148,11 +148,13 @@ export default function Auditoria() {
           <tbody>
             {filteredRows.map((r) => (
               <tr key={r.id}>
-                <td>{r.action_text}</td>
-                <td>{r.actor?.name ?? 'Sistema'}</td>
-                <td>{r.project?.name ?? r.campaign?.name ?? '—'}</td>
-                <td className="mono">{new Date(r.created_at).toLocaleString('pt-BR')}</td>
-                <td>{r.detail || '—'}</td>
+                <td data-label="Ação">{r.action_text}</td>
+                <td data-label="Usuário">{r.actor?.name ?? 'Sistema'}</td>
+                <td data-label="Projeto/Campanha">{r.project?.name ?? r.campaign?.name ?? '—'}</td>
+                <td className="mono" data-label="Quando">
+                  {new Date(r.created_at).toLocaleString('pt-BR')}
+                </td>
+                <td data-label="Detalhe">{r.detail || '—'}</td>
               </tr>
             ))}
             {filteredRows.length === 0 && (

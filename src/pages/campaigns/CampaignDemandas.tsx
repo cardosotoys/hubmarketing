@@ -180,14 +180,20 @@ export default function CampaignDemandas() {
               <tbody>
                 {g.items.map((t) => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setDrawerTask(t)}>
-                    <td>{t.title}</td>
-                    <td>
+                    <td data-label="Tarefa">{t.title}</td>
+                    <td data-label="Prioridade">
                       <span className={`prio ${t.priority}`}>{t.priority}</span>
                     </td>
-                    <td style={{ color: 'var(--text-faint)' }}>{CAMPAIGN_TASK_STAGES.find((s) => s.key === t.stage)?.label}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}</td>
-                    <td>{isBlocked(t.id) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔒 bloqueada</span>}</td>
+                    <td data-label="Estágio" style={{ color: 'var(--text-faint)' }}>
+                      {CAMPAIGN_TASK_STAGES.find((s) => s.key === t.stage)?.label}
+                    </td>
+                    <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>
+                      {t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}
+                    </td>
+                    <td data-label="Prazo" style={{ color: 'var(--text-faint)' }}>
+                      {t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}
+                    </td>
+                    <td data-label="Bloqueio">{isBlocked(t.id) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔒 bloqueada</span>}</td>
                   </tr>
                 ))}
               </tbody>

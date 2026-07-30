@@ -157,11 +157,13 @@ export default function RelatorioDiario() {
               const canManage = isPrivileged || r.user_id === profile?.id;
               return (
                 <tr key={r.id}>
-                  <td>{r.user?.name ?? '—'}</td>
-                  <td>{r.project?.name ?? '—'}</td>
-                  <td>{r.summary}</td>
-                  <td className="mono">{new Date(r.created_at).toLocaleString('pt-BR')}</td>
-                  <td>
+                  <td data-label="Pessoa">{r.user?.name ?? '—'}</td>
+                  <td data-label="Projeto">{r.project?.name ?? '—'}</td>
+                  <td data-label="Resumo">{r.summary}</td>
+                  <td className="mono" data-label="Data">
+                    {new Date(r.created_at).toLocaleString('pt-BR')}
+                  </td>
+                  <td data-label="Ações">
                     {canManage &&
                       (confirmingDeleteId === r.id ? (
                         <span style={{ display: 'flex', gap: 6 }}>

@@ -125,11 +125,11 @@ export default function Configuracoes() {
                     const restricted = !isDiretoria && u.role === 'diretoria';
                     return (
                       <tr key={u.id}>
-                        <td>{u.name}</td>
-                        <td>
+                        <td data-label="Usuário">{u.name}</td>
+                        <td data-label="Papel">
                           <span className="pill">{ROLE_LABELS[u.role]}</span>
                         </td>
-                        <td>
+                        <td data-label="Departamento">
                           {restricted ? (
                             <span className="pill">{DEPARTMENT_LABELS[u.department]}</span>
                           ) : (
@@ -142,8 +142,8 @@ export default function Configuracoes() {
                             </select>
                           )}
                         </td>
-                        <td>{u.job_title || '—'}</td>
-                        <td>
+                        <td data-label="Cargo">{u.job_title || '—'}</td>
+                        <td data-label="Alterar papel">
                           {restricted ? (
                             <span style={{ color: 'var(--text-faint)' }}>🔒 restrito</span>
                           ) : (

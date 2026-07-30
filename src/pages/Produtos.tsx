@@ -291,8 +291,10 @@ export default function Produtos() {
               const pkgStage = pkg && stagesById[pkg.stage_id];
               return (
                 <tr key={p.id} onClick={() => canEdit && setEditing(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
-                  <td className="mono">{p.code}</td>
-                  <td>
+                  <td className="mono" data-label="Código">
+                    {p.code}
+                  </td>
+                  <td data-label="Produto">
                     {p.name}
                     {p.licensed && (
                       <span className="pill" style={{ marginLeft: 6 }}>
@@ -300,9 +302,9 @@ export default function Produtos() {
                       </span>
                     )}
                   </td>
-                  <td>{p.line || '—'}</td>
-                  <td>{p.toy_category || '—'}</td>
-                  <td>
+                  <td data-label="Linha">{p.line || '—'}</td>
+                  <td data-label="Categoria">{p.toy_category || '—'}</td>
+                  <td data-label="Marca">
                     <span
                       className="pill"
                       style={{ background: 'transparent', border: '1px solid var(--border)', color: p.brand?.color }}
@@ -310,9 +312,11 @@ export default function Produtos() {
                       {p.brand?.label}
                     </span>
                   </td>
-                  <td>{p.age_range || '—'}</td>
-                  <td className="mono">{sizeLabel(p) || '—'}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td data-label="Faixa etária">{p.age_range || '—'}</td>
+                  <td className="mono" data-label="Tamanho">
+                    {sizeLabel(p) || '—'}
+                  </td>
+                  <td data-label="Embalagem" onClick={(e) => e.stopPropagation()}>
                     {pkg ? (
                       <Link
                         to={`/projetos/${pkg.project_id}`}
@@ -329,7 +333,7 @@ export default function Produtos() {
                       '—'
                     )}
                   </td>
-                  <td>
+                  <td data-label="Revisão">
                     {p.needs_review && (
                       <span className="pill" style={{ background: 'var(--yellow-dim)', color: 'var(--yellow)' }}>
                         revisar

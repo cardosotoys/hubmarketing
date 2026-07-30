@@ -61,11 +61,15 @@ export default function CampaignProdutos() {
           <tbody>
             {linked.map((p) => (
               <tr key={p.id}>
-                <td className="mono">{p.code}</td>
-                <td>{p.name}</td>
-                <td style={{ color: 'var(--text-faint)' }}>{p.line || '—'}</td>
-                <td>{p.licensed && <span className="pill">licenciado</span>}</td>
-                <td>
+                <td className="mono" data-label="Código">
+                  {p.code}
+                </td>
+                <td data-label="Produto">{p.name}</td>
+                <td data-label="Linha" style={{ color: 'var(--text-faint)' }}>
+                  {p.line || '—'}
+                </td>
+                <td data-label="Licenciado">{p.licensed && <span className="pill">licenciado</span>}</td>
+                <td data-label="Ações">
                   <button className="btn ghost sm" onClick={() => detach(p.id)}>
                     Remover
                   </button>

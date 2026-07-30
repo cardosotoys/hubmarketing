@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProjectsOverview } from '../hooks/useProjectsOverview';
 import { supabase } from '../lib/supabaseClient';
 import ProjectCard from '../components/ProjectCard';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 import type { ProjectStatus } from '../types/database';
 
 function formatBRL(n: number) {
@@ -127,6 +128,13 @@ export default function Dashboard() {
           <span>Indicadores financeiros e dashboard executivo visíveis apenas para Diretoria.</span>
         </div>
       )}
+
+      <div className="section-head">
+        <h2>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h2>
+      </div>
+      <div className="card">
+        <ActivityHeatmap actorId={seesEverything ? undefined : profile?.id} />
+      </div>
 
       <div className="section-head">
         <h2>Por status</h2>

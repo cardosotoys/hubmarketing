@@ -57,19 +57,25 @@ export default function CampaignObjetivos() {
               <tbody>
                 {items.map((o) => (
                   <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(o)}>
-                    <td>{o.description}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{o.indicator}</td>
-                    <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Objetivo">{o.description}</td>
+                    <td data-label="Indicador" style={{ color: 'var(--text-faint)' }}>
+                      {o.indicator}
+                    </td>
+                    <td data-label="Atual / Meta" style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                       {o.current_value ?? '—'} / {o.target_value ?? '—'} {o.unit}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td data-label="Progresso" style={{ whiteSpace: 'nowrap' }}>
                       <div className="bar" style={{ width: 80, display: 'inline-block' }}>
                         <i style={{ width: `${o.percent}%` }} />
                       </div>{' '}
                       {o.percent}%
                     </td>
-                    <td style={{ color: 'var(--text-faint)' }}>{o.responsible_id ? profilesById[o.responsible_id]?.name : '—'}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{OBJECTIVE_STATUSES.find((s) => s.key === o.status)?.label}</td>
+                    <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>
+                      {o.responsible_id ? profilesById[o.responsible_id]?.name : '—'}
+                    </td>
+                    <td data-label="Status" style={{ color: 'var(--text-faint)' }}>
+                      {OBJECTIVE_STATUSES.find((s) => s.key === o.status)?.label}
+                    </td>
                   </tr>
                 ))}
               </tbody>

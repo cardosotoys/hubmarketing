@@ -454,10 +454,12 @@ function ProjetosReport({ projects, today, onExport }: { projects: ProjectRow[];
         <tbody>
           {projects.map((p) => (
             <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>{p.brand?.label ?? '—'}</td>
-              <td>{PROJECT_STATUS_LABELS[p.status]}</td>
-              <td className="mono">{p.end_date ?? '—'}</td>
+              <td data-label="Projeto">{p.name}</td>
+              <td data-label="Marca">{p.brand?.label ?? '—'}</td>
+              <td data-label="Status">{PROJECT_STATUS_LABELS[p.status]}</td>
+              <td className="mono" data-label="Prazo">
+                {p.end_date ?? '—'}
+              </td>
             </tr>
           ))}
           {projects.length === 0 && (
@@ -543,14 +545,16 @@ function DemandasReport({
         <tbody>
           {tasks.map((t) => (
             <tr key={t.id}>
-              <td>{t.title}</td>
-              <td>{t.project_id ? projectsById[t.project_id]?.name ?? '—' : 'Avulsa'}</td>
-              <td>{stagesById[t.stage_id]?.name ?? '—'}</td>
-              <td>
+              <td data-label="Demanda">{t.title}</td>
+              <td data-label="Projeto">{t.project_id ? projectsById[t.project_id]?.name ?? '—' : 'Avulsa'}</td>
+              <td data-label="Estágio">{stagesById[t.stage_id]?.name ?? '—'}</td>
+              <td data-label="Prioridade">
                 <span className={`prio ${t.priority}`}>{t.priority}</span>
               </td>
-              <td>{t.assignee_id ? profilesById[t.assignee_id]?.name ?? '—' : '—'}</td>
-              <td className="mono">{t.due_date ?? '—'}</td>
+              <td data-label="Responsável">{t.assignee_id ? profilesById[t.assignee_id]?.name ?? '—' : '—'}</td>
+              <td className="mono" data-label="Prazo">
+                {t.due_date ?? '—'}
+              </td>
             </tr>
           ))}
           {tasks.length === 0 && (
@@ -612,10 +616,10 @@ function AuditoriaReport({ items, productsCount, onExport }: { items: AuditRow[]
         <tbody>
           {items.map((a) => (
             <tr key={a.id}>
-              <td>{a.product?.name ?? '—'}</td>
-              <td>{a.product?.brand?.label ?? '—'}</td>
-              <td>{a.project?.name ?? '—'}</td>
-              <td>{a.correction_status}</td>
+              <td data-label="Produto">{a.product?.name ?? '—'}</td>
+              <td data-label="Marca">{a.product?.brand?.label ?? '—'}</td>
+              <td data-label="Projeto">{a.project?.name ?? '—'}</td>
+              <td data-label="Status">{a.correction_status}</td>
             </tr>
           ))}
           {items.length === 0 && (
@@ -670,10 +674,14 @@ function RedesSociaisReport({
         <tbody>
           {posts.map((p, i) => (
             <tr key={i}>
-              <td>{p.brand?.label ?? '—'}</td>
-              <td>{p.status}</td>
-              <td className="mono">{p.suggested_date ?? '—'}</td>
-              <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.caption}</td>
+              <td data-label="Marca">{p.brand?.label ?? '—'}</td>
+              <td data-label="Status">{p.status}</td>
+              <td className="mono" data-label="Data sugerida">
+                {p.suggested_date ?? '—'}
+              </td>
+              <td data-label="Legenda" style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.caption}
+              </td>
             </tr>
           ))}
           {posts.length === 0 && (
@@ -725,8 +733,8 @@ function DiarioReport({
           <tbody>
             {byPerson.map(([name, count]) => (
               <tr key={name}>
-                <td>{name}</td>
-                <td>{count}</td>
+                <td data-label="Pessoa">{name}</td>
+                <td data-label="Registros no mês">{count}</td>
               </tr>
             ))}
           </tbody>
@@ -774,9 +782,9 @@ function CampanhasReport({
         <tbody>
           {campaigns.map((c) => (
             <tr key={c.id}>
-              <td>{c.name}</td>
-              <td>{c.brand?.label ?? '—'}</td>
-              <td>{CAMPAIGN_STATUSES.find((s) => s.key === c.status)?.label ?? c.status}</td>
+              <td data-label="Campanha">{c.name}</td>
+              <td data-label="Marca">{c.brand?.label ?? '—'}</td>
+              <td data-label="Status">{CAMPAIGN_STATUSES.find((s) => s.key === c.status)?.label ?? c.status}</td>
             </tr>
           ))}
           {campaigns.length === 0 && (
@@ -856,11 +864,15 @@ function FinanceiroReport({
               const pct = c.planned ? Math.round((c.spent / c.planned) * 100) : 0;
               return (
                 <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td>{c.brand?.label ?? '—'}</td>
-                  <td className="mono">{formatBRL(c.planned)}</td>
-                  <td className="mono">{formatBRL(c.spent)}</td>
-                  <td>
+                  <td data-label="Campanha">{c.name}</td>
+                  <td data-label="Marca">{c.brand?.label ?? '—'}</td>
+                  <td className="mono" data-label="Planejado">
+                    {formatBRL(c.planned)}
+                  </td>
+                  <td className="mono" data-label="Executado">
+                    {formatBRL(c.spent)}
+                  </td>
+                  <td data-label="% executado">
                     <span className="status-dot" style={{ background: pct > 100 ? 'var(--red)' : pct > 80 ? 'var(--yellow)' : 'var(--green)' }}></span>
                     {pct}%
                   </td>

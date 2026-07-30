@@ -277,6 +277,33 @@ A partir da migration `0025`:
   padrão) ou **Liberar** (dá acesso a um módulo que ela não teria por padrão — é o jeito de convidar alguém pro
   Redes Sociais, por exemplo). Só Diretoria/Administrador podem alterar isso (reforçado no banco também).
 
+## Interface mobile
+
+Abaixo de 880px de largura, o Hub troca a casca inteira (menu lateral + topbar do desktop) por uma
+interface própria pra celular — `src/components/mobile/` (`MobileLayout`/`MobileTabBar`/`MobileTopBar`),
+decidido em runtime pelo hook `useIsMobile()` (`src/hooks/useIsMobile.ts`), sem duplicar rota nenhuma
+(mesmas páginas, mesmos dados):
+
+- **Barra inferior fixa**: Dashboard, Demandas, Calendário, Monitor de Preços e "Mais" (abre uma folha com
+  o resto dos módulos — mesma regra de visibilidade por papel/departamento/override do menu lateral,
+  compartilhada via `src/lib/navVisibility.ts`).
+- **Busca e notificações**: os mesmos recursos do Topbar de desktop, só que em tela cheia — extraídos pra
+  `src/hooks/useGlobalSearch.ts` e `src/hooks/useNotifications.ts`/`src/components/NotificationsPanel.tsx`
+  pra não duplicar a lógica entre as duas cascas.
+- **Tabelas viram cartão empilhado** (não rolam de lado) via `data-label` em cada célula + CSS em
+  `global.css` — aplicado nas telas de tabela mais usadas (Auditoria, Produtos, Relatórios, Monitor de
+  Preços, Configurações → Usuários, Demandas/Lista em Projetos e Campanhas, Histórico/Riscos/Objetivos/
+  Produtos de Campanha).
+- **Kanban vira acordeão** no celular (`KanbanBoard.tsx`) — uma seção por estágio, troca de estágio pelo
+  `<select>` que já existia em cada cartão (sem depender de arrastar).
+- **Cronograma (Gantt) vira lista** ordenada por data no celular (`CampaignCronograma.tsx`) — um Gantt
+  horizontal não cabe em tela de celular.
+- **Mapa de calor de atividade** (`src/components/ActivityHeatmap.tsx`) no Dashboard — estilo GitHub
+  contribution graph, a partir de `activity_log`, sem precisar de migration nova.
+- **"Adicionar à tela de início"**: `public/manifest.json` + ícones (`public/icon-192.png`/`icon-512.png`/
+  `apple-touch-icon.png`, gerados a partir do `favicon.svg`) permitem instalar o Hub como app no
+  Android/iOS, com ícone e nome próprios. Sem service worker/offline — não é um PWA completo, só o ícone.
+
 ## 1. Criar o projeto no Supabase
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e clique em **New Project**.

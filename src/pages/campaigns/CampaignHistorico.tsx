@@ -45,13 +45,17 @@ export default function CampaignHistorico() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td>
+                <td data-label="Ação">
                   {r.action_text}
                   {r.detail && <span style={{ color: 'var(--text-faint)' }}> — {r.detail}</span>}
                   {r.campaign_task && <span className="pill" style={{ marginLeft: 6 }}>{r.campaign_task.title}</span>}
                 </td>
-                <td style={{ color: 'var(--text-faint)' }}>{r.actor?.name ?? '—'}</td>
-                <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString('pt-BR')}</td>
+                <td data-label="Quem" style={{ color: 'var(--text-faint)' }}>
+                  {r.actor?.name ?? '—'}
+                </td>
+                <td data-label="Quando" style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                  {new Date(r.created_at).toLocaleString('pt-BR')}
+                </td>
               </tr>
             ))}
           </tbody>

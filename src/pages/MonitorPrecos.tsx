@@ -293,11 +293,14 @@ export default function MonitorPrecos() {
             <tbody>
               {filteredListings.map((l) => (
                 <tr key={l.id}>
-                  <td>{l.mpm_product?.product?.name ?? '—'}</td>
-                  <td>{MPM_MARKETPLACE_LABELS[l.marketplace]}</td>
-                  <td style={{ color: 'var(--text-faint)' }}>{l.store_name}</td>
+                  <td data-label="Produto">{l.mpm_product?.product?.name ?? '—'}</td>
+                  <td data-label="Marketplace">{MPM_MARKETPLACE_LABELS[l.marketplace]}</td>
+                  <td data-label="Loja" style={{ color: 'var(--text-faint)' }}>
+                    {l.store_name}
+                  </td>
                   <td
                     className="mono"
+                    data-label="Preço"
                     style={
                       l.is_violation
                         ? { color: 'var(--red)', fontWeight: 600 }
@@ -308,10 +311,10 @@ export default function MonitorPrecos() {
                   >
                     {fmtPrice(l.current_price)}
                   </td>
-                  <td className="mono" style={{ color: 'var(--text-faint)' }}>
+                  <td className="mono" data-label="Preço mínimo" style={{ color: 'var(--text-faint)' }}>
                     {fmtBRL(l.mpm_product?.min_price ?? 0)}
                   </td>
-                  <td>
+                  <td data-label="Status">
                     {l.current_price == null ? (
                       <span className="pill" style={{ color: 'var(--text-faint)' }}>
                         confirmar preço
@@ -334,13 +337,13 @@ export default function MonitorPrecos() {
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Link">
                     <a href={l.url} target="_blank" rel="noreferrer">
                       abrir ↗
                     </a>
                   </td>
                   {canEdit && (
-                    <td>
+                    <td data-label="Ações">
                       {l.match_status === 'needs_review' && (
                         <span style={{ display: 'flex', gap: 4 }}>
                           <button className="btn ghost sm" onClick={() => reviewListing(l.id, 'confirmed_match')}>
@@ -448,20 +451,24 @@ function ProdutosMonitoradosView({
         <tbody>
           {mpmProducts.map((p) => (
             <tr key={p.id} onClick={() => canEdit && onEdit(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
-              <td>
+              <td data-label="Produto">
                 {p.product.code} - {p.product.name}
               </td>
-              <td>
+              <td data-label="Marca">
                 <span className="pill" style={{ background: 'transparent', border: '1px solid var(--border)', color: p.product.brand?.color }}>
                   {p.product.brand?.label}
                 </span>
               </td>
-              <td className="mono">{fmtBRL(p.min_price)}</td>
-              <td className="mono" style={{ color: 'var(--text-faint)' }}>
+              <td className="mono" data-label="Preço mínimo">
+                {fmtBRL(p.min_price)}
+              </td>
+              <td className="mono" data-label="Preço sugerido" style={{ color: 'var(--text-faint)' }}>
                 {p.suggested_price != null ? fmtBRL(p.suggested_price) : '—'}
               </td>
-              <td style={{ color: 'var(--text-faint)', fontSize: 12 }}>{[...p.keywords, ...p.synonyms].join(', ') || '—'}</td>
-              <td>
+              <td data-label="Palavras-chave" style={{ color: 'var(--text-faint)', fontSize: 12 }}>
+                {[...p.keywords, ...p.synonyms].join(', ') || '—'}
+              </td>
+              <td data-label="Status">
                 <span className={`pill${p.monitoring_status === 'paused' ? '' : ''}`} style={{ color: p.monitoring_status === 'active' ? 'var(--green)' : 'var(--text-faint)' }}>
                   {p.monitoring_status === 'active' ? 'ativo' : 'pausado'}
                 </span>

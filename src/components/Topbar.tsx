@@ -1,87 +1,29 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabaseClient';
 import Avatar from './Avatar';
-import type { ActivityLogEntry, TaskComment } from '../types/database';
-
-type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
-type MentionRow = TaskComment & { author: { name: string } | null; task: { title: string } | null };
-
-interface SearchResults {
-  projects: { id: string; name: string }[];
-  tasks: { id: string; title: string; project_id: string | null }[];
-  products: { id: string; code: string; name: string }[];
-}
-
-const EMPTY_RESULTS: SearchResults = { projects: [], tasks: [], products: [] };
+import NotificationsPanel from './NotificationsPanel';
+import { useNotifications } from '../hooks/useNotifications';
+import { useGlobalSearch } from '../hooks/useGlobalSearch';
 
 export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string; onMenuClick: () => void }) {
   const { profile, setTheme } = useAuth();
-  const navigate = useNavigate();
   const [showNotif, setShowNotif] = useState(false);
-  const [recent, setRecent] = useState<ActivityWithActor[]>([]);
-  const [mentions, setMentions] = useState<MentionRow[]>([]);
-  const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
-
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) {
-      setResults(EMPTY_RESULTS);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      const like = `%${q}%`;
-      const [projectsByName, tasksByTitle, productsByName, productsByCode] = await Promise.all([
-        supabase.from('projects').select('id, name').ilike('name', like).limit(5),
-        supabase.from('tasks').select('id, title, project_id').ilike('title', like).limit(5),
-        supabase.from('products').select('id, code, name').ilike('name', like).limit(5),
-        supabase.from('products').select('id, code, name').ilike('code', like).limit(5),
-      ]);
-      const productMap = new Map<string, { id: string; code: string; name: string }>();
-      [...(productsByName.data ?? []), ...(productsByCode.data ?? [])].forEach((p) => productMap.set(p.id, p));
-      setResults({
-        projects: (projectsByName.data as { id: string; name: string }[]) ?? [],
-        tasks: (tasksByTitle.data as { id: string; title: string; project_id: string | null }[]) ?? [],
-        products: Array.from(productMap.values()),
-      });
-      setSearching(false);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const hasResults = results.projects.length > 0 || results.tasks.length > 0 || results.products.length > 0;
+  const { mentions, recent, loadRecent } = useNotifications(profile?.id);
+  const { query, setQuery, searching, results, hasResults, goTo: searchGoTo } = useGlobalSearch();
 
   function goTo(path: string) {
-    setQuery('');
+    searchGoTo(path);
     setSearchOpen(false);
-    navigate(path);
   }
 
-  useEffect(() => {
-    if (!profile) return;
-    supabase
-      .from('task_comments')
-      .select('*, author:profiles(name), task:tasks(title)')
-      .contains('mentioned_ids', [profile.id])
-      .order('created_at', { ascending: false })
-      .limit(5)
-      .then(({ data }) => setMentions((data as MentionRow[] | null) ?? []));
-  }, [profile]);
-
-  useEffect(() => {
-    if (!showNotif) return;
-    supabase
-      .from('activity_log')
-      .select('*, actor:profiles(name)')
-      .order('created_at', { ascending: false })
-      .limit(5)
-      .then(({ data }) => setRecent((data as ActivityWithActor[] | null) ?? []));
-  }, [showNotif]);
+  function toggleNotif() {
+    setShowNotif((s) => {
+      if (!s) loadRecent();
+      return !s;
+    });
+  }
 
   return (
     <div className="topbar">
@@ -161,7 +103,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         <Link className="icon-btn" to="/demandas">
           ☰
         </Link>
-        <div className="icon-btn" onClick={() => setShowNotif((s) => !s)}>
+        <div className="icon-btn" onClick={toggleNotif}>
           🔔
           {mentions.length > 0 && <span className="pip"></span>}
         </div>
@@ -171,54 +113,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         </Link>
       </div>
 
-      {showNotif && (
-        <div className="notif-panel">
-          {mentions.length > 0 && (
-            <>
-              <div className="head">Menções pra você</div>
-              {mentions.map((m) => (
-                <Link
-                  className="item"
-                  key={m.id}
-                  to={`/demandas?task=${m.task_id}&focus=comments`}
-                  onClick={() => setShowNotif(false)}
-                >
-                  <b>{m.author?.name ?? 'Alguém'}</b> te marcou em "{m.task?.title ?? 'uma demanda'}": {m.body}
-                </Link>
-              ))}
-            </>
-          )}
-          <div className="head">Atividade recente</div>
-          {recent.length === 0 && <div className="item">Nada por aqui ainda.</div>}
-          {recent.map((r) => {
-            const content = (
-              <>
-                <b>{r.actor?.name ?? 'Alguém'}</b> {r.action_text}
-                {r.detail ? ` — ${r.detail}` : ''}
-              </>
-            );
-            if (r.task_id) {
-              return (
-                <Link className="item" key={r.id} to={`/demandas?task=${r.task_id}`} onClick={() => setShowNotif(false)}>
-                  {content}
-                </Link>
-              );
-            }
-            if (r.project_id) {
-              return (
-                <Link className="item" key={r.id} to={`/projetos/${r.project_id}`} onClick={() => setShowNotif(false)}>
-                  {content}
-                </Link>
-              );
-            }
-            return (
-              <div className="item" key={r.id}>
-                {content}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {showNotif && <NotificationsPanel mentions={mentions} recent={recent} onClose={() => setShowNotif(false)} />}
     </div>
   );
 }

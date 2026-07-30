@@ -193,12 +193,12 @@ export default function Demandas() {
               <tbody>
                 {g.items.map((t) => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
-                    <td>
+                    <td data-label="Tarefa">
                       {t.title}
                       {fileCounts[t.id] > 0 && <span style={{ color: 'var(--text-faint)', marginLeft: 6 }}>📎{fileCounts[t.id]}</span>}
                     </td>
                     {groupBy !== 'project' && (
-                      <td>
+                      <td data-label="Projeto">
                         {t.project ? (
                           <Link
                             to={`/projetos/${t.project.id}`}
@@ -213,14 +213,20 @@ export default function Demandas() {
                         )}
                       </td>
                     )}
-                    <td>
+                    <td data-label="Prioridade">
                       <span className={`prio ${t.priority}`}>{t.priority}</span>
                     </td>
-                    <td style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name}</td>
+                    <td data-label="Estágio" style={{ color: 'var(--text-faint)' }}>
+                      {stagesById[t.stage_id]?.name}
+                    </td>
                     {groupBy !== 'assignee' && (
-                      <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
+                      <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>
+                        {t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}
+                      </td>
                     )}
-                    <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{cronogramaLabel(t)}</td>
+                    <td data-label="Prazo" style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                      {cronogramaLabel(t)}
+                    </td>
                     <td>{isTaskOverdue(t, stagesById) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
                   </tr>
                 ))}
