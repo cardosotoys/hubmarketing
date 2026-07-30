@@ -408,14 +408,18 @@ A partir da migration `0025`:
     a Edge Function de novo** (`supabase functions deploy mpm-sync`) — o código dela mudou junto com essa
     migration (concorrência mais baixa + retry automático em erro 429/5xx + só marca violação automática quando
     o match vem de EAN/código, nunca de heurística de nome).
-33. Rode também, **nessa ordem**, [`supabase/migrations/0031_product_technical_fields.sql`](supabase/migrations/0031_product_technical_fields.sql)
-    e depois [`supabase/migrations/0032_product_data_update.sql`](supabase/migrations/0032_product_data_update.sql)
-    — a primeira adiciona ~30 campos novos em `products` (gênero, material, cor, categoria de brinquedo, nome
-    técnico, mecanismo/som/luz/bateria, medidas precisas de produto/embalagem/caixa master, NCM/CST/DUN,
-    paletização); a segunda preenche esses campos (e corrige nome/linha/EAN) pros 315 produtos existentes, a
-    partir da planilha oficial "FICHA TÉCNICA". A segunda migration só faz `UPDATE` casando por `code` — não
-    cria produto novo. Depois de rodar, confira 2-3 produtos ao acaso (ex.: código `0280` = Mipuxa Azul) pra
-    confirmar que os campos vieram preenchidos.
+33. Rode também [`supabase/migrations/0031_product_technical_fields.sql`](supabase/migrations/0031_product_technical_fields.sql)
+    — adiciona ~30 campos novos em `products` (gênero, material, cor, categoria de brinquedo, nome técnico,
+    mecanismo/som/luz/bateria, medidas precisas de produto/embalagem/caixa master, NCM/CST/DUN, paletização).
+    Depois rode, **uma de cada vez, nessa ordem**, as 11 partes de
+    [`supabase/migrations/0032_product_data_update_parte01_de_11.sql`](supabase/migrations/0032_product_data_update_parte01_de_11.sql)
+    até `..._parte11_de_11.sql` — juntas elas preenchem esses campos (e corrigem nome/linha/EAN) pros 315 produtos
+    existentes, a partir da planilha oficial "FICHA TÉCNICA". Cada `UPDATE` casa só por `code` — não cria produto
+    novo. **A migration original era um arquivo único de ~350 KB / 8000 linhas — colar ela inteira de uma vez no
+    SQL Editor corta o conteúdo no meio sem mostrar erro nenhum, e a maior parte dos produtos não é atualizada**;
+    por isso ela foi dividida em 11 arquivos menores (~30 produtos cada) pra colar com segurança. Depois de rodar
+    todas as 11 partes, confira 2-3 produtos ao acaso (ex.: código `0280` = Mipuxa Azul) pra confirmar que os
+    campos vieram preenchidos.
 34. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
@@ -584,7 +588,7 @@ supabase/migrations/0028_ia_skills.sql           tabela ia_skills (biblioteca de
 supabase/migrations/0029_categories.sql          tabela categories (Projetos/Campanhas) + seed a partir dos dados reais
 supabase/migrations/0030_mpm_sync_diagnostics.sql  colunas de diagnóstico em mpm_sync_runs (buscas tentadas/falhadas, erro)
 supabase/migrations/0031_product_technical_fields.sql  ~30 campos novos em products (ficha técnica completa)
-supabase/migrations/0032_product_data_update.sql   atualiza os 315 produtos existentes a partir da FICHA TÉCNICA (2026).xlsx
+supabase/migrations/0032_product_data_update_parte01..11_de_11.sql  atualiza os 315 produtos (FICHA TÉCNICA 2026.xlsx), dividido em 11 arquivos pra colar com segurança no SQL Editor
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado
