@@ -1557,3 +1557,27 @@ table.simple tr:hover td {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   Impressão (usado pelo botão "Exportar PDF" dos Relatórios)
+   ============================================================ */
+@media print {
+  .sidebar,
+  .sidebar-backdrop,
+  .topbar,
+  .detail-tabs,
+  .no-print {
+    display: none !important;
+  }
+  .app,
+  .main,
+  .content {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

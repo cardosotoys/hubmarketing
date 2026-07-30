@@ -199,6 +199,13 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   também ficou mais enxuta — notas/orçamento/arquivos/última atualização saíram da visão padrão (continuam ao
   abrir a demanda) e a coluna Projeto/Responsável some quando ela já é o critério de agrupamento (evita repetir
   o mesmo valor em toda linha).
+- **Busca global de verdade**: a barra de pesquisa do topo (antes só decorativa, "chega numa próxima fase")
+  agora busca de verdade em Projetos, Demandas e Produtos enquanto você digita, com resultados clicáveis que
+  levam direto pro item.
+- **Relatórios: filtros + exportar PDF**: Projetos/Demandas/Campanhas ganharam filtros (status, marca,
+  prioridade, projeto) que já vêm aplicados no export CSV; e agora tem também **Exportar PDF**, que abre o
+  diálogo de impressão do navegador só com o conteúdo do relatório (sem menu/topo), pra salvar como PDF ou
+  imprimir.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador

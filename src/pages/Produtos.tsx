@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
@@ -19,6 +19,7 @@ function sizeLabel(p: Product): string {
 
 export default function Produtos() {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<ProductWithBrand[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandFilter, setBrandFilter] = useState('all');
@@ -66,6 +67,18 @@ export default function Produtos() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (!q) return;
+    setSearch(q);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('q');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const lines = useMemo(() => {
     const set = new Set(products.map((p) => p.line).filter(Boolean));

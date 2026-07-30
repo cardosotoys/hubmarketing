@@ -29,11 +29,16 @@ function downloadCSV(filename: string, headers: string[], rows: (string | number
   URL.revokeObjectURL(url);
 }
 
-function ExportButton({ onClick }: { onClick: () => void }) {
+function ExportButtons({ onExportCSV }: { onExportCSV: () => void }) {
   return (
-    <button className="btn ghost sm" onClick={onClick}>
-      ⬇ Exportar CSV
-    </button>
+    <div className="no-print" style={{ display: 'flex', gap: 8 }}>
+      <button className="btn ghost sm" onClick={onExportCSV}>
+        ⬇ Exportar CSV
+      </button>
+      <button className="btn ghost sm" onClick={() => window.print()}>
+        ⎙ Exportar PDF
+      </button>
+    </div>
   );
 }
 
@@ -79,6 +84,12 @@ export default function Relatorios() {
   const isPrivileged = profile?.role === 'diretoria' || profile?.role === 'administrador';
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<ReportTab>('projetos');
+  const [projStatusFilter, setProjStatusFilter] = useState<'all' | ProjectStatus>('all');
+  const [projBrandFilter, setProjBrandFilter] = useState('all');
+  const [taskProjectFilter, setTaskProjectFilter] = useState('all');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState<'all' | Priority>('all');
+  const [campStatusFilter, setCampStatusFilter] = useState<'all' | CampaignStatus>('all');
+  const [campBrandFilter, setCampBrandFilter] = useState('all');
 
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
@@ -148,6 +159,29 @@ export default function Relatorios() {
   const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
   const today = new Date().toISOString().slice(0, 10);
 
+  const projectBrands = Array.from(new Set(projects.map((p) => p.brand?.label).filter((b): b is string => Boolean(b)))).sort();
+  const filteredProjects = projects.filter((p) => {
+    if (projStatusFilter !== 'all' && p.status !== projStatusFilter) return false;
+    if (projBrandFilter !== 'all' && p.brand?.label !== projBrandFilter) return false;
+    return true;
+  });
+
+  const filteredTasks = tasks.filter((t) => {
+    if (taskProjectFilter !== 'all') {
+      if (taskProjectFilter === 'none' && t.project_id) return false;
+      if (taskProjectFilter !== 'none' && t.project_id !== taskProjectFilter) return false;
+    }
+    if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
+    return true;
+  });
+
+  const campaignBrands = Array.from(new Set(campaigns.map((c) => c.brand?.label).filter((b): b is string => Boolean(b)))).sort();
+  const filteredCampaigns = campaigns.filter((c) => {
+    if (campStatusFilter !== 'all' && c.status !== campStatusFilter) return false;
+    if (campBrandFilter !== 'all' && c.brand?.label !== campBrandFilter) return false;
+    return true;
+  });
+
   const TABS: { key: ReportTab; label: string }[] = [
     { key: 'projetos', label: 'Projetos' },
     { key: 'demandas', label: 'Demandas' },
@@ -194,36 +228,80 @@ export default function Relatorios() {
       </div>
 
       {tab === 'projetos' && (
-        <ProjetosReport projects={projects} today={today} onExport={() => {
-          downloadCSV(
-            'relatorio-projetos.csv',
-            ['Projeto', 'Marca', 'Status', 'Prazo'],
-            projects.map((p) => [p.name, p.brand?.label ?? '', PROJECT_STATUS_LABELS[p.status], p.end_date ?? ''])
-          );
-        }} />
+        <>
+          <div className="filters-row no-print">
+            <select className="chip-select" value={projStatusFilter} onChange={(e) => setProjStatusFilter(e.target.value as typeof projStatusFilter)}>
+              <option value="all">Status: todos</option>
+              {(['planning', 'active', 'paused', 'done'] as ProjectStatus[]).map((s) => (
+                <option key={s} value={s}>
+                  {PROJECT_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <select className="chip-select" value={projBrandFilter} onChange={(e) => setProjBrandFilter(e.target.value)}>
+              <option value="all">Marca: todas</option>
+              {projectBrands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+          <ProjetosReport
+            projects={filteredProjects}
+            today={today}
+            onExport={() => {
+              downloadCSV(
+                'relatorio-projetos.csv',
+                ['Projeto', 'Marca', 'Status', 'Prazo'],
+                filteredProjects.map((p) => [p.name, p.brand?.label ?? '', PROJECT_STATUS_LABELS[p.status], p.end_date ?? ''])
+              );
+            }}
+          />
+        </>
       )}
 
       {tab === 'demandas' && (
-        <DemandasReport
-          tasks={tasks}
-          stagesById={stagesById}
-          projectsById={projectsById}
-          profilesById={profilesById}
-          onExport={() => {
-            downloadCSV(
-              'relatorio-demandas.csv',
-              ['Demanda', 'Projeto', 'Estágio', 'Prioridade', 'Responsável', 'Prazo'],
-              tasks.map((t) => [
-                t.title,
-                t.project_id ? projectsById[t.project_id]?.name ?? '' : 'Avulsa',
-                stagesById[t.stage_id]?.name ?? '',
-                t.priority,
-                t.assignee_id ? profilesById[t.assignee_id]?.name ?? '' : '',
-                t.due_date ?? '',
-              ])
-            );
-          }}
-        />
+        <>
+          <div className="filters-row no-print">
+            <select className="chip-select" value={taskProjectFilter} onChange={(e) => setTaskProjectFilter(e.target.value)}>
+              <option value="all">Projeto: todos</option>
+              <option value="none">Avulsas</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <select className="chip-select" value={taskPriorityFilter} onChange={(e) => setTaskPriorityFilter(e.target.value as typeof taskPriorityFilter)}>
+              <option value="all">Prioridade: todas</option>
+              <option value="urgent">Urgente</option>
+              <option value="high">Alta</option>
+              <option value="medium">Média</option>
+              <option value="low">Baixa</option>
+            </select>
+          </div>
+          <DemandasReport
+            tasks={filteredTasks}
+            stagesById={stagesById}
+            projectsById={projectsById}
+            profilesById={profilesById}
+            onExport={() => {
+              downloadCSV(
+                'relatorio-demandas.csv',
+                ['Demanda', 'Projeto', 'Estágio', 'Prioridade', 'Responsável', 'Prazo'],
+                filteredTasks.map((t) => [
+                  t.title,
+                  t.project_id ? projectsById[t.project_id]?.name ?? '' : 'Avulsa',
+                  stagesById[t.stage_id]?.name ?? '',
+                  t.priority,
+                  t.assignee_id ? profilesById[t.assignee_id]?.name ?? '' : '',
+                  t.due_date ?? '',
+                ])
+              );
+            }}
+          />
+        </>
       )}
 
       {tab === 'auditoria' && (
@@ -276,16 +354,36 @@ export default function Relatorios() {
       )}
 
       {tab === 'campanhas' && (
-        <CampanhasReport
-          campaigns={campaigns}
-          onExport={() => {
-            downloadCSV(
-              'relatorio-campanhas.csv',
-              ['Campanha', 'Marca', 'Status'],
-              campaigns.map((c) => [c.name, c.brand?.label ?? '', CAMPAIGN_STATUSES.find((s) => s.key === c.status)?.label ?? c.status])
-            );
-          }}
-        />
+        <>
+          <div className="filters-row no-print">
+            <select className="chip-select" value={campStatusFilter} onChange={(e) => setCampStatusFilter(e.target.value as typeof campStatusFilter)}>
+              <option value="all">Status: todos</option>
+              {CAMPAIGN_STATUSES.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <select className="chip-select" value={campBrandFilter} onChange={(e) => setCampBrandFilter(e.target.value)}>
+              <option value="all">Marca: todas</option>
+              {campaignBrands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+          <CampanhasReport
+            campaigns={filteredCampaigns}
+            onExport={() => {
+              downloadCSV(
+                'relatorio-campanhas.csv',
+                ['Campanha', 'Marca', 'Status'],
+                filteredCampaigns.map((c) => [c.name, c.brand?.label ?? '', CAMPAIGN_STATUSES.find((s) => s.key === c.status)?.label ?? c.status])
+              );
+            }}
+          />
+        </>
       )}
 
       {tab === 'financeiro' && seesFinancial && (
@@ -342,7 +440,7 @@ function ProjetosReport({ projects, today, onExport }: { projects: ProjectRow[];
 
       <div className="section-head">
         <h2>{projects.length} projetos</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       <table className="simple">
         <thead>
@@ -429,7 +527,7 @@ function DemandasReport({
 
       <div className="section-head">
         <h2>{tasks.length} demandas</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       <table className="simple">
         <thead>
@@ -500,7 +598,7 @@ function AuditoriaReport({ items, productsCount, onExport }: { items: AuditRow[]
 
       <div className="section-head">
         <h2>{items.length} pendências</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       <table className="simple">
         <thead>
@@ -558,7 +656,7 @@ function RedesSociaisReport({
 
       <div className="section-head">
         <h2>{posts.length} peças</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       <table className="simple">
         <thead>
@@ -610,7 +708,7 @@ function DiarioReport({
     <div>
       <div className="section-head">
         <h2>{reports.length} registros neste mês</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       {byPerson.length === 0 ? (
         <div className="locked-banner">
@@ -663,7 +761,7 @@ function CampanhasReport({
       </div>
       <div className="section-head">
         <h2>{campaigns.length} campanhas</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       <table className="simple">
         <thead>
@@ -736,7 +834,7 @@ function FinanceiroReport({
 
       <div className="section-head">
         <h2>Por campanha</h2>
-        <ExportButton onClick={onExport} />
+        <ExportButtons onExportCSV={onExport} />
       </div>
       {byCampaign.length === 0 ? (
         <div className="locked-banner">
