@@ -249,6 +249,20 @@ function hostnameOf(url: string): string {
   }
 }
 
+// Chave de deduplicação (origem + caminho, sem query string/fragmento) — o Google costuma indexar
+// a mesma página de produto várias vezes com parâmetro de rastreio diferente (utm, afiliado,
+// sessão), o que fazia o mesmo anúncio aparecer 2-3 vezes na tela como se fossem anúncios
+// diferentes. Usada só pra deduplicar dentro de uma rodada de sync — o link salvo continua sendo
+// a URL completa original (ver runSync), então "abrir" nunca quebra.
+function dedupKeyOf(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`.toLowerCase().replace(/\/$/, '');
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
 // Busca no índice geral do Google restrita aos marketplaces de SITE_SEARCH_DOMAINS — cobre
 // vendedor pequeno que nunca manda catálogo pro Google Shopping. Preço NÃO vem desse motor:
 // o Google só devolve um trecho de texto livre da página (organic_results), que pode conter o
@@ -334,6 +348,9 @@ async function runSync(supabase: SupabaseClient, runId: string) {
    try {
     const queries = buildQueries(p);
     const seenExternalIds = new Set<string>();
+    // Só pra itens da busca site: (ver dedupKeyOf) — o Google costuma indexar a mesma página de
+    // produto com parâmetro de rastreio diferente, o que sem isso vira "anúncio duplicado" na tela.
+    const seenSiteKeys = new Set<string>();
     // Ids que passaram no filtro de score nesta rodada — usado no fim pra podar anúncios antigos
     // que não foram reconfirmados (ex.: um "match" errado de uma versão anterior da busca, que a
     // busca de agora, mais restrita, simplesmente não traz mais).
@@ -364,6 +381,11 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         if (price == null && item.engine !== 'site') continue;
         if (seenExternalIds.has(externalId)) continue;
         seenExternalIds.add(externalId);
+        if (item.engine === 'site') {
+          const siteKey = dedupKeyOf(externalId);
+          if (seenSiteKeys.has(siteKey)) continue;
+          seenSiteKeys.add(siteKey);
+        }
 
         const { score, confirmed } = scoreMatch(p, item.title);
         // Voltou de 65 pra 50: 65 combinado com a penalidade de marca ausente (score*0.5 no
