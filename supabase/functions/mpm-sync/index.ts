@@ -43,24 +43,19 @@ function buildQueries(p: MpmProductRow): string[] {
   const queries: string[] = [];
   const brandLabel = p.product?.brand?.label ?? '';
   const name = p.product?.name ?? '';
-  // EAN é um código de barras global (13 dígitos) — único o suficiente pra buscar sozinho, sem risco
-  // de trazer produto de outro fabricante.
   if (p.product?.ean) queries.push(p.product.ean);
-  if (name) queries.push(brandLabel ? `${brandLabel} ${name}` : name);
-  // Código interno, palavras-chave e sinônimos são termos curtos/genéricos — sozinhos, o Google
-  // Shopping devolve qualquer coisa que contenha aquele termo, de qualquer ramo (ex.: buscar só
-  // "6011" traz peça de rolamento cujo SKU é "6011-2RS"). Sempre amarrados à marca, a busca fica
-  // específica o bastante pra não trazer produto de outro fabricante já na origem.
-  if (brandLabel) {
-    if (p.product?.code) queries.push(`${brandLabel} ${p.product.code}`);
-    for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(`${brandLabel} ${k}`);
-    for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(`${brandLabel} ${s}`);
-  } else {
-    // Sem marca cadastrada no produto (caso raro), mantém o comportamento antigo como fallback.
-    if (p.product?.code) queries.push(p.product.code);
-    for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(k);
-    for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(s);
-  }
+  if (name) queries.push(name);
+  if (brandLabel && name) queries.push(`${brandLabel} ${name}`);
+  // Código interno (3-4 dígitos, ex. "6011") nunca vira busca sozinho: nenhum revendedor publica
+  // o SKU interno da Cardoso no próprio anúncio (então isso não ajuda a achar concorrente de
+  // verdade) e é a origem clássica de falso positivo — buscar só "6011" traz peça de rolamento
+  // cujo SKU é "6011-2RS", "0301" traz tinta de modelismo, etc. Cortar aqui na origem é mais
+  // eficaz (e mais barato de cota da SerpApi) do que só filtrar depois pontuando o resultado.
+  // Palavras-chave/sinônimos ficam como busca própria, sem prefixo de marca — são cadastrados
+  // justamente pra capturar como um revendedor costuma anunciar o produto, o que raramente
+  // repete a marca fabricante (Cardoso/Playmi/Tópi) no título do anúncio.
+  for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(k);
+  for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(s);
   return Array.from(new Set(queries.filter((q) => q.trim().length > 0)));
 }
 
@@ -279,10 +274,10 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         seenExternalIds.add(externalId);
 
         const { score, confirmed } = scoreMatch(p, item.title);
-        // Abaixo de 65 o resultado costuma ser ruído (produto de outro ramo que bateu por
-        // coincidência em 1-2 termos genéricos) — subiu de 50 pra reduzir o que aparece pra
-        // revisão manual sem motivo.
-        if (score < 65) continue;
+        // Voltou de 65 pra 50: 65 combinado com a penalidade de marca ausente (score*0.5 no
+        // scoreMatch) rejeitava até anúncio legítimo — reseller raramente cita a marca
+        // fabricante (Cardoso/Playmi/Tópi) no título, só o nome do produto.
+        if (score < 50) continue;
         reconfirmedExternalIds.add(externalId);
 
         const marketplace = detectMarketplace(item);
