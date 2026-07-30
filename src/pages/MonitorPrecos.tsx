@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { logActivity } from '../lib/activityLog';
 import Modal from '../components/Modal';
 import {
   MPM_MARKETPLACE_LABELS,
@@ -361,6 +362,7 @@ export default function MonitorPrecos() {
         <MpmProductFormModal
           products={products}
           alreadyMonitored={mpmProducts.map((p) => p.product_id)}
+          actorId={profile.id}
           onClose={() => setShowAddProduct(false)}
           onSaved={() => {
             setShowAddProduct(false);
@@ -373,6 +375,7 @@ export default function MonitorPrecos() {
           products={products}
           alreadyMonitored={mpmProducts.map((p) => p.product_id)}
           mpmProduct={editingMpmProduct}
+          actorId={profile.id}
           onClose={() => setEditingMpmProduct(null)}
           onSaved={() => {
             setEditingMpmProduct(null);
@@ -459,12 +462,14 @@ function MpmProductFormModal({
   products,
   alreadyMonitored,
   mpmProduct,
+  actorId,
   onClose,
   onSaved,
 }: {
   products: ProductWithBrand[];
   alreadyMonitored: string[];
   mpmProduct?: MpmProductWithProduct;
+  actorId: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -511,6 +516,12 @@ function MpmProductFormModal({
       setError(err.message);
       return;
     }
+    const productLabel = products.find((p) => p.id === productId)?.name;
+    await logActivity({
+      actorId,
+      actionText: isEdit ? 'Monitoramento de produto editado' : 'Produto adicionado ao monitoramento de preços',
+      detail: productLabel,
+    });
     onSaved();
   }
 
@@ -519,6 +530,11 @@ function MpmProductFormModal({
     setSaving(true);
     await supabase.from('mpm_products').delete().eq('id', mpmProduct.id);
     setSaving(false);
+    await logActivity({
+      actorId,
+      actionText: 'Produto removido do monitoramento de preços',
+      detail: mpmProduct.product.name,
+    });
     onSaved();
   }
 
@@ -631,6 +647,7 @@ function ConfiguracoesView({
         updated_by: actorId,
       })
       .eq('id', true);
+    await logActivity({ actorId, actionText: 'Configurações do monitor de preços atualizadas' });
     setSaving(false);
     setSaved(true);
     onSaved();

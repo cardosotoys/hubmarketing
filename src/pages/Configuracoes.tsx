@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { logActivity } from '../lib/activityLog';
 import {
   CAMPAIGN_STATUSES,
   DEPARTMENTS,
@@ -47,13 +48,29 @@ export default function Configuracoes() {
   }, []);
 
   async function changeRole(userId: string, role: Role) {
+    const user = users.find((u) => u.id === userId);
     const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
-    if (!error) setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
+    if (!error) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
+      if (profile) {
+        await logActivity({ actorId: profile.id, actionText: 'Papel de usuário alterado', detail: `${user?.name ?? userId} → ${ROLE_LABELS[role]}` });
+      }
+    }
   }
 
   async function changeDepartment(userId: string, department: Department) {
+    const user = users.find((u) => u.id === userId);
     const { error } = await supabase.from('profiles').update({ department }).eq('id', userId);
-    if (!error) setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, department } : u)));
+    if (!error) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, department } : u)));
+      if (profile) {
+        await logActivity({
+          actorId: profile.id,
+          actionText: 'Departamento de usuário alterado',
+          detail: `${user?.name ?? userId} → ${DEPARTMENT_LABELS[department]}`,
+        });
+      }
+    }
   }
 
   async function setModuleOverride(userId: string, moduleKey: ModuleKey, mode: 'padrao' | 'oculto' | 'liberado') {
@@ -64,7 +81,16 @@ export default function Configuracoes() {
     if (mode === 'oculto') hidden_modules.push(moduleKey);
     if (mode === 'liberado') extra_modules.push(moduleKey);
     const { error } = await supabase.from('profiles').update({ hidden_modules, extra_modules }).eq('id', userId);
-    if (!error) setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, hidden_modules, extra_modules } : u)));
+    if (!error) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, hidden_modules, extra_modules } : u)));
+      if (profile) {
+        await logActivity({
+          actorId: profile.id,
+          actionText: 'Permissão de módulo alterada',
+          detail: `${user.name} — ${MODULE_LABELS[moduleKey]}: ${mode}`,
+        });
+      }
+    }
   }
 
   return (
@@ -245,6 +271,7 @@ function PermissoesView({
 }
 
 function CategoriasView() {
+  const { profile } = useAuth();
   const [scope, setScope] = useState<CategoryScope>('projeto');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -273,6 +300,7 @@ function CategoriasView() {
       return;
     }
     setError(null);
+    if (profile) await logActivity({ actorId: profile.id, actionText: 'Categoria criada', detail: `${scope}: ${newLabel.trim()}` });
     setNewLabel('');
     load();
   }
@@ -280,11 +308,14 @@ function CategoriasView() {
   async function renameCategory(id: string, label: string) {
     if (!label.trim()) return;
     await supabase.from('categories').update({ label: label.trim() }).eq('id', id);
+    if (profile) await logActivity({ actorId: profile.id, actionText: 'Categoria renomeada', detail: label.trim() });
     load();
   }
 
   async function deleteCategory(id: string) {
+    const label = categories.find((c) => c.id === id)?.label;
     await supabase.from('categories').delete().eq('id', id);
+    if (profile) await logActivity({ actorId: profile.id, actionText: 'Categoria excluída', detail: label });
     load();
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { logActivity } from '../lib/activityLog';
 import Modal from '../components/Modal';
 import type { Brand, IaBrandVoice, IaPersona, IaPrompt, IaSkill, IaTemplate } from '../types/database';
 
@@ -243,12 +244,14 @@ function PromptFormModal({
     } else {
       await supabase.from('ia_prompts').insert({ ...fields, created_by: actorId });
     }
+    await logActivity({ actorId, actionText: isEdit ? 'Prompt de IA editado' : 'Prompt de IA criado', detail: title.trim() });
     onSaved();
   }
 
   async function handleDelete() {
     if (!prompt) return;
     await supabase.from('ia_prompts').delete().eq('id', prompt.id);
+    await logActivity({ actorId, actionText: 'Prompt de IA excluído', detail: prompt.title });
     onSaved();
   }
 
@@ -419,12 +422,14 @@ function SkillFormModal({
     } else {
       await supabase.from('ia_skills').insert({ ...fields, created_by: actorId });
     }
+    await logActivity({ actorId, actionText: isEdit ? 'Skill de IA editada' : 'Skill de IA criada', detail: name.trim() });
     onSaved();
   }
 
   async function handleDelete() {
     if (!skill) return;
     await supabase.from('ia_skills').delete().eq('id', skill.id);
+    await logActivity({ actorId, actionText: 'Skill de IA excluída', detail: skill.name });
     onSaved();
   }
 
@@ -580,12 +585,14 @@ function TemplateFormModal({
     } else {
       await supabase.from('ia_templates').insert({ ...fields, created_by: actorId });
     }
+    await logActivity({ actorId, actionText: isEdit ? 'Template de IA editado' : 'Template de IA criado', detail: name.trim() });
     onSaved();
   }
 
   async function handleDelete() {
     if (!template) return;
     await supabase.from('ia_templates').delete().eq('id', template.id);
+    await logActivity({ actorId, actionText: 'Template de IA excluído', detail: template.name });
     onSaved();
   }
 
@@ -740,12 +747,14 @@ function PersonaFormModal({
     } else {
       await supabase.from('ia_personas').insert({ ...fields, created_by: actorId });
     }
+    await logActivity({ actorId, actionText: isEdit ? 'Persona de IA editada' : 'Persona de IA criada', detail: name.trim() });
     onSaved();
   }
 
   async function handleDelete() {
     if (!persona) return;
     await supabase.from('ia_personas').delete().eq('id', persona.id);
+    await logActivity({ actorId, actionText: 'Persona de IA excluída', detail: persona.name });
     onSaved();
   }
 
@@ -855,6 +864,11 @@ function BrandVoiceTab({ brands }: { brands: Brand[] }) {
     } else {
       await supabase.from('ia_brand_voice').insert(fields);
     }
+    await logActivity({
+      actorId: profile.id,
+      actionText: 'Brand voice de IA atualizado',
+      detail: brands.find((b) => b.id === brandKey)?.label,
+    });
     setEditing(false);
     load();
   }

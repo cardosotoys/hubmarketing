@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { logActivity } from '../../lib/activityLog';
 import CampaignTaskDrawer from '../../components/CampaignTaskDrawer';
 import { useCampaignWorkspace } from '../../context/CampaignWorkspaceContext';
 import { CAMPAIGN_TASK_STAGES, type CampaignTask, type Product, type Profile } from '../../types/database';
@@ -27,6 +29,7 @@ function fmtDate(d: Date) {
 }
 
 export default function CampaignCronograma() {
+  const { profile } = useAuth();
   const { campaign } = useCampaignWorkspace();
   const [tasks, setTasks] = useState<CampaignTask[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -84,6 +87,16 @@ export default function CampaignCronograma() {
 
   async function commitMove(taskId: string, newStart: Date, newDue: Date) {
     await supabase.from('campaign_tasks').update({ start_date: fmtDate(newStart), due_date: fmtDate(newDue) }).eq('id', taskId);
+    if (profile) {
+      const task = tasksById[taskId];
+      await logActivity({
+        actorId: profile.id,
+        actionText: 'Cronograma da demanda ajustado',
+        detail: task ? `${task.title} → ${fmtDate(newStart)} – ${fmtDate(newDue)}` : undefined,
+        campaignId: campaign.id,
+        campaignTaskId: taskId,
+      });
+    }
     load();
   }
 

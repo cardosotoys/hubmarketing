@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { logActivity } from '../lib/activityLog';
 import StatusTag from '../components/StatusTag';
 import Avatar from '../components/Avatar';
 import { ROLE_LABELS, type Project } from '../types/database';
@@ -49,6 +50,7 @@ export default function Perfil() {
       .from('profiles')
       .update({ name, job_title: jobTitle, phone, bio })
       .eq('id', profile!.id);
+    await logActivity({ actorId: profile!.id, actionText: 'Perfil atualizado', detail: name });
     setSaving(false);
     setEditing(false);
     refreshProfile();
@@ -66,6 +68,7 @@ export default function Perfil() {
     }
     const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
     await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('id', profile!.id);
+    await logActivity({ actorId: profile!.id, actionText: 'Foto de perfil atualizada' });
     setUploading(false);
     refreshProfile();
   }
