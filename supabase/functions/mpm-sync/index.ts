@@ -164,12 +164,18 @@ async function searchGoogleShopping(query: string, attempt = 0): Promise<Shoppin
   const url = `https://serpapi.com/search?engine=google_shopping&q=${encodeURIComponent(query)}&gl=br&hl=pt&api_key=${apiKey}`;
   const res = await fetch(url);
   const body = await res.json();
-  // SerpApi às vezes devolve HTTP 200 com um campo "error" no corpo (ex.: cota mensal esgotada,
-  // "Your account has run out of searches") em vez de um status de erro de verdade — se isso
-  // caísse em `!res.ok`, passaria batido como "sucesso, 0 resultados", e o passo de poda de
-  // anúncios (que só existe pra reconhecer produto que legitimamente não tem mais nenhum
-  // anúncio) apagaria TODOS os anúncios monitorados achando que nada bateu de propósito. Por
-  // isso qualquer "error" no corpo conta como falha real da busca, não como resultado vazio.
+  // "Google hasn't returned any results for this query." é a mensagem padrão da SerpApi pra busca
+  // que genuinamente não achou nada (comum, ex.: EAN que não está indexado em nenhum anúncio) —
+  // isso vem como HTTP 200 + campo "error" no corpo, mas NÃO é uma falha de verdade, é resultado
+  // vazio legítimo. Só conta como falha real (cota esgotada, chave inválida, rate limit etc.),
+  // que também podem vir como HTTP 200 + "error" — sem essa distinção, ou trata busca vazia
+  // como erro (poluindo o alerta de falhas e travando a poda à toa), ou trata cota esgotada como
+  // "sucesso, 0 resultados" e a poda de anúncios poderia apagar tudo achando que nada bateu de
+  // propósito.
+  const noResults = typeof body?.error === 'string' && /hasn.?t returned any results/i.test(body.error);
+  if (noResults) {
+    return [];
+  }
   if (!res.ok || body?.error) {
     // 429 (rate limit) e 5xx costumam ser transitórios — tenta de novo com um pequeno atraso
     // antes de desistir. Erro de cota mensal esgotada ou chave inválida não se resolve com
