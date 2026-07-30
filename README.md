@@ -180,6 +180,12 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   ninguém perde o que já digitou. **Status** virou só uma referência (não editável — status de projeto/campanha
   tem regra de negócio amarrada, mudar isso é uma migration bem maior, tipo a das etapas editáveis). **Templates**
   aponta pra Projetos → Modelos, que já tem CRUD completo — evitei duplicar.
+- **Monitor de Preços: diagnóstico visível + matching mais restrito**: concorrência da sincronização reduzida
+  (era provável causa de rate-limit/cota estourada na SerpApi, derrubando quase todas as buscas em silêncio) +
+  retry automático em erro transitório (429/5xx). Se ainda assim buscas falharem, agora aparece um aviso na
+  tela com quantas falharam e a mensagem de erro, em vez de sumir sem explicação. Além disso, só vira
+  "violação" automática quando o anúncio bate por EAN ou código — bater só por nome/marca (por melhor que
+  pareça) sempre cai em revisão manual agora, reduzindo bastante falso-positivo de produto errado.
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
@@ -377,7 +383,12 @@ A partir da migration `0025`:
     tabela `ia_skills` (biblioteca de Skills dentro do módulo IA).
 31. Rode também [`supabase/migrations/0029_categories.sql`](supabase/migrations/0029_categories.sql) — cria a
     tabela `categories` e já semeia com as categorias que já estavam em uso em Projetos/Campanhas.
-32. Pegue as duas chaves de conexão:
+32. Rode também [`supabase/migrations/0030_mpm_sync_diagnostics.sql`](supabase/migrations/0030_mpm_sync_diagnostics.sql)
+    — adiciona colunas de diagnóstico em `mpm_sync_runs` (buscas tentadas/falhadas, amostra do erro) e **redeploy
+    a Edge Function de novo** (`supabase functions deploy mpm-sync`) — o código dela mudou junto com essa
+    migration (concorrência mais baixa + retry automático em erro 429/5xx + só marca violação automática quando
+    o match vem de EAN/código, nunca de heurística de nome).
+33. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -543,6 +554,7 @@ supabase/migrations/0027_profile_details.sql     profiles.avatar_url/phone/bio +
 src/components/Avatar.tsx                        foto real (avatar_url) com fallback pras iniciais
 supabase/migrations/0028_ia_skills.sql           tabela ia_skills (biblioteca de Skills no módulo IA)
 supabase/migrations/0029_categories.sql          tabela categories (Projetos/Campanhas) + seed a partir dos dados reais
+supabase/migrations/0030_mpm_sync_diagnostics.sql  colunas de diagnóstico em mpm_sync_runs (buscas tentadas/falhadas, erro)
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado

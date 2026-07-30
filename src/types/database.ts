@@ -351,6 +351,9 @@ export interface MpmSyncRun {
   listings_found: number;
   violations_found: number;
   error_message: string;
+  queries_attempted: number;
+  queries_failed: number;
+  last_error_sample: string;
 }
 
 export interface MpmSettings {

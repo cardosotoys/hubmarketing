@@ -52,12 +52,20 @@ function buildQueries(p: MpmProductRow): string[] {
   return Array.from(new Set(queries.filter((q) => q.trim().length > 0)));
 }
 
-function scoreMatch(p: MpmProductRow, title: string): number {
+interface MatchResult {
+  score: number;
+  // true só quando o match veio de EAN ou código — nunca de heurística de nome/marca.
+  // Só um match "confirmed" pode virar violação automática (high_confidence); heurística de
+  // nome, por melhor que pareça, sempre cai em revisão manual.
+  confirmed: boolean;
+}
+
+function scoreMatch(p: MpmProductRow, title: string): MatchResult {
   const normTitle = normalize(title);
   const ean = p.product?.ean ? normalize(p.product.ean) : '';
   const code = p.product?.code ? normalize(p.product.code) : '';
-  if (ean && normTitle.includes(ean)) return 100;
-  if (code && new RegExp(`\\b${code}\\b`).test(normTitle)) return 95;
+  if (ean && normTitle.includes(ean)) return { score: 100, confirmed: true };
+  if (code && new RegExp(`\\b${code}\\b`).test(normTitle)) return { score: 95, confirmed: true };
 
   const nameTokens = new Set(normalize(p.product?.name ?? '').split(' ').filter((t) => t.length > 2));
   for (const k of [...(p.keywords ?? []), ...(p.synonyms ?? [])]) {
@@ -65,14 +73,14 @@ function scoreMatch(p: MpmProductRow, title: string): number {
       if (t.length > 2) nameTokens.add(t);
     }
   }
-  if (nameTokens.size === 0) return 0;
+  if (nameTokens.size === 0) return { score: 0, confirmed: false };
   const titleTokens = new Set(normTitle.split(' '));
   let matched = 0;
   for (const t of nameTokens) if (titleTokens.has(t)) matched++;
 
   // Sem EAN/código pra confirmar, um único termo genérico batendo ("trator", "escolar") não
   // é suficiente pra considerar match — exige pelo menos 2 termos em comum quando há mais de um.
-  if (matched < 2 && nameTokens.size > 1) return 0;
+  if (matched < 2 && nameTokens.size > 1) return { score: 0, confirmed: false };
 
   let score = Math.round((matched / nameTokens.size) * 100);
 
@@ -87,7 +95,7 @@ function scoreMatch(p: MpmProductRow, title: string): number {
     if (!brandFound) score = Math.round(score * 0.5);
   }
 
-  return score;
+  return { score, confirmed: false };
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -124,7 +132,11 @@ function detectMarketplace(item: ShoppingResultItem): Marketplace {
   return 'google_shopping';
 }
 
-async function searchGoogleShopping(query: string): Promise<ShoppingResultItem[]> {
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function searchGoogleShopping(query: string, attempt = 0): Promise<ShoppingResultItem[]> {
   const apiKey = Deno.env.get('SERPAPI_KEY');
   if (!apiKey) {
     throw new Error('SERPAPI_KEY não configurada (supabase secrets set).');
@@ -133,6 +145,13 @@ async function searchGoogleShopping(query: string): Promise<ShoppingResultItem[]
   const res = await fetch(url);
   const body = await res.json();
   if (!res.ok) {
+    // 429 (rate limit) e 5xx costumam ser transitórios — tenta de novo com um pequeno atraso
+    // antes de desistir. Erro de cota mensal esgotada (SerpApi devolve isso como 400) ou chave
+    // inválida não se resolve com retry, então propaga na hora.
+    if ((res.status === 429 || res.status >= 500) && attempt < 2) {
+      await sleep(800 * (attempt + 1));
+      return searchGoogleShopping(query, attempt + 1);
+    }
     throw new Error(`SerpApi falhou pra query "${query}" (HTTP ${res.status}): ${body?.error ?? JSON.stringify(body)}`);
   }
   return (body.shopping_results ?? []) as ShoppingResultItem[];
@@ -188,20 +207,26 @@ async function runSync(supabase: SupabaseClient, runId: string) {
 
   let listingsFound = 0;
   let violationsFound = 0;
+  let queriesAttempted = 0;
+  let queriesFailed = 0;
+  let lastErrorSample = '';
   const rows = (products ?? []) as MpmProductRow[];
 
-  // Processa produtos em paralelo (limitado) — antes era em sequência, e com 15+ produtos ×
-  // várias buscas cada, isso estourava o tempo limite da Edge Function antes de terminar o
-  // segundo produto (por isso só 1 produto chegava a sincronizar de verdade).
-  await mapLimit(rows, 4, async (p) => {
+  // Processa produtos em paralelo, mas com concorrência baixa — a versão anterior usava 4×3=12
+  // buscas simultâneas, o que provavelmente estourava o limite de taxa (ou a cota mensal) da
+  // SerpApi e derrubava a maioria das buscas em silêncio (parecia "só sincronizou 1 produto").
+  await mapLimit(rows, 2, async (p) => {
    try {
     const queries = buildQueries(p);
     const seenExternalIds = new Set<string>();
 
-    const queryResults = await mapLimit(queries, 3, async (query) => {
+    const queryResults = await mapLimit(queries, 2, async (query) => {
+      queriesAttempted++;
       try {
         return await searchGoogleShopping(query);
       } catch (err) {
+        queriesFailed++;
+        if (!lastErrorSample) lastErrorSample = String(err);
         console.error(`Busca falhou pra "${query}" (produto ${p.product?.code}):`, err);
         return [];
       }
@@ -215,7 +240,7 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         if (seenExternalIds.has(externalId)) continue;
         seenExternalIds.add(externalId);
 
-        const score = scoreMatch(p, item.title);
+        const { score, confirmed } = scoreMatch(p, item.title);
         if (score < 50) continue;
 
         const marketplace = detectMarketplace(item);
@@ -228,7 +253,10 @@ async function runSync(supabase: SupabaseClient, runId: string) {
           .maybeSingle();
 
         const humanReviewed = existing && ['confirmed_match', 'rejected'].includes(existing.match_status);
-        const matchStatus = humanReviewed ? existing.match_status : score >= 80 ? 'high_confidence' : 'needs_review';
+        // Só marca "high_confidence" (o que pode virar violação automática) quando o match foi
+        // confirmado por EAN/código — heurística de nome/marca, mesmo com pontuação alta, sempre
+        // cai em revisão manual. Reduz drasticamente falso-positivo de produto errado.
+        const matchStatus = humanReviewed ? existing.match_status : confirmed && score >= 80 ? 'high_confidence' : 'needs_review';
         const isViolation = ['high_confidence', 'confirmed_match'].includes(matchStatus) && price < p.min_price;
 
         const listingFields = {
@@ -334,6 +362,9 @@ async function runSync(supabase: SupabaseClient, runId: string) {
       products_checked: rows.length,
       listings_found: listingsFound,
       violations_found: violationsFound,
+      queries_attempted: queriesAttempted,
+      queries_failed: queriesFailed,
+      last_error_sample: lastErrorSample,
     })
     .eq('id', runId);
 }

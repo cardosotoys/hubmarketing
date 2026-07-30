@@ -210,6 +210,21 @@ export default function MonitorPrecos() {
             </div>
           </div>
 
+          {lastRun && lastRun.queries_failed > 0 && (
+            <div className="banner error">
+              <span className="ic">⚠</span>
+              <span>
+                {lastRun.queries_failed} de {lastRun.queries_attempted} buscas falharam na última sincronização
+                {lastRun.last_error_sample ? ` — ${lastRun.last_error_sample}` : ''}. Se a mensagem citar limite de
+                taxa ou cota, confira o consumo em{' '}
+                <a href="https://serpapi.com/manage-api-key" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                  serpapi.com/manage-api-key
+                </a>
+                .
+              </span>
+            </div>
+          )}
+
           <div className="filters-row">
             <input className="chip-input" placeholder="⌕ Pesquisar…" value={search} onChange={(e) => setSearch(e.target.value)} />
             <select className="chip-select" value={productFilter} onChange={(e) => setProductFilter(e.target.value)}>
