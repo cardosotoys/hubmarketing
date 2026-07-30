@@ -164,10 +164,16 @@ async function searchGoogleShopping(query: string, attempt = 0): Promise<Shoppin
   const url = `https://serpapi.com/search?engine=google_shopping&q=${encodeURIComponent(query)}&gl=br&hl=pt&api_key=${apiKey}`;
   const res = await fetch(url);
   const body = await res.json();
-  if (!res.ok) {
+  // SerpApi às vezes devolve HTTP 200 com um campo "error" no corpo (ex.: cota mensal esgotada,
+  // "Your account has run out of searches") em vez de um status de erro de verdade — se isso
+  // caísse em `!res.ok`, passaria batido como "sucesso, 0 resultados", e o passo de poda de
+  // anúncios (que só existe pra reconhecer produto que legitimamente não tem mais nenhum
+  // anúncio) apagaria TODOS os anúncios monitorados achando que nada bateu de propósito. Por
+  // isso qualquer "error" no corpo conta como falha real da busca, não como resultado vazio.
+  if (!res.ok || body?.error) {
     // 429 (rate limit) e 5xx costumam ser transitórios — tenta de novo com um pequeno atraso
-    // antes de desistir. Erro de cota mensal esgotada (SerpApi devolve isso como 400) ou chave
-    // inválida não se resolve com retry, então propaga na hora.
+    // antes de desistir. Erro de cota mensal esgotada ou chave inválida não se resolve com
+    // retry, então propaga na hora.
     if ((res.status === 429 || res.status >= 500) && attempt < 2) {
       await sleep(800 * (attempt + 1));
       return searchGoogleShopping(query, attempt + 1);
