@@ -43,12 +43,24 @@ function buildQueries(p: MpmProductRow): string[] {
   const queries: string[] = [];
   const brandLabel = p.product?.brand?.label ?? '';
   const name = p.product?.name ?? '';
+  // EAN é um código de barras global (13 dígitos) — único o suficiente pra buscar sozinho, sem risco
+  // de trazer produto de outro fabricante.
   if (p.product?.ean) queries.push(p.product.ean);
-  if (p.product?.code) queries.push(p.product.code);
-  if (name) queries.push(name);
-  if (brandLabel && name) queries.push(`${brandLabel} ${name}`);
-  for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(k);
-  for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(s);
+  if (name) queries.push(brandLabel ? `${brandLabel} ${name}` : name);
+  // Código interno, palavras-chave e sinônimos são termos curtos/genéricos — sozinhos, o Google
+  // Shopping devolve qualquer coisa que contenha aquele termo, de qualquer ramo (ex.: buscar só
+  // "6011" traz peça de rolamento cujo SKU é "6011-2RS"). Sempre amarrados à marca, a busca fica
+  // específica o bastante pra não trazer produto de outro fabricante já na origem.
+  if (brandLabel) {
+    if (p.product?.code) queries.push(`${brandLabel} ${p.product.code}`);
+    for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(`${brandLabel} ${k}`);
+    for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(`${brandLabel} ${s}`);
+  } else {
+    // Sem marca cadastrada no produto (caso raro), mantém o comportamento antigo como fallback.
+    if (p.product?.code) queries.push(p.product.code);
+    for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(k);
+    for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(s);
+  }
   return Array.from(new Set(queries.filter((q) => q.trim().length > 0)));
 }
 
@@ -64,8 +76,22 @@ function scoreMatch(p: MpmProductRow, title: string): MatchResult {
   const normTitle = normalize(title);
   const ean = p.product?.ean ? normalize(p.product.ean) : '';
   const code = p.product?.code ? normalize(p.product.code) : '';
+  const titleTokens = new Set(normTitle.split(' '));
+  const brandLabel = p.product?.brand?.label ?? '';
+  const brandTokens = normalize(brandLabel).split(' ').filter((t) => t.length > 2);
+  const brandFound = brandTokens.length === 0 || brandTokens.some((t) => titleTokens.has(t));
+
   if (ean && normTitle.includes(ean)) return { score: 100, confirmed: true };
-  if (code && new RegExp(`\\b${code}\\b`).test(normTitle)) return { score: 95, confirmed: true };
+
+  // Código interno (3-4 dígitos, ex. "6011") não é um identificador globalmente único como o EAN —
+  // pode coincidir de graça com o SKU de qualquer outro fabricante (ex.: rolamento Timken
+  // "6011-2RS" batendo com o código interno "6011" de um brinquedo, mesmo sendo produtos
+  // completamente diferentes). Só confirma automaticamente quando o título também cita a marca
+  // (Cardoso/Playmi/Tópi); sem isso, cai no mesmo caminho heurístico de nome abaixo, que exige
+  // termos do produto em comum e vai zerar o score pra um título de outro ramo inteiramente.
+  if (code && brandFound && new RegExp(`\\b${code}\\b`).test(normTitle)) {
+    return { score: 95, confirmed: true };
+  }
 
   const nameTokens = new Set(normalize(p.product?.name ?? '').split(' ').filter((t) => t.length > 2));
   for (const k of [...(p.keywords ?? []), ...(p.synonyms ?? [])]) {
@@ -74,7 +100,6 @@ function scoreMatch(p: MpmProductRow, title: string): MatchResult {
     }
   }
   if (nameTokens.size === 0) return { score: 0, confirmed: false };
-  const titleTokens = new Set(normTitle.split(' '));
   let matched = 0;
   for (const t of nameTokens) if (titleTokens.has(t)) matched++;
 
@@ -88,12 +113,7 @@ function scoreMatch(p: MpmProductRow, title: string): MatchResult {
   // quase sempre cita a marca no título. Se não citar, penaliza a pontuação (não zera, porque
   // alguns vendedores omitem a marca) — reduz falso-positivo de nome genérico batendo com
   // produto de outro fabricante.
-  const brandLabel = p.product?.brand?.label ?? '';
-  if (brandLabel) {
-    const brandTokens = normalize(brandLabel).split(' ').filter((t) => t.length > 2);
-    const brandFound = brandTokens.length === 0 || brandTokens.some((t) => titleTokens.has(t));
-    if (!brandFound) score = Math.round(score * 0.5);
-  }
+  if (!brandFound) score = Math.round(score * 0.5);
 
   return { score, confirmed: false };
 }
@@ -241,7 +261,10 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         seenExternalIds.add(externalId);
 
         const { score, confirmed } = scoreMatch(p, item.title);
-        if (score < 50) continue;
+        // Abaixo de 65 o resultado costuma ser ruído (produto de outro ramo que bateu por
+        // coincidência em 1-2 termos genéricos) — subiu de 50 pra reduzir o que aparece pra
+        // revisão manual sem motivo.
+        if (score < 65) continue;
 
         const marketplace = detectMarketplace(item);
 
