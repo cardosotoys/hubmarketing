@@ -6,7 +6,7 @@
 update public.products set
   name = 'TOTOKA PLUS SEM ELETRÔNICO AZUL CAIXA INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416008-7',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -49,7 +49,7 @@ where code = '6008';
 update public.products set
   name = 'TOTOKA PLUS BABY TRACTOR CAIXA  INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416009-4',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -92,7 +92,7 @@ where code = '6009';
 update public.products set
   name = 'TOTOKINHA SPORT ROSA CAIXA INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416010-0',
   age_range = '+ 18 meses',
   gender = 'Menina',
@@ -133,7 +133,7 @@ where code = '6010';
 update public.products set
   name = 'TOTOKINHA SPORT AZUL CAIXA INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416011-7',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -174,7 +174,7 @@ where code = '6011';
 update public.products set
   name = 'PATINETE AZUL DECORADO',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417191-5',
   age_range = '+ 2 Anos',
   gender = 'MENINO',
@@ -189,7 +189,7 @@ update public.products set
   has_sound = false,
   has_light = true,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Montaria',
   package_contents = '1 Patinete decorado com luzes',
   package_length_mm = 510,
@@ -198,7 +198,7 @@ update public.products set
   package_volume_m3 = 0.022032,
   package_weight_kg = 2.15,
   ncm = '9503.00.10',
-  cst = null,
+  cst = '',
   dun = '2789648417191-9',
   carton_length_mm = 590,
   carton_width_mm = 430,
@@ -214,7 +214,7 @@ where code = '7191';
 update public.products set
   name = 'PATINETE ROSA DECORADO',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417192-2',
   age_range = '+ 2 Anos',
   gender = 'MENINA',
@@ -229,7 +229,7 @@ update public.products set
   has_sound = false,
   has_light = true,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Montaria',
   package_contents = '1 Patinete decorado com luzes',
   package_length_mm = 510,
@@ -238,7 +238,7 @@ update public.products set
   package_volume_m3 = 0.022032,
   package_weight_kg = 2.15,
   ncm = '9503.00.10',
-  cst = null,
+  cst = '',
   dun = '2789648417192-6',
   carton_length_mm = 590,
   carton_width_mm = 430,
@@ -254,7 +254,7 @@ where code = '7192';
 update public.products set
   name = 'GELADEIRA SONHO DE MENINA',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412012-8',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -269,7 +269,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Geladeira Sonho de Menina
 2 prateleiras
@@ -299,7 +299,7 @@ where code = '2012';
 update public.products set
   name = 'COZINHA SONHO DE MENINA',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412013-5',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -314,7 +314,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = 'A Cozinha Sonho de Menina vem com 1 panela com tampa, 2 pratos, 1 espátula, 1 concha,
 1 escumadeira, 2 garfos, 2 facas e 2 colheres e cartões pop-up para recortar no verso da embalagem.',
@@ -340,7 +340,7 @@ where code = '2013';
 update public.products set
   name = 'GELADEIRA GELA SORVETINHO',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412014-2',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -355,7 +355,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = 'A Geladeira Gela Sorvetinho vem com 2 sorvetinhos, 2 casquinhas, 1 forminha para fazer
 sorvete, 2 prateleiras internas, além do dispenser que sai sorvetinho.',
@@ -381,7 +381,7 @@ where code = '2014';
 update public.products set
   name = 'GELADEIRA SONHO DE MENINA CAIXA INDIVIDUAL',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412015-9',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -396,7 +396,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Geladeira Sonho de Menina
 2 prateleiras
@@ -426,7 +426,7 @@ where code = '2015';
 update public.products set
   name = 'COZINHA SONHO DE MENINA CAIXA INDIVIDUAL',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412016-6',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -441,7 +441,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = 'A Cozinha Sonho de Menina vem com 1 panela com tampa, 2 pratos, 1 espátula, 1 concha,
 1 escumadeira, 2 garfos, 2 facas e 2 colheres e cartões pop-up para recortar no verso da embalagem.',
@@ -467,7 +467,7 @@ where code = '2016';
 update public.products set
   name = 'GELADEIRA GELA SORVETINHO CAIXA INDIVIDUAL',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412017-3',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -482,7 +482,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = 'A Geladeira Gela Sorvetinho vem com 2 sorvetinhos, 2 casquinhas, 1 forminha para fazer
 sorvete, 2 prateleiras internas, além do dispenser que sai sorvetinho.',
@@ -508,7 +508,7 @@ where code = '2017';
 update public.products set
   name = 'ACQUA BUBBLE',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412018-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -523,7 +523,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Acqua Bubble 
 2 pratos
@@ -555,7 +555,7 @@ where code = '2018';
 update public.products set
   name = 'ACQUA BUBBLE CAIXA INDIVIDUAL',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412019-7',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -570,7 +570,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Acqua Bubble 
 2 pratos
@@ -602,7 +602,7 @@ where code = '2019';
 update public.products set
   name = 'Doce Cozinha Gourmet Air Fryer',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412020-3',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -617,7 +617,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 fritadeira Air Fryer com cesto',
   package_length_mm = null,
@@ -626,7 +626,7 @@ update public.products set
   package_volume_m3 = null,
   package_weight_kg = null,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648412020-7',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -634,7 +634,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '2020';
@@ -642,7 +642,7 @@ where code = '2020';
 update public.products set
   name = 'Doce Cozinha Gourmet Batedeira',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412021-0',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -657,7 +657,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 batedeira 
 1 recipiente',
@@ -667,7 +667,7 @@ update public.products set
   package_volume_m3 = null,
   package_weight_kg = null,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648412021-4',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -675,7 +675,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '2021';
@@ -683,7 +683,7 @@ where code = '2021';
 update public.products set
   name = 'Doce Cozinha Gourmet Liquidificador',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412022-7',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -698,7 +698,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 liquidificador com tampa',
   package_length_mm = null,
@@ -707,7 +707,7 @@ update public.products set
   package_volume_m3 = null,
   package_weight_kg = null,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648412022-1',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -715,7 +715,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '2022';
@@ -723,7 +723,7 @@ where code = '2022';
 update public.products set
   name = 'Doce Cozinha Gourmet Máquina de Café Espresso',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412023-4',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -738,7 +738,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 máquina de café espresso 
 2 cápsulas
@@ -749,7 +749,7 @@ update public.products set
   package_volume_m3 = null,
   package_weight_kg = null,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648412023-8',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -757,7 +757,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '2023';
@@ -765,7 +765,7 @@ where code = '2023';
 update public.products set
   name = 'Doce Cozinha Gourmet Microondas',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412024-1',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -780,7 +780,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 microondas com prato giratório',
   package_length_mm = null,
@@ -789,7 +789,7 @@ update public.products set
   package_volume_m3 = null,
   package_weight_kg = null,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648412024-5',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -797,7 +797,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '2024';
@@ -805,7 +805,7 @@ where code = '2024';
 update public.products set
   name = 'DOCE COZINHA PLUS COMIDINHA',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417122-9',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -820,7 +820,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 pia com escorredor
 1 tabua
@@ -853,7 +853,7 @@ where code = '7122';
 update public.products set
   name = 'DOCE COZINHA PLUS LIQUIDIFICADOR',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417123-6',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -868,7 +868,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 liquidificador
 1 tabua
@@ -903,7 +903,7 @@ where code = '7123';
 update public.products set
   name = 'DOCE COZINHA PLUS MICROONDAS E BATEDEIRA',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417124-3',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -918,7 +918,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 microondas
 1 batedeira
@@ -957,7 +957,7 @@ where code = '7124';
 update public.products set
   name = 'DOCE COZINHA PLUS TORRADEIRA E BATEDEIRA',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417125-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -972,7 +972,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 torradeira
 1 batedeira
@@ -1006,7 +1006,7 @@ where code = '7125';
 update public.products set
   name = 'DOCE COZINHA PLUS BRINCANDO DE COZINHAR',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417181-6',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -1021,7 +1021,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = 'Fogãozinho de 1 boca com grelha e botão, 
 2 panelinhas com tampa, 
@@ -1035,7 +1035,7 @@ update public.products set
   package_volume_m3 = 0.04968,
   package_weight_kg = 0.284,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417181-0',
   carton_length_mm = 330,
   carton_width_mm = 250,
@@ -1051,7 +1051,7 @@ where code = '7181';
 update public.products set
   name = 'DOCE COZINHA PLUS GRILL',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417182-3',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -1066,7 +1066,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Chapa,
 3 Talheres grandes que imitam madeira, 
@@ -1084,7 +1084,7 @@ update public.products set
   package_volume_m3 = 0.04968,
   package_weight_kg = 0.385,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417182-7',
   carton_length_mm = 375,
   carton_width_mm = 345,
@@ -1100,7 +1100,7 @@ where code = '7182';
 update public.products set
   name = 'DOCE COZINHA PLUS SANDWICH',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417183-0',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -1115,7 +1115,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '2 frigideiras
  1 Pão de forma
@@ -1131,7 +1131,7 @@ update public.products set
   package_volume_m3 = 0.04968,
   package_weight_kg = 0.271,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417183-4',
   carton_length_mm = 330,
   carton_width_mm = 250,
@@ -1147,7 +1147,7 @@ where code = '7183';
 update public.products set
   name = 'STUDIO FASHION CELEBRIDADES CORTE&ESCOVA',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417184-7',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -1162,7 +1162,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = '02 pilhas AA (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Kits de beleza e Acessórios',
   package_contents = '1 secador eletrônico
 1 bico reto
@@ -1180,7 +1180,7 @@ update public.products set
   package_volume_m3 = 0.0864,
   package_weight_kg = 0.283,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417184-1',
   carton_length_mm = 475,
   carton_width_mm = 300,
@@ -1196,7 +1196,7 @@ where code = '7184';
 update public.products set
   name = 'STUDIO FASHION CELEBRIDADES CORTE&HIDRATAÇÃO',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417185-4',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -1211,7 +1211,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = '02 pilhas AA (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Kits de beleza e Acessórios',
   package_contents = '1 secador eletrônico
 1 bico reto
@@ -1229,7 +1229,7 @@ update public.products set
   package_volume_m3 = 0.0864,
   package_weight_kg = 0.283,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417185-8',
   carton_length_mm = 475,
   carton_width_mm = 300,
@@ -1245,7 +1245,7 @@ where code = '7185';
 update public.products set
   name = 'STUDIO FASHION CELEBRIDADES ESCOVA&PENTEADO',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417186-1',
   age_range = '+ 3 Anos',
   gender = 'MENINA',
@@ -1260,7 +1260,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = '02 pilhas AA (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Kits de beleza e Acessórios',
   package_contents = '1 secador eletrônico
 1 bico reto
@@ -1278,7 +1278,7 @@ update public.products set
   package_volume_m3 = 0.0864,
   package_weight_kg = 0.283,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417186-5',
   carton_length_mm = 475,
   carton_width_mm = 300,
@@ -1294,7 +1294,7 @@ where code = '7186';
 update public.products set
   name = 'DOCE COZINHA PLUS CHÁ COM BISCOITOS',
   line = 'PLAY&IMAGINE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417205-9',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1309,7 +1309,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '04 biscoitos 02 colheres 02 pratos 02 xícaras 01 bule grande 01 bule pequeno 01 caldeirão',
   package_length_mm = 336,
@@ -1318,7 +1318,7 @@ update public.products set
   package_volume_m3 = null,
   package_weight_kg = 0.19,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417205 3',
   carton_length_mm = 415,
   carton_width_mm = 285,
@@ -1326,7 +1326,7 @@ update public.products set
   carton_volume_m3 = 0.375,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7205';

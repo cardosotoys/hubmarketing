@@ -21,7 +21,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Puericultura',
   package_contents = '1 Pipinico 
 1 Recipiente removivel 
@@ -63,7 +63,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Puericultura',
   package_contents = '1 Pipinico 
 1 Recipiente removivel 
@@ -90,7 +90,7 @@ where code = '9506';
 update public.products set
   name = 'LEVA-PAPINHA',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648410124-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -105,7 +105,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Cesta
 1 Jarra 
@@ -142,7 +142,7 @@ where code = '0124';
 update public.products set
   name = 'MINI-MERCADO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648410133-2',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -157,7 +157,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Cesta
 2 Pratos
@@ -188,7 +188,7 @@ where code = '0133';
 update public.products set
   name = 'DOCE COZINHA ALMOCINHO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412004-3',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -203,7 +203,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Panela
 1  Caçarola
@@ -237,7 +237,7 @@ where code = '2004';
 update public.products set
   name = 'DOCE COZINHA LANCHINHO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412005-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -252,7 +252,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Jarra 
 4 Pratos
@@ -282,7 +282,7 @@ where code = '2005';
 update public.products set
   name = 'DOCE COZINHA JANTINHA',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412006-7',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -297,7 +297,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Panela
 1  Caçarola
@@ -331,7 +331,7 @@ where code = '2006';
 update public.products set
   name = 'DOCE COZINHA FAZ DE CONTA',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412010-4',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -346,7 +346,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Panela
 1  Caçarola
@@ -376,7 +376,7 @@ where code = '2010';
 update public.products set
   name = 'DOCE COZINHA FOGÃOZINHO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412011-1',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -391,7 +391,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Panela
 1  Caçarola
@@ -426,7 +426,7 @@ where code = '2011';
 update public.products set
   name = 'PET CLUB HORA DO BANHO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417126-7',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -441,7 +441,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Pets, kits e acessórios',
   package_contents = '4 pets
 1 maleta
@@ -469,7 +469,7 @@ where code = '7126';
 update public.products set
   name = 'PET CLUB HORA DO PASSEIO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417127-4',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -484,7 +484,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Pets, kits e acessórios',
   package_contents = '1 pet
 1 maleta de transporte
@@ -511,7 +511,7 @@ where code = '7127';
 update public.products set
   name = 'PET CLUB HORA DO SONINHO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417128-1',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -526,7 +526,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = '02 pilhas AA (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Pets, kits e acessórios',
   package_contents = '4 pets
 1 berço musical
@@ -553,7 +553,7 @@ where code = '7128';
 update public.products set
   name = 'BELINHA STUDIO',
   line = 'FAZ DE CONTA',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418102-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -568,7 +568,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Penteadeira, Kits e Acessórios',
   package_contents = '1 Helicóptero',
   package_length_mm = null,
@@ -593,7 +593,7 @@ where code = '8102';
 update public.products set
   name = 'COMBO TRATOR ESCAVADEIRA',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411040-2',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -608,7 +608,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Tratores',
   package_contents = '1 Escavadeira',
   package_length_mm = 396,
@@ -633,7 +633,7 @@ where code = '1040';
 update public.products set
   name = 'COMBO TRATOR RETROESCAVADEIRA',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411041-9',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -648,7 +648,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Tratores',
   package_contents = '1 Retroescavadeira',
   package_length_mm = 455,
@@ -673,7 +673,7 @@ where code = '1041';
 update public.products set
   name = 'INVICTUS BASCULANTE',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411042-6',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -688,7 +688,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Tratores',
   package_contents = '1 Caminhão',
   package_length_mm = 255,
@@ -713,7 +713,7 @@ where code = '1042';
 update public.products set
   name = 'INVICTUS GRANELEIRO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411044-0',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -728,7 +728,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 Caminhão',
   package_length_mm = 435,
@@ -753,7 +753,7 @@ where code = '1044';
 update public.products set
   name = 'INVICTUS RESGATE',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411045-7',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -768,7 +768,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 Caminhão
 1 Carro',
@@ -794,7 +794,7 @@ where code = '1045';
 update public.products set
   name = 'COMBO AGRO TRATOR',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411051-8',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -809,7 +809,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 Trator',
   package_length_mm = 424,
@@ -834,7 +834,7 @@ where code = '1051';
 update public.products set
   name = 'INVICTUS SKY',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411053-2',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -849,7 +849,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 Caminhão 
 1 Helicóptero',
@@ -875,7 +875,7 @@ where code = '1053';
 update public.products set
   name = 'INVICTUS SUPER CEGONHEIRO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411058-7',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -890,7 +890,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 Caminhão 
 5 Carros',
@@ -916,7 +916,7 @@ where code = '1058';
 update public.products set
   name = 'DINOCAR COM CARRINHOS',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417129-8',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -931,7 +931,7 @@ update public.products set
   has_sound = true,
   has_light = true,
   battery_type = '02 Baterias LR44/AG13 (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 dino car
 2 carrinhos',
@@ -941,7 +941,7 @@ update public.products set
   package_volume_m3 = 0.006419,
   package_weight_kg = 0.345,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417129-2',
   carton_length_mm = 400,
   carton_width_mm = 300,
@@ -957,7 +957,7 @@ where code = '7129';
 update public.products set
   name = 'CITY DRIVER AMARELO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417130-4',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -972,7 +972,7 @@ update public.products set
   has_sound = true,
   has_light = true,
   battery_type = '03 baterias LR44 (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Ônibus Roda Livre',
   package_contents = '1 ônibus',
   package_length_mm = 325,
@@ -981,7 +981,7 @@ update public.products set
   package_volume_m3 = 0.003803,
   package_weight_kg = 0.455,
   ncm = '9503.00.98',
-  cst = null,
+  cst = '',
   dun = '2789648417130-8',
   carton_length_mm = 340,
   carton_width_mm = 300,
@@ -997,7 +997,7 @@ where code = '7130';
 update public.products set
   name = 'CITY DRIVER VERMELHO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417131-1',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1012,7 +1012,7 @@ update public.products set
   has_sound = true,
   has_light = true,
   battery_type = '03 baterias LR44 (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Ônibus Roda Livre',
   package_contents = '1 ônibus',
   package_length_mm = 325,
@@ -1021,7 +1021,7 @@ update public.products set
   package_volume_m3 = 0.003803,
   package_weight_kg = 0.455,
   ncm = '9503.00.98',
-  cst = null,
+  cst = '',
   dun = '2789648417131-5',
   carton_length_mm = 340,
   carton_width_mm = 300,
@@ -1037,7 +1037,7 @@ where code = '7131';
 update public.products set
   name = 'CITY TRUCK BOMBEIRO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417132-8',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1052,7 +1052,7 @@ update public.products set
   has_sound = true,
   has_light = true,
   battery_type = '03 Baterias AG13 (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 caminhão bombeiro',
   package_length_mm = 300,
@@ -1061,7 +1061,7 @@ update public.products set
   package_volume_m3 = 0.00567,
   package_weight_kg = 0.42,
   ncm = '9503.00.98',
-  cst = null,
+  cst = '',
   dun = '2789648417132-2',
   carton_length_mm = 320,
   carton_width_mm = 240,
@@ -1077,7 +1077,7 @@ where code = '7132';
 update public.products set
   name = 'CITY TRUCK CONSTRUÇÃO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417133-5',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1092,7 +1092,7 @@ update public.products set
   has_sound = true,
   has_light = true,
   battery_type = '03 Baterias AG13 (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 caminhão construção',
   package_length_mm = 300,
@@ -1101,7 +1101,7 @@ update public.products set
   package_volume_m3 = 0.00567,
   package_weight_kg = 0.41,
   ncm = '9503.00.98',
-  cst = null,
+  cst = '',
   dun = '2789648417133-9',
   carton_length_mm = 320,
   carton_width_mm = 240,
@@ -1117,7 +1117,7 @@ where code = '7133';
 update public.products set
   name = 'CITY TRUCK RECICLAGEM',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417134-2',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1132,7 +1132,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = '03 Baterias AG13 (inclusas)',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 caminhão reciclagem',
   package_length_mm = 300,
@@ -1141,7 +1141,7 @@ update public.products set
   package_volume_m3 = 0.00567,
   package_weight_kg = 0.42,
   ncm = '9503.00.98',
-  cst = null,
+  cst = '',
   dun = '2789648417134-6',
   carton_length_mm = 320,
   carton_width_mm = 240,
@@ -1157,7 +1157,7 @@ where code = '7134';
 update public.products set
   name = 'CORRIDA RADICAL 360°',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417135-9',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1172,7 +1172,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Pista de carros',
   package_contents = '1 pista
 1 carro',
@@ -1182,7 +1182,7 @@ update public.products set
   package_volume_m3 = 0.006533,
   package_weight_kg = 0.38,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417135-3',
   carton_length_mm = 460,
   carton_width_mm = 280,
@@ -1198,7 +1198,7 @@ where code = '7135';
 update public.products set
   name = 'CORRIDA RADICAL 360° com 2 LOOPINGs',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417136-6',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1213,7 +1213,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Pista de carros',
   package_contents = '1 pista
 1 carro',
@@ -1223,7 +1223,7 @@ update public.products set
   package_volume_m3 = 0.01113,
   package_weight_kg = 0.67,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417136-0',
   carton_length_mm = 470,
   carton_width_mm = 290,
@@ -1239,7 +1239,7 @@ where code = '7136';
 update public.products set
   name = 'CORRIDA RADICAL DINOSSAURO',
   line = 'RODA LIVRE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417137-3',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -1254,7 +1254,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Pista de carros',
   package_contents = '1 pista
 1 carro
@@ -1265,7 +1265,7 @@ update public.products set
   package_volume_m3 = 0.008313,
   package_weight_kg = 0.565,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417137-7',
   carton_length_mm = 520,
   carton_width_mm = 365,

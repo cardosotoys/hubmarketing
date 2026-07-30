@@ -6,7 +6,7 @@
 update public.products set
   name = 'CARRINHO DE BONECA PASSEIO DO BEBÊ',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648410125-7',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -21,7 +21,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Bonecas e Acessórios',
   package_contents = '1 Carrinho de Boneca',
   package_length_mm = null,
@@ -46,7 +46,7 @@ where code = '0125';
 update public.products set
   name = 'JEEP RALLY (SEM EMBALAGEM)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648411036-5',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -61,7 +61,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Jipes Roda Livre',
   package_contents = '1 Carro',
   package_length_mm = null,
@@ -86,7 +86,7 @@ where code = '1036';
 update public.products set
   name = 'CARRINHO DE BONECA MEU NENÊ',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412001-2',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -101,7 +101,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Bonecas e Acessórios',
   package_contents = '1 Carrinho de Boneca',
   package_length_mm = 395,
@@ -126,7 +126,7 @@ where code = '2001';
 update public.products set
   name = 'CARRINHO DE BONECA DESMONTADO',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412003-6',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -141,7 +141,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Bonecas e Acessórios',
   package_contents = '4 Rodas 
 2 Laterais
@@ -172,7 +172,7 @@ where code = '2003';
 update public.products set
   name = 'CARRINHO DE BONECA DESMONTADO',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648412009-8',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -187,7 +187,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Bonecas e Acessórios',
   package_contents = '4 Rodas 
 2 Laterais
@@ -218,7 +218,7 @@ where code = '2009';
 update public.products set
   name = 'TÓPI BOMBEIRINHO (carrinho didático de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413057-8',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -233,7 +233,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 caminhão Tópi Bombeirinho
 3 peças temáticas
@@ -260,7 +260,7 @@ where code = '3057';
 update public.products set
   name = 'TÓPI ESCOLAR (carrinho didático de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413058-5',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -275,7 +275,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 caminhão Tópi Escolar
 4 formas geométricas
@@ -302,7 +302,7 @@ where code = '3058';
 update public.products set
   name = 'TÓPI SABIDINHO PLUS (carrinho didático de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413059-2',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -317,7 +317,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 caminhão Tópi Sabidinho Plus 
 4 formas geométricas
@@ -344,7 +344,7 @@ where code = '3059';
 update public.products set
   name = 'TÓPI TAMBOR (tambor de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414009-6',
   age_range = '+ 3 Anos',
   gender = 'Unissex',
@@ -359,7 +359,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Instrumentos Musicais',
   package_contents = '1 tambor
 2 baquetas',
@@ -385,7 +385,7 @@ where code = '4009';
 update public.products set
   name = 'TÓPI TAMBORETE (tamborete de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414010-2',
   age_range = '+ 3 Anos',
   gender = 'Unissex',
@@ -400,7 +400,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Instrumentos Musicais',
   package_contents = '1 tamborete
 2 baquetas',
@@ -426,7 +426,7 @@ where code = '4010';
 update public.products set
   name = 'TÓPI DINO SABIDINHO (carrinho didático de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414013-3',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -441,7 +441,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 caminhão Tópi Sabidinho
 4 formas geométricas',
@@ -467,7 +467,7 @@ where code = '4013';
 update public.products set
   name = 'TÓPI TORTUGA (tartaruga didática de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414014-0',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -482,7 +482,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 Tortuga
 4 formas geométricas
@@ -509,7 +509,7 @@ where code = '4014';
 update public.products set
   name = 'TÓPI PATA BOTA OVO (pato didático de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414015-7',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -524,7 +524,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 Pata Bota Ovos
 4 formas geométricas
@@ -551,7 +551,7 @@ where code = '4015';
 update public.products set
   name = 'TÓPI MILEVA (carrinho de puxar de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414016-4',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -566,7 +566,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 Mileva
 3 formas praia
@@ -594,7 +594,7 @@ where code = '4016';
 update public.products set
   name = 'TÓPI INVICTUS CAÇAMBA (caminhão de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414018-8',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -609,7 +609,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 caminhão Invictus Caçamba',
   package_length_mm = 120,
@@ -634,7 +634,7 @@ where code = '4018';
 update public.products set
   name = 'TÓPI BATEDEIRA (batedeira de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414019-5',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -649,7 +649,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Batedeira',
   package_length_mm = 75,
@@ -674,7 +674,7 @@ where code = '4019';
 update public.products set
   name = 'TÓPI LIQUIDIFICADOR (liquidificador de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414020-1',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -689,7 +689,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Liquidificador',
   package_length_mm = 75,
@@ -714,7 +714,7 @@ where code = '4020';
 update public.products set
   name = 'TÓPI FOGÃOZINHO (fogão de plástico)',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414021-8',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -729,7 +729,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Cozinhas, Kits e Acessórios',
   package_contents = '1 Fogãozinho',
   package_length_mm = 60,
@@ -754,7 +754,7 @@ where code = '4021';
 update public.products set
   name = 'TÓPI INVICTUS GRANELEIRO',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414025-6',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -769,7 +769,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 caminhão graneleiro',
   package_length_mm = 120,
@@ -794,7 +794,7 @@ where code = '4025';
 update public.products set
   name = 'TÓPI CESTINHA DIDÁTICA',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414026-3',
   age_range = '+ 18 meses',
   gender = 'Unissex',
@@ -809,7 +809,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Didáticos',
   package_contents = '1 cesta Formas Geométricas
 4 formas geométricas',
@@ -835,7 +835,7 @@ where code = '4026';
 update public.products set
   name = 'TÓPI COMBO COSTRUCTION',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414028-7',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -850,7 +850,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 caminhão cegonheiro
 5 carrinhos',
@@ -876,7 +876,7 @@ where code = '4028';
 update public.products set
   name = 'TÓPI INVICTUS SUPER CEGONHEIRO',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648414029-4',
   age_range = '+ 3 Anos',
   gender = 'Menino',
@@ -891,7 +891,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Caminhões Roda Livre',
   package_contents = '1 Caminhão 
 5 Carros',
@@ -917,7 +917,7 @@ where code = '4029';
 update public.products set
   name = 'TÓPI BLOCOS DE MONTAR 130 PEÇAS',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417189-2',
   age_range = '+ 3 Anos',
   gender = 'Unissex',
@@ -932,7 +932,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos de Montar',
   package_contents = '01 placa base para encaixes
 01 corpo avião
@@ -956,7 +956,7 @@ update public.products set
   package_volume_m3 = 0.0378,
   package_weight_kg = 0.39,
   ncm = '9503.00.60',
-  cst = null,
+  cst = '',
   dun = '27896484171896',
   carton_length_mm = 400,
   carton_width_mm = 340,
@@ -972,7 +972,7 @@ where code = '7189';
 update public.products set
   name = 'TÓPI BLOCOS DE MONTAR 39 PEÇAS COM BASE',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417190-8',
   age_range = '+ 3 Anos',
   gender = 'Unissex',
@@ -987,7 +987,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos de Montar',
   package_contents = '01 locomotiva
 01 teto locomotiva
@@ -1003,7 +1003,7 @@ update public.products set
   package_volume_m3 = 0.07392,
   package_weight_kg = 0.385,
   ncm = '9503.00.60',
-  cst = null,
+  cst = '',
   dun = '27896484171902',
   carton_length_mm = 430,
   carton_width_mm = 280,
@@ -1019,7 +1019,7 @@ where code = '7190';
 update public.products set
   name = 'Tópi Festa Divertida com Pizza',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417208-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1034,7 +1034,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '06 pedaços de bolo 01 cacho de uva 01 garfo 01 colher 01 faca 06 pedaços de pizza 01 morango 02 pirulitos com borda redonda 02 pirulitoscom borda coração 03 cartelas de papel',
   package_length_mm = 286,
@@ -1043,7 +1043,7 @@ update public.products set
   package_volume_m3 = 0.03953664,
   package_weight_kg = 0.24,
   ncm = '9503.00.99',
-  cst = null,
+  cst = '',
   dun = '2789648417208 4',
   carton_length_mm = 440,
   carton_width_mm = 295,
@@ -1051,7 +1051,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7208';
@@ -1059,7 +1059,7 @@ where code = '7208';
 update public.products set
   name = 'Tópi Festa Doce com Sorvetes',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417209-7',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1074,7 +1074,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '06 bolas de sorvete 03 casquinhas de sorvete 06 pedaços de bolo 01 colher 01 garfo 01 faca 01 pratinho 01 pirulito redondo 01 pirulito coração 01 pegador de sorvete 01 conjunto mesa e quatro cadeiras 04 cartelas de papel',
   package_length_mm = 286,
@@ -1083,7 +1083,7 @@ update public.products set
   package_volume_m3 = 0.0555984,
   package_weight_kg = 0.24,
   ncm = '9503.00.99',
-  cst = null,
+  cst = '',
   dun = '2789648417209 1',
   carton_length_mm = 440,
   carton_width_mm = 295,
@@ -1091,7 +1091,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7209';
@@ -1099,7 +1099,7 @@ where code = '7209';
 update public.products set
   name = 'Tópi Festa Gelada com Frutinhas',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417210-3',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1114,7 +1114,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '03 casquinhas de sorvete 03 bolas de sorvete 03 cadeiras 01 geladeira 01 garfo 01 faca 01 bolo 01 prato 01 mesa 01 armario 01 pera 01 carambola 04 cartelas de papel',
   package_length_mm = 286,
@@ -1123,7 +1123,7 @@ update public.products set
   package_volume_m3 = 0.06054048,
   package_weight_kg = 0.26,
   ncm = '9503.00.99',
-  cst = null,
+  cst = '',
   dun = '2789648417210 7',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -1131,7 +1131,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7210';
@@ -1139,7 +1139,7 @@ where code = '7210';
 update public.products set
   name = 'Tópi Festa Plus das Guloseimas',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417211-0',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1154,7 +1154,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '02 donuts 01 bandeja 03 refrigerantes 01 cortador de pizza 01 espatula de pizza 01 cacho banana 01 caho de uvas 03 pedaços de pizza 01 carrinho com bolo 05 cartelas de papel',
   package_length_mm = 286,
@@ -1163,7 +1163,7 @@ update public.products set
   package_volume_m3 = 0.0803088,
   package_weight_kg = 0.285,
   ncm = '9503.00.99',
-  cst = null,
+  cst = '',
   dun = '2789648417211 4',
   carton_length_mm = null,
   carton_width_mm = null,
@@ -1171,7 +1171,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7211';
@@ -1179,7 +1179,7 @@ where code = '7211';
 update public.products set
   name = 'Tópi Chef Brunch',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417212-7',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1194,7 +1194,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '01 colher 01 pote de molho 02 pratos 01 bule 01 xícara 01 wafle coração',
   package_length_mm = 215,
@@ -1203,7 +1203,7 @@ update public.products set
   package_volume_m3 = 0.004386,
   package_weight_kg = 0.25,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417212 1',
   carton_length_mm = 350,
   carton_width_mm = 230,
@@ -1211,7 +1211,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7212';
@@ -1219,7 +1219,7 @@ where code = '7212';
 update public.products set
   name = 'Tópi Chef Chá da tarde',
   line = 'SOLAPAS',
-  technical_name = null,
+  technical_name = '',
   ean = '789648417213-4',
   age_range = '+ 3 Anos',
   gender = 'Menina',
@@ -1234,7 +1234,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não Inclusa / Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'PRIMEIRA INFÂNCIA',
   package_contents = '03 colheres 03 pratos 03 xícaras 03 wafles coração',
   package_length_mm = 215,
@@ -1243,7 +1243,7 @@ update public.products set
   package_volume_m3 = 0.004386,
   package_weight_kg = 0.11,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648417213 8',
   carton_length_mm = 350,
   carton_width_mm = 230,
@@ -1251,7 +1251,7 @@ update public.products set
   carton_volume_m3 = null,
   carton_quantity = 6,
   carton_gross_weight_kg = null,
-  pallet_layer_pattern = null,
+  pallet_layer_pattern = '',
   pallet_height_m = null,
   pallet_total_units = null
 where code = '7213';

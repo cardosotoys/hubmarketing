@@ -6,7 +6,7 @@
 update public.products set
   name = 'MESINHA CRIATIVA AZUL',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418003-0',
   age_range = '+ 24 meses',
   gender = 'Menino',
@@ -21,7 +21,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 mesinha criativa
 20 blocos de montar',
@@ -47,7 +47,7 @@ where code = '8003';
 update public.products set
   name = 'TRENZINHO DIDÁTICO 70 PEÇAS',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418005-4',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -62,7 +62,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '70 peças 
 1 cartela de adesivos',
@@ -88,7 +88,7 @@ where code = '8005';
 update public.products set
   name = 'BOMBEIRINHO 25 PEÇAS',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418009-2',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -103,7 +103,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '25 peças 
 1 cartela de adesivos',
@@ -129,7 +129,7 @@ where code = '8009';
 update public.products set
   name = 'BLOCKS BOX 90 BLOCOS ROSA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418011-5',
   age_range = '+ 24 meses',
   gender = 'Menina',
@@ -144,7 +144,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 Block Box 
 90 Blocos
@@ -171,7 +171,7 @@ where code = '8011';
 update public.products set
   name = 'BLOCKS BOX 90 BLOCOS AZUL',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418012-2',
   age_range = '+ 24 meses',
   gender = 'Menino',
@@ -186,7 +186,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 Block Box 
 90 Blocos
@@ -213,7 +213,7 @@ where code = '8012';
 update public.products set
   name = 'TRUCK RIDE ON AMARELO',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418014-6',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -228,7 +228,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Primeiros Passos',
   package_contents = '1 Truck Ride on 
 10 blocos de montar',
@@ -254,7 +254,7 @@ where code = '8014';
 update public.products set
   name = 'TRENZINHO DIDÁTICO 28 PEÇAS',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418015-3',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -269,7 +269,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '28 peças 
 1 cartela de adesivos',
@@ -295,7 +295,7 @@ where code = '8015';
 update public.products set
   name = 'GIRAFA DE ATIVIDADES AMARELA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418016-0',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -310,7 +310,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 girafa de atividades
 15 blocos de montar',
@@ -336,7 +336,7 @@ where code = '8016';
 update public.products set
   name = 'TOTOKROSS MOTO DE EQUILIBRIO ROSA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418017-7',
   age_range = '+ 12 meses',
   gender = 'Menina',
@@ -376,7 +376,7 @@ where code = '8017';
 update public.products set
   name = 'TOTOKROSS MOTO DE EQUILIBRIO VERMELHA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418018-4',
   age_range = '+ 12 meses',
   gender = 'Menino',
@@ -416,7 +416,7 @@ where code = '8018';
 update public.products set
   name = 'PIPINICO URSO AZUL CAIXA INDIVIDUAL',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418022-1',
   age_range = '+ 12 meses',
   gender = 'Menino',
@@ -431,7 +431,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Puericultura',
   package_contents = '1 Pipinico Urso
 1 Recipiente removivel',
@@ -457,7 +457,7 @@ where code = '8022';
 update public.products set
   name = 'MESINHA CRIATIVA ROSA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418023-8',
   age_range = '+ 24 meses',
   gender = 'Menina',
@@ -472,7 +472,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 mesinha criativa
 20 blocos de montar',
@@ -498,7 +498,7 @@ where code = '8023';
 update public.products set
   name = 'GIRAFA DE ATIVIDADES ROSA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418024-5',
   age_range = '+ 24 meses',
   gender = 'Menina',
@@ -513,7 +513,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 girafa de atividades
 15 blocos de montar',
@@ -539,7 +539,7 @@ where code = '8024';
 update public.products set
   name = 'ESTAÇÃO DE RESGATE 10 BLOCOS',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418025-2',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -554,7 +554,7 @@ update public.products set
   has_sound = true,
   has_light = true,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 estação
 10 blocos de montar',
@@ -580,7 +580,7 @@ where code = '8025';
 update public.products set
   name = 'FAZENDINHA 19 BLOCOS',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418026-9',
   age_range = '+ 24 meses',
   gender = 'Unissex',
@@ -595,7 +595,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 fazendinha
 19 blocos de montar',
@@ -621,7 +621,7 @@ where code = '8026';
 update public.products set
   name = 'CARRINHO DE PUXAR COM 20 BLOCOS AZUL',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418027-6',
   age_range = '+ 24 meses',
   gender = 'MENINO',
@@ -636,7 +636,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 carrinho de puxar com tampa
 20 blocos',
@@ -646,7 +646,7 @@ update public.products set
   package_volume_m3 = 0.014904,
   package_weight_kg = 0.8,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648418027-0',
   carton_length_mm = 570,
   carton_width_mm = 260,
@@ -662,7 +662,7 @@ where code = '8027';
 update public.products set
   name = 'CARRINHO DE PUXAR COM 20 BLOCOS ROSA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418028-3',
   age_range = '+ 24 meses',
   gender = 'MENINA',
@@ -677,7 +677,7 @@ update public.products set
   has_sound = false,
   has_light = false,
   battery_type = 'Não possui',
-  supported_weight = null,
+  supported_weight = '',
   toy_category = 'Blocos',
   package_contents = '1 carrinho de puxar com tampa
 20 blocos',
@@ -687,7 +687,7 @@ update public.products set
   package_volume_m3 = 0.014904,
   package_weight_kg = 0.8,
   ncm = '9503.00.80',
-  cst = null,
+  cst = '',
   dun = '2789648418028-7',
   carton_length_mm = 570,
   carton_width_mm = 260,
@@ -703,7 +703,7 @@ where code = '8028';
 update public.products set
   name = 'MOTO SPEED XR - MOTO DE EQUILÍBRIO VERMELHA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418029-0',
   age_range = '+ 12 meses',
   gender = 'MENINO',
@@ -727,7 +727,7 @@ update public.products set
   package_volume_m3 = 0.10192,
   package_weight_kg = 2.18,
   ncm = '9503.00.10',
-  cst = null,
+  cst = '',
   dun = 'X',
   carton_length_mm = 495,
   carton_width_mm = 340,
@@ -743,7 +743,7 @@ where code = '8029';
 update public.products set
   name = 'MOTO SPEED XR - MOTO DE EQUILÍBRIO ROSA',
   line = 'PLAY&MOLTO',
-  technical_name = null,
+  technical_name = '',
   ean = '789648418030-6',
   age_range = '+ 12 meses',
   gender = 'MENINA',
@@ -767,7 +767,7 @@ update public.products set
   package_volume_m3 = 0.10192,
   package_weight_kg = 2.18,
   ncm = '9503.00.10',
-  cst = null,
+  cst = '',
   dun = 'X',
   carton_length_mm = 495,
   carton_width_mm = 340,
@@ -783,7 +783,7 @@ where code = '8030';
 update public.products set
   name = 'TOTOKINHA CLÁSSICA ROSA CAIXA  INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648410300-8',
   age_range = '+ 18 meses',
   gender = 'Menina',
@@ -824,7 +824,7 @@ where code = '0300';
 update public.products set
   name = 'TOTOKINHA CLÁSSICA AZUL CAIXA  INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648410301-5',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -865,7 +865,7 @@ where code = '0301';
 update public.products set
   name = 'TOTOKINHA BOLINHA ROSA',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413033-2',
   age_range = '+ 18 meses',
   gender = 'Menina',
@@ -907,7 +907,7 @@ where code = '3033';
 update public.products set
   name = 'TOTOKINHA BOLINHA AZUL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413034-9',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -949,7 +949,7 @@ where code = '3034';
 update public.products set
   name = 'TOTOKA PLUS SEM ELETRÔNICO ROSA',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413045-5',
   age_range = '+ 18 meses',
   gender = 'Menina',
@@ -992,7 +992,7 @@ where code = '3045';
 update public.products set
   name = 'TOTOKA PLUS SEM ELETRÔNICO AZUL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413046-2',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -1035,7 +1035,7 @@ where code = '3046';
 update public.products set
   name = 'TOTOKINHA SPORT ROSA',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413066-0',
   age_range = '+ 18 meses',
   gender = 'Menina',
@@ -1076,7 +1076,7 @@ where code = '3066';
 update public.products set
   name = 'TOTOKINHA SPORT AZUL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648413067-7',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -1117,7 +1117,7 @@ where code = '3067';
 update public.products set
   name = 'TOTOKINHA BOLINHA ROSA CAIXA INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416005-6',
   age_range = '+ 18 meses',
   gender = 'Menina',
@@ -1159,7 +1159,7 @@ where code = '6005';
 update public.products set
   name = 'TOTOKINHA BOLINHA AZUL CAIXA  INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416006-3',
   age_range = '+ 18 meses',
   gender = 'Menino',
@@ -1201,7 +1201,7 @@ where code = '6006';
 update public.products set
   name = 'TOTOKA PLUS SEM ELETRÔNICO ROSA CAIXA INDIVIDUAL',
   line = 'PLAY&RIDE',
-  technical_name = null,
+  technical_name = '',
   ean = '789648416007-0',
   age_range = '+ 18 meses',
   gender = 'Menina',
