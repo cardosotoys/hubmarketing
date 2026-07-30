@@ -1,8 +1,9 @@
 // Market Price Monitor — robô de busca/validação/alerta.
-// Fonte: SerpApi (Google Shopping) — cobre qualquer loja que o Google indexe (Mercado Livre,
-// Amazon, Shopee, lojas próprias etc.), não só um marketplace específico. Trocamos da API
-// direta do Mercado Livre pra cá porque o ML bloqueia busca de app terceiro por política,
-// mesmo autenticado via OAuth.
+// Fonte: SerpApi, em duas frentes — Google Shopping (cobre qualquer loja que manda catálogo
+// pro Google Merchant Center) e Google geral com "site:mercadolivre.com.br"/"site:shopee.com.br"
+// (cobre o vendedor pequeno desses dois marketplaces que nunca manda catálogo pro Shopping, mas
+// tem a página do produto indexada normalmente). Trocamos da API direta do Mercado Livre pra cá
+// porque o ML bloqueia busca de app terceiro por política, mesmo autenticado via OAuth.
 // Zero IA (decisão de arquitetura): anúncio duvidoso vai pra fila de revisão manual em vez de
 // chamada de IA — o score de confiança é 100% determinístico (EAN/SKU/palavras-chave).
 // Chamado por um cron do Postgres (pg_cron + pg_net) a cada hora; ele mesmo decide se já é
@@ -39,13 +40,23 @@ function normalize(text: string): string {
     .trim();
 }
 
-function buildQueries(p: MpmProductRow): string[] {
-  const queries: string[] = [];
+// Domínios sem feed de Google Shopping consistente entre vendedores pequenos — buscados via
+// Google geral ("site:") além do Google Shopping, pra não depender só de quem manda catálogo.
+const SITE_SEARCH_DOMAINS = ['mercadolivre.com.br', 'shopee.com.br'];
+
+interface PlannedQuery {
+  engine: 'shopping' | 'site';
+  domain?: string;
+  q: string;
+}
+
+function buildQueries(p: MpmProductRow): PlannedQuery[] {
+  const queries: PlannedQuery[] = [];
   const brandLabel = p.product?.brand?.label ?? '';
   const name = p.product?.name ?? '';
-  if (p.product?.ean) queries.push(p.product.ean);
-  if (name) queries.push(name);
-  if (brandLabel && name) queries.push(`${brandLabel} ${name}`);
+  if (p.product?.ean) queries.push({ engine: 'shopping', q: p.product.ean });
+  if (name) queries.push({ engine: 'shopping', q: name });
+  if (brandLabel && name) queries.push({ engine: 'shopping', q: `${brandLabel} ${name}` });
   // Código interno (3-4 dígitos, ex. "6011") nunca vira busca sozinho: nenhum revendedor publica
   // o SKU interno da Cardoso no próprio anúncio (então isso não ajuda a achar concorrente de
   // verdade) e é a origem clássica de falso positivo — buscar só "6011" traz peça de rolamento
@@ -54,9 +65,26 @@ function buildQueries(p: MpmProductRow): string[] {
   // Palavras-chave/sinônimos ficam como busca própria, sem prefixo de marca — são cadastrados
   // justamente pra capturar como um revendedor costuma anunciar o produto, o que raramente
   // repete a marca fabricante (Cardoso/Playmi/Tópi) no título do anúncio.
-  for (const k of (p.keywords ?? []).slice(0, 3)) queries.push(k);
-  for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push(s);
-  return Array.from(new Set(queries.filter((q) => q.trim().length > 0)));
+  for (const k of (p.keywords ?? []).slice(0, 3)) queries.push({ engine: 'shopping', q: k });
+  for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push({ engine: 'shopping', q: s });
+
+  // Busca direta no índice do Google geral restrita a cada marketplace — acha página de produto
+  // que o Google Shopping nunca mostraria por falta de feed, ao custo de o preço às vezes não vir
+  // certinho no snippet (tratado em searchGoogleSite/extractPriceFromText).
+  if (name) {
+    for (const domain of SITE_SEARCH_DOMAINS) {
+      queries.push({ engine: 'site', domain, q: name });
+    }
+  }
+
+  const seen = new Set<string>();
+  return queries.filter((qq) => {
+    if (!qq.q.trim()) return false;
+    const key = `${qq.engine}:${qq.domain ?? ''}:${qq.q.trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 interface MatchResult {
@@ -151,12 +179,9 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function searchGoogleShopping(query: string, attempt = 0): Promise<ShoppingResultItem[]> {
-  const apiKey = Deno.env.get('SERPAPI_KEY');
-  if (!apiKey) {
-    throw new Error('SERPAPI_KEY não configurada (supabase secrets set).');
-  }
-  const url = `https://serpapi.com/search?engine=google_shopping&q=${encodeURIComponent(query)}&gl=br&hl=pt&api_key=${apiKey}`;
+// Chama a SerpApi e devolve o corpo já validado — usado tanto pelo Google Shopping quanto pelo
+// Google geral (site:), já que os dois têm o mesmo formato de erro/retry.
+async function fetchSerpApi(url: string, queryLabel: string, attempt = 0): Promise<Record<string, unknown>> {
   const res = await fetch(url);
   const body = await res.json();
   // "Google hasn't returned any results for this query." é a mensagem padrão da SerpApi pra busca
@@ -169,7 +194,7 @@ async function searchGoogleShopping(query: string, attempt = 0): Promise<Shoppin
   // propósito.
   const noResults = typeof body?.error === 'string' && /hasn.?t returned any results/i.test(body.error);
   if (noResults) {
-    return [];
+    return body;
   }
   if (!res.ok || body?.error) {
     // 429 (rate limit) e 5xx costumam ser transitórios — tenta de novo com um pequeno atraso
@@ -177,11 +202,60 @@ async function searchGoogleShopping(query: string, attempt = 0): Promise<Shoppin
     // retry, então propaga na hora.
     if ((res.status === 429 || res.status >= 500) && attempt < 2) {
       await sleep(800 * (attempt + 1));
-      return searchGoogleShopping(query, attempt + 1);
+      return fetchSerpApi(url, queryLabel, attempt + 1);
     }
-    throw new Error(`SerpApi falhou pra query "${query}" (HTTP ${res.status}): ${body?.error ?? JSON.stringify(body)}`);
+    throw new Error(`SerpApi falhou pra query "${queryLabel}" (HTTP ${res.status}): ${body?.error ?? JSON.stringify(body)}`);
   }
+  return body;
+}
+
+async function searchGoogleShopping(query: string): Promise<ShoppingResultItem[]> {
+  const apiKey = Deno.env.get('SERPAPI_KEY');
+  if (!apiKey) {
+    throw new Error('SERPAPI_KEY não configurada (supabase secrets set).');
+  }
+  const url = `https://serpapi.com/search?engine=google_shopping&q=${encodeURIComponent(query)}&gl=br&hl=pt&api_key=${apiKey}`;
+  const body = await fetchSerpApi(url, query);
   return (body.shopping_results ?? []) as ShoppingResultItem[];
+}
+
+interface OrganicResultItem {
+  title: string;
+  link: string;
+  snippet?: string;
+}
+
+// Extrai preço de um texto livre (título + trecho indexado pelo Google) — usado só pra resultado
+// de busca geral (site:), que não vem com preço estruturado como o Google Shopping. Formato
+// brasileiro: "R$ 1.234,56" (ponto de milhar, vírgula decimal) ou "R$ 78,90".
+function extractPriceFromText(text: string): number | null {
+  const match = text.match(/r\$\s?([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)/i);
+  if (!match) return null;
+  const raw = match[1].replace(/\./g, '').replace(',', '.');
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+// Busca no índice geral do Google restrita a um domínio (site:) — cobre vendedor pequeno de
+// Mercado Livre/Shopee que nunca manda catálogo pro Google Shopping. Preço vem de melhor esforço
+// (regex no título/trecho indexado); quando não dá pra extrair, o item simplesmente não entra
+// (ver runSync) em vez de virar um anúncio sem preço.
+async function searchGoogleSite(domain: string, query: string): Promise<ShoppingResultItem[]> {
+  const apiKey = Deno.env.get('SERPAPI_KEY');
+  if (!apiKey) {
+    throw new Error('SERPAPI_KEY não configurada (supabase secrets set).');
+  }
+  const q = `site:${domain} ${query}`;
+  const url = `https://serpapi.com/search?engine=google&q=${encodeURIComponent(q)}&gl=br&hl=pt&num=20&api_key=${apiKey}`;
+  const body = await fetchSerpApi(url, q);
+  const organic = (body.organic_results ?? []) as OrganicResultItem[];
+  return organic.map((r) => ({
+    title: r.title,
+    extracted_price: extractPriceFromText(`${r.title} ${r.snippet ?? ''}`) ?? undefined,
+    source: domain,
+    product_link: r.link,
+    link: r.link,
+  }));
 }
 
 function extractPrice(item: ShoppingResultItem): number | null {
@@ -252,15 +326,15 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     const reconfirmedExternalIds = new Set<string>();
     let productQueryFailed = false;
 
-    const queryResults = await mapLimit(queries, 2, async (query) => {
+    const queryResults = await mapLimit(queries, 2, async (pq) => {
       queriesAttempted++;
       try {
-        return await searchGoogleShopping(query);
+        return pq.engine === 'shopping' ? await searchGoogleShopping(pq.q) : await searchGoogleSite(pq.domain!, pq.q);
       } catch (err) {
         queriesFailed++;
         productQueryFailed = true;
         if (!lastErrorSample) lastErrorSample = String(err);
-        console.error(`Busca falhou pra "${query}" (produto ${p.product?.code}):`, err);
+        console.error(`Busca falhou pra "${pq.q}" (produto ${p.product?.code}):`, err);
         return [];
       }
     });
