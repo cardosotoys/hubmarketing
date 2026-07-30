@@ -10,12 +10,20 @@ import { PRIORITY_LABELS, type Brand, type Product, type ProjectStage, type Prio
 type ProductWithBrand = Product & { brand: Brand };
 type PackagingTaskStub = { id: string; project_id: string; product_id: string; stage_id: string; priority: Priority; updated_at: string };
 
+function sizeLabel(p: Product): string {
+  if (p.product_length_mm != null && p.product_width_mm != null && p.product_height_mm != null) {
+    return `${p.product_length_mm}×${p.product_width_mm}×${p.product_height_mm}mm`;
+  }
+  return p.dimensions;
+}
+
 export default function Produtos() {
   const { profile } = useAuth();
   const [products, setProducts] = useState<ProductWithBrand[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandFilter, setBrandFilter] = useState('all');
   const [lineFilter, setLineFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
   const [sizeFilter, setSizeFilter] = useState('all');
   const [licensedFilter, setLicensedFilter] = useState<'all' | 'licensed' | 'own'>('all');
@@ -70,15 +78,21 @@ export default function Produtos() {
   }, [products]);
 
   const sizes = useMemo(() => {
-    const set = new Set(products.map((p) => p.dimensions).filter(Boolean));
+    const set = new Set(products.map(sizeLabel).filter(Boolean));
+    return Array.from(set).sort();
+  }, [products]);
+
+  const toyCategories = useMemo(() => {
+    const set = new Set(products.map((p) => p.toy_category).filter(Boolean));
     return Array.from(set).sort();
   }, [products]);
 
   const filtered = products.filter((p) => {
     if (brandFilter !== 'all' && p.brand?.key !== brandFilter) return false;
     if (lineFilter !== 'all' && p.line !== lineFilter) return false;
+    if (categoryFilter !== 'all' && p.toy_category !== categoryFilter) return false;
     if (ageFilter !== 'all' && p.age_range !== ageFilter) return false;
-    if (sizeFilter !== 'all' && p.dimensions !== sizeFilter) return false;
+    if (sizeFilter !== 'all' && sizeLabel(p) !== sizeFilter) return false;
     if (licensedFilter === 'licensed' && !p.licensed) return false;
     if (licensedFilter === 'own' && p.licensed) return false;
     if (search.trim()) {
@@ -140,6 +154,25 @@ export default function Produtos() {
           {lines.map((l) => (
             <option key={l} value={l}>
               {l}
+            </option>
+          ))}
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 7,
+            color: 'var(--text-dim)',
+            padding: '5px 10px',
+            fontSize: 11.5,
+          }}
+        >
+          <option value="all">Todas as categorias</option>
+          {toyCategories.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>
@@ -231,9 +264,10 @@ export default function Produtos() {
               <th>Código</th>
               <th>Produto</th>
               <th>Linha</th>
+              <th>Categoria</th>
               <th>Marca</th>
               <th>Faixa etária</th>
-              <th>Dimensões</th>
+              <th>Tamanho</th>
               <th>Embalagem</th>
               <th></th>
             </tr>
@@ -254,6 +288,7 @@ export default function Produtos() {
                     )}
                   </td>
                   <td>{p.line || '—'}</td>
+                  <td>{p.toy_category || '—'}</td>
                   <td>
                     <span
                       className="pill"
@@ -263,7 +298,7 @@ export default function Produtos() {
                     </span>
                   </td>
                   <td>{p.age_range || '—'}</td>
-                  <td className="mono">{p.dimensions || '—'}</td>
+                  <td className="mono">{sizeLabel(p) || '—'}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     {pkg ? (
                       <Link
@@ -293,7 +328,7 @@ export default function Produtos() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ color: 'var(--text-faint)' }}>
+                <td colSpan={9} style={{ color: 'var(--text-faint)' }}>
                   Nenhum produto encontrado para esse filtro.
                 </td>
               </tr>
@@ -348,14 +383,54 @@ function ProductFormModal({
   const [name, setName] = useState(product?.name ?? '');
   const [brandId, setBrandId] = useState(product?.brand_id ?? brands[0]?.id ?? '');
   const [line, setLine] = useState(product?.line ?? '');
+  const [toyCategory, setToyCategory] = useState(product?.toy_category ?? '');
   const [ageRange, setAgeRange] = useState(product?.age_range ?? '');
-  const [dimensions, setDimensions] = useState(product?.dimensions ?? '');
   const [ean, setEan] = useState(product?.ean ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
   const [needsReview, setNeedsReview] = useState(product?.needs_review ?? false);
+
+  const [technicalName, setTechnicalName] = useState(product?.technical_name ?? '');
+  const [gender, setGender] = useState(product?.gender ?? '');
+  const [material, setMaterial] = useState(product?.material ?? '');
+  const [color, setColor] = useState(product?.color ?? '');
+  const [hasMechanism, setHasMechanism] = useState(product?.has_mechanism ?? false);
+  const [hasSound, setHasSound] = useState(product?.has_sound ?? false);
+  const [hasLight, setHasLight] = useState(product?.has_light ?? false);
+  const [batteryType, setBatteryType] = useState(product?.battery_type ?? '');
+  const [supportedWeight, setSupportedWeight] = useState(product?.supported_weight ?? '');
+
+  const [productLengthMm, setProductLengthMm] = useState(product?.product_length_mm?.toString() ?? '');
+  const [productWidthMm, setProductWidthMm] = useState(product?.product_width_mm?.toString() ?? '');
+  const [productHeightMm, setProductHeightMm] = useState(product?.product_height_mm?.toString() ?? '');
+  const [productWeightKg, setProductWeightKg] = useState(product?.product_weight_kg?.toString() ?? '');
+
+  const [packageContents, setPackageContents] = useState(product?.package_contents ?? '');
+  const [packageLengthMm, setPackageLengthMm] = useState(product?.package_length_mm?.toString() ?? '');
+  const [packageWidthMm, setPackageWidthMm] = useState(product?.package_width_mm?.toString() ?? '');
+  const [packageHeightMm, setPackageHeightMm] = useState(product?.package_height_mm?.toString() ?? '');
+  const [packageWeightKg, setPackageWeightKg] = useState(product?.package_weight_kg?.toString() ?? '');
+  const [ncm, setNcm] = useState(product?.ncm ?? '');
+  const [cst, setCst] = useState(product?.cst ?? '');
+  const [dun, setDun] = useState(product?.dun ?? '');
+  const [cartonLengthMm, setCartonLengthMm] = useState(product?.carton_length_mm?.toString() ?? '');
+  const [cartonWidthMm, setCartonWidthMm] = useState(product?.carton_width_mm?.toString() ?? '');
+  const [cartonHeightMm, setCartonHeightMm] = useState(product?.carton_height_mm?.toString() ?? '');
+  const [cartonQuantity, setCartonQuantity] = useState(product?.carton_quantity?.toString() ?? '');
+  const [cartonGrossWeightKg, setCartonGrossWeightKg] = useState(product?.carton_gross_weight_kg?.toString() ?? '');
+  const [palletLayerPattern, setPalletLayerPattern] = useState(product?.pallet_layer_pattern ?? '');
+  const [palletHeightM, setPalletHeightM] = useState(product?.pallet_height_m?.toString() ?? '');
+  const [palletTotalUnits, setPalletTotalUnits] = useState(product?.pallet_total_units?.toString() ?? '');
+
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function num(s: string) {
+    return s.trim() ? Number(s) : null;
+  }
+  function int(s: string) {
+    return s.trim() ? Math.round(Number(s)) : null;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -370,11 +445,40 @@ function ProductFormModal({
       name,
       brand_id: brandId,
       line,
+      toy_category: toyCategory,
       age_range: ageRange,
-      dimensions,
       ean,
       image_url: imageUrl ? normalizeUrl(imageUrl) : '',
       needs_review: needsReview,
+      technical_name: technicalName,
+      gender,
+      material,
+      color,
+      has_mechanism: hasMechanism,
+      has_sound: hasSound,
+      has_light: hasLight,
+      battery_type: batteryType,
+      supported_weight: supportedWeight,
+      product_length_mm: num(productLengthMm),
+      product_width_mm: num(productWidthMm),
+      product_height_mm: num(productHeightMm),
+      product_weight_kg: num(productWeightKg),
+      package_contents: packageContents,
+      package_length_mm: num(packageLengthMm),
+      package_width_mm: num(packageWidthMm),
+      package_height_mm: num(packageHeightMm),
+      package_weight_kg: num(packageWeightKg),
+      ncm,
+      cst,
+      dun,
+      carton_length_mm: num(cartonLengthMm),
+      carton_width_mm: num(cartonWidthMm),
+      carton_height_mm: num(cartonHeightMm),
+      carton_quantity: int(cartonQuantity),
+      carton_gross_weight_kg: num(cartonGrossWeightKg),
+      pallet_layer_pattern: palletLayerPattern,
+      pallet_height_m: num(palletHeightM),
+      pallet_total_units: int(palletTotalUnits),
     };
     const { error } = isEdit
       ? await supabase.from('products').update(fields).eq('id', product!.id)
@@ -426,17 +530,39 @@ function ProductFormModal({
             ))}
           </select>
         </div>
-        <div className="form-field">
-          <label htmlFor="np-line">Linha</label>
-          <input id="np-line" value={line} onChange={(e) => setLine(e.target.value)} />
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-line">Linha</label>
+            <input id="np-line" value={line} onChange={(e) => setLine(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-category">Categoria</label>
+            <input id="np-category" value={toyCategory} onChange={(e) => setToyCategory(e.target.value)} placeholder="Ex: Didáticos" />
+          </div>
+        </div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-age">Faixa etária</label>
+            <input id="np-age" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-gender">Gênero</label>
+            <input id="np-gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Unissex, Menino, Menina…" />
+          </div>
         </div>
         <div className="form-field">
-          <label htmlFor="np-age">Faixa etária</label>
-          <input id="np-age" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} />
+          <label htmlFor="np-technical-name">Nome técnico (nota fiscal)</label>
+          <input id="np-technical-name" value={technicalName} onChange={(e) => setTechnicalName(e.target.value)} />
         </div>
-        <div className="form-field">
-          <label htmlFor="np-dims">Dimensões</label>
-          <input id="np-dims" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-material">Material</label>
+            <input id="np-material" value={material} onChange={(e) => setMaterial(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-color">Cor predominante</label>
+            <input id="np-color" value={color} onChange={(e) => setColor(e.target.value)} />
+          </div>
         </div>
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
@@ -448,6 +574,99 @@ function ProductFormModal({
             <input id="np-image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
           </div>
         </div>
+
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={hasMechanism} onChange={(e) => setHasMechanism(e.target.checked)} style={{ width: 'auto' }} />
+              Possui mecanismo
+            </label>
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={hasSound} onChange={(e) => setHasSound(e.target.checked)} style={{ width: 'auto' }} />
+              Possui som
+            </label>
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={hasLight} onChange={(e) => setHasLight(e.target.checked)} style={{ width: 'auto' }} />
+              Possui luz
+            </label>
+          </div>
+        </div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-battery">Tipo de bateria</label>
+            <input id="np-battery" value={batteryType} onChange={(e) => setBatteryType(e.target.value)} placeholder="Não possui, 2xAA…" />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-supported-weight">Peso suportado</label>
+            <input id="np-supported-weight" value={supportedWeight} onChange={(e) => setSupportedWeight(e.target.value)} placeholder="Ex: 20kg" />
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label>Medidas do produto</label>
+          <div className="responsive-row">
+            <input placeholder="Comprim. (mm)" value={productLengthMm} onChange={(e) => setProductLengthMm(e.target.value)} style={{ flex: 1 }} />
+            <input placeholder="Largura (mm)" value={productWidthMm} onChange={(e) => setProductWidthMm(e.target.value)} style={{ flex: 1 }} />
+            <input placeholder="Altura (mm)" value={productHeightMm} onChange={(e) => setProductHeightMm(e.target.value)} style={{ flex: 1 }} />
+            <input placeholder="Peso (kg)" value={productWeightKg} onChange={(e) => setProductWeightKg(e.target.value)} style={{ flex: 1 }} />
+          </div>
+        </div>
+
+        <details className="panel" style={{ margin: '10px 0' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>⚙ Dados fiscais e logística</summary>
+          <div style={{ marginTop: 10 }}>
+            <div className="form-field">
+              <label htmlFor="np-pkg-contents">Conteúdo da embalagem</label>
+              <textarea id="np-pkg-contents" rows={2} value={packageContents} onChange={(e) => setPackageContents(e.target.value)} />
+            </div>
+            <div className="form-field">
+              <label>Medidas da embalagem individual</label>
+              <div className="responsive-row">
+                <input placeholder="Comprim. (mm)" value={packageLengthMm} onChange={(e) => setPackageLengthMm(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Largura (mm)" value={packageWidthMm} onChange={(e) => setPackageWidthMm(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Altura (mm)" value={packageHeightMm} onChange={(e) => setPackageHeightMm(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Peso (kg)" value={packageWeightKg} onChange={(e) => setPackageWeightKg(e.target.value)} style={{ flex: 1 }} />
+              </div>
+            </div>
+            <div className="responsive-row">
+              <div className="form-field" style={{ flex: 1 }}>
+                <label htmlFor="np-ncm">NCM</label>
+                <input id="np-ncm" value={ncm} onChange={(e) => setNcm(e.target.value)} />
+              </div>
+              <div className="form-field" style={{ flex: 1 }}>
+                <label htmlFor="np-cst">CST</label>
+                <input id="np-cst" value={cst} onChange={(e) => setCst(e.target.value)} />
+              </div>
+              <div className="form-field" style={{ flex: 1 }}>
+                <label htmlFor="np-dun">DUN</label>
+                <input id="np-dun" value={dun} onChange={(e) => setDun(e.target.value)} />
+              </div>
+            </div>
+            <div className="form-field">
+              <label>Medidas da caixa master</label>
+              <div className="responsive-row">
+                <input placeholder="Comprim. (mm)" value={cartonLengthMm} onChange={(e) => setCartonLengthMm(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Largura (mm)" value={cartonWidthMm} onChange={(e) => setCartonWidthMm(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Altura (mm)" value={cartonHeightMm} onChange={(e) => setCartonHeightMm(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Qtd. por caixa" value={cartonQuantity} onChange={(e) => setCartonQuantity(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Peso bruto (kg)" value={cartonGrossWeightKg} onChange={(e) => setCartonGrossWeightKg(e.target.value)} style={{ flex: 1 }} />
+              </div>
+            </div>
+            <div className="form-field">
+              <label>Paletização</label>
+              <div className="responsive-row">
+                <input placeholder="Padrão (ex: 4X3)" value={palletLayerPattern} onChange={(e) => setPalletLayerPattern(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Altura (m)" value={palletHeightM} onChange={(e) => setPalletHeightM(e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Unidades totais" value={palletTotalUnits} onChange={(e) => setPalletTotalUnits(e.target.value)} style={{ flex: 1 }} />
+              </div>
+            </div>
+          </div>
+        </details>
+
         {isEdit && (
           <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <input
