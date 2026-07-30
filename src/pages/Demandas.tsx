@@ -15,10 +15,6 @@ function isTaskOverdue(t: Task, stagesById: Record<string, ProjectStage>) {
   return new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
 }
 
-function formatBRL(n: number) {
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
 function cronogramaLabel(t: Task) {
   if (!t.start_date && !t.due_date) return '—';
   const fmt = (d: string) => new Date(d + 'T00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -175,57 +171,57 @@ export default function Demandas() {
         <div className="page-sub">Carregando…</div>
       ) : (
         groups.map((g) => (
-          <div key={g.label}>
-            {g.label && <h4 style={{ fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 6px 0' }}>{g.label}</h4>}
+          <div className="demand-group" key={g.label}>
+            {g.label && (
+              <div className="demand-group-head">
+                <span>{g.label}</span>
+                <span className="pill">{g.items.length}</span>
+              </div>
+            )}
             <table className="simple">
               <thead>
                 <tr>
                   <th>Tarefa</th>
-                  <th>Projeto</th>
+                  {groupBy !== 'project' && <th>Projeto</th>}
                   <th>Prioridade</th>
                   <th>Estágio</th>
-                  <th>Responsável</th>
-                  <th>Notas</th>
-                  <th>Orçamento</th>
-                  <th>Arquivos</th>
-                  <th>Cronograma</th>
-                  <th>Atraso</th>
-                  <th>Última atualização</th>
+                  {groupBy !== 'assignee' && <th>Responsável</th>}
+                  <th>Prazo</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {g.items.map((t) => (
                   <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
-                    <td>{t.title}</td>
                     <td>
-                      {t.project ? (
-                        <Link
-                          to={`/projetos/${t.project.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="pill"
-                          style={{ background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
-                        >
-                          {t.project.name}
-                        </Link>
-                      ) : (
-                        <span style={{ color: 'var(--text-faint)' }}>Avulsa</span>
-                      )}
+                      {t.title}
+                      {fileCounts[t.id] > 0 && <span style={{ color: 'var(--text-faint)', marginLeft: 6 }}>📎{fileCounts[t.id]}</span>}
                     </td>
+                    {groupBy !== 'project' && (
+                      <td>
+                        {t.project ? (
+                          <Link
+                            to={`/projetos/${t.project.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="pill"
+                            style={{ background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
+                          >
+                            {t.project.name}
+                          </Link>
+                        ) : (
+                          <span style={{ color: 'var(--text-faint)' }}>Avulsa</span>
+                        )}
+                      </td>
+                    )}
                     <td>
                       <span className={`prio ${t.priority}`}>{t.priority}</span>
                     </td>
                     <td style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
-                    <td style={{ color: 'var(--text-faint)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.notes || '—'}
-                    </td>
-                    <td style={{ color: 'var(--text-faint)' }}>{t.budget != null ? formatBRL(Number(t.budget)) : '—'}</td>
-                    <td style={{ color: 'var(--text-faint)' }}>{fileCounts[t.id] ? `📎 ${fileCounts[t.id]}` : '—'}</td>
+                    {groupBy !== 'assignee' && (
+                      <td style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
+                    )}
                     <td style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{cronogramaLabel(t)}</td>
                     <td>{isTaskOverdue(t, stagesById) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
-                    <td style={{ color: 'var(--text-faint)', fontSize: 11, whiteSpace: 'nowrap' }}>
-                      {t.updated_by ? profilesById[t.updated_by]?.name : '—'} · {new Date(t.updated_at).toLocaleDateString('pt-BR')}
-                    </td>
                   </tr>
                 ))}
               </tbody>

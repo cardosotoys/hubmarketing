@@ -194,6 +194,11 @@ Este README cobre o setup do zero: criar o backend no Supabase, rodar localmente
   recolhido no formulário, pra não poluir a tela de quem só usa marketing/auditoria. **Atenção**: a planilha usa
   "LINHA" pra marca e "CATEGORIA" pra o que o Hub chama de "linha" — os 315 produtos existentes foram
   atualizados com a nomenclatura corrigida.
+- **Demandas: seções visuais + menos colunas**: cada grupo (projeto/responsável/prioridade) agora vem dentro de
+  um cartão com cabeçalho próprio e contagem, em vez de um `<h4>` solto acima de uma tabela gigante. A tabela
+  também ficou mais enxuta — notas/orçamento/arquivos/última atualização saíram da visão padrão (continuam ao
+  abrir a demanda) e a coluna Projeto/Responsável some quando ela já é o critério de agrupamento (evita repetir
+  o mesmo valor em toda linha).
 - **Visibilidade por participação + permissões granulares por pessoa**: Projetos e Demandas deixaram de ser
   visíveis pra qualquer pessoa logada — agora só quem participa de um projeto (`project_members`) o enxerga,
   e uma demanda avulsa (sem projeto) só é visível pra quem é responsável por ela; Diretoria e Administrador
