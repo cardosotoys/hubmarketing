@@ -48,6 +48,26 @@
 * {
   box-sizing: border-box;
 }
+/* Base pra qualquer input/select/textarea solto fora de um .form-field — sem isso, um campo
+   sem wrapper cai no estilo padrão do navegador e destoa do resto da tela (mais específico,
+   .form-field input/.chip-select/estilo inline continuam vencendo por cima disso). */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-family: 'Inter';
+}
+input:not([type='checkbox']):not([type='radio']):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
 html,
 body,
 #root {
