@@ -239,6 +239,11 @@ async function runSync(supabase: SupabaseClient, runId: string) {
    try {
     const queries = buildQueries(p);
     const seenExternalIds = new Set<string>();
+    // Ids que passaram no filtro de score nesta rodada — usado no fim pra podar anúncios antigos
+    // que não foram reconfirmados (ex.: um "match" errado de uma versão anterior da busca, que a
+    // busca de agora, mais restrita, simplesmente não traz mais).
+    const reconfirmedExternalIds = new Set<string>();
+    let productQueryFailed = false;
 
     const queryResults = await mapLimit(queries, 2, async (query) => {
       queriesAttempted++;
@@ -246,6 +251,7 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         return await searchGoogleShopping(query);
       } catch (err) {
         queriesFailed++;
+        productQueryFailed = true;
         if (!lastErrorSample) lastErrorSample = String(err);
         console.error(`Busca falhou pra "${query}" (produto ${p.product?.code}):`, err);
         return [];
@@ -265,6 +271,7 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         // coincidência em 1-2 termos genéricos) — subiu de 50 pra reduzir o que aparece pra
         // revisão manual sem motivo.
         if (score < 65) continue;
+        reconfirmedExternalIds.add(externalId);
 
         const marketplace = detectMarketplace(item);
 
@@ -370,6 +377,25 @@ async function runSync(supabase: SupabaseClient, runId: string) {
             });
           }
         }
+      }
+    }
+
+    // Poda anúncios antigos que não foram reconfirmados nesta rodada — sem isso, um "match"
+    // errado de uma versão anterior (mais permissiva) da busca fica preso na tela pra sempre,
+    // já que o sync só cria/atualiza anúncio, nunca removia um que parou de aparecer. Só poda
+    // quando todas as buscas deste produto tiveram sucesso (senão um erro transitório de rede
+    // apagaria anúncio válido só porque a busca falhou dessa vez) e nunca mexe em anúncio que
+    // um humano já revisou (confirmed_match/rejected ficam de fora, decisão manual é definitiva).
+    if (!productQueryFailed) {
+      const { data: staleListings } = await supabase
+        .from('mpm_listings')
+        .select('id, external_id, match_status')
+        .eq('mpm_product_id', p.id);
+      const idsToDelete = (staleListings ?? [])
+        .filter((l) => !reconfirmedExternalIds.has(l.external_id) && !['confirmed_match', 'rejected'].includes(l.match_status))
+        .map((l) => l.id);
+      if (idsToDelete.length > 0) {
+        await supabase.from('mpm_listings').delete().in('id', idsToDelete);
       }
     }
    } catch (err) {
