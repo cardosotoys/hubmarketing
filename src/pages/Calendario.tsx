@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { useIsMobile } from '../hooks/useIsMobile';
 import Modal from '../components/Modal';
 import type { Brand } from '../types/database';
 
@@ -37,6 +38,7 @@ const MONTH_NAMES = [
 
 export default function Calendario() {
   const { profile } = useAuth();
+  const isMobile = useIsMobile();
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,6 +180,21 @@ export default function Calendario() {
     return String(n).padStart(2, '0');
   }
 
+  // Grade de 7 colunas não cabe numa tela de celular sem espremer demais — no mobile vira uma
+  // agenda (só os dias com evento, mais o dia de hoje mesmo vazio, pra sempre ter uma referência).
+  const agendaDays = useMemo(() => {
+    const days: { day: number; dateKey: string; isToday: boolean; events: CalEvent[] }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${year}-${pad(month + 1)}-${pad(d)}`;
+      const dayEvents = eventsByDay[key] ?? [];
+      const isToday = key === todayKey;
+      if (dayEvents.length > 0 || isToday) {
+        days.push({ day: d, dateKey: key, isToday, events: dayEvents });
+      }
+    }
+    return days;
+  }, [daysInMonth, year, month, eventsByDay, todayKey]);
+
   function goMonth(delta: number) {
     setCursor((c) => {
       let m = c.month + delta;
@@ -197,6 +214,43 @@ export default function Calendario() {
     e.deletable && profile && (e.createdBy === profile.id || profile.role === 'diretoria' || profile.role === 'administrador');
 
   const totalEvents = events.length;
+
+  // Compartilhado pela grade (desktop) e pela agenda (celular) — mesmo evento, dois lugares.
+  function renderEvent(e: CalEvent, idx: number) {
+    const content = (
+      <>
+        {e.highlight && '★ '}
+        {e.label}
+        {canDelete(e) && (
+          <span
+            style={{ float: 'right', marginLeft: 4, opacity: 0.7 }}
+            onClick={(ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              if (e.id) deleteEvent(e.id);
+            }}
+          >
+            ✕
+          </span>
+        )}
+      </>
+    );
+    const evtClass = `evt${e.highlight ? ' highlight' : ''}`;
+    return e.href ? (
+      <Link
+        key={e.id ?? idx}
+        to={e.href}
+        className={evtClass}
+        style={{ background: 'var(--surface-3)', color: e.color, display: 'block', textDecoration: 'none' }}
+      >
+        {content}
+      </Link>
+    ) : (
+      <div key={e.id ?? idx} className={evtClass} style={{ background: 'var(--surface-3)', color: e.color }}>
+        {content}
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -238,61 +292,53 @@ export default function Calendario() {
         ))}
       </div>
 
-      <div className="cal-grid">
-        {DAYS.map((d) => (
-          <div className="cal-head" key={d}>
-            {d}
-          </div>
-        ))}
-      </div>
-      <div className="cal-grid" style={{ marginTop: 6 }}>
-        {cells.map((day, i) => {
-          if (day === null) return <div key={`blank-${i}`} className="cal-cell" style={{ opacity: 0.3 }} />;
-          const key = `${year}-${pad(month + 1)}-${pad(day)}`;
-          const dayEvents = eventsByDay[key] ?? [];
-          const isToday = key === todayKey;
-          return (
-            <div className={`cal-cell${isToday ? ' today' : ''}`} key={key}>
-              <div className="d">{day}</div>
-              {dayEvents.map((e, idx) => {
-                const content = (
-                  <>
-                    {e.highlight && '★ '}
-                    {e.label}
-                    {canDelete(e) && (
-                      <span
-                        style={{ float: 'right', marginLeft: 4, opacity: 0.7 }}
-                        onClick={(ev) => {
-                          ev.preventDefault();
-                          ev.stopPropagation();
-                          if (e.id) deleteEvent(e.id);
-                        }}
-                      >
-                        ✕
-                      </span>
-                    )}
-                  </>
-                );
-                const evtClass = `evt${e.highlight ? ' highlight' : ''}`;
-                return e.href ? (
-                  <Link
-                    key={e.id ?? idx}
-                    to={e.href}
-                    className={evtClass}
-                    style={{ background: 'var(--surface-3)', color: e.color, display: 'block', textDecoration: 'none' }}
-                  >
-                    {content}
-                  </Link>
-                ) : (
-                  <div key={e.id ?? idx} className={evtClass} style={{ background: 'var(--surface-3)', color: e.color }}>
-                    {content}
-                  </div>
-                );
-              })}
+      {isMobile ? (
+        <div className="agenda-list">
+          {agendaDays.length === 0 && (
+            <div className="locked-banner">
+              <span className="ic">◐</span>Nenhum evento neste mês pra esse filtro.
             </div>
-          );
-        })}
-      </div>
+          )}
+          {agendaDays.map(({ day, dateKey, isToday, events: dayEvents }) => (
+            <div className={`agenda-day${isToday ? ' today' : ''}`} key={dateKey}>
+              <div className="agenda-day-head">
+                <span className="num">{day}</span>
+                <span className="dow">{DAYS[new Date(year, month, day).getDay()]}</span>
+                {isToday && <span className="pill" style={{ marginLeft: 'auto' }}>hoje</span>}
+              </div>
+              {dayEvents.length === 0 ? (
+                <div className="agenda-empty">Nenhum evento.</div>
+              ) : (
+                dayEvents.map((e, idx) => renderEvent(e, idx))
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="cal-grid">
+            {DAYS.map((d) => (
+              <div className="cal-head" key={d}>
+                {d}
+              </div>
+            ))}
+          </div>
+          <div className="cal-grid" style={{ marginTop: 6 }}>
+            {cells.map((day, i) => {
+              if (day === null) return <div key={`blank-${i}`} className="cal-cell" style={{ opacity: 0.3 }} />;
+              const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+              const dayEvents = eventsByDay[key] ?? [];
+              const isToday = key === todayKey;
+              return (
+                <div className={`cal-cell${isToday ? ' today' : ''}`} key={key}>
+                  <div className="d">{day}</div>
+                  {dayEvents.map((e, idx) => renderEvent(e, idx))}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {showNew && (
         <NewEventModal brands={brands} onClose={() => setShowNew(false)} onCreate={createEvent} />

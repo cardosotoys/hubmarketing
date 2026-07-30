@@ -844,6 +844,56 @@ h1.page-title {
   cursor: pointer;
 }
 
+/* Agenda do Calendário no celular (Calendario.tsx) — uma grade de 7 colunas não cabe numa tela
+   de celular sem espremer demais, então vira lista de dias com evento (+ hoje, mesmo vazio). */
+.agenda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.agenda-day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.agenda-day.today {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.agenda-day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.agenda-day-head .num {
+  font-family: 'Space Grotesk';
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.agenda-day.today .agenda-day-head .num {
+  color: var(--accent);
+}
+.agenda-day-head .dow {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.agenda-day .evt {
+  margin-bottom: 5px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.agenda-day .evt:last-child {
+  margin-bottom: 0;
+}
+.agenda-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 /* Mapa de calor de atividade (ActivityHeatmap.tsx) — Dashboard */
 .activity-heatmap {
   overflow-x: auto;
