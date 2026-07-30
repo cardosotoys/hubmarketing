@@ -1,9 +1,11 @@
 // Market Price Monitor — robô de busca/validação/alerta.
-// Fonte: SerpApi, em duas frentes — Google Shopping (cobre qualquer loja que manda catálogo
-// pro Google Merchant Center) e Google geral com "site:mercadolivre.com.br"/"site:shopee.com.br"
-// (cobre o vendedor pequeno desses dois marketplaces que nunca manda catálogo pro Shopping, mas
-// tem a página do produto indexada normalmente). Trocamos da API direta do Mercado Livre pra cá
-// porque o ML bloqueia busca de app terceiro por política, mesmo autenticado via OAuth.
+// Fonte: SerpApi, em duas frentes — Google Shopping (cobre qualquer loja que manda catálogo pro
+// Google Merchant Center, com preço estruturado) e Google geral restrito por "site:" a Mercado
+// Livre/Shopee/Amazon BR/Magazine Luiza/Americanas (SITE_SEARCH_DOMAINS — cobre vendedor pequeno
+// que nunca manda catálogo pro Shopping, mas tem a página do produto indexada normalmente; sem
+// preço estruturado, então esses anúncios entram como "não verificado"). Trocamos da API direta
+// do Mercado Livre pra cá porque o ML bloqueia busca de app terceiro por política, mesmo
+// autenticado via OAuth.
 // Zero IA (decisão de arquitetura): anúncio duvidoso vai pra fila de revisão manual em vez de
 // chamada de IA — o score de confiança é 100% determinístico (EAN/SKU/palavras-chave).
 // Chamado por um cron do Postgres (pg_cron + pg_net) a cada hora; ele mesmo decide se já é
@@ -42,11 +44,19 @@ function normalize(text: string): string {
 
 // Domínios sem feed de Google Shopping consistente entre vendedores pequenos — buscados via
 // Google geral ("site:") além do Google Shopping, pra não depender só de quem manda catálogo.
-const SITE_SEARCH_DOMAINS = ['mercadolivre.com.br', 'shopee.com.br'];
+// Combinados numa única busca por produto (site:a OR site:b OR ...) em vez de uma busca por
+// domínio — cobre mais marketplace pelo mesmo custo de cota da SerpApi, e deixa o próprio Google
+// escolher os resultados mais relevantes entre todos eles de uma vez.
+const SITE_SEARCH_DOMAINS = [
+  'mercadolivre.com.br',
+  'shopee.com.br',
+  'amazon.com.br',
+  'magazineluiza.com.br',
+  'americanas.com.br',
+];
 
 interface PlannedQuery {
   engine: 'shopping' | 'site';
-  domain?: string;
   q: string;
 }
 
@@ -68,19 +78,18 @@ function buildQueries(p: MpmProductRow): PlannedQuery[] {
   for (const k of (p.keywords ?? []).slice(0, 3)) queries.push({ engine: 'shopping', q: k });
   for (const s of (p.synonyms ?? []).slice(0, 3)) queries.push({ engine: 'shopping', q: s });
 
-  // Busca direta no índice do Google geral restrita a cada marketplace — acha página de produto
-  // que o Google Shopping nunca mostraria por falta de feed, ao custo de o preço às vezes não vir
-  // certinho no snippet (tratado em searchGoogleSite/extractPriceFromText).
+  // Busca direta no índice do Google geral restrita aos marketplaces de SITE_SEARCH_DOMAINS —
+  // acha página de produto que o Google Shopping nunca mostraria por falta de feed. Não tem
+  // preço estruturado (ver searchGoogleSite) — entra como anúncio "não verificado".
   if (name) {
-    for (const domain of SITE_SEARCH_DOMAINS) {
-      queries.push({ engine: 'site', domain, q: name });
-    }
+    const siteFilter = SITE_SEARCH_DOMAINS.map((d) => `site:${d}`).join(' OR ');
+    queries.push({ engine: 'site', q: `(${siteFilter}) ${name}` });
   }
 
   const seen = new Set<string>();
   return queries.filter((qq) => {
     if (!qq.q.trim()) return false;
-    const key = `${qq.engine}:${qq.domain ?? ''}:${qq.q.trim().toLowerCase()}`;
+    const key = `${qq.engine}:${qq.q.trim().toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -163,6 +172,9 @@ interface ShoppingResultItem {
   link?: string;
   thumbnail?: string;
   delivery?: string;
+  // De qual motor da SerpApi veio o item — usado só pra escolher o fallback certo em
+  // detectMarketplace (google_shopping vs google_search) quando não é um marketplace conhecido.
+  engine?: 'shopping' | 'site';
 }
 
 type Marketplace = 'mercado_livre' | 'amazon' | 'shopee' | 'google_shopping' | 'google_search';
@@ -172,7 +184,9 @@ function detectMarketplace(item: ShoppingResultItem): Marketplace {
   if (haystack.includes('mercadolivre') || haystack.includes('mercadolibre')) return 'mercado_livre';
   if (haystack.includes('amazon')) return 'amazon';
   if (haystack.includes('shopee')) return 'shopee';
-  return 'google_shopping';
+  // magazineluiza.com.br, americanas.com.br etc. não têm valor próprio no enum — entram como
+  // "google_search" quando vieram da busca site: (não confundir com google_shopping de verdade).
+  return item.engine === 'site' ? 'google_search' : 'google_shopping';
 }
 
 function sleep(ms: number) {
@@ -225,36 +239,36 @@ interface OrganicResultItem {
   snippet?: string;
 }
 
-// Extrai preço de um texto livre (título + trecho indexado pelo Google) — usado só pra resultado
-// de busca geral (site:), que não vem com preço estruturado como o Google Shopping. Formato
-// brasileiro: "R$ 1.234,56" (ponto de milhar, vírgula decimal) ou "R$ 78,90".
-function extractPriceFromText(text: string): number | null {
-  const match = text.match(/r\$\s?([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)/i);
-  if (!match) return null;
-  const raw = match[1].replace(/\./g, '').replace(',', '.');
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+// Extrai o domínio de uma URL pra usar como "loja" — a busca site: cobre vários marketplaces
+// numa query só (ver SITE_SEARCH_DOMAINS), então não dá mais pra saber qual bateu sem olhar o link.
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
 }
 
-// Busca no índice geral do Google restrita a um domínio (site:) — cobre vendedor pequeno de
-// Mercado Livre/Shopee que nunca manda catálogo pro Google Shopping. Preço vem de melhor esforço
-// (regex no título/trecho indexado); quando não dá pra extrair, o item simplesmente não entra
-// (ver runSync) em vez de virar um anúncio sem preço.
-async function searchGoogleSite(domain: string, query: string): Promise<ShoppingResultItem[]> {
+// Busca no índice geral do Google restrita aos marketplaces de SITE_SEARCH_DOMAINS — cobre
+// vendedor pequeno que nunca manda catálogo pro Google Shopping. Preço NÃO vem desse motor:
+// o Google só devolve um trecho de texto livre da página (organic_results), que pode conter o
+// frete, uma parcela ou o preço com cupom em vez do preço real do produto — já vimos os três
+// casos acontecerem tentando extrair por regex. Em vez de arriscar mostrar um valor errado, o
+// anúncio entra com current_price nulo ("não verificado") pra alguém conferir manualmente.
+async function searchGoogleSite(query: string): Promise<ShoppingResultItem[]> {
   const apiKey = Deno.env.get('SERPAPI_KEY');
   if (!apiKey) {
     throw new Error('SERPAPI_KEY não configurada (supabase secrets set).');
   }
-  const q = `site:${domain} ${query}`;
-  const url = `https://serpapi.com/search?engine=google&q=${encodeURIComponent(q)}&gl=br&hl=pt&num=20&api_key=${apiKey}`;
-  const body = await fetchSerpApi(url, q);
+  const url = `https://serpapi.com/search?engine=google&q=${encodeURIComponent(query)}&gl=br&hl=pt&num=30&api_key=${apiKey}`;
+  const body = await fetchSerpApi(url, query);
   const organic = (body.organic_results ?? []) as OrganicResultItem[];
   return organic.map((r) => ({
     title: r.title,
-    extracted_price: extractPriceFromText(`${r.title} ${r.snippet ?? ''}`) ?? undefined,
-    source: domain,
+    source: hostnameOf(r.link),
     product_link: r.link,
     link: r.link,
+    engine: 'site' as const,
   }));
 }
 
@@ -329,7 +343,7 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     const queryResults = await mapLimit(queries, 2, async (pq) => {
       queriesAttempted++;
       try {
-        return pq.engine === 'shopping' ? await searchGoogleShopping(pq.q) : await searchGoogleSite(pq.domain!, pq.q);
+        return pq.engine === 'shopping' ? await searchGoogleShopping(pq.q) : await searchGoogleSite(pq.q);
       } catch (err) {
         queriesFailed++;
         productQueryFailed = true;
@@ -341,9 +355,13 @@ async function runSync(supabase: SupabaseClient, runId: string) {
 
     for (const items of queryResults) {
       for (const item of items) {
-        const price = extractPrice(item);
         const externalId = item.product_link ?? item.link;
-        if (price == null || !externalId) continue;
+        if (!externalId) continue;
+        const price = extractPrice(item);
+        // Google Shopping sempre dá preço estruturado — se não veio, o item é inútil, descarta.
+        // Já a busca site: nunca traz preço (ver searchGoogleSite) e isso é esperado: o anúncio
+        // entra mesmo assim, só que marcado como "não verificado" (current_price nulo).
+        if (price == null && item.engine !== 'site') continue;
         if (seenExternalIds.has(externalId)) continue;
         seenExternalIds.add(externalId);
 
@@ -368,7 +386,9 @@ async function runSync(supabase: SupabaseClient, runId: string) {
         // confirmado por EAN/código — heurística de nome/marca, mesmo com pontuação alta, sempre
         // cai em revisão manual. Reduz drasticamente falso-positivo de produto errado.
         const matchStatus = humanReviewed ? existing.match_status : confirmed && score >= 80 ? 'high_confidence' : 'needs_review';
-        const isViolation = ['high_confidence', 'confirmed_match'].includes(matchStatus) && price < p.min_price;
+        // price nulo (anúncio "não verificado" vindo da busca site:) nunca vira violação — sem
+        // preço confirmado não há como comparar com o mínimo.
+        const isViolation = price != null && ['high_confidence', 'confirmed_match'].includes(matchStatus) && price < p.min_price;
 
         const listingFields = {
           mpm_product_id: p.id,
@@ -397,16 +417,22 @@ async function runSync(supabase: SupabaseClient, runId: string) {
 
         listingsFound++;
 
-        const diffAmount = p.min_price - price;
-        const diffPercent = (diffAmount / p.min_price) * 100;
-        await supabase.from('mpm_price_history').insert({
-          listing_id: upserted.id,
-          price,
-          min_price_at_check: p.min_price,
-          is_violation: isViolation,
-          diff_amount: isViolation ? diffAmount : null,
-          diff_percent: isViolation ? diffPercent : null,
-        });
+        // price nulo (anúncio "não verificado") nunca chega aqui com isViolation=true (ver
+        // acima), então diffAmount/diffPercent só ficam null quando não há o que comparar.
+        const diffAmount = price != null ? p.min_price - price : null;
+        const diffPercent = diffAmount != null ? (diffAmount / p.min_price) * 100 : null;
+
+        // Sem preço confirmado não há o que historizar — pular.
+        if (price != null) {
+          await supabase.from('mpm_price_history').insert({
+            listing_id: upserted.id,
+            price,
+            min_price_at_check: p.min_price,
+            is_violation: isViolation,
+            diff_amount: isViolation ? diffAmount : null,
+            diff_percent: isViolation ? diffPercent : null,
+          });
+        }
 
         if (isViolation) {
           violationsFound++;

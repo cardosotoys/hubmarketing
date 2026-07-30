@@ -420,7 +420,17 @@ A partir da migration `0025`:
     por isso ela foi dividida em 11 arquivos menores (~30 produtos cada) pra colar com segurança. Depois de rodar
     todas as 11 partes, confira 2-3 produtos ao acaso (ex.: código `0280` = Mipuxa Azul) pra confirmar que os
     campos vieram preenchidos.
-34. Pegue as duas chaves de conexão:
+34. Rode também [`supabase/migrations/0033_mpm_listings_nullable_price.sql`](supabase/migrations/0033_mpm_listings_nullable_price.sql)
+    — permite `mpm_listings.current_price` nulo, e **redeploy a Edge Function de novo**
+    (`supabase functions deploy mpm-sync`) — o código dela mudou junto: além do Google Shopping, agora também
+    busca via Google geral (`site:mercadolivre.com.br OR site:shopee.com.br OR site:amazon.com.br OR
+    site:magazineluiza.com.br OR site:americanas.com.br`), pra achar vendedor pequeno que nunca manda catálogo
+    pro Google Shopping. Esse segundo caminho não tem preço estruturado (só um trecho de texto indexado, que já
+    vimos confundir frete/parcela/cupom com o preço real do produto), então esses anúncios entram como
+    "não verificado" na tela — alguém confere manualmente abrindo o link antes de confirmar. **Isso quase dobra
+    o consumo de cota da SerpApi por sincronização**; se estiver no plano grátis (250 buscas/mês), considere o
+    plano Starter ($25/mês, 1.000 buscas) se for rodar sincronização manual com frequência.
+35. Pegue as duas chaves de conexão:
    - Em **Settings → General**, copie o **ID do projeto** e monte a URL:
      `https://<id-do-projeto>.supabase.co` → vai virar `VITE_SUPABASE_URL`.
    - Em **Settings → Chaves de API** (aba "Chaves de API publicáveis e secretas"), copie a **Chave
@@ -590,6 +600,8 @@ supabase/migrations/0030_mpm_sync_diagnostics.sql  colunas de diagnóstico em mp
 supabase/migrations/0031_product_technical_fields.sql  ~30 campos novos em products (ficha técnica completa)
 supabase/migrations/0032_product_data_update_parte01..11_de_11.sql  atualiza os 315 produtos (FICHA TÉCNICA 2026.xlsx), dividido em 11 arquivos pra colar com segurança no SQL Editor
 produtos_catalogo_2026.csv                       mesma extração do catálogo, para revisão antes/depois do import
+supabase/migrations/0033_mpm_listings_nullable_price.sql  mpm_listings.current_price aceita nulo (anúncio "não verificado" achado via busca geral, sem preço estruturado)
+supabase/functions/mpm-sync/index.ts             busca também via Google geral (site:) em Mercado Livre/Shopee/Amazon BR/Magazine Luiza/Americanas, além do Google Shopping
 src/lib/                                         cliente Supabase e helper de log de atividade
 src/context/AuthContext.tsx                      sessão, perfil e papel do usuário logado
 src/context/CampaignWorkspaceContext.tsx          contexto da campanha ativa (compartilhado pelas sub-páginas do workspace)

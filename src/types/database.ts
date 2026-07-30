@@ -333,7 +333,10 @@ export interface MpmListing {
   image_url: string;
   shipping_price: number | null;
   installment_info: string;
-  current_price: number;
+  // null quando o anúncio veio da busca de site: (Mercado Livre/Shopee) e não deu pra confirmar
+  // o preço real com segurança — evita mostrar um valor errado (ex.: frete/parcela confundido
+  // com preço do produto).
+  current_price: number | null;
   match_status: MpmMatchStatus;
   match_score: number;
   is_violation: boolean;

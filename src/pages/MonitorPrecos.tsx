@@ -25,6 +25,12 @@ function fmtBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// current_price vem nulo quando o anúncio foi achado via busca geral (site:mercadolivre.com.br
+// etc.) sem preço estruturado — melhor não mostrar número nenhum do que arriscar um errado.
+function fmtPrice(n: number | null) {
+  return n != null ? fmtBRL(n) : 'não verificado';
+}
+
 export default function MonitorPrecos() {
   const { profile } = useAuth();
   const [view, setView] = useState<View>('monitoramento');
@@ -85,7 +91,11 @@ export default function MonitorPrecos() {
   }
 
   function exportViolationsCSV() {
-    const rows = listings.filter((l) => l.is_violation && alertByListingId[l.id]);
+    // is_violation só é true quando current_price não é nulo (garantido no mpm-sync), mas o
+    // TypeScript não sabe disso — o filtro abaixo estreita o tipo pro resto da função.
+    const rows = listings.filter(
+      (l): l is MpmListingWithProduct & { current_price: number } => l.is_violation && l.current_price != null && Boolean(alertByListingId[l.id])
+    );
     const header = ['Produto', 'Marca', 'Marketplace', 'Loja', 'Preço encontrado', 'Preço mínimo', 'Diferença', 'Link'];
     const csvEscape = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const lines = rows.map((l) => {
@@ -286,14 +296,27 @@ export default function MonitorPrecos() {
                   <td>{l.mpm_product?.product?.name ?? '—'}</td>
                   <td>{MPM_MARKETPLACE_LABELS[l.marketplace]}</td>
                   <td style={{ color: 'var(--text-faint)' }}>{l.store_name}</td>
-                  <td className={l.is_violation ? 'mono' : 'mono'} style={l.is_violation ? { color: 'var(--red)', fontWeight: 600 } : undefined}>
-                    {fmtBRL(l.current_price)}
+                  <td
+                    className="mono"
+                    style={
+                      l.is_violation
+                        ? { color: 'var(--red)', fontWeight: 600 }
+                        : l.current_price == null
+                          ? { color: 'var(--text-faint)', fontStyle: 'italic' }
+                          : undefined
+                    }
+                  >
+                    {fmtPrice(l.current_price)}
                   </td>
                   <td className="mono" style={{ color: 'var(--text-faint)' }}>
                     {fmtBRL(l.mpm_product?.min_price ?? 0)}
                   </td>
                   <td>
-                    {l.is_violation ? (
+                    {l.current_price == null ? (
+                      <span className="pill" style={{ color: 'var(--text-faint)' }}>
+                        confirmar preço
+                      </span>
+                    ) : l.is_violation ? (
                       <span className="pill" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                         🔴 violação
                       </span>
