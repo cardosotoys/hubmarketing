@@ -466,6 +466,13 @@ h1.page-title {
 .banner.error .ic {
   color: var(--red);
 }
+.offline-banner {
+  background: var(--yellow-dim);
+  color: var(--yellow);
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 14px;
+}
 
 .stat-grid {
   display: grid;

@@ -6,6 +6,7 @@ import { breadcrumbFor } from '../lib/breadcrumb';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import MobileLayout from './mobile/MobileLayout';
+import OfflineBanner from './OfflineBanner';
 
 export default function AppLayout() {
   const { session, loading } = useAuth();
@@ -28,6 +29,7 @@ export default function AppLayout() {
       <div className={`sidebar-backdrop${navOpen ? ' open' : ''}`} onClick={() => setNavOpen(false)} />
       <div className="main">
         <Topbar breadcrumb={breadcrumbFor(location.pathname)} onMenuClick={() => setNavOpen(true)} />
+        <OfflineBanner />
         <div className="content">
           <Outlet />
         </div>
