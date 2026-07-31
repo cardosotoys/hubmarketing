@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
-import type { Profile, Theme } from '../types/database';
+import type { FontScale, Profile, Theme } from '../types/database';
+
+const FONT_ZOOM: Record<FontScale, string> = { sm: '90%', md: '100%', lg: '115%', xl: '130%' };
 
 interface AuthContextValue {
   session: Session | null;
@@ -11,6 +13,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setTheme: (theme: Theme) => Promise<void>;
+  setFontScale: (fontScale: FontScale) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,6 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.theme = profile?.theme ?? 'dark';
   }, [profile?.theme]);
+
+  useEffect(() => {
+    document.body.style.zoom = FONT_ZOOM[profile?.font_scale ?? 'md'];
+  }, [profile?.font_scale]);
 
   useEffect(() => {
     let active = true;
@@ -73,8 +80,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.from('profiles').update({ theme }).eq('id', profile.id);
   }
 
+  async function setFontScale(fontScale: FontScale) {
+    if (!profile) return;
+    setProfile({ ...profile, font_scale: fontScale });
+    await supabase.from('profiles').update({ font_scale: fontScale }).eq('id', profile.id);
+  }
+
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut, refreshProfile, setTheme }}>
+    <AuthContext.Provider
+      value={{ session, profile, loading, signIn, signOut, refreshProfile, setTheme, setFontScale }}
+    >
       {children}
     </AuthContext.Provider>
   );

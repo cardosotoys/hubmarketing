@@ -1,5 +1,6 @@
 export type Role = 'diretoria' | 'equipe' | 'administrador';
 export type Theme = 'dark' | 'light';
+export type FontScale = 'sm' | 'md' | 'lg' | 'xl';
 export type CategoryScope = 'projeto' | 'campanha';
 
 export interface Category {
@@ -90,6 +91,7 @@ export interface Profile {
   hidden_modules: string[];
   extra_modules: string[];
   theme: Theme;
+  font_scale: FontScale;
   created_at: string;
 }
 

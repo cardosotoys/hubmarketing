@@ -6,10 +6,13 @@ import { logActivity } from '../lib/activityLog';
 import { getPushSubscriptionState, isPushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/pushNotifications';
 import StatusTag from '../components/StatusTag';
 import Avatar from '../components/Avatar';
-import { ROLE_LABELS, type Project } from '../types/database';
+import { ROLE_LABELS, type FontScale, type Project } from '../types/database';
+
+const FONT_SCALE_LABELS: Record<FontScale, string> = { sm: 'Pequena', md: 'Padrão', lg: 'Grande', xl: 'Extra grande' };
+const FONT_SCALE_ORDER: FontScale[] = ['sm', 'md', 'lg', 'xl'];
 
 export default function Perfil() {
-  const { profile, refreshProfile, setTheme } = useAuth();
+  const { profile, refreshProfile, setTheme, setFontScale, signOut } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -215,6 +218,24 @@ export default function Perfil() {
             <span>Português (BR)</span>
           </div>
           <div className="field-row">
+            <span className="k">Tamanho da fonte</span>
+            <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {FONT_SCALE_ORDER.map((scale) => (
+                <span
+                  key={scale}
+                  onClick={() => setFontScale(scale)}
+                  style={{
+                    cursor: 'pointer',
+                    color: profile.font_scale === scale ? 'var(--violet)' : 'var(--text-faint)',
+                    fontWeight: profile.font_scale === scale ? 600 : 400,
+                  }}
+                >
+                  {FONT_SCALE_LABELS[scale]}
+                </span>
+              ))}
+            </span>
+          </div>
+          <div className="field-row">
             <span className="k">Notificações no aparelho</span>
             {!isPushSupported || pushState === 'unsupported' ? (
               <span style={{ color: 'var(--text-faint)' }}>Não suportado neste navegador</span>
@@ -235,6 +256,16 @@ export default function Perfil() {
               <span>{pushError}</span>
             </div>
           )}
+        </div>
+        <div className="panel">
+          <button
+            type="button"
+            className="btn ghost"
+            style={{ width: '100%', color: 'var(--red)', borderColor: 'var(--red)' }}
+            onClick={() => signOut()}
+          >
+            Sair da conta
+          </button>
         </div>
       </div>
     </div>
