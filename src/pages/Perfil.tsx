@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { getPushSubscriptionState, isPushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/pushNotifications';
 import StatusTag from '../components/StatusTag';
 import Avatar from '../components/Avatar';
 import { ROLE_LABELS, type Project } from '../types/database';
@@ -20,6 +21,31 @@ export default function Perfil() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [pushState, setPushState] = useState<'unsupported' | 'subscribed' | 'not-subscribed' | 'loading'>('loading');
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPushSubscriptionState().then(setPushState);
+  }, []);
+
+  async function togglePush() {
+    setPushBusy(true);
+    setPushError(null);
+    try {
+      if (pushState === 'subscribed') {
+        await unsubscribeFromPush();
+        setPushState('not-subscribed');
+      } else {
+        await subscribeToPush(profile!.id);
+        setPushState('subscribed');
+      }
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : 'Não foi possível alterar as notificações push.');
+    }
+    setPushBusy(false);
+  }
 
   useEffect(() => {
     if (!profile) return;
@@ -188,6 +214,27 @@ export default function Perfil() {
             <span className="k">Idioma</span>
             <span>Português (BR)</span>
           </div>
+          <div className="field-row">
+            <span className="k">Notificações no aparelho</span>
+            {!isPushSupported || pushState === 'unsupported' ? (
+              <span style={{ color: 'var(--text-faint)' }}>Não suportado neste navegador</span>
+            ) : pushState === 'loading' ? (
+              <span style={{ color: 'var(--text-faint)' }}>Verificando…</span>
+            ) : (
+              <span
+                style={{ cursor: pushBusy ? 'default' : 'pointer', color: 'var(--violet)' }}
+                onClick={() => !pushBusy && togglePush()}
+              >
+                {pushBusy ? 'Aguarde…' : pushState === 'subscribed' ? 'Ativadas · desativar' : 'Desativadas · ativar'}
+              </span>
+            )}
+          </div>
+          {pushError && (
+            <div className="banner error" style={{ marginTop: 8 }}>
+              <span className="ic">✕</span>
+              <span>{pushError}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

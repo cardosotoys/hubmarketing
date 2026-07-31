@@ -165,6 +165,15 @@ export interface TaskComment {
   created_at: string;
 }
 
+export interface PushSubscriptionRow {
+  id: string;
+  profile_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
+}
+
 export interface Task {
   id: string;
   project_id: string | null;

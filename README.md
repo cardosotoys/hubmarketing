@@ -578,6 +578,44 @@ de nenhum marketplace específico. A arquitetura (marketplace detectado automati
 camada de validação separada da de busca) já está pronta pra adicionar outras fontes (ex.: busca direta em site
 específico) e reativar IA de validação no futuro, sem precisar reescrever nada.
 
+## Notificações push (celular, com o app fechado)
+
+Além das notificações em tempo real dentro do Hub (que exigem o app aberto no navegador), dá pra
+receber uma notificação de verdade no celular quando alguém te menciona num comentário — mesmo
+com o navegador fechado ou o celular bloqueado — via **Web Push API**, sem custo de servidor push
+próprio (usa o `pg_net` que o Supabase já tem, igual ao agendamento do Monitor de Preços) e sem
+custo de loja de aplicativo (funciona no PWA instalado na tela de início).
+
+Escopo: só dispara para **menções em comentários de tarefa** (não pra toda `activity_log` da
+equipe) — é o mesmo recorte já usado no contador do sino de notificações, pra não virar spam de
+tudo que qualquer pessoa faz no Hub.
+
+1. **Gere o par de chaves VAPID** (identifica seu servidor pro navegador, sem custo/conta externa):
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+2. **Chave pública** → coloque em `VITE_VAPID_PUBLIC_KEY` no seu `.env` local **e** nas
+   Environment Variables do Vercel (é segura pra expor no navegador).
+3. **Chave privada** → NUNCA coloque no `.env`/repositório. Só como secret da function:
+   ```bash
+   npx supabase secrets set VAPID_PRIVATE_KEY=sua_chave_privada_aqui
+   npx supabase secrets set VAPID_PUBLIC_KEY=sua_chave_publica_aqui
+   npx supabase secrets set VAPID_SUBJECT=mailto:seu-email@cardosotoys.com.br
+   ```
+4. **Publique a function**:
+   ```bash
+   npx supabase functions deploy send-push
+   ```
+5. **Rode a migration `0035_push_notifications.sql`** — antes de rodar, troque `<project-ref>` e
+   `<service-role-key>` (Settings → API) dentro dela pelos valores reais do seu projeto, igual ao
+   passo do `pg_cron` do Monitor de Preços. Ela cria a tabela `push_subscriptions` e um trigger que
+   chama a function `send-push` sempre que um comentário com menção é inserido.
+6. Cada pessoa ativa em **Perfil → Preferências → Notificações no aparelho**. O navegador vai pedir
+   permissão de notificação — uma vez aceita, funciona mesmo com a aba fechada.
+
+Sem service worker de cache/offline (fora de escopo) — o `public/sw.js` só existe pra receber o
+push e abrir o Hub ao tocar na notificação.
+
 ## Scripts
 
 ```bash
