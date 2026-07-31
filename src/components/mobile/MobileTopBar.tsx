@@ -11,7 +11,7 @@ export default function MobileTopBar() {
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const { mentions, recent, loadRecent } = useNotifications(profile?.id);
+  const { mentions, recent, unreadCount, loadRecent, markSeen } = useNotifications(profile?.id);
   const { query, setQuery, searching, results, hasResults, goTo } = useGlobalSearch();
 
   function handleGoTo(path: string) {
@@ -21,7 +21,10 @@ export default function MobileTopBar() {
 
   function toggleNotif() {
     setNotifOpen((s) => {
-      if (!s) loadRecent();
+      if (!s) {
+        loadRecent();
+        markSeen();
+      }
       return !s;
     });
   }
@@ -44,7 +47,7 @@ export default function MobileTopBar() {
           </button>
           <button type="button" className="icon-btn" onClick={toggleNotif}>
             🔔
-            {mentions.length > 0 && <span className="pip"></span>}
+            {unreadCount > 0 && <span className="pip-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
         </div>
       </div>

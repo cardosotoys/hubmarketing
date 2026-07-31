@@ -10,7 +10,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
   const { profile, setTheme } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { mentions, recent, loadRecent } = useNotifications(profile?.id);
+  const { mentions, recent, unreadCount, loadRecent, markSeen } = useNotifications(profile?.id);
   const { query, setQuery, searching, results, hasResults, goTo: searchGoTo } = useGlobalSearch();
 
   function goTo(path: string) {
@@ -20,7 +20,10 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
 
   function toggleNotif() {
     setShowNotif((s) => {
-      if (!s) loadRecent();
+      if (!s) {
+        loadRecent();
+        markSeen();
+      }
       return !s;
     });
   }
@@ -105,7 +108,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         </Link>
         <div className="icon-btn" onClick={toggleNotif}>
           🔔
-          {mentions.length > 0 && <span className="pip"></span>}
+          {unreadCount > 0 && <span className="pip-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}
         </div>
         <Link className="user-chip" to="/perfil">
           <Avatar profile={profile} />
