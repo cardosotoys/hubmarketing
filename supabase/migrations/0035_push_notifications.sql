@@ -20,12 +20,15 @@ create index if not exists push_subscriptions_profile_id_idx on public.push_subs
 
 alter table public.push_subscriptions enable row level security;
 
+drop policy if exists "push_subscriptions_select_own" on public.push_subscriptions;
 create policy "push_subscriptions_select_own" on public.push_subscriptions
   for select using (auth.uid() = profile_id);
 
+drop policy if exists "push_subscriptions_insert_own" on public.push_subscriptions;
 create policy "push_subscriptions_insert_own" on public.push_subscriptions
   for insert with check (auth.uid() = profile_id);
 
+drop policy if exists "push_subscriptions_delete_own" on public.push_subscriptions;
 create policy "push_subscriptions_delete_own" on public.push_subscriptions
   for delete using (auth.uid() = profile_id);
 
