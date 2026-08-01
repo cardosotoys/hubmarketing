@@ -6,6 +6,7 @@ export type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | n
 export type MentionRow = TaskComment & { author: { name: string } | null; task: { title: string } | null };
 
 const SEEN_KEY_PREFIX = 'notif-seen-at:';
+const READ_KEY_PREFIX = 'notif-read-ids:';
 const EPOCH = '1970-01-01T00:00:00.000Z';
 
 // Dados do painel de notificações — usado pelo Topbar (desktop) e pelo MobileTopBar (celular),
@@ -14,8 +15,50 @@ export function useNotifications(profileId: string | undefined) {
   const [recent, setRecent] = useState<ActivityWithActor[]>([]);
   const [mentions, setMentions] = useState<MentionRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Conjunto de ids de menção já "lidas" (clicadas) — persistido por usuário no navegador,
+  // pra diferenciar o que já foi visto do que ainda não foi.
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const seenKey = profileId ? `${SEEN_KEY_PREFIX}${profileId}` : null;
+  const readKey = profileId ? `${READ_KEY_PREFIX}${profileId}` : null;
+
+  useEffect(() => {
+    if (!readKey) {
+      setReadIds(new Set());
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(readKey);
+      setReadIds(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+    } catch {
+      setReadIds(new Set());
+    }
+  }, [readKey]);
+
+  const markRead = useCallback(
+    (id: string) => {
+      setReadIds((prev) => {
+        if (prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.add(id);
+        if (readKey) localStorage.setItem(readKey, JSON.stringify([...next]));
+        return next;
+      });
+    },
+    [readKey],
+  );
+
+  const markAllRead = useCallback(
+    (ids: string[]) => {
+      setReadIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((i) => next.add(i));
+        if (readKey) localStorage.setItem(readKey, JSON.stringify([...next]));
+        return next;
+      });
+    },
+    [readKey],
+  );
 
   const loadMentions = useCallback(() => {
     if (!profileId) return;
@@ -87,5 +130,5 @@ export function useNotifications(profileId: string | undefined) {
     };
   }, [profileId, loadMentions, loadRecent, loadUnreadCount]);
 
-  return { mentions, recent, unreadCount, loadRecent, markSeen };
+  return { mentions, recent, unreadCount, readIds, markRead, markAllRead, loadRecent, markSeen };
 }

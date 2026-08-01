@@ -4,22 +4,83 @@ import type { ActivityWithActor, MentionRow } from '../hooks/useNotifications';
 export default function NotificationsPanel({
   mentions,
   recent,
+  readIds,
+  onMarkRead,
+  onMarkAllRead,
   onClose,
 }: {
   mentions: MentionRow[];
   recent: ActivityWithActor[];
+  readIds: Set<string>;
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: (ids: string[]) => void;
   onClose: () => void;
 }) {
+  const unreadMentions = mentions.filter((m) => !readIds.has(m.id));
+
   return (
     <div className="notif-panel">
       {mentions.length > 0 && (
         <>
-          <div className="head">Menções pra você</div>
-          {mentions.map((m) => (
-            <Link className="item" key={m.id} to={`/demandas?task=${m.task_id}&focus=comments`} onClick={onClose}>
-              <b>{m.author?.name ?? 'Alguém'}</b> te marcou em "{m.task?.title ?? 'uma demanda'}": {m.body}
-            </Link>
-          ))}
+          <div className="head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>
+              Menções pra você
+              {unreadMentions.length > 0 && (
+                <span
+                  style={{ marginLeft: 6, background: 'var(--accent)', color: '#fff', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}
+                >
+                  {unreadMentions.length}
+                </span>
+              )}
+            </span>
+            {unreadMentions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onMarkAllRead(mentions.map((m) => m.id))}
+                style={{ background: 'none', border: 'none', color: 'var(--violet)', cursor: 'pointer', fontSize: 11, padding: 0 }}
+              >
+                Marcar todas como lidas
+              </button>
+            )}
+          </div>
+          {mentions.map((m) => {
+            const unread = !readIds.has(m.id);
+            return (
+              <Link
+                className="item"
+                key={m.id}
+                to={`/demandas?task=${m.task_id}&focus=comments`}
+                onClick={() => {
+                  onMarkRead(m.id);
+                  onClose();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  background: unread ? 'var(--accent-dim)' : undefined,
+                  fontWeight: unread ? 600 : 400,
+                  opacity: unread ? 1 : 0.62,
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    marginTop: 6,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    background: unread ? 'var(--accent)' : 'transparent',
+                    border: unread ? 'none' : '1px solid var(--border)',
+                  }}
+                />
+                <span>
+                  <b>{m.author?.name ?? 'Alguém'}</b> te marcou em "{m.task?.title ?? 'uma demanda'}": {m.body}
+                </span>
+              </Link>
+            );
+          })}
         </>
       )}
       <div className="head">Atividade recente</div>
