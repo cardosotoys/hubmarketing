@@ -9,14 +9,15 @@ export interface Category {
   label: string;
   created_at: string;
 }
-export type Department = 'diretoria' | 'growth' | 'coordenacao' | 'design' | 'assistente';
-export const DEPARTMENTS: Department[] = ['diretoria', 'growth', 'coordenacao', 'design', 'assistente'];
+export type Department = 'diretoria' | 'growth' | 'coordenacao' | 'design' | 'assistente' | 'produto_eng';
+export const DEPARTMENTS: Department[] = ['diretoria', 'growth', 'coordenacao', 'design', 'assistente', 'produto_eng'];
 export const DEPARTMENT_LABELS: Record<Department, string> = {
   diretoria: 'Diretoria',
   growth: 'Growth / Marketing Digital',
   coordenacao: 'Coordenação',
   design: 'Design',
   assistente: 'Assistente',
+  produto_eng: 'Produto / Engenharia',
 };
 export type ProjectStatus = 'planning' | 'active' | 'paused' | 'done';
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
@@ -52,6 +53,7 @@ export const MODULE_KEYS = [
   'monitor-precos',
   'brand',
   'campanhas',
+  'design-produto',
   'ia',
   'relatorio-diario',
   'auditoria',
@@ -71,6 +73,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   'monitor-precos': 'Monitor de Preços',
   brand: 'Brand',
   campanhas: 'Campanhas',
+  'design-produto': 'Design de Produto',
   ia: 'IA',
   'relatorio-diario': 'Relatório Diário',
   auditoria: 'Auditoria',
@@ -237,6 +240,7 @@ export interface ActivityLogEntry {
   campaign_id: string | null;
   campaign_task_id: string | null;
   task_id: string | null;
+  product_dev_item_id: string | null;
   actor_id: string | null;
   action_text: string;
   detail: string;
@@ -993,4 +997,223 @@ export interface IaBrandVoice {
   sample_phrases: string;
   updated_by: string | null;
   updated_at: string;
+}
+
+// ============================================================
+// Design de Produto — desenvolvimento stage-gate (brinquedo de plástico injetado)
+// ============================================================
+
+export type ProductDevOwner = 'compartilhado' | 'produto' | 'marketing' | 'qualidade';
+export const PRODUCT_DEV_OWNER_LABELS: Record<ProductDevOwner, string> = {
+  compartilhado: 'Compartilhado',
+  produto: 'Produto / Eng.',
+  marketing: 'Marketing',
+  qualidade: 'Produto/Eng. + Qualidade',
+};
+
+export interface ProductDevPhaseDef {
+  n: number;
+  name: string;
+  owner: ProductDevOwner;
+  deliverable: string;
+  gate: string;
+  blocking?: boolean;
+}
+
+// As 9 fases do fluxo. Nome/dono/portão vivem aqui (o banco guarda só o número da fase
+// e a decisão de cada portão). Marketing e Embalagens rodam em paralelo desde a Fase 1.
+export const PRODUCT_DEV_PHASES: ProductDevPhaseDef[] = [
+  { n: 1, name: 'Estratégia & concepção', owner: 'compartilhado', deliverable: 'Conceito + faixa etária + meta de preço', gate: 'Viável comercial e no orçamento?' },
+  { n: 2, name: 'Requisitos & especificação', owner: 'produto', deliverable: 'PRD + material definido', gate: 'Requisitos completos e sem conflito?' },
+  { n: 3, name: 'Design conceitual & industrial', owner: 'produto', deliverable: 'Modelo 3D + análise de DFM', gate: 'É injetável e mantém o apelo?' },
+  { n: 4, name: 'Prototipagem & validação', owner: 'produto', deliverable: 'Protótipo aprovado + design congelado', gate: 'Produto físico ok e seguro?' },
+  { n: 5, name: 'Ferramentaria (molde)', owner: 'produto', deliverable: 'Molde + amostras aprovadas', gate: 'Amostras conforme o padrão?' },
+  { n: 6, name: 'Certificação & conformidade', owner: 'qualidade', deliverable: 'Certificado INMETRO + registro', gate: 'Certificado válido? (bloqueante)', blocking: true },
+  { n: 7, name: 'Pré-produção & produção', owner: 'produto', deliverable: 'Lote piloto + produto embalado', gate: 'Qualidade estável e estoque ok?' },
+  { n: 8, name: 'Go-to-market & lançamento', owner: 'marketing', deliverable: 'Kit de lançamento + produto nos canais', gate: 'Lançamento executado' },
+  { n: 9, name: 'Pós-lançamento & melhoria', owner: 'compartilhado', deliverable: 'Relatório + backlog de melhorias', gate: 'Repor / evoluir / descontinuar' },
+];
+
+export type ProductDevStatus = 'ativo' | 'pausado' | 'concluido' | 'descontinuado' | 'cancelado';
+export const PRODUCT_DEV_STATUSES: { key: ProductDevStatus; label: string }[] = [
+  { key: 'ativo', label: 'Ativo' },
+  { key: 'pausado', label: 'Pausado' },
+  { key: 'concluido', label: 'Concluído' },
+  { key: 'descontinuado', label: 'Descontinuado' },
+  { key: 'cancelado', label: 'Cancelado' },
+];
+
+export type CertificationStatus = 'nao_iniciado' | 'em_ensaio' | 'aprovado' | 'reprovado';
+export const CERTIFICATION_STATUSES: { key: CertificationStatus; label: string }[] = [
+  { key: 'nao_iniciado', label: 'Não iniciado' },
+  { key: 'em_ensaio', label: 'Em ensaio' },
+  { key: 'aprovado', label: 'Aprovado' },
+  { key: 'reprovado', label: 'Reprovado' },
+];
+
+// Materiais comuns em injeção plástica de brinquedo
+export const PRODUCT_DEV_MATERIALS = ['ABS', 'PP', 'PE', 'PS', 'Outro'] as const;
+
+export interface ProductDevItem {
+  id: string;
+  brand_id: string;
+  product_id: string | null;
+  name: string;
+  concept: string;
+  age_range: string;
+  material: string;
+  target_price: number | null;
+  target_volume: number | null;
+  tooling_investment: number | null;
+  licensed: boolean;
+  license_notes: string;
+  current_phase: number;
+  status: ProductDevStatus;
+  certification_status: CertificationStatus;
+  certification_number: string;
+  certification_expiry: string | null;
+  requires_anatel: boolean;
+  launch_target_date: string | null;
+  priority: Priority;
+  owner_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type GateDecision = 'pendente' | 'aprovado' | 'ajustar' | 'reprovado';
+export const GATE_DECISIONS: { key: GateDecision; label: string }[] = [
+  { key: 'pendente', label: 'Pendente' },
+  { key: 'aprovado', label: 'Aprovado (go)' },
+  { key: 'ajustar', label: 'Ajustar' },
+  { key: 'reprovado', label: 'Reprovado (no-go)' },
+];
+
+export interface ProductDevGate {
+  id: string;
+  item_id: string;
+  phase: number;
+  decision: GateDecision;
+  approver_id: string | null;
+  decided_at: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProductDevTrack = 'produto' | 'marketing' | 'embalagem';
+export const PRODUCT_DEV_TRACKS: { key: ProductDevTrack; label: string }[] = [
+  { key: 'produto', label: 'Produto / Eng.' },
+  { key: 'marketing', label: 'Marketing / GTM' },
+  { key: 'embalagem', label: 'Embalagem' },
+];
+
+export interface ProductDevTask {
+  id: string;
+  item_id: string;
+  phase: number;
+  track: ProductDevTrack;
+  title: string;
+  done: boolean;
+  assignee_id: string | null;
+  due_date: string | null;
+  notes: string;
+  position: number;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type PackagingKind = 'primaria' | 'secundaria' | 'terciaria';
+export const PACKAGING_KINDS: { key: PackagingKind; label: string; hint: string }[] = [
+  { key: 'primaria', label: 'Primária', hint: 'Contato direto: blister, caixa, saco' },
+  { key: 'secundaria', label: 'Secundária', hint: 'Display/expositora, caixa master' },
+  { key: 'terciaria', label: 'Terciária', hint: 'Transporte, paletização' },
+];
+
+export type PackagingArtStatus = 'nao_iniciada' | 'em_producao' | 'em_aprovacao' | 'aprovada';
+export const PACKAGING_ART_STATUSES: { key: PackagingArtStatus; label: string }[] = [
+  { key: 'nao_iniciada', label: 'Não iniciada' },
+  { key: 'em_producao', label: 'Em produção' },
+  { key: 'em_aprovacao', label: 'Em aprovação' },
+  { key: 'aprovada', label: 'Aprovada' },
+];
+
+// Rotulagem é BLOQUEANTE para o lançamento (Fase 8)
+export type PackagingLabelingStatus = 'pendente' | 'em_producao' | 'validada';
+export const PACKAGING_LABELING_STATUSES: { key: PackagingLabelingStatus; label: string }[] = [
+  { key: 'pendente', label: 'Pendente' },
+  { key: 'em_producao', label: 'Em produção' },
+  { key: 'validada', label: 'Validada' },
+];
+
+export type PackagingTestStatus = 'nao_testado' | 'reprovado' | 'aprovado';
+export const PACKAGING_TEST_STATUSES: { key: PackagingTestStatus; label: string }[] = [
+  { key: 'nao_testado', label: 'Não testado' },
+  { key: 'reprovado', label: 'Reprovado' },
+  { key: 'aprovado', label: 'Aprovado' },
+];
+
+export interface ProductDevPackaging {
+  id: string;
+  item_id: string;
+  kind: PackagingKind;
+  pack_type: string;
+  dimensions: string;
+  material: string;
+  art_status: PackagingArtStatus;
+  labeling_status: PackagingLabelingStatus;
+  supplier: string;
+  unit_cost: number | null;
+  protection_test_status: PackagingTestStatus;
+  guide_url: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductDevRisk {
+  id: string;
+  item_id: string;
+  description: string;
+  probability: RiskProbability;
+  impact: RiskImpact;
+  mitigation_plan: string;
+  responsible_id: string | null;
+  status: RiskStatus;
+  notes: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductDevDecision {
+  id: string;
+  item_id: string;
+  context: string;
+  alternatives: string;
+  choice: string;
+  impact: string;
+  stakeholders: string;
+  decided_at: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type ProductDevDocKind = 'prd' | 'cad' | 'laudo' | 'guia' | 'outro';
+export const PRODUCT_DEV_DOC_KINDS: { key: ProductDevDocKind; label: string }[] = [
+  { key: 'prd', label: 'PRD / Requisitos' },
+  { key: 'cad', label: 'CAD / 3D' },
+  { key: 'laudo', label: 'Laudo de laboratório' },
+  { key: 'guia', label: 'Guia de embalagem' },
+  { key: 'outro', label: 'Outro' },
+];
+
+export interface ProductDevDocument {
+  id: string;
+  item_id: string;
+  kind: ProductDevDocKind;
+  name: string;
+  url: string;
+  added_by: string | null;
+  created_at: string;
 }

@@ -47,6 +47,17 @@ import CampaignMarketplace from './pages/campaigns/CampaignMarketplace';
 import CampaignCrm from './pages/campaigns/CampaignCrm';
 import CampaignMidiaPaga from './pages/campaigns/CampaignMidiaPaga';
 import CampaignConfiguracoes from './pages/campaigns/CampaignConfiguracoes';
+import DesignProduto from './pages/DesignProduto';
+import ProductDevWorkspace from './pages/design-produto/ProductDevWorkspace';
+import ProductDevResumo from './pages/design-produto/ProductDevResumo';
+import ProductDevFases from './pages/design-produto/ProductDevFases';
+import ProductDevFicha from './pages/design-produto/ProductDevFicha';
+import ProductDevEmbalagem from './pages/design-produto/ProductDevEmbalagem';
+import ProductDevCertificacao from './pages/design-produto/ProductDevCertificacao';
+import ProductDevMarketing from './pages/design-produto/ProductDevMarketing';
+import ProductDevRiscos from './pages/design-produto/ProductDevRiscos';
+import ProductDevDecisoes from './pages/design-produto/ProductDevDecisoes';
+import ProductDevHistorico from './pages/design-produto/ProductDevHistorico';
 
 const CAMPAIGN_COMING_SOON: { path: string; title: string; description: string }[] = [
   { path: 'relatorios', title: 'Relatórios', description: 'O painel de Relatórios global já cobre campanhas (incluindo verba e status) e o Resumo desta campanha já traz os números específicos dela — um relatório dedicado por campanha fica para quando fizer sentido um formato de exportação próprio.' },
@@ -257,6 +268,19 @@ export default function App() {
               {CAMPAIGN_COMING_SOON.map((item) => (
                 <Route key={item.path} path={item.path} element={<CampaignComingSoon title={item.title} description={item.description} />} />
               ))}
+            </Route>
+            <Route path="design-produto" element={<ModuleGate moduleKey="design-produto"><DesignProduto /></ModuleGate>} />
+            <Route path="design-produto/:id" element={<ModuleGate moduleKey="design-produto"><ProductDevWorkspace /></ModuleGate>}>
+              <Route index element={<Navigate to="resumo" replace />} />
+              <Route path="resumo" element={<ProductDevResumo />} />
+              <Route path="fases" element={<ProductDevFases />} />
+              <Route path="ficha" element={<ProductDevFicha />} />
+              <Route path="embalagem" element={<ProductDevEmbalagem />} />
+              <Route path="certificacao" element={<ProductDevCertificacao />} />
+              <Route path="marketing" element={<ProductDevMarketing />} />
+              <Route path="riscos" element={<ProductDevRiscos />} />
+              <Route path="decisoes" element={<ProductDevDecisoes />} />
+              <Route path="historico" element={<ProductDevHistorico />} />
             </Route>
             <Route path="ia" element={<ModuleGate moduleKey="ia"><Ia /></ModuleGate>} />
             <Route

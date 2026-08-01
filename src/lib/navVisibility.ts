@@ -51,6 +51,12 @@ export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: 'Design de Produtos',
+    items: [
+      { to: '/design-produto', label: 'Design de Produto', icon: '◭', hideFor: ['assistente'], moduleKey: 'design-produto' },
+    ],
+  },
+  {
     label: 'Registro',
     items: [
       { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎', moduleKey: 'relatorio-diario' },

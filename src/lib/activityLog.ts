@@ -8,6 +8,7 @@ export async function logActivity(params: {
   campaignId?: string;
   campaignTaskId?: string;
   taskId?: string;
+  productDevItemId?: string;
 }) {
   const { error } = await supabase.from('activity_log').insert({
     actor_id: params.actorId,
@@ -17,6 +18,7 @@ export async function logActivity(params: {
     campaign_id: params.campaignId ?? null,
     campaign_task_id: params.campaignTaskId ?? null,
     task_id: params.taskId ?? null,
+    product_dev_item_id: params.productDevItemId ?? null,
   });
   if (error) {
     console.error('Falha ao registrar atividade no histórico:', error.message);
