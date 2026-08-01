@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
+import { materializeSubsteps } from '../lib/substeps';
 import {
   APPROVAL_STATE_LABELS,
   PRIORITIES,
@@ -103,6 +104,8 @@ export default function TaskEditModal({
   }
 
   async function loadChecklist() {
+    // materializa as sub-etapas da etapa atual (template → itens do checklist desta demanda)
+    await materializeSubsteps(task.id, task.stage_id);
     const { data } = await supabase.from('task_checklist_items').select('*').eq('task_id', task.id).order('position');
     setChecklist((data as TaskChecklistItem[]) ?? []);
   }
@@ -140,6 +143,38 @@ export default function TaskEditModal({
   const overdue = dueDate && selectedStage && !selectedStage.is_final ? computeOverdue(dueDate) : false;
   const updatedByName = profiles.find((p) => p.id === task.updated_by)?.name;
   const pendingGates = checklist.filter((c) => c.is_gate && !c.done);
+  const currentStageItems = checklist.filter((c) => c.stage_id === task.stage_id);
+  const otherItems = checklist.filter((c) => c.stage_id !== task.stage_id);
+
+  function renderChecklistRow(c: TaskChecklistItem) {
+    const overdueItem = c.due_date && !c.done && new Date(c.due_date + 'T00:00') < new Date(new Date().toDateString());
+    return (
+      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+        <input type="checkbox" checked={c.done} onChange={() => toggleChecklistItem(c)} style={{ width: 'auto' }} />
+        <span style={{ flex: 1, textDecoration: c.done ? 'line-through' : 'none', color: c.done ? 'var(--text-faint)' : 'var(--text)' }}>
+          {c.label}
+        </span>
+        {c.due_date && (
+          <span style={{ fontSize: 11, color: overdueItem ? 'var(--red)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+            {overdueItem ? '🔴 ' : '📅 '}
+            {new Date(c.due_date + 'T00:00').toLocaleDateString('pt-BR')}
+          </span>
+        )}
+        <button
+          type="button"
+          className="btn ghost sm"
+          title={c.is_gate ? 'Condicional (trava o avanço) — clique para tornar opcional' : 'Tornar condicional (trava o avanço)'}
+          onClick={() => toggleChecklistGate(c)}
+          style={{ color: c.is_gate ? 'var(--yellow)' : 'var(--text-faint)' }}
+        >
+          {c.is_gate ? '🔒' : '🔓'}
+        </button>
+        <button type="button" className="btn ghost sm" onClick={() => deleteChecklistItem(c.id)}>
+          ✕
+        </button>
+      </div>
+    );
+  }
 
   // Bloqueia avanço para uma etapa posterior enquanto houver item-gate pendente (limitador)
   function blocksAdvanceTo(targetStageId: string): boolean {
@@ -457,43 +492,42 @@ export default function TaskEditModal({
         )}
       </div>
 
-      {/* Checklist com item-gate (limitador de avanço) */}
+      {/* Sub-etapas da etapa atual + checklist livre (item-gate = limitador de avanço) */}
       <div className="panel">
-        <h4>Checklist</h4>
+        <h4>Sub-etapas &amp; checklist</h4>
         {pendingGates.length > 0 && (
           <div className="banner" style={{ borderColor: 'var(--yellow)', marginBottom: 8 }}>
             <span className="ic">🔒</span>
             <span>
-              {pendingGates.length} item(ns) obrigatório(s) pendente(s) — a demanda não avança de etapa até concluí-los.
+              {pendingGates.length} item(ns) condicional(is) pendente(s) — a demanda não avança de etapa até concluí-los.
             </span>
           </div>
         )}
-        {checklist.map((c) => (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-            <input type="checkbox" checked={c.done} onChange={() => toggleChecklistItem(c)} style={{ width: 'auto' }} />
-            <span style={{ flex: 1, textDecoration: c.done ? 'line-through' : 'none', color: c.done ? 'var(--text-faint)' : 'var(--text)' }}>
-              {c.label}
-            </span>
-            <button
-              type="button"
-              className="btn ghost sm"
-              title={c.is_gate ? 'Item obrigatório para avançar (gate) — clique para tornar opcional' : 'Tornar obrigatório para avançar (gate)'}
-              onClick={() => toggleChecklistGate(c)}
-              style={{ color: c.is_gate ? 'var(--yellow)' : 'var(--text-faint)' }}
-            >
-              {c.is_gate ? '🔒 obrigatório' : '🔓 opcional'}
-            </button>
-            <button type="button" className="btn ghost sm" onClick={() => deleteChecklistItem(c.id)}>
-              ✕
-            </button>
-          </div>
-        ))}
+
+        {currentStageItems.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-faint)', margin: '2px 0 4px' }}>
+              Sub-etapas — {currentStage?.name ?? 'etapa atual'}
+            </div>
+            {currentStageItems.map(renderChecklistRow)}
+          </>
+        )}
+
+        {otherItems.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-faint)', margin: '10px 0 4px' }}>
+              Checklist livre
+            </div>
+            {otherItems.map(renderChecklistRow)}
+          </>
+        )}
+
         {checklist.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum item ainda.</p>}
         <form onSubmit={addChecklistItem} className="responsive-row" style={{ marginTop: 8, alignItems: 'center' }}>
           <input placeholder="Novo item do checklist" value={newChecklistLabel} onChange={(e) => setNewChecklistLabel(e.target.value)} style={{ flex: 1 }} />
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={newChecklistGate} onChange={(e) => setNewChecklistGate(e.target.checked)} style={{ width: 'auto' }} />
-            🔒 gate
+            🔒 condicional
           </label>
           <button className="btn sm" type="submit">
             Adicionar

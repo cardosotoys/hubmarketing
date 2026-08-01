@@ -242,7 +242,21 @@ export interface TaskChecklistItem {
   label: string;
   done: boolean;
   is_gate: boolean;
+  stage_id: string | null;
+  substep_id: string | null;
+  due_date: string | null;
   position: number;
+  created_at: string;
+}
+
+// Template de sub-etapas de uma etapa (com prazo relativo e condicional/gate)
+export interface StageSubstep {
+  id: string;
+  stage_id: string;
+  label: string;
+  position: number;
+  is_conditional: boolean;
+  due_offset_days: number | null;
   created_at: string;
 }
 
