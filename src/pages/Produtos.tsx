@@ -496,25 +496,27 @@ function ProductFormModal({
   }
 
   return (
-    <Modal title={isEdit ? 'Editar produto' : 'Novo produto'} onClose={onClose}>
+    <Modal title={isEdit ? 'Editar produto' : 'Novo produto'} onClose={onClose} wide>
       <form onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label htmlFor="np-code">Código</label>
-          <input id="np-code" required value={code} onChange={(e) => setCode(e.target.value)} />
-        </div>
-        <div className="form-field">
-          <label htmlFor="np-name">Nome</label>
-          <input id="np-name" required value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div className="form-field">
-          <label htmlFor="np-brand">Marca</label>
-          <select id="np-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
-            {brands.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
-              </option>
-            ))}
-          </select>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-code">Código</label>
+            <input id="np-code" required value={code} onChange={(e) => setCode(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 2 }}>
+            <label htmlFor="np-name">Nome</label>
+            <input id="np-name" required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-brand">Marca</label>
+            <select id="np-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>

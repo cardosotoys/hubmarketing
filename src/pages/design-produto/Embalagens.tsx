@@ -332,9 +332,17 @@ export default function Embalagens() {
         <div className="page-sub" style={{ marginTop: 12 }}>Carregando…</div>
       ) : tab === 'demandas' ? (
         <div style={{ marginTop: 10 }}>
-          {/* Toolbar */}
+          {/* Ações — ficam acima, separadas dos filtros */}
+          <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
+            <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
+            <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
+            <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
+            <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
+          </div>
+
+          {/* Filtros — logo acima do board (colados na estrutura das etapas) */}
           <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <input placeholder="Buscar por título, SKU, código…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 220 }} />
+            <input placeholder="Buscar por título, SKU, código…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 220, flex: 1 }} />
             <select className="chip-select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
               <option value="all">Responsável: todos</option>
               <option value="none">Sem responsável</option>
@@ -366,12 +374,6 @@ export default function Embalagens() {
               <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} style={{ width: 'auto', marginRight: 6 }} />
               Ocultar finalizadas
             </label>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-              <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
-              <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
-              <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
-              <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
-            </div>
           </div>
 
           {managingStages && (
