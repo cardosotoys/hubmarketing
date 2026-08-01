@@ -222,7 +222,9 @@ export interface Task {
   priority: Priority;
   assignee_id: string | null;
   start_date: string | null;
+  target_date: string | null;
   due_date: string | null;
+  completed_at: string | null;
   delay_reason: string;
   notes: string;
   budget: number | null;

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Modal from './Modal';
+import ProductCombobox from './ProductCombobox';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
 import { materializeSubsteps } from '../lib/substeps';
@@ -57,6 +58,7 @@ export default function TaskEditModal({
   const [assigneeId, setAssigneeId] = useState(task.assignee_id ?? '');
   const [productId, setProductId] = useState(task.product_id ?? '');
   const [startDate, setStartDate] = useState(task.start_date ?? '');
+  const [targetDate, setTargetDate] = useState(task.target_date ?? '');
   const [dueDate, setDueDate] = useState(task.due_date ?? '');
   const [delayReason, setDelayReason] = useState(task.delay_reason ?? '');
   const [notes, setNotes] = useState(task.notes ?? '');
@@ -205,6 +207,7 @@ export default function TaskEditModal({
       assignee_id: assigneeId || null,
       product_id: productId || null,
       start_date: startDate || null,
+      target_date: targetDate || null,
       due_date: dueDate || null,
       delay_reason: delayReason,
       notes,
@@ -369,11 +372,15 @@ export default function TaskEditModal({
         </div>
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-start">Início</label>
+            <label htmlFor="te-start">Início (start)</label>
             <input id="te-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-due">Prazo</label>
+            <label htmlFor="te-target">🎯 Meta</label>
+            <input id="te-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="te-due">Prazo final</label>
             <input id="te-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
@@ -608,74 +615,3 @@ export default function TaskEditModal({
   );
 }
 
-// Combobox digitável de produto: digita para filtrar OU rola a lista — as duas formas.
-function ProductCombobox({
-  products,
-  value,
-  onChange,
-}: {
-  products: Product[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const selected = products.find((p) => p.id === value);
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const base = q
-      ? products.filter((p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
-      : products;
-    return base.slice(0, 40);
-  }, [products, query]);
-
-  if (selected && !open) {
-    return (
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <span className="pill" style={{ flex: 1, background: 'var(--surface-2)' }}>
-          {selected.code} — {selected.name}
-        </span>
-        <button type="button" className="btn ghost sm" onClick={() => { setOpen(true); setQuery(''); }}>
-          Trocar
-        </button>
-        <button type="button" className="btn ghost sm" onClick={() => onChange('')} title="Remover vínculo">
-          ✕
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="combobox">
-      <input
-        autoFocus={open}
-        placeholder="Digite código ou nome, ou role a lista…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => setOpen(true)}
-      />
-      {open && (
-        <div className="combobox-results">
-          <div className="opt" style={{ color: 'var(--text-faint)' }} onClick={() => { onChange(''); setOpen(false); }}>
-            Sem produto vinculado
-          </div>
-          {results.map((p) => (
-            <div
-              key={p.id}
-              className="opt"
-              onClick={() => {
-                onChange(p.id);
-                setOpen(false);
-                setQuery('');
-              }}
-            >
-              <strong>{p.code}</strong> — {p.name}
-            </div>
-          ))}
-          {results.length === 0 && <div className="opt" style={{ color: 'var(--text-faint)' }}>Nenhum produto encontrado.</div>}
-        </div>
-      )}
-    </div>
-  );
-}

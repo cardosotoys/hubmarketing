@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { logActivity } from '../../lib/activityLog';
 import KanbanBoard from '../../components/KanbanBoard';
 import TaskEditModal from '../../components/TaskEditModal';
+import Modal from '../../components/Modal';
+import ProductCombobox from '../../components/ProductCombobox';
 import { materializeSubsteps } from '../../lib/substeps';
 import {
   PACKAGING_TRACKS,
@@ -20,7 +22,7 @@ import {
   type Task,
 } from '../../types/database';
 
-type Tab = 'demandas' | 'financeiro' | 'arquivos' | 'historico';
+type Tab = 'demandas' | 'calendario' | 'financeiro' | 'arquivos' | 'historico';
 
 export default function Embalagens() {
   const { profile } = useAuth();
@@ -45,6 +47,7 @@ export default function Embalagens() {
   const [sort, setSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'assignee' | 'stage'>('recent');
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showNew, setShowNew] = useState(false);
   const [stageError, setStageError] = useState<string | null>(null);
   const [newStageName, setNewStageName] = useState('');
   const [managingStages, setManagingStages] = useState(false);
@@ -145,6 +148,34 @@ export default function Embalagens() {
     load();
   }
 
+  async function createDemand(fields: { product_id: string; title: string; start_date: string; target_date: string; due_date: string; priority: Priority }) {
+    const firstStage = sortedStages[0];
+    if (!firstStage) {
+      setStageError('Crie ao menos uma etapa antes de adicionar demandas.');
+      return;
+    }
+    const { data } = await supabase
+      .from('tasks')
+      .insert({
+        project_id: null,
+        packaging_track: track,
+        stage_id: firstStage.id,
+        product_id: fields.product_id || null,
+        title: fields.title.trim(),
+        priority: fields.priority,
+        start_date: fields.start_date || null,
+        target_date: fields.target_date || null,
+        due_date: fields.due_date || null,
+        position: tasks.length,
+      })
+      .select()
+      .single();
+    if (data) await materializeSubsteps(data.id, firstStage.id);
+    if (profile && data) await logActivity({ actorId: profile.id, actionText: 'Demanda de embalagem criada', detail: fields.title, taskId: data.id });
+    setShowNew(false);
+    load();
+  }
+
   async function changeStage(taskId: string, stageId: string) {
     if (!profile) return;
     const task = tasks.find((t) => t.id === taskId);
@@ -167,7 +198,11 @@ export default function Embalagens() {
       }
     }
     setStageError(null);
-    await supabase.from('tasks').update({ stage_id: stageId, updated_by: profile.id }).eq('id', taskId);
+    // entregue = entrou numa etapa final → grava completed_at (sai da final → limpa)
+    await supabase
+      .from('tasks')
+      .update({ stage_id: stageId, updated_by: profile.id, completed_at: targetStage?.is_final ? new Date().toISOString() : null })
+      .eq('id', taskId);
     await materializeSubsteps(taskId, stageId);
     await logActivity({ actorId: profile.id, actionText: 'Demanda de embalagem movida', detail: `${task?.title ?? ''} → ${targetStage?.name ?? ''}`, taskId });
     load();
@@ -258,7 +293,7 @@ export default function Embalagens() {
 
       {/* Abas do módulo */}
       <div className="detail-tabs" style={{ marginTop: 8 }}>
-        {([['demandas', 'Demandas'], ['financeiro', 'Financeiro'], ['arquivos', 'Arquivos'], ['historico', 'Histórico']] as [Tab, string][]).map(([key, label]) => (
+        {([['demandas', 'Demandas'], ['calendario', 'Calendário'], ['financeiro', 'Financeiro'], ['arquivos', 'Arquivos'], ['historico', 'Histórico']] as [Tab, string][]).map(([key, label]) => (
           <div key={key} className={`dtab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
             {label}
           </div>
@@ -310,7 +345,8 @@ export default function Embalagens() {
               <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} style={{ width: 'auto', marginRight: 6 }} />
               Ocultar finalizadas
             </label>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
               <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
               <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
               <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
@@ -362,8 +398,25 @@ export default function Embalagens() {
                 onEdit={(kt) => setEditingTask(tasks.find((t) => t.id === kt.id) ?? null)}
                 renderExtra={(kt) => {
                   const t = tasks.find((x) => x.id === kt.id);
-                  const prod = t?.product_id ? productsById[t.product_id] : null;
-                  return prod ? <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 4 }}>SKU {prod.code}</div> : null;
+                  if (!t) return null;
+                  const prod = t.product_id ? productsById[t.product_id] : null;
+                  const isFinal = stagesById[t.stage_id]?.is_final;
+                  const overduePrazo = t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
+                  return (
+                    <div style={{ marginBottom: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {prod && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>SKU {prod.code}</div>}
+                      <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
+                        {t.target_date && (
+                          <span style={{ color: 'var(--violet)' }}>🎯 {new Date(t.target_date + 'T00:00').toLocaleDateString('pt-BR')}</span>
+                        )}
+                        {t.due_date && (
+                          <span style={{ color: overduePrazo ? 'var(--red)' : 'var(--text-faint)', fontWeight: overduePrazo ? 700 : 400 }}>
+                            🏁 {new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
                 }}
               />
             </div>
@@ -377,12 +430,15 @@ export default function Embalagens() {
                     <th>Etapa</th>
                     <th>Responsável</th>
                     <th>Prioridade</th>
-                    <th>Prazo</th>
+                    <th>🎯 Meta</th>
+                    <th>🏁 Prazo final</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTasks.map((t) => {
                     const prod = t.product_id ? productsById[t.product_id] : null;
+                    const isFinal = stagesById[t.stage_id]?.is_final;
+                    const overduePrazo = t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
                     return (
                       <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
                         <td data-label="Demanda">{t.title}</td>
@@ -390,7 +446,8 @@ export default function Embalagens() {
                         <td data-label="Etapa" style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name ?? '—'}</td>
                         <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
                         <td data-label="Prioridade"><span className={`prio ${t.priority}`}>{PRIORITY_LABELS[t.priority]}</span></td>
-                        <td data-label="Prazo" style={{ color: 'var(--text-faint)' }}>{t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                        <td data-label="Meta" style={{ color: 'var(--violet)' }}>{t.target_date ? new Date(t.target_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                        <td data-label="Prazo final" style={{ color: overduePrazo ? 'var(--red)' : 'var(--text-faint)', fontWeight: overduePrazo ? 700 : 400 }}>{t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}</td>
                       </tr>
                     );
                   })}
@@ -400,6 +457,8 @@ export default function Embalagens() {
             </div>
           )}
         </div>
+      ) : tab === 'calendario' ? (
+        <PackagingCalendar tasks={tasks} stagesById={stagesById} onOpen={setEditingTask} />
       ) : tab === 'financeiro' ? (
         <div style={{ marginTop: 12 }}>
           <div className="stat-grid">
@@ -464,6 +523,10 @@ export default function Embalagens() {
         </div>
       )}
 
+      {showNew && (
+        <NewDemandModal products={products} onClose={() => setShowNew(false)} onCreate={createDemand} />
+      )}
+
       {editingTask && profile && (
         <TaskEditModal
           task={editingTask}
@@ -476,6 +539,186 @@ export default function Embalagens() {
           onDelete={() => deleteTask(editingTask.id)}
         />
       )}
+    </div>
+  );
+}
+
+// Criação de demanda de embalagem — SKU é o PRIMEIRO vínculo (toda embalagem é de um SKU),
+// seguido de título e das três datas da jornada: Início (start), Meta e Prazo final.
+function NewDemandModal({
+  products,
+  onClose,
+  onCreate,
+}: {
+  products: Product[];
+  onClose: () => void;
+  onCreate: (fields: { product_id: string; title: string; start_date: string; target_date: string; due_date: string; priority: Priority }) => void;
+}) {
+  const [productId, setProductId] = useState('');
+  const [title, setTitle] = useState('');
+  const [start, setStart] = useState('');
+  const [target, setTarget] = useState('');
+  const [due, setDue] = useState('');
+  const [priority, setPriority] = useState<Priority>('medium');
+  const [error, setError] = useState<string | null>(null);
+
+  const selected = products.find((p) => p.id === productId);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError('Dê um título à demanda.');
+      return;
+    }
+    onCreate({ product_id: productId, title, start_date: start, target_date: target, due_date: due, priority });
+  }
+
+  return (
+    <Modal title="Nova demanda de embalagem" onClose={onClose} wide>
+      <form onSubmit={submit}>
+        <div className="form-field">
+          <label>1) Produto / SKU (vínculo principal)</label>
+          <ProductCombobox products={products} value={productId} onChange={(id) => { setProductId(id); if (!title && id) { const p = products.find((x) => x.id === id); if (p) setTitle(`Embalagem — ${p.code} ${p.name}`); } }} autoOpen />
+          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Digite o código ou nome do SKU. Ao escolher, sugerimos um título — é só ajustar.</span>
+        </div>
+        <div className="form-field">
+          <label htmlFor="nd-title">2) Título da demanda</label>
+          <input id="nd-title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex.: Embalagem primária — blister" />
+        </div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="nd-start">Início (start)</label>
+            <input id="nd-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="nd-target">🎯 Meta</label>
+            <input id="nd-target" type="date" value={target} onChange={(e) => setTarget(e.target.value)} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="nd-due">🏁 Prazo final</label>
+            <input id="nd-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          </div>
+        </div>
+        <div className="form-field">
+          <label htmlFor="nd-priority">Prioridade</label>
+          <select id="nd-priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+            ))}
+          </select>
+        </div>
+        {selected && (
+          <div className="page-sub" style={{ marginTop: -4 }}>Vinculada a: <strong>{selected.code}</strong> — {selected.name}</div>
+        )}
+        {error && (
+          <div className="banner error"><span className="ic">✕</span><span>{error}</span></div>
+        )}
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn">Criar demanda</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Calendário do módulo: deixa claro Meta (🎯), Prazo final (🏁), Entregue (✓) e Atrasada (🔴).
+function PackagingCalendar({
+  tasks,
+  stagesById,
+  onOpen,
+}: {
+  tasks: Task[];
+  stagesById: Record<string, ProjectStage>;
+  onOpen: (t: Task) => void;
+}) {
+  // Mês exibido (offset em relação ao mês atual)
+  const [monthOffset, setMonthOffset] = useState(0);
+  const today = new Date();
+  const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay(); // 0=dom
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayIso = new Date(today.toDateString());
+
+  type Ev = { task: Task; kind: 'meta' | 'prazo'; label: string; color: string };
+  const eventsByDay: Record<number, Ev[]> = {};
+  function push(day: number, ev: Ev) {
+    (eventsByDay[day] = eventsByDay[day] ?? []).push(ev);
+  }
+  function dayOfIso(iso: string): number | null {
+    const d = new Date(iso + 'T00:00');
+    return d.getFullYear() === year && d.getMonth() === month ? d.getDate() : null;
+  }
+
+  tasks.forEach((t) => {
+    const isFinal = stagesById[t.stage_id]?.is_final;
+    if (t.target_date) {
+      const d = dayOfIso(t.target_date);
+      if (d) push(d, { task: t, kind: 'meta', label: `🎯 ${t.title}`, color: 'var(--violet)' });
+    }
+    if (t.due_date) {
+      const d = dayOfIso(t.due_date);
+      if (d) {
+        const delivered = isFinal;
+        const deliveredOnTime = delivered && t.completed_at && t.due_date && new Date(t.completed_at) <= new Date(t.due_date + 'T23:59');
+        const overdue = !delivered && new Date(t.due_date + 'T00:00') < todayIso;
+        const label = delivered ? `✓ ${t.title}` : overdue ? `🔴 ${t.title}` : `🏁 ${t.title}`;
+        const color = deliveredOnTime ? 'var(--green)' : delivered ? 'var(--blue)' : overdue ? 'var(--red)' : 'var(--text)';
+        push(d, { task: t, kind: 'prazo', label, color });
+      }
+    }
+  });
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const monthName = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <button className="btn ghost sm" onClick={() => setMonthOffset((m) => m - 1)}>←</button>
+        <strong style={{ textTransform: 'capitalize', minWidth: 160, textAlign: 'center' }}>{monthName}</strong>
+        <button className="btn ghost sm" onClick={() => setMonthOffset((m) => m + 1)}>→</button>
+        <button className="btn ghost sm" onClick={() => setMonthOffset(0)}>Hoje</button>
+      </div>
+
+      {/* Legenda */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, marginBottom: 8 }}>
+        <span style={{ color: 'var(--violet)' }}>🎯 Meta</span>
+        <span style={{ color: 'var(--text)' }}>🏁 Prazo final</span>
+        <span style={{ color: 'var(--green)' }}>✓ Entregue no prazo/antes</span>
+        <span style={{ color: 'var(--blue)' }}>✓ Entregue</span>
+        <span style={{ color: 'var(--red)' }}>🔴 Atrasada</span>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(90px, 1fr))', gap: 4, minWidth: 700 }}>
+          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
+            <div key={d} style={{ fontSize: 11, color: 'var(--text-faint)', textAlign: 'center', padding: '2px 0' }}>{d}</div>
+          ))}
+          {cells.map((day, i) => {
+            const isToday = day != null && year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+            return (
+              <div key={i} style={{ minHeight: 78, border: '1px solid var(--border)', borderRadius: 6, padding: 4, background: day == null ? 'transparent' : 'var(--surface)', outline: isToday ? '2px solid var(--violet)' : 'none' }}>
+                {day != null && (
+                  <>
+                    <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 2 }}>{day}</div>
+                    {(eventsByDay[day] ?? []).map((ev, j) => (
+                      <div key={j} onClick={() => onOpen(ev.task)} title={ev.label} style={{ fontSize: 10, color: ev.color, cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ev.label}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
