@@ -47,7 +47,7 @@ export default function ProjectDetail() {
   const [demandasAssignee, setDemandasAssignee] = useState('all');
   const [demandasPriority, setDemandasPriority] = useState('all');
   const [demandasStage, setDemandasStage] = useState('all');
-  const [demandasSort, setDemandasSort] = useState<'recent' | 'title' | 'priority' | 'prazo'>('recent');
+  const [demandasSort, setDemandasSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'assignee' | 'stage'>('recent');
   const [demandasHideDone, setDemandasHideDone] = useState(false);
 
   const [project, setProject] = useState<ProjectWithBrand | null>(null);
@@ -156,6 +156,17 @@ export default function ProjectDetail() {
         if (!b.due_date) return -1;
         return a.due_date.localeCompare(b.due_date);
       }
+      if (demandasSort === 'assignee') {
+        const an = a.assignee_id ? profilesById[a.assignee_id]?.name ?? '' : '';
+        const bn = b.assignee_id ? profilesById[b.assignee_id]?.name ?? '' : '';
+        if (!an && !bn) return 0;
+        if (!an) return 1;
+        if (!bn) return -1;
+        return an.localeCompare(bn, 'pt-BR');
+      }
+      if (demandasSort === 'stage') {
+        return (stagesById[a.stage_id]?.position ?? 0) - (stagesById[b.stage_id]?.position ?? 0);
+      }
       return a.position - b.position;
     });
 
@@ -215,6 +226,20 @@ export default function ProjectDetail() {
     if (targetStage?.is_final && !task?.assignee_id) {
       setStageError('Esta etapa é final — atribua um responsável à demanda antes de movê-la pra cá.');
       return;
+    }
+    // Gate: bloqueia avanço para etapa posterior enquanto houver item-gate pendente no checklist da demanda
+    const currentStage = task ? stagesById[task.stage_id] : undefined;
+    if (targetStage && currentStage && targetStage.position > currentStage.position) {
+      const { count } = await supabase
+        .from('task_checklist_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('task_id', taskId)
+        .eq('is_gate', true)
+        .eq('done', false);
+      if ((count ?? 0) > 0) {
+        setStageError(`Esta demanda tem ${count} item(ns) obrigatório(s) do checklist pendente(s) — conclua-os antes de avançar de etapa.`);
+        return;
+      }
     }
     setStageError(null);
     await supabase.from('tasks').update({ stage_id: stageId }).eq('id', taskId);
@@ -423,6 +448,8 @@ export default function ProjectDetail() {
               <option value="title">Ordenar: título (A-Z)</option>
               <option value="priority">Ordenar: prioridade</option>
               <option value="prazo">Ordenar: prazo</option>
+              <option value="assignee">Ordenar: responsável</option>
+              <option value="stage">Ordenar: etapa</option>
             </select>
             <div className={`filter-chip${demandasHideDone ? ' active' : ''}`} onClick={() => setDemandasHideDone((v) => !v)}>
               {demandasHideDone ? '◐ Mostrando ativas' : '◎ Ocultar finalizadas'}

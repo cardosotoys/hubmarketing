@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { logActivity } from '../../lib/activityLog';
 import { normalizeUrl } from '../../lib/url';
+import { createPackagingProject } from '../../lib/packaging';
 import Modal from '../../components/Modal';
 import { useProductDevWorkspace } from '../../context/ProductDevWorkspaceContext';
 import {
@@ -10,11 +12,17 @@ import {
   PACKAGING_KINDS,
   PACKAGING_LABELING_STATUSES,
   PACKAGING_TEST_STATUSES,
+  PACKAGING_TRACKS,
+  PRIORITY_LABELS,
   type PackagingArtStatus,
   type PackagingKind,
   type PackagingLabelingStatus,
   type PackagingTestStatus,
+  type PackagingTrack,
+  type Project,
   type ProductDevPackaging,
+  type ProjectStage,
+  type Task,
 } from '../../types/database';
 
 const LABELING_COLOR: Record<PackagingLabelingStatus, string> = {
@@ -57,8 +65,10 @@ export default function ProductDevEmbalagem() {
 
   return (
     <div>
+      <MirrorSection />
+
       <div className="section-head">
-        <h2>Embalagem</h2>
+        <h2>Especificação de embalagem</h2>
         <button className="btn" onClick={() => setShowNew(true)}>
           + Embalagem
         </button>
@@ -176,6 +186,136 @@ export default function ProductDevEmbalagem() {
             load();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+// Espelho: projetos de embalagem (kind='embalagem') vinculados a este produto de desenvolvimento.
+// Mesma fonte de dado da área Embalagens — atualizar lá reflete aqui e vice-versa.
+function MirrorSection() {
+  const { profile } = useAuth();
+  const { item } = useProductDevWorkspace();
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Pick<Task, 'id' | 'project_id' | 'stage_id'>[]>([]);
+  const [stages, setStages] = useState<Pick<ProjectStage, 'id' | 'project_id' | 'is_final'>[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [track, setTrack] = useState<PackagingTrack>('criacao');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const { data: projs } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('kind', 'embalagem')
+      .eq('product_dev_item_id', item.id)
+      .order('created_at', { ascending: false });
+    const list = (projs as Project[]) ?? [];
+    setProjects(list);
+    const ids = list.map((p) => p.id);
+    if (ids.length > 0) {
+      const [{ data: t }, { data: s }] = await Promise.all([
+        supabase.from('tasks').select('id, project_id, stage_id').in('project_id', ids),
+        supabase.from('stages').select('id, project_id, is_final').in('project_id', ids),
+      ]);
+      setTasks((t as Pick<Task, 'id' | 'project_id' | 'stage_id'>[]) ?? []);
+      setStages((s as Pick<ProjectStage, 'id' | 'project_id' | 'is_final'>[]) ?? []);
+    } else {
+      setTasks([]);
+      setStages([]);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  const finalStageIds = new Set(stages.filter((s) => s.is_final).map((s) => s.id));
+
+  function progressFor(projectId: string) {
+    const ts = tasks.filter((t) => t.project_id === projectId);
+    const done = ts.filter((t) => finalStageIds.has(t.stage_id)).length;
+    return { total: ts.length, done, percent: ts.length > 0 ? Math.round((done / ts.length) * 100) : 0 };
+  }
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    const newId = await createPackagingProject({
+      name,
+      brandId: item.brand_id,
+      track,
+      priority: 'medium',
+      actorId: profile?.id ?? '',
+      productDevItemId: item.id,
+    });
+    setBusy(false);
+    if (newId) navigate(`/projetos/${newId}`);
+  }
+
+  return (
+    <div className="panel" style={{ marginBottom: 14, borderLeft: '3px solid var(--violet)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <h4 style={{ margin: 0 }}>Projetos de embalagem vinculados (espelho)</h4>
+        <button className="btn sm" onClick={() => setCreating((v) => !v)}>
+          {creating ? 'Cancelar' : '+ Projeto de embalagem'}
+        </button>
+      </div>
+      <div className="page-sub" style={{ margin: '4px 0 8px' }}>
+        Mesma fonte de dado da área <Link to="/design-produto/embalagens">Embalagens</Link> — o que mudar lá reflete
+        aqui.
+      </div>
+
+      {creating && (
+        <form onSubmit={handleCreate} className="responsive-row" style={{ alignItems: 'flex-end', marginBottom: 10 }}>
+          <div className="form-field" style={{ flex: 2 }}>
+            <label htmlFor="mir-name">Nome do projeto</label>
+            <input id="mir-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={`Embalagem ${item.name}`} />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="mir-track">Trilha</label>
+            <select id="mir-track" value={track} onChange={(e) => setTrack(e.target.value as PackagingTrack)}>
+              {PACKAGING_TRACKS.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="btn" disabled={busy}>
+            {busy ? 'Criando…' : 'Criar e abrir'}
+          </button>
+        </form>
+      )}
+
+      {projects.length === 0 ? (
+        <div className="page-sub">Nenhum projeto de embalagem vinculado a este produto ainda.</div>
+      ) : (
+        projects.map((p) => {
+          const prog = progressFor(p.id);
+          return (
+            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+              <div>
+                <Link to={`/projetos/${p.id}`} style={{ fontWeight: 600 }}>
+                  {p.name}
+                </Link>
+                <span className="tag" style={{ background: 'var(--surface-2)', marginLeft: 8, color: p.packaging_track === 'criacao' ? 'var(--violet)' : 'var(--blue)' }}>
+                  {PACKAGING_TRACKS.find((t) => t.key === p.packaging_track)?.label ?? '—'}
+                </span>
+                <span className={`prio ${p.priority}`} style={{ marginLeft: 6 }}>
+                  {PRIORITY_LABELS[p.priority]}
+                </span>
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+                {prog.total > 0 ? `${prog.done}/${prog.total} demandas · ${prog.percent}%` : 'sem demandas'}
+              </span>
+            </div>
+          );
+        })
       )}
     </div>
   );

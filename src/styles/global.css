@@ -1397,6 +1397,35 @@ table.simple tr:hover td {
   max-height: 90vh;
   overflow-y: auto;
 }
+/* Variante larga/retangular (ex.: edição de demanda) — no desktop fica bem mais largo que o padrão */
+.modal.wide {
+  max-width: 860px;
+}
+/* Combobox digitável (busca de item na demanda): input + lista de resultados clicável */
+.combobox {
+  position: relative;
+}
+.combobox-results {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.combobox-results .opt {
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.combobox-results .opt:hover {
+  background: var(--surface-2);
+}
 .modal h3 {
   font-family: 'Space Grotesk';
   font-size: 15px;

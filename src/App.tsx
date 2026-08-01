@@ -48,6 +48,7 @@ import CampaignCrm from './pages/campaigns/CampaignCrm';
 import CampaignMidiaPaga from './pages/campaigns/CampaignMidiaPaga';
 import CampaignConfiguracoes from './pages/campaigns/CampaignConfiguracoes';
 import DesignProduto from './pages/DesignProduto';
+import Embalagens from './pages/design-produto/Embalagens';
 import ProductDevWorkspace from './pages/design-produto/ProductDevWorkspace';
 import ProductDevResumo from './pages/design-produto/ProductDevResumo';
 import ProductDevFases from './pages/design-produto/ProductDevFases';
@@ -270,6 +271,7 @@ export default function App() {
               ))}
             </Route>
             <Route path="design-produto" element={<ModuleGate moduleKey="design-produto"><DesignProduto /></ModuleGate>} />
+            <Route path="design-produto/embalagens" element={<ModuleGate moduleKey="design-produto"><Embalagens /></ModuleGate>} />
             <Route path="design-produto/:id" element={<ModuleGate moduleKey="design-produto"><ProductDevWorkspace /></ModuleGate>}>
               <Route index element={<Navigate to="resumo" replace />} />
               <Route path="resumo" element={<ProductDevResumo />} />

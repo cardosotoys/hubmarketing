@@ -105,6 +105,32 @@ export interface Brand {
   color: string;
 }
 
+export type ProjectKind = 'normal' | 'embalagem';
+export type PackagingTrack = 'criacao' | 'melhoria';
+export const PACKAGING_TRACKS: { key: PackagingTrack; label: string; hint: string }[] = [
+  { key: 'criacao', label: 'Criação', hint: 'Embalagem nova — do planejamento à produção' },
+  { key: 'melhoria', label: 'Melhoria', hint: 'Corrigir/aprovar embalagem de produto existente' },
+];
+// Etapas-padrão de cada trilha (pré-carregadas ao criar um projeto de embalagem, editáveis depois).
+// A última (is_final) fecha o fluxo.
+export const PACKAGING_TRACK_STAGES: Record<PackagingTrack, { name: string; is_final: boolean }[]> = {
+  criacao: [
+    { name: 'Planejamento', is_final: false },
+    { name: 'Planificação', is_final: false },
+    { name: 'Aprovado para Impressão', is_final: false },
+    { name: 'Impressão da Embalagem', is_final: false },
+    { name: 'Produção', is_final: true },
+  ],
+  melhoria: [
+    { name: 'Recebido', is_final: false },
+    { name: 'Planejamento', is_final: false },
+    { name: 'Produção', is_final: false },
+    { name: 'Revisão', is_final: false },
+    { name: 'Aprovação', is_final: false },
+    { name: 'Finalizado', is_final: true },
+  ],
+};
+
 export interface Project {
   id: string;
   brand_id: string;
@@ -113,6 +139,9 @@ export interface Project {
   status: ProjectStatus;
   priority: Priority;
   category: string;
+  kind: ProjectKind;
+  packaging_track: PackagingTrack | null;
+  product_dev_item_id: string | null;
   start_date: string | null;
   end_date: string | null;
   ref: string;
@@ -179,6 +208,14 @@ export interface PushSubscriptionRow {
   created_at: string;
 }
 
+export type ApprovalState = 'none' | 'aguardando' | 'aprovado' | 'correcao';
+export const APPROVAL_STATE_LABELS: Record<ApprovalState, string> = {
+  none: 'Sem aprovação pendente',
+  aguardando: 'Aguardando aprovação',
+  aprovado: 'Aprovado',
+  correcao: 'Correção solicitada',
+};
+
 export interface Task {
   id: string;
   project_id: string | null;
@@ -192,10 +229,23 @@ export interface Task {
   delay_reason: string;
   notes: string;
   budget: number | null;
+  approval_state: ApprovalState;
+  approval_requested_to: string | null;
+  approval_note: string;
   updated_by: string | null;
   position: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskChecklistItem {
+  id: string;
+  task_id: string;
+  label: string;
+  done: boolean;
+  is_gate: boolean;
+  position: number;
+  created_at: string;
 }
 
 export interface ProjectTemplate {

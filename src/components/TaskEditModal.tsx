@@ -1,12 +1,32 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
-import { PRIORITIES, PRIORITY_LABELS, type Priority, type Product, type ProjectFile, type ProjectStage, type Profile, type Task, type TaskComment } from '../types/database';
+import {
+  APPROVAL_STATE_LABELS,
+  PRIORITIES,
+  PRIORITY_LABELS,
+  type ApprovalState,
+  type Priority,
+  type Product,
+  type ProjectFile,
+  type ProjectStage,
+  type Profile,
+  type Task,
+  type TaskChecklistItem,
+  type TaskComment,
+} from '../types/database';
 
 function computeOverdue(dueDate: string) {
   return new Date(dueDate + 'T00:00') < new Date(new Date().toDateString());
 }
+
+const APPROVAL_COLOR: Record<ApprovalState, string> = {
+  none: 'var(--text-faint)',
+  aguardando: 'var(--yellow)',
+  aprovado: 'var(--green)',
+  correcao: 'var(--red)',
+};
 
 export default function TaskEditModal({
   task,
@@ -48,9 +68,18 @@ export default function TaskEditModal({
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
 
+  const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
+  const [newChecklistLabel, setNewChecklistLabel] = useState('');
+  const [newChecklistGate, setNewChecklistGate] = useState(false);
+
   const [comments, setComments] = useState<(TaskComment & { author: { name: string } | null })[]>([]);
   const [commentBody, setCommentBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
+
+  // Fluxo de aprovação (approvalState é derivado da task; muda ao salvar/recarregar)
+  const approvalState: ApprovalState = task.approval_state ?? 'none';
+  const [approverId, setApproverId] = useState(task.approval_requested_to ?? '');
+  const [approvalNote, setApprovalNote] = useState(task.approval_note ?? '');
 
   useEffect(() => {
     supabase
@@ -60,6 +89,7 @@ export default function TaskEditModal({
       .order('created_at')
       .then(({ data }) => setFiles((data as ProjectFile[]) ?? []));
     loadComments();
+    loadChecklist();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);
 
@@ -70,6 +100,11 @@ export default function TaskEditModal({
       .eq('task_id', task.id)
       .order('created_at');
     setComments((data as (TaskComment & { author: { name: string } | null })[]) ?? []);
+  }
+
+  async function loadChecklist() {
+    const { data } = await supabase.from('task_checklist_items').select('*').eq('task_id', task.id).order('position');
+    setChecklist((data as TaskChecklistItem[]) ?? []);
   }
 
   useEffect(() => {
@@ -101,14 +136,30 @@ export default function TaskEditModal({
   }
 
   const selectedStage = sortedStages.find((s) => s.id === stageId);
+  const currentStage = sortedStages.find((s) => s.id === task.stage_id);
   const overdue = dueDate && selectedStage && !selectedStage.is_final ? computeOverdue(dueDate) : false;
   const updatedByName = profiles.find((p) => p.id === task.updated_by)?.name;
+  const pendingGates = checklist.filter((c) => c.is_gate && !c.done);
+
+  // Bloqueia avanço para uma etapa posterior enquanto houver item-gate pendente (limitador)
+  function blocksAdvanceTo(targetStageId: string): boolean {
+    const target = sortedStages.find((s) => s.id === targetStageId);
+    if (!target || !currentStage) return false;
+    const advancing = target.position > currentStage.position;
+    return advancing && pendingGates.length > 0;
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     if (selectedStage?.is_final && !assigneeId) {
       setFormError('Esta etapa é final — atribua um responsável antes de mover a demanda pra cá.');
+      return;
+    }
+    if (blocksAdvanceTo(stageId)) {
+      setFormError(
+        `Há ${pendingGates.length} item(ns) obrigatório(s) do checklist pendente(s) — conclua-os antes de avançar de etapa.`,
+      );
       return;
     }
     setFormError(null);
@@ -123,6 +174,79 @@ export default function TaskEditModal({
       delay_reason: delayReason,
       notes,
       budget: budget ? Number(budget) : null,
+    });
+  }
+
+  // ---- Checklist ----
+  async function addChecklistItem(e: FormEvent) {
+    e.preventDefault();
+    if (!newChecklistLabel.trim()) return;
+    await supabase.from('task_checklist_items').insert({
+      task_id: task.id,
+      label: newChecklistLabel.trim(),
+      is_gate: newChecklistGate,
+      position: checklist.length,
+    });
+    setNewChecklistLabel('');
+    setNewChecklistGate(false);
+    loadChecklist();
+  }
+
+  async function toggleChecklistItem(item: TaskChecklistItem) {
+    await supabase.from('task_checklist_items').update({ done: !item.done }).eq('id', item.id);
+    loadChecklist();
+  }
+
+  async function toggleChecklistGate(item: TaskChecklistItem) {
+    await supabase.from('task_checklist_items').update({ is_gate: !item.is_gate }).eq('id', item.id);
+    loadChecklist();
+  }
+
+  async function deleteChecklistItem(id: string) {
+    await supabase.from('task_checklist_items').delete().eq('id', id);
+    loadChecklist();
+  }
+
+  // ---- Aprovação por menção ----
+  const actorRole = profiles.find((p) => p.id === actorId)?.role;
+  const canApprove = actorId === task.approval_requested_to || actorRole === 'diretoria' || actorRole === 'administrador';
+
+  async function requestApproval() {
+    if (!approverId) {
+      setFormError('Escolha quem vai aprovar.');
+      return;
+    }
+    setFormError(null);
+    // avisa a pessoa via comentário com menção (dispara a notificação que já existe)
+    const approverName = profiles.find((p) => p.id === approverId)?.name ?? '';
+    await supabase.from('task_comments').insert({
+      task_id: task.id,
+      author_id: actorId,
+      body: `@${approverName} pedido de aprovação${approvalNote.trim() ? `: ${approvalNote.trim()}` : ''}`,
+      mentioned_ids: [approverId],
+    });
+    onSave({ approval_state: 'aguardando', approval_requested_to: approverId, approval_note: approvalNote });
+  }
+
+  function requestCorrection() {
+    onSave({ approval_state: 'correcao' });
+  }
+
+  // Aprovar = "seguir o fluxo": avança para a próxima etapa (se houver) e zera a aprovação
+  function approveAndAdvance() {
+    const idx = sortedStages.findIndex((s) => s.id === task.stage_id);
+    const next = sortedStages[idx + 1];
+    if (next && blocksAdvanceTo(next.id)) {
+      setFormError(
+        `Há ${pendingGates.length} item(ns) obrigatório(s) do checklist pendente(s) — conclua-os antes de aprovar e avançar.`,
+      );
+      return;
+    }
+    setFormError(null);
+    onSave({
+      approval_state: 'none',
+      approval_requested_to: null,
+      stage_id: next ? next.id : task.stage_id,
     });
   }
 
@@ -148,7 +272,7 @@ export default function TaskEditModal({
   }
 
   return (
-    <Modal title="Editar demanda" onClose={onClose}>
+    <Modal title="Editar demanda" onClose={onClose} wide>
       {(task.updated_by || task.created_at) && (
         <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '-6px 0 12px 0' }}>
           Última atualização: {updatedByName ?? 'ninguém ainda'} · {new Date(task.updated_at).toLocaleString('pt-BR')}
@@ -189,30 +313,25 @@ export default function TaskEditModal({
             <input id="te-budget" type="number" placeholder="R$" value={budget} onChange={(e) => setBudget(e.target.value)} />
           </div>
         </div>
-        <div className="form-field">
-          <label htmlFor="te-assignee">Responsável</label>
-          <select id="te-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-            <option value="">Sem responsável</option>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {products && products.length > 0 && (
-          <div className="form-field">
-            <label htmlFor="te-product">Produto (embalagem)</label>
-            <select id="te-product" value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">Sem produto vinculado</option>
-              {products.map((p) => (
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="te-assignee">Responsável</label>
+            <select id="te-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <option value="">Sem responsável</option>
+              {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.code} - {p.name}
+                  {p.name}
                 </option>
               ))}
             </select>
           </div>
-        )}
+          {products && products.length > 0 && (
+            <div className="form-field" style={{ flex: 1 }}>
+              <label>Produto (embalagem)</label>
+              <ProductCombobox products={products} value={productId} onChange={setProductId} />
+            </div>
+          )}
+        </div>
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="te-start">Início</label>
@@ -276,7 +395,113 @@ export default function TaskEditModal({
         )}
       </form>
 
+      {/* Fluxo de aprovação */}
       <div className="panel" style={{ marginTop: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h4 style={{ margin: 0 }}>Aprovação</h4>
+          <span className="tag" style={{ background: 'var(--surface-2)', color: APPROVAL_COLOR[approvalState] }}>
+            {APPROVAL_STATE_LABELS[approvalState]}
+          </span>
+        </div>
+
+        {approvalState === 'aguardando' ? (
+          <div style={{ marginTop: 8 }}>
+            <div className="field-row">
+              <span className="k">Aprovador</span>
+              <span>{profiles.find((p) => p.id === task.approval_requested_to)?.name ?? '—'}</span>
+            </div>
+            {task.approval_note && (
+              <div className="field-row">
+                <span className="k">Observação</span>
+                <span>{task.approval_note}</span>
+              </div>
+            )}
+            {canApprove ? (
+              <div className="responsive-row" style={{ marginTop: 8 }}>
+                <button type="button" className="btn sm" style={{ background: 'var(--green)' }} onClick={approveAndAdvance}>
+                  ✓ Aprovar e seguir o fluxo
+                </button>
+                <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={requestCorrection}>
+                  Solicitar correção
+                </button>
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 6 }}>
+                Só o aprovador designado (ou a Diretoria) pode aprovar.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            <div className="responsive-row">
+              <div className="form-field" style={{ flex: 1 }}>
+                <label htmlFor="te-approver">Pedir aprovação a</label>
+                <select id="te-approver" value={approverId} onChange={(e) => setApproverId(e.target.value)}>
+                  <option value="">— escolher pessoa —</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-field" style={{ flex: 2 }}>
+                <label htmlFor="te-approval-note">Observação (opcional)</label>
+                <input id="te-approval-note" value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} />
+              </div>
+            </div>
+            <button type="button" className="btn sm" onClick={requestApproval}>
+              Solicitar aprovação
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Checklist com item-gate (limitador de avanço) */}
+      <div className="panel">
+        <h4>Checklist</h4>
+        {pendingGates.length > 0 && (
+          <div className="banner" style={{ borderColor: 'var(--yellow)', marginBottom: 8 }}>
+            <span className="ic">🔒</span>
+            <span>
+              {pendingGates.length} item(ns) obrigatório(s) pendente(s) — a demanda não avança de etapa até concluí-los.
+            </span>
+          </div>
+        )}
+        {checklist.map((c) => (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+            <input type="checkbox" checked={c.done} onChange={() => toggleChecklistItem(c)} style={{ width: 'auto' }} />
+            <span style={{ flex: 1, textDecoration: c.done ? 'line-through' : 'none', color: c.done ? 'var(--text-faint)' : 'var(--text)' }}>
+              {c.label}
+            </span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              title={c.is_gate ? 'Item obrigatório para avançar (gate) — clique para tornar opcional' : 'Tornar obrigatório para avançar (gate)'}
+              onClick={() => toggleChecklistGate(c)}
+              style={{ color: c.is_gate ? 'var(--yellow)' : 'var(--text-faint)' }}
+            >
+              {c.is_gate ? '🔒 obrigatório' : '🔓 opcional'}
+            </button>
+            <button type="button" className="btn ghost sm" onClick={() => deleteChecklistItem(c.id)}>
+              ✕
+            </button>
+          </div>
+        ))}
+        {checklist.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum item ainda.</p>}
+        <form onSubmit={addChecklistItem} className="responsive-row" style={{ marginTop: 8, alignItems: 'center' }}>
+          <input placeholder="Novo item do checklist" value={newChecklistLabel} onChange={(e) => setNewChecklistLabel(e.target.value)} style={{ flex: 1 }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={newChecklistGate} onChange={(e) => setNewChecklistGate(e.target.checked)} style={{ width: 'auto' }} />
+            🔒 gate
+          </label>
+          <button className="btn sm" type="submit">
+            Adicionar
+          </button>
+        </form>
+      </div>
+
+      <div className="panel">
         <h4>Arquivos</h4>
         {files.map((f) => (
           <div className="field-row" key={f.id}>
@@ -346,5 +571,77 @@ export default function TaskEditModal({
         </form>
       </div>
     </Modal>
+  );
+}
+
+// Combobox digitável de produto: digita para filtrar OU rola a lista — as duas formas.
+function ProductCombobox({
+  products,
+  value,
+  onChange,
+}: {
+  products: Product[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const selected = products.find((p) => p.id === value);
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const base = q
+      ? products.filter((p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      : products;
+    return base.slice(0, 40);
+  }, [products, query]);
+
+  if (selected && !open) {
+    return (
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span className="pill" style={{ flex: 1, background: 'var(--surface-2)' }}>
+          {selected.code} — {selected.name}
+        </span>
+        <button type="button" className="btn ghost sm" onClick={() => { setOpen(true); setQuery(''); }}>
+          Trocar
+        </button>
+        <button type="button" className="btn ghost sm" onClick={() => onChange('')} title="Remover vínculo">
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="combobox">
+      <input
+        autoFocus={open}
+        placeholder="Digite código ou nome, ou role a lista…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setOpen(true)}
+      />
+      {open && (
+        <div className="combobox-results">
+          <div className="opt" style={{ color: 'var(--text-faint)' }} onClick={() => { onChange(''); setOpen(false); }}>
+            Sem produto vinculado
+          </div>
+          {results.map((p) => (
+            <div
+              key={p.id}
+              className="opt"
+              onClick={() => {
+                onChange(p.id);
+                setOpen(false);
+                setQuery('');
+              }}
+            >
+              <strong>{p.code}</strong> — {p.name}
+            </div>
+          ))}
+          {results.length === 0 && <div className="opt" style={{ color: 'var(--text-faint)' }}>Nenhum produto encontrado.</div>}
+        </div>
+      )}
+    </div>
   );
 }
