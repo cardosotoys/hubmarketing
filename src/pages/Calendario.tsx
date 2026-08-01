@@ -7,11 +7,12 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import Modal from '../components/Modal';
 import type { Brand } from '../types/database';
 
-type EventType = 'projeto' | 'demanda' | 'campanha' | 'marco' | 'post' | 'evento';
+type EventType = 'projeto' | 'demanda' | 'embalagem' | 'campanha' | 'marco' | 'post' | 'evento';
 
 const TYPE_LABELS: Record<EventType, string> = {
   projeto: 'Projetos',
   demanda: 'Demandas',
+  embalagem: 'Embalagens',
   campanha: 'Campanhas',
   marco: 'Marcos',
   post: 'Posts',
@@ -28,6 +29,8 @@ interface CalEvent {
   deletable?: boolean;
   createdBy?: string | null;
   highlight?: boolean;
+  // relevante para o usuário logado (responsável, mencionado, ou na sua jornada)
+  mine?: boolean;
 }
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -49,6 +52,8 @@ export default function Calendario() {
   });
   const ALL_TYPES = Object.keys(TYPE_LABELS) as EventType[];
   const [typeFilter, setTypeFilter] = useState<EventType[]>(ALL_TYPES);
+  // 'meu' = só o que é relevante pra mim (responsável, mencionado, na minha jornada). 'todos' = tudo.
+  const [scope, setScope] = useState<'meu' | 'todos'>('meu');
 
   function toggleType(t: EventType) {
     setTypeFilter((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -56,34 +61,51 @@ export default function Calendario() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [projectsRes, tasksRes, campaignsRes, milestonesRes, postsRes, ownEventsRes, brandsRes] = await Promise.all([
+    const myId = profile?.id;
+    const [projectsRes, tasksRes, pkgRes, campaignsRes, milestonesRes, postsRes, ownEventsRes, brandsRes, membersRes, mentionsRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(color)'),
-      supabase.from('tasks').select('id, title, due_date, priority, project_id').not('due_date', 'is', null).is('packaging_track', null),
+      supabase.from('tasks').select('id, title, due_date, priority, project_id, assignee_id').not('due_date', 'is', null).is('packaging_track', null),
+      supabase.from('tasks').select('id, title, due_date, target_date, completed_at, priority, assignee_id').not('packaging_track', 'is', null),
       supabase.from('campaigns').select('*, brand:brands(color)'),
       supabase.from('campaign_milestones').select('*, campaign:campaigns(id, name, brand:brands(color))'),
       supabase.from('social_posts').select('*, brand:brands(color)'),
       supabase.from('calendar_events').select('*, brand:brands(color)'),
       supabase.from('brands').select('*'),
+      myId ? supabase.from('project_members').select('project_id').eq('user_id', myId) : Promise.resolve({ data: [] }),
+      myId ? supabase.from('task_comments').select('task_id').contains('mentioned_ids', [myId]) : Promise.resolve({ data: [] }),
     ]);
 
     const evts: CalEvent[] = [];
     const todayStr = new Date().toISOString().slice(0, 10);
 
-    type ProjRow = { id: string; name: string; start_date: string | null; end_date: string | null; brand: { color: string } | null };
+    // Conjuntos de relevância do usuário ("minha jornada")
+    type ProjRow = { id: string; name: string; start_date: string | null; end_date: string | null; created_by: string | null; brand: { color: string } | null };
     const projRows = (projectsRes.data as ProjRow[]) ?? [];
     const projectsById = Object.fromEntries(projRows.map((p) => [p.id, p]));
+    const myProjectIds = new Set<string>();
+    ((membersRes.data as { project_id: string }[]) ?? []).forEach((m) => myProjectIds.add(m.project_id));
+    projRows.forEach((p) => { if (p.created_by && p.created_by === myId) myProjectIds.add(p.id); });
+    const mentionedTaskIds = new Set(((mentionsRes.data as { task_id: string }[]) ?? []).map((m) => m.task_id));
+
+    type CampRow = { id: string; name: string; start_date: string | null; end_date: string | null; owner_id: string | null; created_by: string | null; brand: { color: string } | null };
+    const campRows = (campaignsRes.data as CampRow[]) ?? [];
+    const myCampaignIds = new Set<string>();
+    campRows.forEach((c) => { if (c.owner_id === myId || c.created_by === myId) myCampaignIds.add(c.id); });
+
     projRows.forEach((p) => {
       const color = p.brand?.color ?? 'var(--violet)';
-      if (p.start_date) evts.push({ date: p.start_date, label: `Início: ${p.name}`, color, type: 'projeto', href: `/projetos/${p.id}` });
-      if (p.end_date) evts.push({ date: p.end_date, label: `Prazo: ${p.name}`, color, type: 'projeto', href: `/projetos/${p.id}`, highlight: p.end_date < todayStr });
+      const mine = myProjectIds.has(p.id);
+      if (p.start_date) evts.push({ date: p.start_date, label: `Início: ${p.name}`, color, type: 'projeto', href: `/projetos/${p.id}`, mine });
+      if (p.end_date) evts.push({ date: p.end_date, label: `Prazo: ${p.name}`, color, type: 'projeto', href: `/projetos/${p.id}`, highlight: p.end_date < todayStr, mine });
     });
 
-    type TaskRow = { id: string; title: string; due_date: string | null; priority: string; project_id: string | null };
+    type TaskRow = { id: string; title: string; due_date: string | null; priority: string; project_id: string | null; assignee_id: string | null };
     ((tasksRes.data as TaskRow[]) ?? []).forEach((t) => {
       if (!t.due_date) return;
       const project = t.project_id ? projectsById[t.project_id] : null;
       const color = project?.brand?.color ?? 'var(--text-dim)';
       const overdue = t.due_date < todayStr;
+      const mine = t.assignee_id === myId || (t.project_id != null && myProjectIds.has(t.project_id)) || mentionedTaskIds.has(t.id);
       evts.push({
         id: t.id,
         date: t.due_date,
@@ -92,14 +114,29 @@ export default function Calendario() {
         type: 'demanda',
         href: `/demandas?task=${t.id}`,
         highlight: overdue || t.priority === 'urgent',
+        mine,
       });
     });
 
-    type CampRow = { id: string; name: string; start_date: string | null; end_date: string | null; brand: { color: string } | null };
-    ((campaignsRes.data as CampRow[]) ?? []).forEach((c) => {
+    // Demandas de embalagem — META (🎯 target_date) e PRAZO FINAL (🏁 due_date)
+    type PkgRow = { id: string; title: string; due_date: string | null; target_date: string | null; completed_at: string | null; priority: string; assignee_id: string | null };
+    ((pkgRes.data as PkgRow[]) ?? []).forEach((t) => {
+      const mine = t.assignee_id === myId || mentionedTaskIds.has(t.id);
+      if (t.target_date) {
+        evts.push({ id: `${t.id}-meta`, date: t.target_date, label: `🎯 Meta: ${t.title}`, color: 'var(--violet)', type: 'embalagem', href: '/design-produto/embalagens', mine });
+      }
+      if (t.due_date) {
+        const overdue = !t.completed_at && t.due_date < todayStr;
+        const color = t.completed_at ? 'var(--green)' : overdue ? 'var(--red)' : 'var(--text-dim)';
+        evts.push({ id: `${t.id}-prazo`, date: t.due_date, label: `🏁 Prazo: ${t.title}`, color, type: 'embalagem', href: '/design-produto/embalagens', highlight: overdue, mine });
+      }
+    });
+
+    campRows.forEach((c) => {
       const color = c.brand?.color ?? 'var(--accent)';
-      if (c.start_date) evts.push({ date: c.start_date, label: `Campanha início: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}` });
-      if (c.end_date) evts.push({ date: c.end_date, label: `Campanha fim: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}` });
+      const mine = myCampaignIds.has(c.id);
+      if (c.start_date) evts.push({ date: c.start_date, label: `Campanha início: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}`, mine });
+      if (c.end_date) evts.push({ date: c.end_date, label: `Campanha fim: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}`, mine });
     });
 
     type MilestoneRow = { id: string; title: string; date: string | null; campaign: { id: string; name: string; brand: { color: string } | null } | null };
@@ -113,15 +150,16 @@ export default function Calendario() {
         type: 'marco',
         href: m.campaign ? `/campanhas/${m.campaign.id}` : undefined,
         highlight: true,
+        mine: m.campaign ? myCampaignIds.has(m.campaign.id) : false,
       });
     });
 
-    type PostRow = { id: string; caption: string; suggested_date: string | null; brand: { color: string } | null };
+    type PostRow = { id: string; caption: string; suggested_date: string | null; created_by: string | null; reviewed_by: string | null; brand: { color: string } | null };
     ((postsRes.data as PostRow[]) ?? []).forEach((p) => {
       if (!p.suggested_date) return;
       const color = p.brand?.color ?? 'var(--blue)';
       const short = p.caption.length > 28 ? `${p.caption.slice(0, 28)}…` : p.caption;
-      evts.push({ date: p.suggested_date, label: `Post: ${short || '(sem legenda)'}`, color, type: 'post', href: '/redes-sociais' });
+      evts.push({ date: p.suggested_date, label: `Post: ${short || '(sem legenda)'}`, color, type: 'post', href: '/redes-sociais', mine: p.created_by === myId || p.reviewed_by === myId });
     });
 
     type OwnEventRow = { id: string; title: string; date: string; brand: { color: string } | null; created_by: string | null };
@@ -134,13 +172,14 @@ export default function Calendario() {
         type: 'evento',
         deletable: true,
         createdBy: e.created_by,
+        mine: e.created_by === myId,
       });
     });
 
     setEvents(evts);
     setBrands((brandsRes.data as Brand[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [profile?.id]);
 
   useEffect(() => {
     load();
@@ -158,7 +197,10 @@ export default function Calendario() {
     load();
   }
 
-  const filteredEvents = useMemo(() => events.filter((e) => typeFilter.includes(e.type)), [events, typeFilter]);
+  const filteredEvents = useMemo(
+    () => events.filter((e) => typeFilter.includes(e.type) && (scope === 'todos' || e.mine)),
+    [events, typeFilter, scope],
+  );
 
   const eventsByDay = useMemo(() => {
     const map: Record<string, CalEvent[]> = {};
@@ -256,8 +298,8 @@ export default function Calendario() {
     <div className="page">
       <h1 className="page-title">Calendário</h1>
       <div className="page-sub">
-        Prazos de projetos, campanhas (início/fim e marcos), datas sugestivas de posts e qualquer evento avulso
-        que você quiser marcar — tudo num só lugar.
+        Prazos de projetos, campanhas, embalagens (🎯 meta e 🏁 prazo), posts e eventos avulsos. Por padrão mostra
+        <strong> só o que é seu</strong> — onde você é responsável, foi mencionado, ou está na sua jornada.
       </div>
 
       {!loading && totalEvents === 0 && (
@@ -282,6 +324,15 @@ export default function Calendario() {
         <button className="btn" onClick={() => setShowNew(true)}>
           + Novo evento
         </button>
+      </div>
+
+      <div className="group-toggle" style={{ marginBottom: 8 }}>
+        <div className={`filter-chip${scope === 'meu' ? ' active' : ''}`} onClick={() => setScope('meu')}>
+          👤 Meu calendário
+        </div>
+        <div className={`filter-chip${scope === 'todos' ? ' active' : ''}`} onClick={() => setScope('todos')}>
+          🌐 Todos
+        </div>
       </div>
 
       <div className="group-toggle" style={{ marginBottom: 14 }}>

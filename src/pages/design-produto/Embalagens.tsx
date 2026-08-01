@@ -479,7 +479,7 @@ export default function Embalagens() {
           )}
         </div>
       ) : tab === 'calendario' ? (
-        <PackagingCalendar tasks={tasks} stagesById={stagesById} onOpen={setEditingTask} />
+        <PackagingCalendar tasks={tasks} stagesById={stagesById} myId={profile?.id ?? null} onOpen={setEditingTask} />
       ) : tab === 'financeiro' ? (
         <div style={{ marginTop: 12 }}>
           <div className="stat-grid">
@@ -695,14 +695,19 @@ function NewDemandModal({
 function PackagingCalendar({
   tasks,
   stagesById,
+  myId,
   onOpen,
 }: {
   tasks: Task[];
   stagesById: Record<string, ProjectStage>;
+  myId: string | null;
   onOpen: (t: Task) => void;
 }) {
   // Mês exibido (offset em relação ao mês atual)
   const [monthOffset, setMonthOffset] = useState(0);
+  // 'meu' = só demandas onde sou responsável; 'todos' = todas da trilha
+  const [scope, setScope] = useState<'meu' | 'todos'>('meu');
+  const visibleTasks = scope === 'meu' && myId ? tasks.filter((t) => t.assignee_id === myId) : tasks;
   const today = new Date();
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const year = base.getFullYear();
@@ -721,7 +726,7 @@ function PackagingCalendar({
     return d.getFullYear() === year && d.getMonth() === month ? d.getDate() : null;
   }
 
-  tasks.forEach((t) => {
+  visibleTasks.forEach((t) => {
     const isFinal = stagesById[t.stage_id]?.is_final;
     if (t.target_date) {
       const d = dayOfIso(t.target_date);
@@ -754,6 +759,10 @@ function PackagingCalendar({
         <strong style={{ textTransform: 'capitalize', minWidth: 160, textAlign: 'center' }}>{monthName}</strong>
         <button className="btn ghost sm" onClick={() => setMonthOffset((m) => m + 1)}>→</button>
         <button className="btn ghost sm" onClick={() => setMonthOffset(0)}>Hoje</button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <div className={`filter-chip${scope === 'meu' ? ' active' : ''}`} onClick={() => setScope('meu')}>👤 Meu</div>
+          <div className={`filter-chip${scope === 'todos' ? ' active' : ''}`} onClick={() => setScope('todos')}>🌐 Todos</div>
+        </div>
       </div>
 
       {/* Legenda */}
