@@ -18,7 +18,19 @@ export default function Modal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className={`modal${wide ? ' wide' : ''}`} onClick={stop}>
-        <h3>{title}</h3>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <h3 style={{ flex: 1 }}>{title}</h3>
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={onClose}
+            aria-label="Fechar"
+            title="Fechar"
+            style={{ marginTop: -2, fontSize: 16, lineHeight: 1, padding: '2px 8px' }}
+          >
+            ✕
+          </button>
+        </div>
         {children}
       </div>
     </div>

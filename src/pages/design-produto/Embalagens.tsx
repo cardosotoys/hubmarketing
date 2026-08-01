@@ -49,7 +49,12 @@ export default function Embalagens() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [stageError, setStageError] = useState<string | null>(null);
-  const [blockInfo, setBlockInfo] = useState<{ message: string; pending?: string[]; task: Task | null } | null>(null);
+  const [blockInfo, setBlockInfo] = useState<{
+    message: string;
+    fromStage: string;
+    pending: { label: string; stageName: string | null; isSubstep: boolean }[];
+    task: Task | null;
+  } | null>(null);
   const [newStageName, setNewStageName] = useState('');
   const [managingStages, setManagingStages] = useState(false);
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
@@ -181,23 +186,33 @@ export default function Embalagens() {
     if (!profile) return;
     const task = tasks.find((t) => t.id === taskId);
     const targetStage = stagesById[stageId];
+    const currentStage = task ? stagesById[task.stage_id] : undefined;
     if (targetStage?.is_final && !task?.assignee_id) {
-      setBlockInfo({ message: 'Esta etapa é final — atribua um responsável à demanda antes de movê-la para cá.', task: task ?? null });
+      setBlockInfo({
+        message: 'Esta etapa é final — atribua um responsável à demanda antes de movê-la para cá.',
+        fromStage: currentStage?.name ?? '',
+        pending: [],
+        task: task ?? null,
+      });
       return;
     }
-    const currentStage = task ? stagesById[task.stage_id] : undefined;
     if (targetStage && currentStage && targetStage.position > currentStage.position) {
       const { data: pending } = await supabase
         .from('task_checklist_items')
-        .select('label')
+        .select('label, stage_id, substep_id')
         .eq('task_id', taskId)
         .eq('is_gate', true)
         .eq('done', false);
-      const list = (pending as { label: string }[]) ?? [];
+      const list = (pending as { label: string; stage_id: string | null; substep_id: string | null }[]) ?? [];
       if (list.length > 0) {
         setBlockInfo({
-          message: `Não dá pra avançar de etapa: há ${list.length} item(ns) obrigatório(s)/condicional(is) pendente(s).`,
-          pending: list.map((p) => p.label),
+          message: `Para sair da etapa "${currentStage.name}" e avançar para "${targetStage.name}", conclua os itens obrigatórios abaixo:`,
+          fromStage: currentStage.name,
+          pending: list.map((p) => ({
+            label: p.label,
+            stageName: p.stage_id ? stagesById[p.stage_id]?.name ?? null : null,
+            isSubstep: Boolean(p.substep_id),
+          })),
           task: task ?? null,
         });
         return;
@@ -539,15 +554,26 @@ export default function Embalagens() {
             <span className="ic">⛔</span>
             <span>{blockInfo.message}</span>
           </div>
-          {blockInfo.pending && blockInfo.pending.length > 0 && (
+          {blockInfo.pending.length > 0 && (
             <div className="panel" style={{ marginBottom: 12 }}>
-              <h4 style={{ marginTop: 0 }}>Pendentes</h4>
+              <h4 style={{ marginTop: 0 }}>O que está impedindo o avanço ({blockInfo.pending.length})</h4>
               {blockInfo.pending.map((p, i) => (
-                <div key={i} className="field-row">
-                  <span style={{ color: 'var(--red)' }}>☐</span>
-                  <span>{p}</span>
+                <div
+                  key={i}
+                  style={{ display: 'flex', gap: 8, alignItems: 'flex-start', borderLeft: '3px solid var(--red)', background: 'var(--red-dim)', borderRadius: 6, padding: '6px 10px', marginBottom: 6 }}
+                >
+                  <span style={{ color: 'var(--red)' }}>🔒</span>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{p.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                      {p.isSubstep ? `Sub-etapa${p.stageName ? ` · ${p.stageName}` : ''}` : 'Item de checklist'} · condicional (obrigatória para avançar)
+                    </div>
+                  </div>
                 </div>
               ))}
+              <div className="page-sub" style={{ marginTop: 4 }}>
+                Marque esses itens como concluídos na demanda para liberar o avanço.
+              </div>
             </div>
           )}
           <div className="modal-actions">
