@@ -49,6 +49,7 @@ export default function Embalagens() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [stageError, setStageError] = useState<string | null>(null);
+  const [blockInfo, setBlockInfo] = useState<{ message: string; pending?: string[]; task: Task | null } | null>(null);
   const [newStageName, setNewStageName] = useState('');
   const [managingStages, setManagingStages] = useState(false);
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
@@ -181,19 +182,24 @@ export default function Embalagens() {
     const task = tasks.find((t) => t.id === taskId);
     const targetStage = stagesById[stageId];
     if (targetStage?.is_final && !task?.assignee_id) {
-      setStageError('Esta etapa é final — atribua um responsável à demanda antes de movê-la pra cá.');
+      setBlockInfo({ message: 'Esta etapa é final — atribua um responsável à demanda antes de movê-la para cá.', task: task ?? null });
       return;
     }
     const currentStage = task ? stagesById[task.stage_id] : undefined;
     if (targetStage && currentStage && targetStage.position > currentStage.position) {
-      const { count } = await supabase
+      const { data: pending } = await supabase
         .from('task_checklist_items')
-        .select('id', { count: 'exact', head: true })
+        .select('label')
         .eq('task_id', taskId)
         .eq('is_gate', true)
         .eq('done', false);
-      if ((count ?? 0) > 0) {
-        setStageError(`Esta demanda tem ${count} item(ns) obrigatório(s) do checklist pendente(s) — conclua-os antes de avançar de etapa.`);
+      const list = (pending as { label: string }[]) ?? [];
+      if (list.length > 0) {
+        setBlockInfo({
+          message: `Não dá pra avançar de etapa: há ${list.length} item(ns) obrigatório(s)/condicional(is) pendente(s).`,
+          pending: list.map((p) => p.label),
+          task: task ?? null,
+        });
         return;
       }
     }
@@ -527,6 +533,43 @@ export default function Embalagens() {
         <NewDemandModal products={products} onClose={() => setShowNew(false)} onCreate={createDemand} />
       )}
 
+      {blockInfo && (
+        <Modal title="🔒 Não é possível avançar" onClose={() => setBlockInfo(null)}>
+          <div className="banner error" style={{ marginBottom: 12 }}>
+            <span className="ic">⛔</span>
+            <span>{blockInfo.message}</span>
+          </div>
+          {blockInfo.pending && blockInfo.pending.length > 0 && (
+            <div className="panel" style={{ marginBottom: 12 }}>
+              <h4 style={{ marginTop: 0 }}>Pendentes</h4>
+              {blockInfo.pending.map((p, i) => (
+                <div key={i} className="field-row">
+                  <span style={{ color: 'var(--red)' }}>☐</span>
+                  <span>{p}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="modal-actions">
+            {blockInfo.task && (
+              <button
+                className="btn"
+                onClick={() => {
+                  const t = blockInfo.task;
+                  setBlockInfo(null);
+                  setEditingTask(t);
+                }}
+              >
+                Abrir demanda e resolver
+              </button>
+            )}
+            <button className="btn ghost" onClick={() => setBlockInfo(null)}>
+              Fechar
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {editingTask && profile && (
         <TaskEditModal
           task={editingTask}
@@ -642,7 +685,7 @@ function PackagingCalendar({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayIso = new Date(today.toDateString());
 
-  type Ev = { task: Task; kind: 'meta' | 'prazo'; label: string; color: string };
+  type Ev = { task: Task; icon: string; label: string; color: string; bg: string };
   const eventsByDay: Record<number, Ev[]> = {};
   function push(day: number, ev: Ev) {
     (eventsByDay[day] = eventsByDay[day] ?? []).push(ev);
@@ -656,7 +699,7 @@ function PackagingCalendar({
     const isFinal = stagesById[t.stage_id]?.is_final;
     if (t.target_date) {
       const d = dayOfIso(t.target_date);
-      if (d) push(d, { task: t, kind: 'meta', label: `🎯 ${t.title}`, color: 'var(--violet)' });
+      if (d) push(d, { task: t, icon: '🎯', label: t.title, color: 'var(--violet)', bg: 'var(--violet-dim)' });
     }
     if (t.due_date) {
       const d = dayOfIso(t.due_date);
@@ -664,9 +707,10 @@ function PackagingCalendar({
         const delivered = isFinal;
         const deliveredOnTime = delivered && t.completed_at && t.due_date && new Date(t.completed_at) <= new Date(t.due_date + 'T23:59');
         const overdue = !delivered && new Date(t.due_date + 'T00:00') < todayIso;
-        const label = delivered ? `✓ ${t.title}` : overdue ? `🔴 ${t.title}` : `🏁 ${t.title}`;
+        const icon = delivered ? '✓' : overdue ? '🔴' : '🏁';
         const color = deliveredOnTime ? 'var(--green)' : delivered ? 'var(--blue)' : overdue ? 'var(--red)' : 'var(--text)';
-        push(d, { task: t, kind: 'prazo', label, color });
+        const bg = deliveredOnTime ? 'var(--green-dim)' : delivered ? 'var(--blue-dim)' : overdue ? 'var(--red-dim)' : 'var(--surface-2)';
+        push(d, { task: t, icon, label: t.title, color, bg });
       }
     }
   });
@@ -687,12 +731,18 @@ function PackagingCalendar({
       </div>
 
       {/* Legenda */}
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, marginBottom: 8 }}>
-        <span style={{ color: 'var(--violet)' }}>🎯 Meta</span>
-        <span style={{ color: 'var(--text)' }}>🏁 Prazo final</span>
-        <span style={{ color: 'var(--green)' }}>✓ Entregue no prazo/antes</span>
-        <span style={{ color: 'var(--blue)' }}>✓ Entregue</span>
-        <span style={{ color: 'var(--red)' }}>🔴 Atrasada</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, marginBottom: 8 }}>
+        {[
+          { icon: '🎯', label: 'Meta', color: 'var(--violet)', bg: 'var(--violet-dim)' },
+          { icon: '🏁', label: 'Prazo final', color: 'var(--text)', bg: 'var(--surface-2)' },
+          { icon: '✓', label: 'Entregue no prazo/antes', color: 'var(--green)', bg: 'var(--green-dim)' },
+          { icon: '✓', label: 'Entregue', color: 'var(--blue)', bg: 'var(--blue-dim)' },
+          { icon: '🔴', label: 'Atrasada', color: 'var(--red)', bg: 'var(--red-dim)' },
+        ].map((l) => (
+          <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: l.bg, color: l.color, borderRadius: 999, padding: '2px 8px', fontWeight: 600 }}>
+            {l.icon} {l.label}
+          </span>
+        ))}
       </div>
 
       <div style={{ overflowX: 'auto' }}>
@@ -707,11 +757,33 @@ function PackagingCalendar({
                 {day != null && (
                   <>
                     <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 2 }}>{day}</div>
-                    {(eventsByDay[day] ?? []).map((ev, j) => (
-                      <div key={j} onClick={() => onOpen(ev.task)} title={ev.label} style={{ fontSize: 10, color: ev.color, cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ev.label}
-                      </div>
-                    ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {(eventsByDay[day] ?? []).map((ev, j) => (
+                        <div
+                          key={j}
+                          onClick={() => onOpen(ev.task)}
+                          title={`${ev.icon} ${ev.label}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontSize: 10,
+                            color: ev.color,
+                            background: ev.bg,
+                            borderLeft: `3px solid ${ev.color}`,
+                            borderRadius: 4,
+                            padding: '1px 4px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          <span>{ev.icon}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
