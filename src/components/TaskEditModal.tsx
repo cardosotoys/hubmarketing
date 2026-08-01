@@ -3,7 +3,7 @@ import Modal from './Modal';
 import ProductCombobox from './ProductCombobox';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
-import { materializeSubsteps } from '../lib/substeps';
+import { materializeSubsteps, recomputeSubstepDueDates } from '../lib/substeps';
 import {
   APPROVAL_STATE_LABELS,
   PRIORITIES,
@@ -231,7 +231,15 @@ export default function TaskEditModal({
   }
 
   async function toggleChecklistItem(item: TaskChecklistItem) {
-    await supabase.from('task_checklist_items').update({ done: !item.done }).eq('id', item.id);
+    const done = !item.done;
+    await supabase
+      .from('task_checklist_items')
+      .update({ done, done_at: done ? new Date().toISOString() : null })
+      .eq('id', item.id);
+    // sub-etapa: recalcula os prazos encadeados (a próxima conta a partir deste check)
+    if (item.substep_id && item.stage_id) {
+      await recomputeSubstepDueDates(item.task_id, item.stage_id);
+    }
     loadChecklist();
   }
 

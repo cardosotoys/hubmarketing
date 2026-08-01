@@ -243,6 +243,7 @@ export interface TaskChecklistItem {
   task_id: string;
   label: string;
   done: boolean;
+  done_at: string | null;
   is_gate: boolean;
   stage_id: string | null;
   substep_id: string | null;
