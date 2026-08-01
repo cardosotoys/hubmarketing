@@ -5,6 +5,7 @@ import { useProjectsOverview } from '../hooks/useProjectsOverview';
 import { supabase } from '../lib/supabaseClient';
 import ProjectCard from '../components/ProjectCard';
 import ActivityHeatmap from '../components/ActivityHeatmap';
+import DonutChart from '../components/DonutChart';
 import type { ProjectStatus } from '../types/database';
 
 function formatBRL(n: number) {
@@ -112,6 +113,19 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+          {budget && budget.planned > 0 && (
+            <div className="card" style={{ marginTop: 12 }}>
+              <h4 style={{ marginTop: 0 }}>Verba de campanhas</h4>
+              <DonutChart
+                centerLabel={`${Math.round((budget.spent / budget.planned) * 100)}%`}
+                centerSub="executado"
+                segments={[
+                  { label: 'Executado', value: Math.round(budget.spent), color: 'var(--green)' },
+                  { label: 'Disponível', value: Math.max(0, Math.round(budget.planned - budget.spent)), color: 'var(--surface-3)' },
+                ]}
+              />
+            </div>
+          )}
           <div className="banner" style={{ marginTop: 14 }}>
             <span className="ic">◆</span>
             <span>
@@ -137,15 +151,33 @@ export default function Dashboard() {
       </div>
 
       <div className="section-head">
-        <h2>Por status</h2>
+        <h2>Panorama</h2>
       </div>
-      <div className="grid4">
-        {STATUS_CHART.map((s) => (
-          <div className="card" key={s.status}>
-            <h4 style={{ color: s.color }}>● {s.label}</h4>
-            <p>{projects.filter((p) => p.status === s.status).length} projetos</p>
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
+        <div className="card">
+          <h4 style={{ marginTop: 0 }}>Projetos por status</h4>
+          <DonutChart
+            centerLabel={String(projects.length)}
+            centerSub="projetos"
+            segments={STATUS_CHART.map((s) => ({
+              label: s.label,
+              value: projects.filter((p) => p.status === s.status).length,
+              color: s.color,
+            }))}
+          />
+        </div>
+        <div className="card">
+          <h4 style={{ marginTop: 0 }}>Situação das demandas</h4>
+          <DonutChart
+            centerLabel={String(tasks.length)}
+            centerSub="demandas"
+            segments={[
+              { label: 'Concluídas', value: tasks.filter((t) => isTaskDone(t)).length, color: 'var(--green)' },
+              { label: 'Em aberto (no prazo)', value: Math.max(0, openTasks - overdueTasks), color: 'var(--violet)' },
+              { label: 'Atrasadas', value: overdueTasks, color: 'var(--red)' },
+            ]}
+          />
+        </div>
       </div>
 
       <div className="section-head">

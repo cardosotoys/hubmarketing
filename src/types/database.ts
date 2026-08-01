@@ -332,6 +332,7 @@ export interface Product {
   needs_review: boolean;
   catalog_page: number | null;
   ean: string;
+  inmetro_number: string;
   image_url: string;
   gender: string;
   material: string;

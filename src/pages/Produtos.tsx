@@ -8,7 +8,7 @@ import Modal from '../components/Modal';
 import { PRIORITY_LABELS, type Brand, type Product, type ProjectStage, type Priority } from '../types/database';
 
 type ProductWithBrand = Product & { brand: Brand };
-type PackagingTaskStub = { id: string; project_id: string; product_id: string; stage_id: string; priority: Priority; updated_at: string };
+type PackagingTaskStub = { id: string; product_id: string; stage_id: string; priority: Priority; updated_at: string };
 
 function sizeLabel(p: Product): string {
   if (p.product_length_mm != null && p.product_width_mm != null && p.product_height_mm != null) {
@@ -28,6 +28,7 @@ export default function Produtos() {
   const [ageFilter, setAgeFilter] = useState('all');
   const [sizeFilter, setSizeFilter] = useState('all');
   const [licensedFilter, setLicensedFilter] = useState<'all' | 'licensed' | 'own'>('all');
+  const [sort, setSort] = useState<'code' | 'name' | 'brand' | 'line' | 'category' | 'age'>('code');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -42,8 +43,9 @@ export default function Produtos() {
       supabase.from('brands').select('*'),
       supabase
         .from('tasks')
-        .select('id, project_id, product_id, stage_id, priority, updated_at')
+        .select('id, product_id, stage_id, priority, updated_at')
         .not('product_id', 'is', null)
+        .not('packaging_track', 'is', null)
         .order('updated_at', { ascending: false }),
       supabase.from('stages').select('*'),
     ]);
@@ -115,6 +117,28 @@ export default function Produtos() {
     return true;
   });
 
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      switch (sort) {
+        case 'name':
+          return a.name.localeCompare(b.name, 'pt-BR');
+        case 'brand':
+          return (a.brand?.label ?? '').localeCompare(b.brand?.label ?? '', 'pt-BR') || a.code.localeCompare(b.code);
+        case 'line':
+          return (a.line || 'zzz').localeCompare(b.line || 'zzz', 'pt-BR') || a.code.localeCompare(b.code);
+        case 'category':
+          return (a.toy_category || 'zzz').localeCompare(b.toy_category || 'zzz', 'pt-BR') || a.code.localeCompare(b.code);
+        case 'age':
+          return (a.age_range || 'zzz').localeCompare(b.age_range || 'zzz', 'pt-BR') || a.code.localeCompare(b.code);
+        default:
+          return a.code.localeCompare(b.code, 'pt-BR', { numeric: true });
+      }
+    });
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sort]);
+
   const reviewCount = products.filter((p) => p.needs_review).length;
   const canEdit = profile?.department !== 'assistente';
 
@@ -150,112 +174,50 @@ export default function Produtos() {
         ))}
       </div>
 
-      <div className="filters-row">
-        <select
-          value={lineFilter}
-          onChange={(e) => setLineFilter(e.target.value)}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 7,
-            color: 'var(--text-dim)',
-            padding: '5px 10px',
-            fontSize: 11.5,
-          }}
-        >
+      <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <select className="chip-select" value={lineFilter} onChange={(e) => setLineFilter(e.target.value)}>
           <option value="all">Todas as linhas</option>
           {lines.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
+            <option key={l} value={l}>{l}</option>
           ))}
         </select>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 7,
-            color: 'var(--text-dim)',
-            padding: '5px 10px',
-            fontSize: 11.5,
-          }}
-        >
+        <select className="chip-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="all">Todas as categorias</option>
           {toyCategories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
-        <select
-          value={ageFilter}
-          onChange={(e) => setAgeFilter(e.target.value)}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 7,
-            color: 'var(--text-dim)',
-            padding: '5px 10px',
-            fontSize: 11.5,
-          }}
-        >
+        <select className="chip-select" value={ageFilter} onChange={(e) => setAgeFilter(e.target.value)}>
           <option value="all">Todas as idades</option>
           {ageRanges.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
+            <option key={a} value={a}>{a}</option>
           ))}
         </select>
-        <select
-          value={sizeFilter}
-          onChange={(e) => setSizeFilter(e.target.value)}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 7,
-            color: 'var(--text-dim)',
-            padding: '5px 10px',
-            fontSize: 11.5,
-          }}
-        >
+        <select className="chip-select" value={sizeFilter} onChange={(e) => setSizeFilter(e.target.value)}>
           <option value="all">Todos os tamanhos</option>
           {sizes.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
+            <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <select
-          value={licensedFilter}
-          onChange={(e) => setLicensedFilter(e.target.value as typeof licensedFilter)}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 7,
-            color: 'var(--text-dim)',
-            padding: '5px 10px',
-            fontSize: 11.5,
-          }}
-        >
+        <select className="chip-select" value={licensedFilter} onChange={(e) => setLicensedFilter(e.target.value as typeof licensedFilter)}>
           <option value="all">Licenciados e próprios</option>
           <option value="licensed">Só licenciados</option>
           <option value="own">Só marca própria</option>
         </select>
+        <select className="chip-select" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+          <option value="code">Ordenar: código</option>
+          <option value="name">Ordenar: nome (A-Z)</option>
+          <option value="brand">Ordenar: marca</option>
+          <option value="line">Ordenar: linha</option>
+          <option value="category">Ordenar: categoria</option>
+          <option value="age">Ordenar: faixa etária</option>
+        </select>
         <input
+          className="chip-select"
           placeholder="Buscar por nome ou código…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 7,
-            color: 'var(--text)',
-            padding: '5px 10px',
-            fontSize: 11.5,
-            minWidth: 220,
-          }}
+          style={{ minWidth: 220, flex: 1 }}
         />
       </div>
 
@@ -286,7 +248,7 @@ export default function Produtos() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => {
+            {sorted.map((p) => {
               const pkg = packagingByProduct.get(p.id);
               const pkgStage = pkg && stagesById[pkg.stage_id];
               return (
@@ -299,6 +261,11 @@ export default function Produtos() {
                     {p.licensed && (
                       <span className="pill" style={{ marginLeft: 6 }}>
                         licenciado
+                      </span>
+                    )}
+                    {p.inmetro_number && (
+                      <span className="pill" style={{ marginLeft: 6, background: 'var(--green-dim)', color: 'var(--green)' }} title={`INMETRO ${p.inmetro_number}`}>
+                        🏅 INMETRO
                       </span>
                     )}
                   </td>
@@ -319,13 +286,13 @@ export default function Produtos() {
                   <td data-label="Embalagem" onClick={(e) => e.stopPropagation()}>
                     {pkg ? (
                       <Link
-                        to={`/projetos/${pkg.project_id}`}
+                        to="/design-produto/embalagens"
                         className="pill"
                         style={{
                           background: pkgStage?.is_final ? 'var(--green-dim)' : 'var(--violet-dim)',
                           color: pkgStage?.is_final ? 'var(--green)' : 'var(--violet)',
                         }}
-                        title={`Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}
+                        title={`Embalagem · Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}
                       >
                         {pkgStage?.name ?? '—'}
                       </Link>
@@ -343,7 +310,7 @@ export default function Produtos() {
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={9} style={{ color: 'var(--text-faint)' }}>
                   Nenhum produto encontrado para esse filtro.
@@ -403,6 +370,7 @@ function ProductFormModal({
   const [toyCategory, setToyCategory] = useState(product?.toy_category ?? '');
   const [ageRange, setAgeRange] = useState(product?.age_range ?? '');
   const [ean, setEan] = useState(product?.ean ?? '');
+  const [inmetroNumber, setInmetroNumber] = useState(product?.inmetro_number ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
   const [needsReview, setNeedsReview] = useState(product?.needs_review ?? false);
 
@@ -465,6 +433,7 @@ function ProductFormModal({
       toy_category: toyCategory,
       age_range: ageRange,
       ean,
+      inmetro_number: inmetroNumber,
       image_url: imageUrl ? normalizeUrl(imageUrl) : '',
       needs_review: needsReview,
       technical_name: technicalName,
@@ -585,6 +554,10 @@ function ProductFormModal({
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="np-ean">EAN</label>
             <input id="np-ean" value={ean} onChange={(e) => setEan(e.target.value)} placeholder="Código de barras" />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-inmetro">🏅 Nº de registro INMETRO</label>
+            <input id="np-inmetro" value={inmetroNumber} onChange={(e) => setInmetroNumber(e.target.value)} placeholder="Ex.: 000000/0000" />
           </div>
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="np-image">Imagem oficial (link)</label>
