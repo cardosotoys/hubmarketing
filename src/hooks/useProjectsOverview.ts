@@ -20,7 +20,7 @@ export function useProjectsOverview() {
     setError(null);
     const [projectsRes, tasksRes, stagesRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(*)').order('created_at', { ascending: false }),
-      supabase.from('tasks').select('id, project_id, stage_id, assignee_id, due_date'),
+      supabase.from('tasks').select('id, project_id, stage_id, assignee_id, due_date').is('packaging_track', null),
       supabase.from('stages').select('id').eq('is_final', true),
     ]);
     if (projectsRes.error) setError(projectsRes.error.message);

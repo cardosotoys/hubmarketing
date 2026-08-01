@@ -39,7 +39,8 @@ export default function Demandas() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    let tasksQuery = supabase.from('tasks').select('*, project:projects(id, name)').order('position');
+    // packaging_track null = exclui as demandas do módulo Embalagens (que têm board próprio e isolado)
+    let tasksQuery = supabase.from('tasks').select('*, project:projects(id, name)').is('packaging_track', null).order('position');
     if (profile?.role === 'equipe') {
       tasksQuery = tasksQuery.eq('assignee_id', profile.id);
     }
@@ -49,7 +50,7 @@ export default function Demandas() {
       supabase.from('projects').select('*').order('name'),
       supabase.from('project_files').select('task_id').not('task_id', 'is', null),
       supabase.from('products').select('*').order('code'),
-      supabase.from('stages').select('*').order('position'),
+      supabase.from('stages').select('*').is('packaging_track', null).order('position'),
     ]);
     setTasks((tasksRes.data as TaskWithProject[]) ?? []);
     setProfiles((profilesRes.data as Profile[]) ?? []);

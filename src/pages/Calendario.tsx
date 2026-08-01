@@ -58,7 +58,7 @@ export default function Calendario() {
     setLoading(true);
     const [projectsRes, tasksRes, campaignsRes, milestonesRes, postsRes, ownEventsRes, brandsRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(color)'),
-      supabase.from('tasks').select('id, title, due_date, priority, project_id').not('due_date', 'is', null),
+      supabase.from('tasks').select('id, title, due_date, priority, project_id').not('due_date', 'is', null).is('packaging_track', null),
       supabase.from('campaigns').select('*, brand:brands(color)'),
       supabase.from('campaign_milestones').select('*, campaign:campaigns(id, name, brand:brands(color))'),
       supabase.from('social_posts').select('*, brand:brands(color)'),

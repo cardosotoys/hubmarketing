@@ -39,7 +39,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
     async function loadOpenTasks() {
       const [{ data: terminalStages }, { data: allTasks }] = await Promise.all([
         supabase.from('stages').select('id').eq('is_final', true),
-        supabase.from('tasks').select('stage_id'),
+        supabase.from('tasks').select('stage_id').is('packaging_track', null),
       ]);
       const terminalIds = new Set((terminalStages ?? []).map((s) => s.id));
       setOpenTasks((allTasks ?? []).filter((t) => !terminalIds.has(t.stage_id)).length);

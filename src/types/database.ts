@@ -25,6 +25,7 @@ export type Priority = 'urgent' | 'high' | 'medium' | 'low';
 export interface ProjectStage {
   id: string;
   project_id: string | null;
+  packaging_track: PackagingTrack | null;
   name: string;
   position: number;
   is_final: boolean;
@@ -105,7 +106,6 @@ export interface Brand {
   color: string;
 }
 
-export type ProjectKind = 'normal' | 'embalagem';
 export type PackagingTrack = 'criacao' | 'melhoria';
 export const PACKAGING_TRACKS: { key: PackagingTrack; label: string; hint: string }[] = [
   { key: 'criacao', label: 'Criação', hint: 'Embalagem nova — do planejamento à produção' },
@@ -139,9 +139,6 @@ export interface Project {
   status: ProjectStatus;
   priority: Priority;
   category: string;
-  kind: ProjectKind;
-  packaging_track: PackagingTrack | null;
-  product_dev_item_id: string | null;
   start_date: string | null;
   end_date: string | null;
   ref: string;
@@ -229,6 +226,7 @@ export interface Task {
   delay_reason: string;
   notes: string;
   budget: number | null;
+  packaging_track: PackagingTrack | null;
   approval_state: ApprovalState;
   approval_requested_to: string | null;
   approval_note: string;

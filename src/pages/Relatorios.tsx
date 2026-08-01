@@ -119,7 +119,7 @@ export default function Relatorios() {
       const [projectsRes, tasksRes, profilesRes, stagesRes, auditRes, productsRes, postsRes, reportsRes, campaignsRes, budgetRes] =
         await Promise.all([
           supabase.from('projects').select('id, name, status, end_date, brand:brands(label)'),
-          supabase.from('tasks').select('id, title, project_id, stage_id, priority, assignee_id, due_date'),
+          supabase.from('tasks').select('id, title, project_id, stage_id, priority, assignee_id, due_date').is('packaging_track', null),
           supabase.from('profiles').select('*'),
           supabase.from('stages').select('*'),
           supabase.from('audit_items').select('*, product:products(code, name, brand:brands(label)), project:projects(name)'),
