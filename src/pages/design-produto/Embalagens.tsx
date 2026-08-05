@@ -322,15 +322,38 @@ export default function Embalagens({
     load();
   }
 
+  // No "Geral" as duas trilhas têm etapas de mesmo nome — o Kanban funde as colunas POR NOME.
+  // Ao mover um card, resolvemos a etapa de mesmo nome na trilha da própria demanda.
+  const nameOrder = (() => {
+    const minPos = new Map<string, number>();
+    for (const s of sortedStages) {
+      const p = minPos.get(s.name);
+      if (p === undefined || s.position < p) minPos.set(s.name, s.position);
+    }
+    return [...minPos.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name);
+  })();
+  const finalNames = new Set(sortedStages.filter((s) => s.is_final).map((s) => s.name));
+
   const kanbanTasks = filteredTasks.map((t) => ({
     id: t.id,
-    stage: t.stage_id,
+    stage: isGeral ? stagesById[t.stage_id]?.name ?? '' : t.stage_id,
     priority: t.priority,
     assignee_id: t.assignee_id,
     title: t.title,
     due_date: t.due_date,
   }));
-  const kanbanStages = sortedStages.map((s) => ({ key: s.id, label: s.name }));
+  const kanbanStages = isGeral
+    ? nameOrder.map((name) => ({ key: name, label: name }))
+    : sortedStages.map((s) => ({ key: s.id, label: s.name }));
+  const kanbanTerminal = isGeral ? [...finalNames] : terminalStageIds;
+
+  // No Geral o board manda o NOME da coluna; convertemos pra etapa real da trilha da demanda.
+  async function changeStageByName(taskId: string, stageName: string) {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const target = stages.find((s) => s.packaging_track === task.packaging_track && s.name === stageName);
+    if (target) changeStage(taskId, target.id);
+  }
 
   const totalPlanned = tasks.reduce((acc, t) => acc + (t.budget ?? 0), 0);
 
@@ -378,21 +401,14 @@ export default function Embalagens({
         <div className="page-sub" style={{ marginTop: 12 }}>Carregando…</div>
       ) : tab === 'demandas' ? (
         <div style={{ marginTop: 10 }}>
-          {/* Ações — ficam acima, separadas dos filtros. Em "Geral" é só leitura (lista de tudo). */}
-          {isGeral ? (
-            <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--text-faint)', alignSelf: 'center' }}>
-                Visão geral — todas as demandas. Para criar/editar etapas, escolha uma trilha.
-              </span>
-            </div>
-          ) : (
-            <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
-              <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
-              <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
-              <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
-              <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
-            </div>
-          )}
+          {/* Ações. Em "Geral" mantém Kanban/Lista (etapas idênticas nas trilhas), mas criar demanda
+              e editar etapas são por-trilha — só aparecem em Criação/Melhoria. */}
+          <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
+            {!isGeral && <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>}
+            <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
+            <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
+            {!isGeral && <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>}
+          </div>
 
           {/* Filtros — logo acima do board (colados na estrutura das etapas) */}
           <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -464,17 +480,17 @@ export default function Embalagens({
             <div className="locked-banner" style={{ marginTop: 10 }}>
               <span className="ic">▤</span>Nenhuma etapa nesta trilha — rode a migration 0038 ou crie etapas em ⚙ Etapas.
             </div>
-          ) : !isGeral && view === 'kanban' ? (
+          ) : view === 'kanban' ? (
             <div style={{ marginTop: 10 }}>
               <KanbanBoard
                 tasks={kanbanTasks}
                 profilesById={profilesById}
                 editable
-                cols={sortedStages.length <= 5 ? 5 : 6}
+                cols={kanbanStages.length <= 5 ? 5 : 6}
                 stages={kanbanStages}
-                terminalStages={terminalStageIds}
-                onStageChange={changeStage}
-                onCreate={createTask}
+                terminalStages={kanbanTerminal}
+                onStageChange={isGeral ? changeStageByName : changeStage}
+                onCreate={isGeral ? undefined : createTask}
                 onEdit={(kt) => setEditingTask(tasks.find((t) => t.id === kt.id) ?? null)}
                 renderExtra={(kt) => {
                   const t = tasks.find((x) => x.id === kt.id);
