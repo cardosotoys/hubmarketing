@@ -72,6 +72,28 @@ async function main() {
     return;
   }
 
+  // EXCLUIR (irreversível) — só quem está desativado (banido no auth OU profile.disabled) e fora da lista.
+  if (process.argv.includes('--delete')) {
+    const { data: profs } = await db.from('profiles').select('id, disabled');
+    const disabledIds = new Set((profs ?? []).filter((p) => p.disabled).map((p) => p.id));
+    const eligible = remove.filter((u) => u.banned_until || disabledIds.has(u.id));
+    console.log(`\n🗑  ${eligible.length} elegíveis para EXCLUSÃO (desativados e fora da lista):`);
+    eligible.forEach((u) => console.log(`   ${u.email}`));
+    if (!eligible.length) { console.log('\nNada a excluir.\n'); return; }
+    if (!process.argv.includes('--yes')) {
+      console.log('\n⚠️  Isto é IRREVERSÍVEL. Para confirmar de verdade, rode:  node scripts/prune-users.mjs --delete --yes\n');
+      return;
+    }
+    let n = 0;
+    for (const u of eligible) {
+      const { error } = await db.auth.admin.deleteUser(u.id);
+      if (error) console.warn(`   ⚠️ ${u.email}: NÃO excluído — ${error.message}. (Tem dados vinculados; segue desativado.)`);
+      else { n += 1; console.log(`   ✔ excluído ${u.email}`); }
+    }
+    console.log(`\n✅ ${n}/${eligible.length} excluídos de vez.\n`);
+    return;
+  }
+
   if (!DO_BAN) {
     console.log('\n🧪 Isto foi só a lista. Para desativar de verdade, rode:  node scripts/prune-users.mjs --ban\n');
     return;
