@@ -36,8 +36,11 @@ type DemandRow = {
   groupProject: string;
   projectLink: { to: string; name: string } | null;
   fileCount: number;
+  search: string; // título + SKU/código/nome do produto, em minúsculo, pra busca
   task: TaskWithProject | null; // preenchido só quando dá pra editar no modal (source 'task')
 };
+
+type SortKey = 'padrao' | 'prazo' | 'prazo_desc' | 'priority' | 'title';
 
 const CAMPAIGN_STAGE_LABEL = Object.fromEntries(CAMPAIGN_TASK_STAGES.map((s) => [s.key, s.label]));
 
@@ -70,6 +73,13 @@ export default function Demandas() {
   const [showNew, setShowNew] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupBy>('project');
   const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
+  // filtros no estilo Embalagens
+  const [search, setSearch] = useState('');
+  const [fAssignee, setFAssignee] = useState('all');
+  const [fPriority, setFPriority] = useState<'all' | Priority>('all');
+  const [fStage, setFStage] = useState('all');
+  const [sort, setSort] = useState<SortKey>('padrao');
+  const [hideFinal, setHideFinal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -125,7 +135,12 @@ export default function Demandas() {
   const isEquipe = profile?.role === 'equipe';
   const profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
   const campaignsById = Object.fromEntries(campaigns.map((c) => [c.id, c]));
+  const productsById = Object.fromEntries(products.map((p) => [p.id, p]));
   const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
+  const productSearch = (productId: string | null | undefined) => {
+    const p = productId ? productsById[productId] : null;
+    return p ? ` ${p.code ?? ''} ${p.name ?? ''}` : '';
+  };
   // Para o "Nova demanda" (só cria demanda de projeto/avulsa): exclui os estágios de embalagem.
   const stagesByProject: Record<string, ProjectStage[]> = {};
   for (const s of stages) {
@@ -166,6 +181,7 @@ export default function Demandas() {
           ? { to: '/design-produto/embalagens', name: 'Embalagens' }
           : null,
       fileCount: fileCounts[t.id] ?? 0,
+      search: `${t.title}${productSearch(t.product_id)}`.toLowerCase(),
       task: t,
     }));
 
@@ -186,11 +202,45 @@ export default function Demandas() {
         groupProject: camp ? `Campanha: ${camp.name}` : 'Campanha',
         projectLink: camp ? { to: `/campanhas/${camp.id}`, name: camp.name } : null,
         fileCount: 0,
+        search: `${ct.title}${productSearch(ct.product_id)}`.toLowerCase(),
         task: null,
       };
     });
 
   const rows: DemandRow[] = [...taskRows, ...campaignRows];
+
+  // opções de "Etapa" (nomes distintos que aparecem nas linhas)
+  const stageOptions = Array.from(new Set(rows.map((r) => r.stageName))).filter((s) => s && s !== '—').sort();
+
+  const q = search.trim().toLowerCase();
+  const priorityRank = (p: Priority) => {
+    const i = (PRIORITIES as readonly Priority[]).indexOf(p);
+    return i === -1 ? 99 : i;
+  };
+  const filteredRows = rows.filter((r) => {
+    if (q && !r.search.includes(q)) return false;
+    if (fAssignee === 'none' && r.assigneeId) return false;
+    if (fAssignee !== 'all' && fAssignee !== 'none' && r.assigneeId !== fAssignee) return false;
+    if (fPriority !== 'all' && r.priority !== fPriority) return false;
+    if (fStage !== 'all' && r.stageName !== fStage) return false;
+    if (hideFinal && r.isFinal) return false;
+    return true;
+  });
+
+  const sortedRows = [...filteredRows];
+  if (sort !== 'padrao') {
+    sortedRows.sort((a, b) => {
+      if (sort === 'priority') return priorityRank(a.priority) - priorityRank(b.priority);
+      if (sort === 'title') return a.title.localeCompare(b.title, 'pt-BR');
+      // prazo: sem data vai pro fim
+      const av = a.dueDate ?? '';
+      const bv = b.dueDate ?? '';
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return sort === 'prazo' ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }
 
   function groupLabel(r: DemandRow): string {
     if (groupBy === 'assignee') return r.assigneeId ? profilesById[r.assigneeId]?.name ?? '—' : 'Sem responsável';
@@ -201,9 +251,9 @@ export default function Demandas() {
 
   const groups =
     groupBy === 'none'
-      ? [{ label: '', items: rows }]
+      ? [{ label: '', items: sortedRows }]
       : Object.entries(
-          rows.reduce<Record<string, DemandRow[]>>((acc, r) => {
+          sortedRows.reduce<Record<string, DemandRow[]>>((acc, r) => {
             const key = groupLabel(r);
             (acc[key] ??= []).push(r);
             return acc;
@@ -237,7 +287,7 @@ export default function Demandas() {
       </div>
 
       <div className="section-head">
-        <h2>{rows.length} demandas</h2>
+        <h2>{filteredRows.length} demandas</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="group-toggle">
             {(
@@ -261,6 +311,59 @@ export default function Demandas() {
             + Nova demanda
           </button>
         </div>
+      </div>
+
+      {/* Filtros no estilo Embalagens */}
+      <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <input
+          placeholder="Buscar por título, SKU, código…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ minWidth: 220, flex: 1 }}
+        />
+        <select className="chip-select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
+          <option value="all">Responsável: todos</option>
+          <option value="none">Sem responsável</option>
+          {profiles
+            .filter((p) => !p.disabled)
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+        </select>
+        <select className="chip-select" value={fPriority} onChange={(e) => setFPriority(e.target.value as 'all' | Priority)}>
+          <option value="all">Prioridade: todas</option>
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {PRIORITY_LABELS[p]}
+            </option>
+          ))}
+        </select>
+        <select className="chip-select" value={fStage} onChange={(e) => setFStage(e.target.value)}>
+          <option value="all">Etapa: todas</option>
+          {stageOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select className="chip-select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+          <option value="padrao">Ordenar: padrão</option>
+          <option value="prazo">🏁 Prazo: mais próximo primeiro</option>
+          <option value="prazo_desc">🏁 Prazo: mais distante primeiro</option>
+          <option value="priority">Ordenar: prioridade</option>
+          <option value="title">Ordenar: título (A-Z)</option>
+        </select>
+        <label className="filter-chip" style={{ cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={hideFinal}
+            onChange={(e) => setHideFinal(e.target.checked)}
+            style={{ width: 'auto', marginRight: 6 }}
+          />
+          Ocultar finalizadas
+        </label>
       </div>
 
       {loading ? (
