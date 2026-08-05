@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 import type { ActivityWithActor, MentionRow } from '../hooks/useNotifications';
 
+const trunc = (s: string, n: number) => {
+  const t = (s ?? '').replace(/\s+/g, ' ').trim();
+  return t.length > n ? t.slice(0, n).trimEnd() + '…' : t;
+};
+
 export default function NotificationsPanel({
   mentions,
   recent,
@@ -19,7 +24,7 @@ export default function NotificationsPanel({
   const unreadMentions = mentions.filter((m) => !readIds.has(m.id));
 
   return (
-    <div className="notif-panel">
+    <div className="notif-panel" style={{ width: 'min(420px, 92vw)' }}>
       {mentions.length > 0 && (
         <>
           <div className="head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -75,8 +80,15 @@ export default function NotificationsPanel({
                     border: unread ? 'none' : '1px solid var(--border)',
                   }}
                 />
-                <span>
-                  <b>{m.author?.name ?? 'Alguém'}</b> te marcou em "{m.task?.title ?? 'uma demanda'}": {m.body}
+                <span style={{ minWidth: 0, fontSize: 12.5, lineHeight: 1.4, overflowWrap: 'anywhere' }}>
+                  <span style={{ display: 'block' }}>
+                    <b>{m.author?.name ?? 'Alguém'}</b> te marcou em “{trunc(m.task?.title ?? 'uma demanda', 42)}”
+                  </span>
+                  {m.body && (
+                    <span style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 400, marginTop: 2 }}>
+                      {trunc(m.body, 90)}
+                    </span>
+                  )}
                 </span>
               </Link>
             );

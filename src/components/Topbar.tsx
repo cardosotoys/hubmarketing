@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
@@ -27,6 +27,25 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
       return !s;
     });
   }
+
+  // fecha o painel de notificações ao clicar fora dele/do sino, ou no Esc
+  useEffect(() => {
+    if (!showNotif) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as HTMLElement;
+      if (t.closest('.notif-panel') || t.closest('.notif-bell')) return;
+      setShowNotif(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowNotif(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showNotif]);
 
   return (
     <div className="topbar">
@@ -106,7 +125,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         <Link className="icon-btn" to="/demandas">
           ☰
         </Link>
-        <div className="icon-btn" onClick={toggleNotif}>
+        <div className="icon-btn notif-bell" onClick={toggleNotif}>
           🔔
           {unreadCount > 0 && <span className="pip-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}
         </div>
