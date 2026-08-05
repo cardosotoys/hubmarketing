@@ -527,6 +527,18 @@ export default function TaskEditModal({
         })()}
 
         {/* Mockup da embalagem — condicional: só quando a embalagem está aprovada. Grava no produto. */}
+        {task.packaging_track && embalagemAprovada && !productId && (
+          <div
+            className="form-field"
+            style={{ background: 'var(--yellow-dim)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}
+          >
+            <label style={{ color: 'var(--yellow)' }}>✅ Embalagem aprovada — falta vincular o produto</label>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '2px 0 0' }}>
+              Vincule um produto (SKU) no campo <b>“Produto (embalagem)”</b> acima para salvar o mockup da embalagem — o
+              mockup é gravado no produto. Se ainda não existe, cadastre em <b>Produtos</b> e volte aqui pra vincular.
+            </p>
+          </div>
+        )}
         {task.packaging_track &&
           productId &&
           embalagemAprovada &&
