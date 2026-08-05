@@ -21,7 +21,7 @@ const STATUS_CHART: { status: ProjectStatus; label: string; color: string }[] = 
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const { projects, tasks, isTaskDone, loading, error, percentFor } = useProjectsOverview();
+  const { projects, tasks, isTaskDone, terminalStageIds, loading, error, percentFor } = useProjectsOverview();
   const seesFinancial = profile?.role === 'diretoria';
   const seesEverything = profile?.role === 'diretoria' || profile?.role === 'administrador';
 
@@ -41,6 +41,54 @@ export default function Dashboard() {
       t.assignee_id === profile?.id &&
       new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString())
   ).length;
+
+  // Demandas de embalagem + campanha somadas aos contadores (o hook cobre só as de projeto/avulsas)
+  const [extra, setExtra] = useState({ open: 0, overdue: 0, myOpen: 0, myOverdue: 0 });
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    (async () => {
+      const todayCut = new Date(new Date().toDateString());
+      const isOverdue = (d: string | null) => !!d && new Date(d + 'T00:00') < todayCut;
+      const [pkgRes, campRes] = await Promise.all([
+        supabase.from('tasks').select('id, stage_id, assignee_id, due_date').not('packaging_track', 'is', null),
+        supabase.from('campaign_tasks').select('id, stage, assignee_id, due_date'),
+      ]);
+      let open = 0,
+        overdue = 0,
+        myOpen = 0,
+        myOverdue = 0;
+      ((pkgRes.data as { stage_id: string; assignee_id: string | null; due_date: string | null }[]) ?? []).forEach((t) => {
+        if (terminalStageIds.has(t.stage_id)) return;
+        open++;
+        const od = isOverdue(t.due_date);
+        if (od) overdue++;
+        if (t.assignee_id === profile?.id) {
+          myOpen++;
+          if (od) myOverdue++;
+        }
+      });
+      ((campRes.data as { stage: string; assignee_id: string | null; due_date: string | null }[]) ?? []).forEach((t) => {
+        if (t.stage === 'concluida' || t.stage === 'cancelada') return;
+        open++;
+        const od = isOverdue(t.due_date);
+        if (od) overdue++;
+        if (t.assignee_id === profile?.id) {
+          myOpen++;
+          if (od) myOverdue++;
+        }
+      });
+      if (!cancelled) setExtra({ open, overdue, myOpen, myOverdue });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, terminalStageIds, profile?.id]);
+
+  const openTasksAll = openTasks + extra.open;
+  const myOpenTasksAll = myOpenTasks + extra.myOpen;
+  const overdueTasksAll = overdueTasks + extra.overdue;
+  const myOverdueTasksAll = myOverdueTasks + extra.myOverdue;
 
   const [budget, setBudget] = useState<{ planned: number; spent: number } | null>(null);
   useEffect(() => {
@@ -75,20 +123,20 @@ export default function Dashboard() {
           <div className="stat-label">Projetos ativos</div>
         </div>
         <div className="stat-card">
-          <div className="stat-num">{openTasks}</div>
+          <div className="stat-num">{openTasksAll}</div>
           <div className="stat-label">Demandas abertas</div>
-          {myOpenTasks > 0 && <div className="stat-trend">{myOpenTasks} atribuídas a você</div>}
+          {myOpenTasksAll > 0 && <div className="stat-trend">{myOpenTasksAll} atribuídas a você</div>}
         </div>
         <div className="stat-card">
           <div className="stat-num">{projects.length}</div>
           <div className="stat-label">Projetos no total</div>
         </div>
         <div className="stat-card">
-          <div className="stat-num" style={{ color: overdueTasks > 0 ? 'var(--red)' : undefined }}>
-            {overdueTasks}
+          <div className="stat-num" style={{ color: overdueTasksAll > 0 ? 'var(--red)' : undefined }}>
+            {overdueTasksAll}
           </div>
           <div className="stat-label">Demandas atrasadas</div>
-          {myOverdueTasks > 0 && <div className="stat-trend warn">{myOverdueTasks} suas</div>}
+          {myOverdueTasksAll > 0 && <div className="stat-trend warn">{myOverdueTasksAll} suas</div>}
           <Link to="/demandas" style={{ fontSize: 11, color: 'var(--violet)' }}>
             Ver demandas →
           </Link>

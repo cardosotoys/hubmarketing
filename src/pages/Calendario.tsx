@@ -62,11 +62,12 @@ export default function Calendario() {
   const load = useCallback(async () => {
     setLoading(true);
     const myId = profile?.id;
-    const [projectsRes, tasksRes, pkgRes, campaignsRes, milestonesRes, postsRes, ownEventsRes, brandsRes, membersRes, mentionsRes] = await Promise.all([
+    const [projectsRes, tasksRes, pkgRes, campaignsRes, campTasksRes, milestonesRes, postsRes, ownEventsRes, brandsRes, membersRes, mentionsRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(color)'),
       supabase.from('tasks').select('id, title, due_date, priority, project_id, assignee_id').not('due_date', 'is', null).is('packaging_track', null),
       supabase.from('tasks').select('id, title, due_date, target_date, completed_at, priority, assignee_id').not('packaging_track', 'is', null),
       supabase.from('campaigns').select('*, brand:brands(color)'),
+      supabase.from('campaign_tasks').select('id, title, due_date, stage, assignee_id, campaign:campaigns(id, name, brand:brands(color))').not('due_date', 'is', null),
       supabase.from('campaign_milestones').select('*, campaign:campaigns(id, name, brand:brands(color))'),
       supabase.from('social_posts').select('*, brand:brands(color)'),
       supabase.from('calendar_events').select('*, brand:brands(color)'),
@@ -137,6 +138,26 @@ export default function Calendario() {
       const mine = myCampaignIds.has(c.id);
       if (c.start_date) evts.push({ date: c.start_date, label: `Campanha início: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}`, mine });
       if (c.end_date) evts.push({ date: c.end_date, label: `Campanha fim: ${c.name}`, color, type: 'campanha', href: `/campanhas/${c.id}`, mine });
+    });
+
+    // Demandas de campanha (nível tarefa) — prazo final 🏁, na mesma lógica das demais
+    type CampTaskRow = { id: string; title: string; due_date: string | null; stage: string; assignee_id: string | null; campaign: { id: string; name: string; brand: { color: string } | null } | null };
+    ((campTasksRes.data as unknown as CampTaskRow[]) ?? []).forEach((t) => {
+      if (!t.due_date) return;
+      const done = t.stage === 'concluida' || t.stage === 'cancelada';
+      const overdue = !done && t.due_date < todayStr;
+      const color = overdue ? 'var(--red)' : t.campaign?.brand?.color ?? 'var(--accent)';
+      const mine = t.assignee_id === myId || (t.campaign ? myCampaignIds.has(t.campaign.id) : false);
+      evts.push({
+        id: `${t.id}-camptask`,
+        date: t.due_date,
+        label: t.campaign ? `🏁 ${t.title} (${t.campaign.name})` : `🏁 ${t.title}`,
+        color,
+        type: 'campanha',
+        href: t.campaign ? `/campanhas/${t.campaign.id}` : undefined,
+        highlight: overdue,
+        mine,
+      });
     });
 
     type MilestoneRow = { id: string; title: string; date: string | null; campaign: { id: string; name: string; brand: { color: string } | null } | null };
