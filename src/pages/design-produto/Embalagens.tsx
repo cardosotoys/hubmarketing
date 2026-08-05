@@ -574,7 +574,12 @@ export default function Embalagens({
       )}
 
       {showNew && (
-        <NewDemandModal products={products} onClose={() => setShowNew(false)} onCreate={createDemand} />
+        <NewDemandModal
+          products={products}
+          isCreation={String(track).startsWith('criacao')}
+          onClose={() => setShowNew(false)}
+          onCreate={createDemand}
+        />
       )}
 
       {blockInfo && (
@@ -643,14 +648,17 @@ export default function Embalagens({
   );
 }
 
-// Criação de demanda de embalagem — SKU é o PRIMEIRO vínculo (toda embalagem é de um SKU),
-// seguido de título e das três datas da jornada: Início (start), Meta e Prazo final.
+// Nova demanda de embalagem. Em MELHORIA o SKU já existe (vínculo principal, vem primeiro).
+// Em CRIAÇÃO o produto ainda não foi cadastrado — o título vem primeiro e o SKU é opcional
+// (vincula depois, quando o produto for criado).
 function NewDemandModal({
   products,
+  isCreation,
   onClose,
   onCreate,
 }: {
   products: Product[];
+  isCreation: boolean;
   onClose: () => void;
   onCreate: (fields: { product_id: string; title: string; start_date: string; target_date: string; due_date: string; priority: Priority }) => void;
 }) {
@@ -676,15 +684,37 @@ function NewDemandModal({
   return (
     <Modal title="Nova demanda de embalagem" onClose={onClose} wide>
       <form onSubmit={submit}>
-        <div className="form-field">
-          <label>1) Produto / SKU (vínculo principal)</label>
-          <ProductCombobox products={products} value={productId} onChange={(id) => { setProductId(id); if (!title && id) { const p = products.find((x) => x.id === id); if (p) setTitle(`Embalagem — ${p.code} ${p.name}`); } }} autoOpen />
-          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Digite o código ou nome do SKU. Ao escolher, sugerimos um título — é só ajustar.</span>
-        </div>
-        <div className="form-field">
-          <label htmlFor="nd-title">2) Título da demanda</label>
-          <input id="nd-title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex.: Embalagem primária — blister" />
-        </div>
+        {(() => {
+          const skuField = (
+            <div className="form-field" key="sku">
+              <label>{isCreation ? 'Produto / SKU (opcional — vincula depois)' : '1) Produto / SKU (vínculo principal)'}</label>
+              <ProductCombobox
+                products={products}
+                value={productId}
+                onChange={(id) => {
+                  setProductId(id);
+                  if (!title && id) {
+                    const p = products.find((x) => x.id === id);
+                    if (p) setTitle(`Embalagem — ${p.code} ${p.name}`);
+                  }
+                }}
+                autoOpen={!isCreation}
+              />
+              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                {isCreation
+                  ? 'Em Criação o produto ainda não existe — pode deixar “Sem produto vinculado” e vincular o SKU depois.'
+                  : 'Digite o código ou nome do SKU. Ao escolher, sugerimos um título — é só ajustar.'}
+              </span>
+            </div>
+          );
+          const titleField = (
+            <div className="form-field" key="title">
+              <label htmlFor="nd-title">{isCreation ? '1) Título da demanda' : '2) Título da demanda'}</label>
+              <input id="nd-title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex.: Embalagem primária — blister" />
+            </div>
+          );
+          return isCreation ? [titleField, skuField] : [skuField, titleField];
+        })()}
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="nd-start">Início (start)</label>
