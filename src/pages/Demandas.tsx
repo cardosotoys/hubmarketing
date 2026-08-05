@@ -82,17 +82,28 @@ export default function Demandas() {
   const [fPriority, setFPriority] = useState<'all' | Priority>('all');
   const [fStage, setFStage] = useState('all');
   const [sort, setSort] = useState<SortKey>('padrao');
-  const [hideFinal, setHideFinal] = useState(false);
+  // Escala: por padrão NÃO carrega finalizadas (o que cresce sem limite são as concluídas).
+  // Ligar "mostrar finalizadas" re-consulta incluindo tudo.
+  const [hideFinal, setHideFinal] = useState(true);
   const [hover, setHover] = useState<ProductHoverData>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    // Agora traz TUDO: demandas de projeto, de embalagem (packaging_track) e de campanha.
-    // A RLS já limita o que cada um pode ler; o filtro "só as minhas" pra Equipe é aplicado abaixo.
+    // Traz demandas de projeto, de embalagem (packaging_track) e de campanha. A RLS já limita o que
+    // cada um pode ler; o filtro "só as minhas" pra Equipe é aplicado abaixo. Quando hideFinal, as
+    // finalizadas são excluídas já no servidor (não vêm pra memória).
+    const finalRes = await supabase.from('stages').select('id').eq('is_final', true);
+    const finalIds = ((finalRes.data as { id: string }[]) ?? []).map((s) => s.id);
+    let tasksQ = supabase.from('tasks').select('*, project:projects(id, name)').order('position');
+    let campQ = supabase.from('campaign_tasks').select('*').order('position');
+    if (hideFinal) {
+      if (finalIds.length) tasksQ = tasksQ.not('stage_id', 'in', `(${finalIds.join(',')})`);
+      campQ = campQ.not('stage', 'in', '(concluida,cancelada)');
+    }
     const [tasksRes, campTasksRes, campaignsRes, profilesRes, projectsRes, filesRes, productsRes, stagesRes] =
       await Promise.all([
-        supabase.from('tasks').select('*, project:projects(id, name)').order('position'),
-        supabase.from('campaign_tasks').select('*').order('position'),
+        tasksQ,
+        campQ,
         supabase.from('campaigns').select('id, name').order('name'),
         supabase.from('profiles').select('*'),
         supabase.from('projects').select('*').order('name'),
@@ -113,7 +124,7 @@ export default function Demandas() {
     });
     setFileCounts(counts);
     setLoading(false);
-  }, []);
+  }, [hideFinal]);
 
   useEffect(() => {
     load();

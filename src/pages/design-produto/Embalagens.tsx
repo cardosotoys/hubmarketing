@@ -69,8 +69,15 @@ export default function Embalagens({
 
   const load = useCallback(async () => {
     setLoading(true);
+    // Quando "Ocultar finalizadas" está ligado, as finalizadas são excluídas já no servidor.
+    let tasksQ = supabase.from('tasks').select('*').is('project_id', null).eq('packaging_track', track).order('position');
+    if (hideDone) {
+      const finalRes = await supabase.from('stages').select('id').eq('packaging_track', track).eq('is_final', true);
+      const finalIds = ((finalRes.data as { id: string }[]) ?? []).map((s) => s.id);
+      if (finalIds.length) tasksQ = tasksQ.not('stage_id', 'in', `(${finalIds.join(',')})`);
+    }
     const [tasksRes, stagesRes, profilesRes, productsRes] = await Promise.all([
-      supabase.from('tasks').select('*').is('project_id', null).eq('packaging_track', track).order('position'),
+      tasksQ,
       supabase.from('stages').select('*').eq('packaging_track', track).order('position'),
       supabase.from('profiles').select('*'),
       supabase.from('products').select('*').order('code'),
@@ -94,7 +101,7 @@ export default function Embalagens({
       setActivity([]);
     }
     setLoading(false);
-  }, [track]);
+  }, [track, hideDone]);
 
   useEffect(() => {
     load();
