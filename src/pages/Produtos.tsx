@@ -72,7 +72,8 @@ export default function Produtos() {
   const load = useCallback(async () => {
     setLoading(true);
     let q = supabase.from('products').select('*, brand:brands(*)', { count: 'exact' });
-    const s = debouncedSearch.trim();
+    // remove caracteres que quebram a sintaxe do .or() do PostgREST (vírgula/parênteses/%)
+    const s = debouncedSearch.trim().replace(/[,()%*]/g, ' ').trim();
     if (s) q = q.or(`name.ilike.%${s}%,code.ilike.%${s}%`);
     if (brandFilter !== 'all') {
       const b = brands.find((x) => x.key === brandFilter);
