@@ -732,6 +732,13 @@ export const CAMPAIGN_TASK_STAGES: { key: CampaignTaskStage; label: string }[] =
   { key: 'cancelada', label: 'Cancelada' },
 ];
 
+export interface AccessPreset {
+  id: string;
+  name: string;
+  modules: string[]; // ModuleKey[] — conjunto de módulos que o preset libera
+  created_at: string;
+}
+
 export type Rag = 'low' | 'medium' | 'high';
 export const RAG_LEVELS: { key: Rag; label: string }[] = [
   { key: 'low', label: 'Baixa' },

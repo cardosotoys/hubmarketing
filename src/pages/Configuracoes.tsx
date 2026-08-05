@@ -10,6 +10,7 @@ import {
   MODULE_KEYS,
   MODULE_LABELS,
   ROLE_LABELS,
+  type AccessPreset,
   type Category,
   type CategoryScope,
   type Department,
@@ -18,20 +19,25 @@ import {
   type Role,
 } from '../types/database';
 
-const STABS = ['usuarios', 'perfis', 'categorias', 'tags', 'status', 'templates'] as const;
+const STABS = ['usuarios', 'perfis', 'presets', 'categorias', 'tags', 'status', 'templates'] as const;
 const STAB_LABELS: Record<(typeof STABS)[number], string> = {
   usuarios: 'Usuários',
   perfis: 'Perfis & Permissões',
+  presets: 'Presets de acesso',
   categorias: 'Categorias',
   tags: 'Tags',
   status: 'Status',
   templates: 'Templates',
 };
 
+// módulos essenciais que um preset nunca esconde (evita lockout ao aplicar)
+const ALWAYS_ON_MODULES: ModuleKey[] = ['perfil', 'configuracoes'];
+
 export default function Configuracoes() {
   const { profile } = useAuth();
   const [stab, setStab] = useState<(typeof STABS)[number]>('usuarios');
   const [users, setUsers] = useState<Profile[]>([]);
+  const [presets, setPresets] = useState<AccessPreset[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isDiretoria = profile?.role === 'diretoria';
@@ -45,7 +51,37 @@ export default function Configuracoes() {
         setUsers((data as Profile[]) ?? []);
         setLoading(false);
       });
+    supabase
+      .from('access_presets')
+      .select('*')
+      .order('name')
+      .then(({ data }) => setPresets((data as AccessPreset[]) ?? []));
   }, []);
+
+  async function reloadPresets() {
+    const { data } = await supabase.from('access_presets').select('*').order('name');
+    setPresets((data as AccessPreset[]) ?? []);
+  }
+
+  // Aplica um preset numa pessoa: os módulos do preset ficam "liberados" e todos os demais
+  // (fora os essenciais) ficam "ocultos" — o preset passa a definir exatamente o que ela vê.
+  async function applyPreset(userId: string, presetId: string) {
+    const user = users.find((u) => u.id === userId);
+    const preset = presets.find((p) => p.id === presetId);
+    if (!user || !preset) return;
+    const mods = preset.modules as ModuleKey[];
+    const extra_modules = mods.filter((m) => !ALWAYS_ON_MODULES.includes(m));
+    const hidden_modules = (MODULE_KEYS as readonly ModuleKey[]).filter(
+      (m) => !mods.includes(m) && !ALWAYS_ON_MODULES.includes(m),
+    );
+    const { error } = await supabase.from('profiles').update({ extra_modules, hidden_modules }).eq('id', userId);
+    if (!error) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, extra_modules, hidden_modules } : u)));
+      if (profile) {
+        await logActivity({ actorId: profile.id, actionText: 'Preset de acesso aplicado', detail: `${user.name} ← ${preset.name}` });
+      }
+    }
+  }
 
   async function changeRole(userId: string, role: Role) {
     const user = users.find((u) => u.id === userId);
@@ -203,8 +239,16 @@ export default function Configuracoes() {
             loading ? (
               <div className="page-sub">Carregando…</div>
             ) : (
-              <PermissoesView users={users} isDiretoria={isDiretoria} onSetOverride={setModuleOverride} />
+              <PermissoesView
+                users={users}
+                presets={presets}
+                isDiretoria={isDiretoria}
+                onSetOverride={setModuleOverride}
+                onApplyPreset={applyPreset}
+              />
             )
+          ) : stab === 'presets' ? (
+            <PresetsView presets={presets} onChanged={reloadPresets} actorId={profile?.id ?? ''} />
           ) : stab === 'categorias' ? (
             <CategoriasView />
           ) : stab === 'status' ? (
@@ -225,14 +269,19 @@ export default function Configuracoes() {
 
 function PermissoesView({
   users,
+  presets,
   isDiretoria,
   onSetOverride,
+  onApplyPreset,
 }: {
   users: Profile[];
+  presets: AccessPreset[];
   isDiretoria: boolean;
   onSetOverride: (userId: string, moduleKey: ModuleKey, mode: 'padrao' | 'oculto' | 'liberado') => void;
+  onApplyPreset: (userId: string, presetId: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState(users[0]?.id ?? '');
+  const [presetId, setPresetId] = useState('');
   const selected = users.find((u) => u.id === selectedId);
   const restricted = selected ? !isDiretoria && selected.role === 'diretoria' : false;
 
@@ -241,17 +290,48 @@ function PermissoesView({
       <div className="page-sub" style={{ marginBottom: 14 }}>
         Cada papel (Diretoria/Equipe/Administrador) e departamento já libera um conjunto padrão de módulos. Aqui você
         pode moldar isso por pessoa: ocultar um módulo que o perfil dela normalmente veria, ou liberar um módulo extra
-        (ex.: convidar alguém da Equipe pro módulo Redes Sociais como social media).
+        (ex.: convidar alguém da Equipe pro módulo Redes Sociais como social media). Pra vários módulos de uma vez, use
+        um <b>preset</b>.
       </div>
-      <div className="form-field" style={{ maxWidth: 360 }}>
-        <label htmlFor="perm-user">Pessoa</label>
-        <select id="perm-user" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name} — {ROLE_LABELS[u.role]}
-            </option>
-          ))}
-        </select>
+      <div className="responsive-row" style={{ maxWidth: 720 }}>
+        <div className="form-field" style={{ flex: 1 }}>
+          <label htmlFor="perm-user">Pessoa</label>
+          <select id="perm-user" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} — {ROLE_LABELS[u.role]}
+              </option>
+            ))}
+          </select>
+        </div>
+        {selected && !restricted && (
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="perm-preset">Aplicar preset de acesso</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select id="perm-preset" value={presetId} onChange={(e) => setPresetId(e.target.value)} style={{ flex: 1 }}>
+                <option value="">— escolher preset —</option>
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.modules.length})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn sm"
+                disabled={!presetId}
+                onClick={() => {
+                  const p = presets.find((x) => x.id === presetId);
+                  if (p && confirm(`Aplicar o preset "${p.name}" em ${selected.name}? Isso redefine os módulos visíveis dessa pessoa.`)) {
+                    onApplyPreset(selected.id, presetId);
+                  }
+                }}
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selected &&
@@ -305,6 +385,110 @@ function PermissoesView({
             </tbody>
           </table>
         ))}
+    </div>
+  );
+}
+
+function PresetsView({ presets, onChanged, actorId }: { presets: AccessPreset[]; onChanged: () => void; actorId: string }) {
+  const [name, setName] = useState('');
+  const [mods, setMods] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function toggle(k: string) {
+    setMods((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+  }
+
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError('Dê um nome ao preset.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase.from('access_presets').insert({ name: name.trim(), modules: mods });
+    setBusy(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    if (actorId) await logActivity({ actorId, actionText: 'Preset de acesso criado', detail: name.trim() });
+    setName('');
+    setMods([]);
+    onChanged();
+  }
+
+  async function remove(p: AccessPreset) {
+    if (!confirm(`Excluir o preset "${p.name}"?`)) return;
+    await supabase.from('access_presets').delete().eq('id', p.id);
+    if (actorId) await logActivity({ actorId, actionText: 'Preset de acesso excluído', detail: p.name });
+    onChanged();
+  }
+
+  return (
+    <div>
+      <div className="page-sub" style={{ marginBottom: 14 }}>
+        Conjuntos de módulos por cargo/setor. Crie um preset e aplique-o nas pessoas em <b>Perfis &amp; Permissões</b> — evita
+        ligar módulo por módulo quando um setor novo entra.
+      </div>
+      <form onSubmit={create} className="panel" style={{ marginBottom: 16 }}>
+        <div className="form-field">
+          <label htmlFor="preset-name">Nome do preset</label>
+          <input id="preset-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: Comercial — Equipe" />
+        </div>
+        <div className="form-field">
+          <label>Módulos liberados</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {MODULE_KEYS.map((k) => (
+              <label key={k} className="filter-chip" style={{ cursor: 'pointer' }}>
+                <input type="checkbox" checked={mods.includes(k)} onChange={() => toggle(k)} style={{ width: 'auto', marginRight: 6 }} />
+                {MODULE_LABELS[k]}
+              </label>
+            ))}
+          </div>
+        </div>
+        {error && (
+          <div className="banner error">
+            <span className="ic">⚠</span>
+            <span>{error}</span>
+          </div>
+        )}
+        <button className="btn" disabled={busy}>
+          {busy ? 'Salvando…' : 'Criar preset'}
+        </button>
+      </form>
+      <table className="simple">
+        <thead>
+          <tr>
+            <th>Preset</th>
+            <th>Módulos</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {presets.map((p) => (
+            <tr key={p.id}>
+              <td data-label="Preset">{p.name}</td>
+              <td data-label="Módulos" style={{ color: 'var(--text-faint)' }}>
+                {p.modules.map((m) => MODULE_LABELS[m as ModuleKey] ?? m).join(', ') || '—'}
+              </td>
+              <td>
+                <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => remove(p)}>
+                  ✕
+                </button>
+              </td>
+            </tr>
+          ))}
+          {presets.length === 0 && (
+            <tr>
+              <td colSpan={3} style={{ color: 'var(--text-faint)' }}>
+                Nenhum preset ainda. Crie o primeiro acima.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
