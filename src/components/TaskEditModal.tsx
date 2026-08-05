@@ -428,43 +428,63 @@ export default function TaskEditModal({
         {/* Imagem do produto vinculado (SKU) — direto na demanda */}
         {(() => {
           const sel = products?.find((p) => p.id === productId);
-          if (!sel || (!sel.image_url && !sel.packaging_image_url)) return null;
+          if (!sel) return null;
           const imgs = [
             { url: sel.image_url, cap: '📦 Produto' },
             { url: sel.packaging_image_url, cap: '🎁 Embalagem' },
-          ].filter((i) => i.url);
+          ];
+          const hasAny = imgs.some((i) => i.url);
           return (
             <div className="form-field">
               <label>
                 Produto vinculado — <span style={{ fontFamily: 'monospace' }}>{sel.code}</span> {sel.name}
               </label>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {imgs.map((i) => (
-                  <a
-                    key={i.cap}
-                    href={i.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ textDecoration: 'none', color: 'var(--text-faint)' }}
-                    title="Abrir imagem"
-                  >
-                    <img
-                      src={i.url}
-                      alt={i.cap}
-                      style={{
-                        width: 132,
-                        height: 132,
-                        objectFit: 'contain',
-                        background: 'var(--surface-2)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        display: 'block',
-                      }}
-                    />
-                    <span style={{ fontSize: 11, display: 'block', textAlign: 'center', marginTop: 4 }}>{i.cap}</span>
-                  </a>
-                ))}
-              </div>
+              {hasAny ? (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {imgs
+                    .filter((i) => i.url)
+                    .map((i) => (
+                      <a
+                        key={i.cap}
+                        href={i.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: 'none', color: 'var(--text-faint)' }}
+                        title="Abrir imagem"
+                      >
+                        <img
+                          src={i.url}
+                          alt={i.cap}
+                          style={{
+                            width: 132,
+                            height: 132,
+                            objectFit: 'contain',
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 8,
+                            display: 'block',
+                          }}
+                        />
+                        <span style={{ fontSize: 11, display: 'block', textAlign: 'center', marginTop: 4 }}>{i.cap}</span>
+                      </a>
+                    ))}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--text-faint)',
+                    background: 'var(--surface-2)',
+                    border: '1px dashed var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                  }}
+                >
+                  Nenhuma imagem cadastrada para este SKU. Cadastre em <b>Produtos</b> → abra o produto{' '}
+                  <span style={{ fontFamily: 'monospace' }}>{sel.code}</span> → 📦 Imagem do produto / 🎁 Imagem da embalagem →
+                  “Enviar imagem”.
+                </div>
+              )}
             </div>
           );
         })()}
