@@ -38,25 +38,74 @@ export default function Produtos() {
   // pop-up com a imagem ao passar o mouse na linha
   const [preview, setPreview] = useState<{ url: string; packaging: string; code: string; name: string; x: number; y: number } | null>(null);
 
+  // paginação no servidor — não carrega mais o catálogo inteiro de uma vez
+  const PAGE_SIZE = 50;
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  // opções dos filtros (carregadas 1x, leves)
+  const [lines, setLines] = useState<string[]>([]);
+  const [toyCategories, setToyCategories] = useState<string[]>([]);
+  const [ageRanges, setAgeRanges] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<string[]>([]);
+
+  // carga estática (1x): marcas, etapas, opções de filtro e contagem de "revisar"
+  const loadStatics = useCallback(async () => {
+    const [brandsRes, stagesRes, optRes, reviewRes] = await Promise.all([
+      supabase.from('brands').select('*'),
+      supabase.from('stages').select('*'),
+      supabase.from('products').select('line, toy_category, age_range, dimensions, product_length_mm, product_width_mm, product_height_mm'),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('needs_review', true),
+    ]);
+    setBrands((brandsRes.data as Brand[]) ?? []);
+    setStages((stagesRes.data as ProjectStage[]) ?? []);
+    const rows = (optRes.data as Product[]) ?? [];
+    const uniq = (arr: (string | null | undefined)[]) => Array.from(new Set(arr.filter(Boolean) as string[])).sort();
+    setLines(uniq(rows.map((r) => r.line)));
+    setToyCategories(uniq(rows.map((r) => r.toy_category)));
+    setAgeRanges(uniq(rows.map((r) => r.age_range)));
+    setSizes(uniq(rows.map(sizeLabel)));
+    setReviewCount(reviewRes.count ?? 0);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const [productsRes, brandsRes, packagingRes, stagesRes] = await Promise.all([
-      supabase.from('products').select('*, brand:brands(*)').order('code'),
-      supabase.from('brands').select('*'),
-      supabase
+    let q = supabase.from('products').select('*, brand:brands(*)', { count: 'exact' });
+    const s = debouncedSearch.trim();
+    if (s) q = q.or(`name.ilike.%${s}%,code.ilike.%${s}%`);
+    if (brandFilter !== 'all') {
+      const b = brands.find((x) => x.key === brandFilter);
+      if (b) q = q.eq('brand_id', b.id);
+    }
+    if (lineFilter !== 'all') q = q.eq('line', lineFilter);
+    if (categoryFilter !== 'all') q = q.eq('toy_category', categoryFilter);
+    if (ageFilter !== 'all') q = q.eq('age_range', ageFilter);
+    if (sizeFilter !== 'all') q = q.eq('dimensions', sizeFilter);
+    if (licensedFilter === 'licensed') q = q.eq('licensed', true);
+    if (licensedFilter === 'own') q = q.eq('licensed', false);
+    const col = sort === 'name' ? 'name' : sort === 'brand' ? 'brand_id' : sort === 'line' ? 'line' : sort === 'category' ? 'toy_category' : sort === 'age' ? 'age_range' : 'code';
+    q = q.order(col, { ascending: true });
+    const from = page * PAGE_SIZE;
+    q = q.range(from, from + PAGE_SIZE - 1);
+    const { data, count } = await q;
+    const list = (data as ProductWithBrand[]) ?? [];
+    setProducts(list);
+    setTotal(count ?? 0);
+    const ids = list.map((p) => p.id);
+    if (ids.length) {
+      const { data: pk } = await supabase
         .from('tasks')
         .select('id, product_id, stage_id, priority, updated_at')
-        .not('product_id', 'is', null)
+        .in('product_id', ids)
         .not('packaging_track', 'is', null)
-        .order('updated_at', { ascending: false }),
-      supabase.from('stages').select('*'),
-    ]);
-    setProducts((productsRes.data as ProductWithBrand[]) ?? []);
-    setBrands((brandsRes.data as Brand[]) ?? []);
-    setPackagingTasks((packagingRes.data as PackagingTaskStub[] | null) ?? []);
-    setStages((stagesRes.data as ProjectStage[]) ?? []);
+        .order('updated_at', { ascending: false });
+      setPackagingTasks((pk as PackagingTaskStub[]) ?? []);
+    } else {
+      setPackagingTasks([]);
+    }
     setLoading(false);
-  }, []);
+  }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, sort, page, brands]);
 
   const stagesById = useMemo(() => Object.fromEntries(stages.map((s) => [s.id, s])), [stages]);
 
@@ -84,64 +133,23 @@ export default function Produtos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const lines = useMemo(() => {
-    const set = new Set(products.map((p) => p.line).filter(Boolean));
-    return Array.from(set).sort();
-  }, [products]);
+  // carga estática (marcas/etapas/opções/contagem) — 1x
+  useEffect(() => {
+    loadStatics();
+  }, [loadStatics]);
 
-  const ageRanges = useMemo(() => {
-    const set = new Set(products.map((p) => p.age_range).filter(Boolean));
-    return Array.from(set).sort();
-  }, [products]);
+  // debounce da busca (não bate no servidor a cada tecla)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const sizes = useMemo(() => {
-    const set = new Set(products.map(sizeLabel).filter(Boolean));
-    return Array.from(set).sort();
-  }, [products]);
+  // volta pra primeira página quando qualquer filtro/ordenção muda
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, sort]);
 
-  const toyCategories = useMemo(() => {
-    const set = new Set(products.map((p) => p.toy_category).filter(Boolean));
-    return Array.from(set).sort();
-  }, [products]);
-
-  const filtered = products.filter((p) => {
-    if (brandFilter !== 'all' && p.brand?.key !== brandFilter) return false;
-    if (lineFilter !== 'all' && p.line !== lineFilter) return false;
-    if (categoryFilter !== 'all' && p.toy_category !== categoryFilter) return false;
-    if (ageFilter !== 'all' && p.age_range !== ageFilter) return false;
-    if (sizeFilter !== 'all' && sizeLabel(p) !== sizeFilter) return false;
-    if (licensedFilter === 'licensed' && !p.licensed) return false;
-    if (licensedFilter === 'own' && p.licensed) return false;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      if (!p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
-
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      switch (sort) {
-        case 'name':
-          return a.name.localeCompare(b.name, 'pt-BR');
-        case 'brand':
-          return (a.brand?.label ?? '').localeCompare(b.brand?.label ?? '', 'pt-BR') || a.code.localeCompare(b.code);
-        case 'line':
-          return (a.line || 'zzz').localeCompare(b.line || 'zzz', 'pt-BR') || a.code.localeCompare(b.code);
-        case 'category':
-          return (a.toy_category || 'zzz').localeCompare(b.toy_category || 'zzz', 'pt-BR') || a.code.localeCompare(b.code);
-        case 'age':
-          return (a.age_range || 'zzz').localeCompare(b.age_range || 'zzz', 'pt-BR') || a.code.localeCompare(b.code);
-        default:
-          return a.code.localeCompare(b.code, 'pt-BR', { numeric: true });
-      }
-    });
-    return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, sort]);
-
-  const reviewCount = products.filter((p) => p.needs_review).length;
+  const sorted = products; // já vem paginado/filtrado/ordenado do servidor
   const canEdit = profile?.department !== 'assistente';
 
   return (
@@ -224,7 +232,7 @@ export default function Produtos() {
       </div>
 
       <div className="section-head">
-        <h2>{filtered.length} produtos</h2>
+        <h2>{total} produtos</h2>
         {canEdit && (
           <button className="btn" onClick={() => setShowNew(true)}>
             + Novo produto
@@ -340,6 +348,20 @@ export default function Produtos() {
         </table>
       )}
 
+      {!loading && total > PAGE_SIZE && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', marginTop: 14 }}>
+          <button className="btn ghost sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            ← Anterior
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+            Página {page + 1} de {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+          </span>
+          <button className="btn ghost sm" disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((p) => p + 1)}>
+            Próxima →
+          </button>
+        </div>
+      )}
+
       {showNew && profile && (
         <ProductFormModal
           brands={brands}
@@ -348,6 +370,7 @@ export default function Produtos() {
           onSaved={() => {
             setShowNew(false);
             load();
+            loadStatics();
           }}
         />
       )}
@@ -361,6 +384,7 @@ export default function Produtos() {
           onSaved={() => {
             setEditing(null);
             load();
+            loadStatics();
           }}
         />
       )}
