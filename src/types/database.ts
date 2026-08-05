@@ -246,6 +246,17 @@ export interface Task {
   updated_at: string;
 }
 
+export type ApprovalDecision = 'pendente' | 'aprovado' | 'correcao';
+export interface TaskApproval {
+  id: string;
+  task_id: string;
+  approver_id: string;
+  decision: ApprovalDecision;
+  note: string;
+  decided_at: string | null;
+  created_at: string;
+}
+
 export interface TaskChecklistItem {
   id: string;
   task_id: string;

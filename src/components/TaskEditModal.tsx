@@ -10,6 +10,8 @@ import {
   PRIORITIES,
   PRIORITY_LABELS,
   type ApprovalState,
+  type ApprovalDecision,
+  type TaskApproval,
   type Priority,
   type Product,
   type ProjectFile,
@@ -80,10 +82,10 @@ export default function TaskEditModal({
   const [commentBody, setCommentBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
 
-  // Fluxo de aprovação (approvalState é derivado da task; muda ao salvar/recarregar)
-  const approvalState: ApprovalState = task.approval_state ?? 'none';
-  const [approverId, setApproverId] = useState(task.approval_requested_to ?? '');
-  const [approvalNote, setApprovalNote] = useState(task.approval_note ?? '');
+  // Fluxo de aprovação — múltiplos decisores (task_approvals)
+  const [approvals, setApprovals] = useState<(TaskApproval & { approver: { name: string } | null })[]>([]);
+  const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
+  const [approvalNote, setApprovalNote] = useState('');
 
   useEffect(() => {
     supabase
@@ -94,8 +96,18 @@ export default function TaskEditModal({
       .then(({ data }) => setFiles((data as ProjectFile[]) ?? []));
     loadComments();
     loadChecklist();
+    loadApprovals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);
+
+  async function loadApprovals() {
+    const { data } = await supabase
+      .from('task_approvals')
+      .select('*, approver:profiles!task_approvals_approver_id_fkey(name)')
+      .eq('task_id', task.id)
+      .order('created_at');
+    setApprovals((data as (TaskApproval & { approver: { name: string } | null })[]) ?? []);
+  }
 
   async function loadComments() {
     const { data } = await supabase
@@ -254,47 +266,77 @@ export default function TaskEditModal({
     loadChecklist();
   }
 
-  // ---- Aprovação por menção ----
+  // ---- Aprovação por menção — múltiplos decisores ----
   const actorRole = profiles.find((p) => p.id === actorId)?.role;
-  const canApprove = actorId === task.approval_requested_to || actorRole === 'diretoria' || actorRole === 'administrador';
+  const isPrivileged = actorRole === 'diretoria' || actorRole === 'administrador';
+  const approvedCount = approvals.filter((a) => a.decision === 'aprovado').length;
+  const anyCorrection = approvals.some((a) => a.decision === 'correcao');
+  const allApproved = approvals.length > 0 && approvedCount === approvals.length;
+  const apprState: ApprovalState = approvals.length === 0 ? 'none' : anyCorrection ? 'correcao' : allApproved ? 'aprovado' : 'aguardando';
+  function canDecide(a: TaskApproval) {
+    return actorId === a.approver_id || isPrivileged;
+  }
+
+  async function setAggregate(list: { decision: ApprovalDecision }[]) {
+    const st: ApprovalState = list.length === 0 ? 'none' : list.some((a) => a.decision === 'correcao') ? 'correcao' : list.every((a) => a.decision === 'aprovado') ? 'aprovado' : 'aguardando';
+    await supabase.from('tasks').update({ approval_state: st }).eq('id', task.id);
+  }
+
+  function toggleApprover(id: string) {
+    setSelectedApprovers((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
 
   async function requestApproval() {
-    if (!approverId) {
-      setFormError('Escolha quem vai aprovar.');
+    if (!selectedApprovers.length) {
+      setFormError('Escolha ao menos um aprovador.');
       return;
     }
     setFormError(null);
-    // avisa a pessoa via comentário com menção (dispara a notificação que já existe)
-    const approverName = profiles.find((p) => p.id === approverId)?.name ?? '';
-    await supabase.from('task_comments').insert({
-      task_id: task.id,
-      author_id: actorId,
-      body: `@${approverName} pedido de aprovação${approvalNote.trim() ? `: ${approvalNote.trim()}` : ''}`,
-      mentioned_ids: [approverId],
-    });
-    onSave({ approval_state: 'aguardando', approval_requested_to: approverId, approval_note: approvalNote });
+    await supabase.from('task_approvals').upsert(
+      selectedApprovers.map((id) => ({ task_id: task.id, approver_id: id, decision: 'pendente', note: approvalNote })),
+      { onConflict: 'task_id,approver_id' },
+    );
+    // avisa cada aprovador via menção (dispara a notificação que já existe)
+    for (const id of selectedApprovers) {
+      const name = profiles.find((p) => p.id === id)?.name ?? '';
+      await supabase.from('task_comments').insert({
+        task_id: task.id,
+        author_id: actorId,
+        body: `@${name} pedido de aprovação${approvalNote.trim() ? `: ${approvalNote.trim()}` : ''}`,
+        mentioned_ids: [id],
+      });
+    }
+    await supabase.from('tasks').update({ approval_state: 'aguardando' }).eq('id', task.id);
+    setSelectedApprovers([]);
+    setApprovalNote('');
+    loadApprovals();
+    loadComments();
   }
 
-  function requestCorrection() {
-    onSave({ approval_state: 'correcao' });
+  async function decide(a: TaskApproval, decision: ApprovalDecision) {
+    await supabase.from('task_approvals').update({ decision, decided_at: new Date().toISOString() }).eq('id', a.id);
+    await setAggregate(approvals.map((x) => (x.id === a.id ? { decision } : { decision: x.decision })));
+    loadApprovals();
   }
 
-  // Aprovar = "seguir o fluxo": avança para a próxima etapa (se houver) e zera a aprovação
-  function approveAndAdvance() {
+  async function removeApprover(a: TaskApproval) {
+    await supabase.from('task_approvals').delete().eq('id', a.id);
+    const rest = approvals.filter((x) => x.id !== a.id);
+    await setAggregate(rest);
+    loadApprovals();
+  }
+
+  // Todos aprovaram → "seguir o fluxo": avança para a próxima etapa e limpa as aprovações
+  async function approveAndAdvance() {
     const idx = sortedStages.findIndex((s) => s.id === task.stage_id);
     const next = sortedStages[idx + 1];
     if (next && blocksAdvanceTo(next.id)) {
-      setFormError(
-        `Há ${pendingGates.length} item(ns) obrigatório(s) do checklist pendente(s) — conclua-os antes de aprovar e avançar.`,
-      );
+      setFormError(`Há ${pendingGates.length} item(ns) obrigatório(s) do checklist pendente(s) — conclua-os antes de avançar.`);
       return;
     }
     setFormError(null);
-    onSave({
-      approval_state: 'none',
-      approval_requested_to: null,
-      stage_id: next ? next.id : task.stage_id,
-    });
+    await supabase.from('task_approvals').delete().eq('task_id', task.id);
+    onSave({ approval_state: 'none', approval_requested_to: null, stage_id: next ? next.id : task.stage_id });
   }
 
   async function addFile(e: FormEvent) {
@@ -446,66 +488,73 @@ export default function TaskEditModal({
         )}
       </form>
 
-      {/* Fluxo de aprovação */}
+      {/* Fluxo de aprovação — múltiplos decisores */}
       <div className="panel" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h4 style={{ margin: 0 }}>Aprovação</h4>
-          <span className="tag" style={{ background: 'var(--surface-2)', color: APPROVAL_COLOR[approvalState] }}>
-            {APPROVAL_STATE_LABELS[approvalState]}
+          <span className="tag" style={{ background: 'var(--surface-2)', color: APPROVAL_COLOR[apprState] }}>
+            {APPROVAL_STATE_LABELS[apprState]}
+            {approvals.length > 0 ? ` · ${approvedCount}/${approvals.length} aprovaram` : ''}
           </span>
         </div>
 
-        {approvalState === 'aguardando' ? (
-          <div style={{ marginTop: 8 }}>
-            <div className="field-row">
-              <span className="k">Aprovador</span>
-              <span>{profiles.find((p) => p.id === task.approval_requested_to)?.name ?? '—'}</span>
+        {/* aprovadores atuais + decisão de cada um */}
+        {approvals.map((a) => {
+          const color = a.decision === 'aprovado' ? 'var(--green)' : a.decision === 'correcao' ? 'var(--red)' : 'var(--text-faint)';
+          const label = a.decision === 'aprovado' ? '✓ aprovou' : a.decision === 'correcao' ? '✕ pediu correção' : 'pendente';
+          return (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ flex: 1 }}>{a.approver?.name ?? '—'}</span>
+              <span className="tag" style={{ background: 'var(--surface-2)', color }}>{label}</span>
+              {canDecide(a) && a.decision !== 'aprovado' && (
+                <button type="button" className="btn ghost sm" style={{ color: 'var(--green)' }} onClick={() => decide(a, 'aprovado')}>Aprovar</button>
+              )}
+              {canDecide(a) && a.decision !== 'correcao' && (
+                <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => decide(a, 'correcao')}>Correção</button>
+              )}
+              <button type="button" className="btn ghost sm" title="Remover aprovador" onClick={() => removeApprover(a)}>✕</button>
             </div>
-            {task.approval_note && (
-              <div className="field-row">
-                <span className="k">Observação</span>
-                <span>{task.approval_note}</span>
-              </div>
-            )}
-            {canApprove ? (
-              <div className="responsive-row" style={{ marginTop: 8 }}>
-                <button type="button" className="btn sm" style={{ background: 'var(--green)' }} onClick={approveAndAdvance}>
-                  ✓ Aprovar e seguir o fluxo
-                </button>
-                <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={requestCorrection}>
-                  Solicitar correção
-                </button>
-              </div>
-            ) : (
-              <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 6 }}>
-                Só o aprovador designado (ou a Diretoria) pode aprovar.
-              </p>
-            )}
+          );
+        })}
+
+        {allApproved && (
+          <button type="button" className="btn sm" style={{ background: 'var(--green)', marginTop: 8 }} onClick={approveAndAdvance}>
+            ✓ Todos aprovaram — avançar etapa
+          </button>
+        )}
+
+        {/* adicionar / pedir aprovação de várias pessoas */}
+        <div style={{ marginTop: 10 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-faint)' }}>Pedir aprovação a (pode escolher vários):</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0' }}>
+            {profiles.map((p) => {
+              const already = approvals.some((a) => a.approver_id === p.id);
+              const sel = selectedApprovers.includes(p.id);
+              return (
+                <span
+                  key={p.id}
+                  onClick={() => !already && toggleApprover(p.id)}
+                  className="pill"
+                  style={{
+                    cursor: already ? 'default' : 'pointer',
+                    opacity: already ? 0.4 : 1,
+                    background: sel ? 'var(--accent-dim)' : 'var(--surface-2)',
+                    color: sel ? 'var(--accent)' : 'var(--text-faint)',
+                    border: sel ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  }}
+                >
+                  {sel ? '✓ ' : ''}{p.name}{already ? ' (já)' : ''}
+                </span>
+              );
+            })}
           </div>
-        ) : (
-          <div style={{ marginTop: 8 }}>
-            <div className="responsive-row">
-              <div className="form-field" style={{ flex: 1 }}>
-                <label htmlFor="te-approver">Pedir aprovação a</label>
-                <select id="te-approver" value={approverId} onChange={(e) => setApproverId(e.target.value)}>
-                  <option value="">— escolher pessoa —</option>
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-field" style={{ flex: 2 }}>
-                <label htmlFor="te-approval-note">Observação (opcional)</label>
-                <input id="te-approval-note" value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} />
-              </div>
-            </div>
-            <button type="button" className="btn sm" onClick={requestApproval}>
-              Solicitar aprovação
+          <div className="responsive-row">
+            <input placeholder="Observação (opcional)" value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} style={{ flex: 1 }} />
+            <button type="button" className="btn sm" onClick={requestApproval} disabled={!selectedApprovers.length}>
+              Solicitar aprovação{selectedApprovers.length > 0 ? ` (${selectedApprovers.length})` : ''}
             </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Sub-etapas da etapa atual + checklist livre (item-gate = limitador de avanço) */}
