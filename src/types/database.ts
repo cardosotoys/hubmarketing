@@ -98,6 +98,7 @@ export interface Profile {
   extra_modules: string[];
   theme: Theme;
   font_scale: FontScale;
+  disabled: boolean;
   created_at: string;
 }
 

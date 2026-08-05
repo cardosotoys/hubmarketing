@@ -25,7 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadProfile(userId: string) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (!error) setProfile(data as Profile);
+    if (error) return;
+    // acesso desativado por um admin → não entra no hub
+    if ((data as Profile)?.disabled) {
+      setProfile(null);
+      await supabase.auth.signOut();
+      if (typeof window !== 'undefined') window.alert('Seu acesso ao Cardoso Hub foi desativado. Fale com a Diretoria.');
+      return;
+    }
+    setProfile(data as Profile);
   }
 
   useEffect(() => {

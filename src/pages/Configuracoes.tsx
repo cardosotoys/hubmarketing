@@ -73,6 +73,21 @@ export default function Configuracoes() {
     }
   }
 
+  async function changeDisabled(userId: string, disabled: boolean) {
+    const user = users.find((u) => u.id === userId);
+    const { error } = await supabase.from('profiles').update({ disabled }).eq('id', userId);
+    if (!error) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, disabled } : u)));
+      if (profile) {
+        await logActivity({
+          actorId: profile.id,
+          actionText: disabled ? 'Acesso de usuário desativado' : 'Acesso de usuário reativado',
+          detail: user?.name ?? userId,
+        });
+      }
+    }
+  }
+
   async function setModuleOverride(userId: string, moduleKey: ModuleKey, mode: 'padrao' | 'oculto' | 'liberado') {
     const user = users.find((u) => u.id === userId);
     if (!user) return;
@@ -118,14 +133,23 @@ export default function Configuracoes() {
                     <th>Departamento</th>
                     <th>Cargo</th>
                     <th></th>
+                    <th>Acesso</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u) => {
                     const restricted = !isDiretoria && u.role === 'diretoria';
+                    const isSelf = u.id === profile?.id;
                     return (
-                      <tr key={u.id}>
-                        <td data-label="Usuário">{u.name}</td>
+                      <tr key={u.id} style={u.disabled ? { opacity: 0.55 } : undefined}>
+                        <td data-label="Usuário">
+                          {u.name}
+                          {u.disabled && (
+                            <span className="pill" style={{ marginLeft: 6, background: 'var(--red-dim)', color: 'var(--red)' }}>
+                              desativado
+                            </span>
+                          )}
+                        </td>
                         <td data-label="Papel">
                           <span className="pill">{ROLE_LABELS[u.role]}</span>
                         </td>
@@ -152,6 +176,21 @@ export default function Configuracoes() {
                               <option value="administrador">Administrador</option>
                               <option value="diretoria">Diretoria</option>
                             </select>
+                          )}
+                        </td>
+                        <td data-label="Acesso">
+                          {isSelf ? (
+                            <span style={{ color: 'var(--text-faint)' }}>você</span>
+                          ) : restricted ? (
+                            <span style={{ color: 'var(--text-faint)' }}>🔒</span>
+                          ) : u.disabled ? (
+                            <button className="btn ghost sm" style={{ color: 'var(--green)' }} onClick={() => changeDisabled(u.id, false)}>
+                              Reativar
+                            </button>
+                          ) : (
+                            <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => changeDisabled(u.id, true)}>
+                              Desativar
+                            </button>
                           )}
                         </td>
                       </tr>
