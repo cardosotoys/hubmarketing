@@ -35,6 +35,8 @@ export default function Produtos() {
   const [editing, setEditing] = useState<ProductWithBrand | null>(null);
   const [packagingTasks, setPackagingTasks] = useState<PackagingTaskStub[]>([]);
   const [stages, setStages] = useState<ProjectStage[]>([]);
+  // pop-up com a imagem ao passar o mouse na linha
+  const [preview, setPreview] = useState<{ url: string; packaging: string; code: string; name: string; x: number; y: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -252,7 +254,17 @@ export default function Produtos() {
               const pkg = packagingByProduct.get(p.id);
               const pkgStage = pkg && stagesById[pkg.stage_id];
               return (
-                <tr key={p.id} onClick={() => canEdit && setEditing(p)} style={canEdit ? { cursor: 'pointer' } : undefined}>
+                <tr
+                  key={p.id}
+                  onClick={() => canEdit && setEditing(p)}
+                  onMouseEnter={(e) =>
+                    (p.image_url || p.packaging_image_url) &&
+                    setPreview({ url: p.image_url, packaging: p.packaging_image_url, code: p.code, name: p.name, x: e.clientX, y: e.clientY })
+                  }
+                  onMouseMove={(e) => setPreview((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+                  onMouseLeave={() => setPreview(null)}
+                  style={canEdit ? { cursor: 'pointer' } : undefined}
+                >
                   <td className="mono" data-label="Código">
                     {p.code}
                   </td>
@@ -351,6 +363,45 @@ export default function Produtos() {
             load();
           }}
         />
+      )}
+
+      {preview && (preview.url || preview.packaging) && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.min(preview.x + 20, window.innerWidth - 300),
+            top: Math.min(preview.y + 20, window.innerHeight - 320),
+            zIndex: 1000,
+            pointerEvents: 'none',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            padding: 10,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+            width: 280,
+          }}
+        >
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
+            <span className="mono">{preview.code}</span> — {preview.name}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { url: preview.url, cap: '📦 Produto' },
+              { url: preview.packaging, cap: '🎁 Embalagem' },
+            ]
+              .filter((i) => i.url)
+              .map((i) => (
+                <figure key={i.cap} style={{ margin: 0, flex: 1 }}>
+                  <img
+                    src={i.url}
+                    alt={i.cap}
+                    style={{ width: '100%', height: 150, objectFit: 'contain', background: 'var(--surface-2)', borderRadius: 6, border: '1px solid var(--border)' }}
+                  />
+                  <figcaption style={{ fontSize: 11, color: 'var(--text-faint)', textAlign: 'center', marginTop: 4 }}>{i.cap}</figcaption>
+                </figure>
+              ))}
+          </div>
+        </div>
       )}
     </div>
   );
