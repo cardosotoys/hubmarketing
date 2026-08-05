@@ -79,8 +79,14 @@ async function insertMany(table, rows, ret) {
   return out;
 }
 
-async function resolveProfiles() {
-  // e-mail → id (profiles.id = auth.users.id)
+const EMAIL_KEYWORD = {
+  'marketing.embalagens@cardosotoys.com.br': ['bruna'],
+  'marketing.operacoes@cardosotoys.com.br': ['stefany', 'shumiski'],
+  'matheus.cardoso@cardosotoys.com.br': ['matheus'],
+  'marketing.digital@cardosotoys.com.br': ['aldair'],
+};
+
+async function loadPeople() {
   const emailToId = {};
   let page = 1;
   for (;;) {
@@ -90,7 +96,20 @@ async function resolveProfiles() {
     if (data.users.length < 1000) break;
     page += 1;
   }
-  return emailToId;
+  const { data: profs } = await db.from('profiles').select('id, name');
+  const nameToId = (profs ?? []).map((p) => [String(p.name || '').toLowerCase(), p.id]);
+  const anyId = (profs ?? [])[0]?.id ?? null;
+  return { emailToId, nameToId, anyId };
+}
+
+// Monday (nome/id/email) → id de perfil no hub. Tenta e-mail; senão nome do perfil; nunca null.
+function resolvePerson(mondayNameOrId, people) {
+  const email = emailForMonday(mondayNameOrId);
+  if (people.emailToId[email]) return people.emailToId[email];
+  const kws = EMAIL_KEYWORD[email] || [];
+  const hit = people.nameToId.find(([n]) => kws.some((k) => n.includes(k)));
+  if (hit) return hit[1];
+  return people.anyId;
 }
 
 async function main() {
@@ -100,10 +119,13 @@ async function main() {
   const items = raw.items || [];
   const activity = raw.activity_logs || [];
 
-  const emailToId = await resolveProfiles();
-  const pid = (mondayNameOrId) => emailToId[emailForMonday(mondayNameOrId)] || emailToId['marketing.digital@cardosotoys.com.br'] || null;
-  for (const [name, email] of [['Bruna', 'marketing.embalagens@cardosotoys.com.br'], ['Stefany', 'marketing.operacoes@cardosotoys.com.br'], ['Matheus', 'matheus.cardoso@cardosotoys.com.br'], ['Aldair', 'marketing.digital@cardosotoys.com.br']])
-    console.log(`  ${name.padEnd(8)} ${email}  →  ${emailToId[email] ? 'ok' : '❌ não encontrado no hub'}`);
+  const people = await loadPeople();
+  const pid = (mondayNameOrId) => resolvePerson(mondayNameOrId, people);
+  for (const [name, email] of [['Bruna', 'marketing.embalagens@cardosotoys.com.br'], ['Stefany', 'marketing.operacoes@cardosotoys.com.br'], ['Matheus', 'matheus.cardoso@cardosotoys.com.br'], ['Aldair', 'marketing.digital@cardosotoys.com.br']]) {
+    const byEmail = people.emailToId[email];
+    const byName = !byEmail && (people.nameToId.find(([n]) => (EMAIL_KEYWORD[email] || []).some((k) => n.includes(k)))?.[1]);
+    console.log(`  ${name.padEnd(8)} ${email}  →  ${byEmail ? 'ok (e-mail)' : byName ? 'ok (nome)' : '⚠️ usará fallback (não é autor no Monday)'}`);
+  }
 
   const { data: products } = await db.from('products').select('id, code');
   const codeToProduct = new Map((products ?? []).map((p) => [String(p.code), p.id]));
@@ -160,7 +182,7 @@ async function main() {
       start_date: byId(it, COL.start)?.text || null,
       target_date: byId(it, COL.meta)?.text || null,
       due_date: byId(it, COL.due)?.text || null,
-      created_by: pid(it.creator?.name || it.creator?.email),
+      updated_by: pid(it.creator?.name || it.creator?.email),
       position: i,
       created_at: it.monday_created_at || it.created_at || undefined,
     };
