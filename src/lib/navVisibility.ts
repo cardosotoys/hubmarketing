@@ -55,6 +55,7 @@ export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/design-produto', label: 'Design de Produto', icon: '◭', hideFor: ['assistente'], moduleKey: 'design-produto' },
       { to: '/design-produto/embalagens', label: 'Embalagens', icon: '▤', hideFor: ['assistente'], moduleKey: 'design-produto' },
+      { to: '/design-produto/embalagens-teste', label: 'Embalagens (Teste)', icon: '▦', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'design-produto' },
     ],
   },
   {

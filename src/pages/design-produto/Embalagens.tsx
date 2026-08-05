@@ -24,9 +24,15 @@ import {
 
 type Tab = 'demandas' | 'calendario' | 'financeiro' | 'arquivos' | 'historico';
 
-export default function Embalagens() {
+export default function Embalagens({
+  tracks = PACKAGING_TRACKS,
+  moduleTitle = 'Embalagens',
+}: {
+  tracks?: { key: PackagingTrack; label: string; hint: string }[];
+  moduleTitle?: string;
+} = {}) {
   const { profile } = useAuth();
-  const [track, setTrack] = useState<PackagingTrack>('criacao');
+  const [track, setTrack] = useState<PackagingTrack>(tracks[0].key);
   const [tab, setTab] = useState<Tab>('demandas');
   const [view, setView] = useState<'kanban' | 'lista'>('kanban');
 
@@ -297,7 +303,7 @@ export default function Embalagens() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Embalagens</h1>
+      <h1 className="page-title">{moduleTitle}</h1>
       <div className="page-sub">
         Módulo independente com todas as embalagens de todos os SKUs, em duas trilhas. Cada embalagem é uma demanda
         com etapas editáveis, checklist com gate e aprovação por menção.
@@ -305,7 +311,7 @@ export default function Embalagens() {
 
       {/* Trilhas */}
       <div className="filters-row">
-        {PACKAGING_TRACKS.map((t) => (
+        {tracks.map((t) => (
           <div key={t.key} className={`filter-chip${track === t.key ? ' active' : ''}`} onClick={() => { setTrack(t.key); setFStage('all'); }} title={t.hint}>
             {t.label}
           </div>
@@ -378,7 +384,7 @@ export default function Embalagens() {
 
           {managingStages && (
             <div className="panel" style={{ marginTop: 10 }}>
-              <h4>Etapas da trilha {PACKAGING_TRACKS.find((t) => t.key === track)?.label}</h4>
+              <h4>Etapas da trilha {tracks.find((t) => t.key === track)?.label}</h4>
               {sortedStages.map((s, i) => (
                 <div key={s.id}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>

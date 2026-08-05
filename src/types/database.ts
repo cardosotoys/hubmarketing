@@ -108,14 +108,19 @@ export interface Brand {
   color: string;
 }
 
-export type PackagingTrack = 'criacao' | 'melhoria';
+export type PackagingTrack = 'criacao' | 'melhoria' | 'criacao_teste' | 'melhoria_teste';
 export const PACKAGING_TRACKS: { key: PackagingTrack; label: string; hint: string }[] = [
   { key: 'criacao', label: 'Criação', hint: 'Embalagem nova — do planejamento à produção' },
   { key: 'melhoria', label: 'Melhoria', hint: 'Corrigir/aprovar embalagem de produto existente' },
 ];
+// Trilhas do módulo isolado "Embalagens (Teste)" — dados de teste/importação, sem afetar o real
+export const PACKAGING_TRACKS_TESTE: { key: PackagingTrack; label: string; hint: string }[] = [
+  { key: 'criacao_teste', label: 'Criação', hint: 'Embalagem nova (teste)' },
+  { key: 'melhoria_teste', label: 'Melhoria', hint: 'Corrigir/aprovar embalagem existente (teste)' },
+];
 // Etapas-padrão de cada trilha (pré-carregadas ao criar um projeto de embalagem, editáveis depois).
 // A última (is_final) fecha o fluxo.
-export const PACKAGING_TRACK_STAGES: Record<PackagingTrack, { name: string; is_final: boolean }[]> = {
+export const PACKAGING_TRACK_STAGES: Record<'criacao' | 'melhoria', { name: string; is_final: boolean }[]> = {
   criacao: [
     { name: 'Planejamento', is_final: false },
     { name: 'Planificação', is_final: false },
