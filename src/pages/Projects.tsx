@@ -201,7 +201,12 @@ export default function Projects() {
 
   async function deleteProject(p: ProjectWithBrand) {
     if (!profile) return;
-    await supabase.from('projects').delete().eq('id', p.id);
+    // exclusão em cascata no banco (apaga demandas, comentários, etc.) — sem travar em FK
+    const { error } = await supabase.rpc('delete_project_cascade', { p_id: p.id });
+    if (error) {
+      alert(`Não foi possível excluir o projeto: ${error.message}`);
+      return;
+    }
     await logActivity({ actorId: profile.id, actionText: 'Projeto excluído', detail: p.name });
     reload();
   }
