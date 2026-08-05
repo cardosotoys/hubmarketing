@@ -60,6 +60,9 @@ export default function TaskEditModal({
   const [stageId, setStageId] = useState(task.stage_id);
   const [assigneeId, setAssigneeId] = useState(task.assignee_id ?? '');
   const [productId, setProductId] = useState(task.product_id ?? '');
+  const [mockupUrl, setMockupUrl] = useState('');
+  const [mockupBusy, setMockupBusy] = useState(false);
+  const [mockupMsg, setMockupMsg] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(task.start_date ?? '');
   const [targetDate, setTargetDate] = useState(task.target_date ?? '');
   const [dueDate, setDueDate] = useState(task.due_date ?? '');
@@ -280,6 +283,36 @@ export default function TaskEditModal({
     return actorId === a.approver_id || isPrivileged;
   }
 
+  // Embalagem "aprovada": pela aprovação por menção OU pela etapa (ex.: "Aprovado para Impressão")
+  const embalagemAprovada = apprState === 'aprovado' || /aprovad/i.test(selectedStage?.name ?? '');
+
+  // Sobe o mockup da embalagem aprovada e grava direto no produto vinculado (SKU) — a lista de
+  // Produtos (e o pop-up/preview) passam a mostrar automaticamente, pois é o mesmo registro.
+  async function uploadMockup(file: File) {
+    const sel = products?.find((p) => p.id === productId);
+    if (!sel) return;
+    setMockupBusy(true);
+    setMockupMsg(null);
+    const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const path = `${sel.code.replace(/[^a-zA-Z0-9.\-_]/g, '_')}/packaging-mockup-${Date.now()}-${safe}`;
+    const { error: upErr } = await supabase.storage.from('product-images').upload(path, file, { upsert: true });
+    if (upErr) {
+      setMockupMsg(upErr.message);
+      setMockupBusy(false);
+      return;
+    }
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+    const { error: dbErr } = await supabase.from('products').update({ packaging_image_url: data.publicUrl }).eq('id', sel.id);
+    if (dbErr) {
+      setMockupMsg(dbErr.message);
+      setMockupBusy(false);
+      return;
+    }
+    setMockupUrl(data.publicUrl);
+    setMockupMsg('Mockup salvo no produto ✓');
+    setMockupBusy(false);
+  }
+
   async function setAggregate(list: { decision: ApprovalDecision }[]) {
     const st: ApprovalState = list.length === 0 ? 'none' : list.some((a) => a.decision === 'correcao') ? 'correcao' : list.every((a) => a.decision === 'aprovado') ? 'aprovado' : 'aguardando';
     await supabase.from('tasks').update({ approval_state: st }).eq('id', task.id);
@@ -429,10 +462,14 @@ export default function TaskEditModal({
         {(() => {
           const sel = products?.find((p) => p.id === productId);
           if (!sel) return null;
-          const imgs = [
-            { url: sel.image_url, cap: '📦 Produto' },
-            { url: sel.packaging_image_url, cap: '🎁 Embalagem' },
-          ];
+          // Dentro do módulo de embalagem só mostra o PRODUTO (a embalagem é o que se está criando,
+          // e entra pelo upload de mockup abaixo). Fora dele, mostra produto + embalagem.
+          const imgs = task.packaging_track
+            ? [{ url: sel.image_url, cap: '📦 Produto' }]
+            : [
+                { url: sel.image_url, cap: '📦 Produto' },
+                { url: sel.packaging_image_url, cap: '🎁 Embalagem' },
+              ];
           const hasAny = imgs.some((i) => i.url);
           return (
             <div className="form-field">
@@ -488,6 +525,65 @@ export default function TaskEditModal({
             </div>
           );
         })()}
+
+        {/* Mockup da embalagem — condicional: só quando a embalagem está aprovada. Grava no produto. */}
+        {task.packaging_track &&
+          productId &&
+          embalagemAprovada &&
+          (() => {
+            const sel = products?.find((p) => p.id === productId);
+            if (!sel) return null;
+            const current = mockupUrl || sel.packaging_image_url;
+            return (
+              <div className="form-field" style={{ background: 'var(--green-dim)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}>
+                <label style={{ color: 'var(--green)' }}>✅ Embalagem aprovada — subir mockup da embalagem</label>
+                <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '2px 0 8px' }}>
+                  Vai direto pro produto <span style={{ fontFamily: 'monospace' }}>{sel.code}</span> e atualiza a lista de Produtos
+                  automaticamente (mesmo registro vinculado).
+                </p>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div
+                    style={{
+                      width: 120,
+                      height: 120,
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {current ? (
+                      <img src={current} alt="Mockup" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>Sem mockup</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label className="btn ghost sm" style={{ cursor: mockupBusy ? 'wait' : 'pointer' }}>
+                      {mockupBusy ? 'Enviando…' : current ? 'Trocar mockup' : 'Enviar mockup'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={mockupBusy}
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) uploadMockup(f);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    {mockupMsg && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{mockupMsg}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
             <label htmlFor="te-start">Início (start)</label>

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { logActivity } from '../../lib/activityLog';
 import KanbanBoard from '../../components/KanbanBoard';
 import TaskEditModal from '../../components/TaskEditModal';
+import ProductImageHover, { type ProductHoverData } from '../../components/ProductImageHover';
 import Modal from '../../components/Modal';
 import ProductCombobox from '../../components/ProductCombobox';
 import { materializeSubsteps } from '../../lib/substeps';
@@ -54,6 +55,7 @@ export default function Embalagens({
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [hover, setHover] = useState<ProductHoverData>(null);
   const [stageError, setStageError] = useState<string | null>(null);
   const [blockInfo, setBlockInfo] = useState<{
     message: string;
@@ -477,7 +479,18 @@ export default function Embalagens({
                     const isFinal = stagesById[t.stage_id]?.is_final;
                     const overduePrazo = t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
                     return (
-                      <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
+                      <tr
+                        key={t.id}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setEditingTask(t)}
+                        onMouseEnter={(e) =>
+                          prod &&
+                          (prod.image_url || prod.packaging_image_url) &&
+                          setHover({ code: prod.code, name: prod.name, product: prod.image_url, packaging: prod.packaging_image_url, x: e.clientX, y: e.clientY })
+                        }
+                        onMouseMove={(e) => setHover((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+                        onMouseLeave={() => setHover(null)}
+                      >
                         <td data-label="Demanda">{t.title}</td>
                         <td data-label="SKU" style={{ color: 'var(--text-faint)' }}>{prod ? `${prod.code} — ${prod.name}` : '—'}</td>
                         <td data-label="Etapa" style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name ?? '—'}</td>
@@ -624,6 +637,8 @@ export default function Embalagens({
           onDelete={() => deleteTask(editingTask.id)}
         />
       )}
+
+      <ProductImageHover data={hover} />
     </div>
   );
 }

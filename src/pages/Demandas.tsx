@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import TaskEditModal from '../components/TaskEditModal';
+import ProductImageHover, { type ProductHoverData } from '../components/ProductImageHover';
 import Modal from '../components/Modal';
 import {
   CAMPAIGN_TASK_STAGES,
@@ -37,6 +38,7 @@ type DemandRow = {
   projectLink: { to: string; name: string } | null;
   fileCount: number;
   search: string; // título + SKU/código/nome do produto, em minúsculo, pra busca
+  product: { code: string; name: string; image_url: string; packaging_image_url: string } | null; // SKU vinculado
   task: TaskWithProject | null; // preenchido só quando dá pra editar no modal (source 'task')
 };
 
@@ -81,6 +83,7 @@ export default function Demandas() {
   const [fStage, setFStage] = useState('all');
   const [sort, setSort] = useState<SortKey>('padrao');
   const [hideFinal, setHideFinal] = useState(false);
+  const [hover, setHover] = useState<ProductHoverData>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -184,6 +187,7 @@ export default function Demandas() {
           : null,
       fileCount: fileCounts[t.id] ?? 0,
       search: `${t.title}${productSearch(t.product_id)}`.toLowerCase(),
+      product: t.product_id ? productsById[t.product_id] ?? null : null,
       task: t,
     }));
 
@@ -205,6 +209,7 @@ export default function Demandas() {
         projectLink: camp ? { to: `/campanhas/${camp.id}`, name: camp.name } : null,
         fileCount: 0,
         search: `${ct.title}${productSearch(ct.product_id)}`.toLowerCase(),
+        product: ct.product_id ? productsById[ct.product_id] ?? null : null,
         task: null,
       };
     });
@@ -410,6 +415,20 @@ export default function Demandas() {
                     key={`${r.source}-${r.id}`}
                     style={{ cursor: 'pointer' }}
                     onClick={() => (r.task ? setEditingTask(r.task) : r.projectLink && navigate(r.projectLink.to))}
+                    onMouseEnter={(e) =>
+                      r.product &&
+                      (r.product.image_url || r.product.packaging_image_url) &&
+                      setHover({
+                        code: r.product.code,
+                        name: r.product.name,
+                        product: r.product.image_url,
+                        packaging: r.product.packaging_image_url,
+                        x: e.clientX,
+                        y: e.clientY,
+                      })
+                    }
+                    onMouseMove={(e) => setHover((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+                    onMouseLeave={() => setHover(null)}
                   >
                     <td data-label="Tarefa">
                       {r.title}
@@ -489,6 +508,8 @@ export default function Demandas() {
           }}
         />
       )}
+
+      <ProductImageHover data={hover} />
     </div>
   );
 }
