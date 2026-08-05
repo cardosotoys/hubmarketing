@@ -28,7 +28,8 @@ import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
 const DUMP = join(process.cwd(), 'monday-dump', 'board-18404210044-confer-ncia-de-embalagens.json');
-const TRACK = 'melhoria_teste';
+// Melhoria = tem SKU no banco · Criação = sem SKU (produto novo)
+const TRACKS = ['criacao_teste', 'melhoria_teste'];
 const COMMIT = process.argv.includes('--commit');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -130,6 +131,23 @@ async function main() {
   const { data: products } = await db.from('products').select('id, code');
   const codeToProduct = new Map((products ?? []).map((p) => [String(p.code), p.id]));
 
+  // menções "@Fulano" no texto → ids reais dos usuários (caem nas notificações)
+  const MENTION_RULES = [
+    { re: /@\s*(bruna|vfz\.bruna)/i, email: 'marketing.embalagens@cardosotoys.com.br' },
+    { re: /@\s*(stefany|shumiski|sshumiski)/i, email: 'marketing.operacoes@cardosotoys.com.br' },
+    { re: /@\s*(matheus)/i, email: 'matheus.cardoso@cardosotoys.com.br' },
+  ];
+  function mentionsIn(text) {
+    const t = String(text || '');
+    const ids = new Set();
+    for (const r of MENTION_RULES) {
+      if (!r.re.test(t)) continue;
+      const id = people.emailToId[r.email] || people.nameToId.find(([n]) => (EMAIL_KEYWORD[r.email] || []).some((k) => n.includes(k)))?.[1];
+      if (id) ids.add(id);
+    }
+    return [...ids];
+  }
+
   // pessoa (people col value) → profile
   function assigneeFrom(cv) {
     try { const v = JSON.parse(cv.value); const p = (v.personsAndTeams || []).find((x) => x.kind === 'person'); if (p) return pid(String(p.id)); } catch {}
@@ -138,7 +156,7 @@ async function main() {
 
   // ---------- limpeza (idempotente) ----------
   if (COMMIT) {
-    const { data: oldTasks } = await db.from('tasks').select('id').eq('packaging_track', TRACK);
+    const { data: oldTasks } = await db.from('tasks').select('id').in('packaging_track', TRACKS);
     const ids = (oldTasks ?? []).map((t) => t.id);
     if (ids.length) {
       for (const c of chunk(ids, 200)) {
@@ -146,22 +164,26 @@ async function main() {
         await db.from('task_comments').delete().in('task_id', c);
         await db.from('task_checklist_items').delete().in('task_id', c);
       }
-      await db.from('tasks').delete().eq('packaging_track', TRACK);
+      await db.from('tasks').delete().in('packaging_track', TRACKS);
     }
-    await db.from('stages').delete().eq('packaging_track', TRACK);
-    console.log(`🧹 Limpou ${ids.length} demandas antigas da trilha de teste.\n`);
+    await db.from('stages').delete().in('packaging_track', TRACKS);
+    console.log(`🧹 Limpou ${ids.length} demandas antigas das trilhas de teste.\n`);
   }
 
-  // ---------- etapas (grupos) ----------
+  // ---------- etapas (grupos) — semeadas nas DUAS trilhas ----------
   const groups = board.groups || [];
-  const stageRows = groups.map((g, i) => ({ project_id: null, packaging_track: TRACK, name: g.title, position: i + 1, is_final: /aprovad|conclu|finaliz/i.test(g.title) }));
-  stageRows.push({ project_id: null, packaging_track: TRACK, name: 'Sem grupo', position: groups.length + 1, is_final: false });
-  const stages = await insertMany('stages', stageRows, true);
-  const stageByGroup = new Map(groups.map((g, i) => [g.title, stages[i]?.id]));
-  const fallbackStage = stages[groups.length]?.id;
+  const stageByTrackGroup = {};
+  for (const tr of TRACKS) {
+    const rows = groups.map((g, i) => ({ project_id: null, packaging_track: tr, name: g.title, position: i + 1, is_final: /aprovad|conclu|finaliz/i.test(g.title) }));
+    rows.push({ project_id: null, packaging_track: tr, name: 'Sem grupo', position: groups.length + 1, is_final: false });
+    const inserted = await insertMany('stages', rows, true);
+    stageByTrackGroup[tr] = { byGroup: new Map(groups.map((g, i) => [g.title, inserted[i]?.id])), fallback: inserted[groups.length]?.id };
+  }
+  const stageRows = TRACKS.flatMap(() => [...groups, { title: 'Sem grupo' }]); // só p/ contagem no resultado
 
-  // ---------- demandas (itens) ----------
+  // ---------- demandas (itens) — Melhoria se tem SKU, senão Criação ----------
   const byId = (it, id) => (it.column_values || []).find((c) => c.id === id);
+  let criacao = 0, melhoria = 0;
   const taskRows = items.map((it, i) => {
     const notes = [];
     const linkAj = byId(it, COL.linkAjustado)?.text === 'v' ? 'sim' : '';
@@ -170,11 +192,15 @@ async function main() {
     const corr = byId(it, COL.correcao)?.text; if (corr) notes.push(`Data de Correção: ${corr}`);
     const fech = byId(it, COL.fechado)?.text; if (fech) notes.push(`Arquivo fechado em: ${fech}`);
     const code = (it.name.match(/\b(\d{3,4})\b/) || [])[1];
+    const productId = code ? codeToProduct.get(code) ?? null : null;
+    const track = productId ? 'melhoria_teste' : 'criacao_teste';
+    if (productId) melhoria += 1; else criacao += 1;
+    const st = stageByTrackGroup[track];
     return {
       project_id: null,
-      packaging_track: TRACK,
-      stage_id: stageByGroup.get(it.group?.title) ?? fallbackStage,
-      product_id: code ? codeToProduct.get(code) ?? null : null,
+      packaging_track: track,
+      stage_id: st.byGroup.get(it.group?.title) ?? st.fallback,
+      product_id: productId,
       title: it.name,
       notes: notes.join('\n'),
       priority: priorityFrom(byId(it, COL.prioridade)?.text),
@@ -206,9 +232,9 @@ async function main() {
   for (const it of items) {
     const tid = taskByItem.get(String(it.id));
     for (const up of it.updates || []) {
-      comments.push({ task_id: tid, author_id: pid(up.creator?.name || up.creator?.email), body: (up.text_body || '[anexo]').slice(0, 8000), mentioned_ids: [], created_at: up.created_at || undefined });
+      comments.push({ task_id: tid, author_id: pid(up.creator?.name || up.creator?.email), body: (up.text_body || '[anexo]').slice(0, 8000), mentioned_ids: mentionsIn(up.text_body), created_at: up.created_at || undefined });
       for (const r of up.replies || []) {
-        comments.push({ task_id: tid, author_id: pid(r.creator?.name || r.creator?.email), body: (r.text_body || '[anexo]').slice(0, 8000), mentioned_ids: [], created_at: r.created_at || undefined });
+        comments.push({ task_id: tid, author_id: pid(r.creator?.name || r.creator?.email), body: (r.text_body || '[anexo]').slice(0, 8000), mentioned_ids: mentionsIn(r.text_body), created_at: r.created_at || undefined });
       }
     }
   }
@@ -234,8 +260,10 @@ async function main() {
   }
   await insertMany('activity_log', history);
 
+  const mentionTotal = comments.reduce((n, c) => n + (c.mentioned_ids?.length ? 1 : 0), 0);
   console.log(`\n===== RESULTADO =====`);
-  console.log(`${stageRows.length} etapas · ${taskRows.length} demandas · ${checklist.length} subitens · ${comments.length} comentários · ${history.length} eventos de histórico`);
+  console.log(`${stageRows.length} etapas · ${taskRows.length} demandas (Criação/sem SKU: ${criacao} · Melhoria/com SKU: ${melhoria}) · ${checklist.length} subitens`);
+  console.log(`${comments.length} comentários (${mentionTotal} com menção) · ${history.length} eventos de histórico`);
   console.log(COMMIT ? '\n✅ Pronto. Abra "Design de Produto → Embalagens (Teste)" no hub.\n' : '\n🧪 Foi simulação. Rode com --commit para gravar.\n');
 }
 

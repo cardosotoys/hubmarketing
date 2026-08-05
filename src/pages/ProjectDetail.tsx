@@ -47,7 +47,7 @@ export default function ProjectDetail() {
   const [demandasAssignee, setDemandasAssignee] = useState('all');
   const [demandasPriority, setDemandasPriority] = useState('all');
   const [demandasStage, setDemandasStage] = useState('all');
-  const [demandasSort, setDemandasSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'assignee' | 'stage'>('recent');
+  const [demandasSort, setDemandasSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'prazo_desc' | 'assignee' | 'stage'>('recent');
   const [demandasHideDone, setDemandasHideDone] = useState(false);
 
   const [project, setProject] = useState<ProjectWithBrand | null>(null);
@@ -150,11 +150,11 @@ export default function ProjectDetail() {
         const order: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
         return order[a.priority] - order[b.priority];
       }
-      if (demandasSort === 'prazo') {
+      if (demandasSort === 'prazo' || demandasSort === 'prazo_desc') {
         if (!a.due_date && !b.due_date) return 0;
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
-        return a.due_date.localeCompare(b.due_date);
+        return demandasSort === 'prazo_desc' ? b.due_date.localeCompare(a.due_date) : a.due_date.localeCompare(b.due_date);
       }
       if (demandasSort === 'assignee') {
         const an = a.assignee_id ? profilesById[a.assignee_id]?.name ?? '' : '';
@@ -447,7 +447,8 @@ export default function ProjectDetail() {
               <option value="recent">Ordenar: posição</option>
               <option value="title">Ordenar: título (A-Z)</option>
               <option value="priority">Ordenar: prioridade</option>
-              <option value="prazo">Ordenar: prazo</option>
+              <option value="prazo">Prazo: mais próximo primeiro</option>
+              <option value="prazo_desc">Prazo: mais distante primeiro</option>
               <option value="assignee">Ordenar: responsável</option>
               <option value="stage">Ordenar: etapa</option>
             </select>

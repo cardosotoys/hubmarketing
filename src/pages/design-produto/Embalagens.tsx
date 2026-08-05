@@ -50,7 +50,7 @@ export default function Embalagens({
   const [fPriority, setFPriority] = useState('all');
   const [fStage, setFStage] = useState('all');
   const [hideDone, setHideDone] = useState(false);
-  const [sort, setSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'assignee' | 'stage'>('recent');
+  const [sort, setSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'prazo_desc' | 'meta' | 'meta_desc' | 'assignee' | 'stage'>('recent');
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -124,11 +124,16 @@ export default function Embalagens({
         const order: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
         return order[a.priority] - order[b.priority];
       }
-      if (sort === 'prazo') {
-        if (!a.due_date && !b.due_date) return 0;
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return a.due_date.localeCompare(b.due_date);
+      // datas: sem data sempre por último; asc = mais próximo primeiro, desc = mais distante primeiro
+      if (sort === 'prazo' || sort === 'prazo_desc' || sort === 'meta' || sort === 'meta_desc') {
+        const field = sort.startsWith('meta') ? 'target_date' : 'due_date';
+        const desc = sort.endsWith('_desc');
+        const av = a[field];
+        const bv = b[field];
+        if (!av && !bv) return 0;
+        if (!av) return 1;
+        if (!bv) return -1;
+        return desc ? bv.localeCompare(av) : av.localeCompare(bv);
       }
       if (sort === 'assignee') {
         const an = a.assignee_id ? profilesById[a.assignee_id]?.name ?? '' : '';
@@ -372,7 +377,10 @@ export default function Embalagens({
               <option value="recent">Ordenar: posição</option>
               <option value="title">Ordenar: título (A-Z)</option>
               <option value="priority">Ordenar: prioridade</option>
-              <option value="prazo">Ordenar: prazo</option>
+              <option value="prazo">🏁 Prazo: mais próximo primeiro</option>
+              <option value="prazo_desc">🏁 Prazo: mais distante primeiro</option>
+              <option value="meta">🎯 Meta: mais próxima primeiro</option>
+              <option value="meta_desc">🎯 Meta: mais distante primeiro</option>
               <option value="assignee">Ordenar: responsável</option>
               <option value="stage">Ordenar: etapa</option>
             </select>

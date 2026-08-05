@@ -62,12 +62,15 @@ export function useNotifications(profileId: string | undefined) {
 
   const loadMentions = useCallback(() => {
     if (!profileId) return;
+    // menções dos últimos 7 dias — pra ninguém perder demanda em que foi marcado
+    const since = new Date(Date.now() - 7 * 86400000).toISOString();
     supabase
       .from('task_comments')
       .select('*, author:profiles(name), task:tasks(title)')
       .contains('mentioned_ids', [profileId])
+      .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(50)
       .then(({ data }) => setMentions((data as MentionRow[] | null) ?? []));
   }, [profileId]);
 
