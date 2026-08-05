@@ -62,6 +62,7 @@ export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎', moduleKey: 'relatorio-diario' },
       { to: '/auditoria', label: 'Auditoria', icon: '◷', moduleKey: 'auditoria' },
+      { to: '/monday', label: 'Monday (arquivo)', icon: '◱', hideFor: ['assistente'], moduleKey: 'monday' },
     ],
   },
   {

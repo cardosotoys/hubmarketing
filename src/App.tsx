@@ -59,6 +59,8 @@ import ProductDevMarketing from './pages/design-produto/ProductDevMarketing';
 import ProductDevRiscos from './pages/design-produto/ProductDevRiscos';
 import ProductDevDecisoes from './pages/design-produto/ProductDevDecisoes';
 import ProductDevHistorico from './pages/design-produto/ProductDevHistorico';
+import Monday from './pages/Monday';
+import MondayBoardView from './pages/MondayBoardView';
 
 const CAMPAIGN_COMING_SOON: { path: string; title: string; description: string }[] = [
   { path: 'relatorios', title: 'Relatórios', description: 'O painel de Relatórios global já cobre campanhas (incluindo verba e status) e o Resumo desta campanha já traz os números específicos dela — um relatório dedicado por campanha fica para quando fizer sentido um formato de exportação próprio.' },
@@ -294,6 +296,8 @@ export default function App() {
               }
             />
             <Route path="brand" element={<ModuleGate moduleKey="brand"><Brand /></ModuleGate>} />
+            <Route path="monday" element={<RequireRole roles={['diretoria', 'administrador']} moduleKey="monday"><Monday /></RequireRole>} />
+            <Route path="monday/:id" element={<RequireRole roles={['diretoria', 'administrador']} moduleKey="monday"><MondayBoardView /></RequireRole>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

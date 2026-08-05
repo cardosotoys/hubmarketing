@@ -121,7 +121,7 @@ async function getBoardItems(id) {
     if (!pageData.cursor) break;
     await sleep(400);
     data = await gql(
-      `query ($cursor:String) { next_items_page (limit: 25, cursor: $cursor) { cursor items { ${ITEM_Q} } } }`,
+      `query ($cursor:String!) { next_items_page (limit: 25, cursor: $cursor) { cursor items { ${ITEM_Q} } } }`,
       { cursor: pageData.cursor },
     );
     pageData = data?.next_items_page;
@@ -169,31 +169,37 @@ async function main() {
   const summary = [];
   for (const b of boards) {
     process.stdout.write(`→ ${b.name} (${b.id}) … `);
-    const meta = await getBoardMeta(b.id);
-    await sleep(300);
-    const items = await getBoardItems(b.id);
-    await sleep(300);
-    const activity = await getActivityLogs(b.id);
+    try {
+      const meta = await getBoardMeta(b.id);
+      await sleep(300);
+      const items = await getBoardItems(b.id);
+      await sleep(300);
+      const activity = await getActivityLogs(b.id);
 
-    const updatesCount = items.reduce((n, it) => n + (it.updates?.length ?? 0), 0);
-    const subitemsCount = items.reduce((n, it) => n + (it.subitems?.length ?? 0), 0);
+      const updatesCount = items.reduce((n, it) => n + (it.updates?.length ?? 0), 0);
+      const subitemsCount = items.reduce((n, it) => n + (it.subitems?.length ?? 0), 0);
 
-    const full = { board: meta ?? b, items, activity_logs: activity };
-    await writeFile(join(OUT_DIR, `board-${b.id}-${slug(b.name)}.json`), JSON.stringify(full, null, 2));
+      const full = { board: meta ?? b, items, activity_logs: activity };
+      await writeFile(join(OUT_DIR, `board-${b.id}-${slug(b.name)}.json`), JSON.stringify(full, null, 2));
 
-    const row = {
-      id: b.id,
-      name: b.name,
-      state: b.state,
-      groups: (meta?.groups ?? []).map((g) => g.title),
-      columns: (meta?.columns ?? []).map((c) => `${c.title} [${c.type}]`),
-      items: items.length,
-      subitems: subitemsCount,
-      updates: updatesCount,
-      activity_logs: activity.length,
-    };
-    summary.push(row);
-    console.log(`${items.length} itens · ${updatesCount} comentários · ${activity.length} eventos de histórico`);
+      summary.push({
+        id: b.id,
+        name: b.name,
+        state: b.state,
+        groups: (meta?.groups ?? []).map((g) => g.title),
+        columns: (meta?.columns ?? []).map((c) => `${c.title} [${c.type}]`),
+        items: items.length,
+        subitems: subitemsCount,
+        updates: updatesCount,
+        activity_logs: activity.length,
+      });
+      console.log(`${items.length} itens · ${updatesCount} comentários · ${activity.length} eventos de histórico`);
+    } catch (e) {
+      console.log(`⚠️  pulado (${String(e.message).slice(0, 120)})`);
+      summary.push({ id: b.id, name: b.name, state: b.state, error: String(e.message).slice(0, 300) });
+    }
+    // salva o resumo a cada quadro (assim, se parar no meio, o que já veio fica salvo)
+    await writeFile(join(OUT_DIR, 'summary.json'), JSON.stringify(summary, null, 2));
     await sleep(500);
   }
 

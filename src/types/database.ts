@@ -56,6 +56,7 @@ export const MODULE_KEYS = [
   'campanhas',
   'design-produto',
   'ia',
+  'monday',
   'relatorio-diario',
   'auditoria',
   'configuracoes',
@@ -76,6 +77,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   campanhas: 'Campanhas',
   'design-produto': 'Design de Produto',
   ia: 'IA',
+  monday: 'Monday (arquivo)',
   'relatorio-diario': 'Relatório Diário',
   auditoria: 'Auditoria',
   configuracoes: 'Configurações',
@@ -1282,4 +1284,56 @@ export interface ProductDevDocument {
   url: string;
   added_by: string | null;
   created_at: string;
+}
+
+// ============================================================
+// Módulo Monday — arquivo completo importado do Monday.com
+// ============================================================
+export interface MondayColumnValue {
+  id: string;
+  title: string;
+  type: string;
+  text: string;
+}
+export interface MondayBoard {
+  id: string;
+  monday_id: string;
+  name: string;
+  state: string;
+  groups: { id: string; title: string; position?: number }[];
+  columns: { id: string; title: string; type: string }[];
+  item_count: number;
+  update_count: number;
+  activity_count: number;
+  suggested_destination: string;
+  imported_at: string;
+}
+export interface MondayItem {
+  id: string;
+  board_id: string;
+  monday_id: string;
+  name: string;
+  group_id: string;
+  group_title: string;
+  creator_name: string;
+  monday_created_at: string | null;
+  column_values: MondayColumnValue[];
+  subitems: { name: string; status: string }[];
+  position: number;
+}
+export interface MondayUpdate {
+  id: string;
+  item_id: string;
+  author_name: string;
+  body: string;
+  monday_created_at: string | null;
+}
+export interface MondayActivity {
+  id: string;
+  board_id: string;
+  item_id: string | null;
+  event: string;
+  action_text: string;
+  actor_name: string;
+  monday_created_at: string | null;
 }
