@@ -159,6 +159,12 @@ async function importBoard(file, monUsersById) {
         author_name: up.creator?.name || '',
         body: ((up.text_body && up.text_body.trim()) || htmlToText(up.body) || '[anexo]').slice(0, 8000),
         monday_created_at: up.created_at || null,
+        // respostas da thread (contêm links importantes) — preserva autor, texto e data
+        replies: (up.replies || []).map((r) => ({
+          author_name: r.creator?.name || '',
+          body: ((r.text_body && r.text_body.trim()) || htmlToText(r.body) || '[anexo]').slice(0, 8000),
+          created_at: r.created_at || null,
+        })),
       });
     }
   }

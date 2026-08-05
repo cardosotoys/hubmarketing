@@ -1322,12 +1322,18 @@ export interface MondayItem {
   subitems: { name: string; status: string }[];
   position: number;
 }
+export interface MondayReply {
+  author_name: string;
+  body: string;
+  created_at: string | null;
+}
 export interface MondayUpdate {
   id: string;
   item_id: string;
   author_name: string;
   body: string;
   monday_created_at: string | null;
+  replies: MondayReply[];
 }
 export interface MondayActivity {
   id: string;

@@ -193,6 +193,20 @@ function ItemModal({ item, onClose }: { item: MondayItem; onClose: () => void })
                 <span className="time">{fmtDateTime(u.monday_created_at)}</span>
               </div>
               <div className="body" style={{ whiteSpace: 'pre-wrap' }}><RichText text={u.body} /></div>
+              {(u.replies ?? []).length > 0 && (
+                <div style={{ marginTop: 8, marginLeft: 12, borderLeft: '2px solid var(--border)', paddingLeft: 12 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>{u.replies.length} resposta(s)</div>
+                  {u.replies.map((r, i) => (
+                    <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div className="comment-head">
+                        <span className="name" style={{ fontSize: 12 }}>{r.author_name || 'Alguém'}</span>
+                        <span className="time">{fmtDateTime(r.created_at)}</span>
+                      </div>
+                      <div className="body" style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}><RichText text={r.body} /></div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
