@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import Modal from '../components/Modal';
+import RichText from '../components/RichText';
 import type { MondayActivity, MondayBoard, MondayItem, MondayUpdate } from '../types/database';
 
 function fmt(iso: string | null): string {
@@ -15,29 +16,6 @@ function fmtDateTime(iso: string | null): string {
   return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR');
 }
 
-function isImageUrl(url: string): boolean {
-  return /\.(png|jpe?g|gif|webp|svg|bmp)(\?|$)/i.test(url) || /\/storage\/v1\/object\/public\/monday-assets\//.test(url);
-}
-
-// Texto com URLs → links clicáveis; URLs de imagem → miniatura.
-function RichText({ text }: { text: string }) {
-  const parts = String(text || '').split(/(https?:\/\/[^\s)"]+)/g);
-  return (
-    <>
-      {parts.map((p, i) => {
-        if (!/^https?:\/\//.test(p)) return <span key={i}>{p}</span>;
-        if (isImageUrl(p)) {
-          return (
-            <a key={i} href={p} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
-              <img src={p} alt="anexo" style={{ maxWidth: 200, maxHeight: 150, borderRadius: 6, display: 'block', margin: '4px 0', border: '1px solid var(--border)' }} />
-            </a>
-          );
-        }
-        return <a key={i} href={p} target="_blank" rel="noreferrer">{p}</a>;
-      })}
-    </>
-  );
-}
 
 export default function MondayBoardView() {
   const { id } = useParams<{ id: string }>();

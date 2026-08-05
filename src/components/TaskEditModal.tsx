@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import ProductCombobox from './ProductCombobox';
+import RichText from './RichText';
 import { supabase } from '../lib/supabaseClient';
 import { normalizeUrl } from '../lib/url';
 import { materializeSubsteps, recomputeSubstepDueDates } from '../lib/substeps';
@@ -580,7 +581,7 @@ export default function TaskEditModal({
               <span className="name">{c.author?.name ?? 'Alguém'}</span>
               <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}</span>
             </div>
-            <div className="body">{c.body}</div>
+            <div className="body" style={{ whiteSpace: 'pre-wrap' }}><RichText text={c.body} /></div>
           </div>
         ))}
         {comments.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum comentário ainda.</p>}
