@@ -9,6 +9,9 @@ export interface NavItem {
   hideFor?: Department[];
   defaultRoles?: Role[];
   requiresConfig?: boolean;
+  // opt-in: some pra todo mundo por padrão; só aparece pra quem for "Liberado" em Perfis &
+  // Permissões (Diretoria/Administrador continuam vendo, pois é quem configura/gerencia).
+  hiddenByDefault?: boolean;
 }
 
 export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
@@ -54,7 +57,7 @@ export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     label: 'Design de Produtos',
     items: [
       { to: '/design-produto', label: 'Design de Produto', icon: '◭', hideFor: ['assistente'], moduleKey: 'design-produto' },
-      { to: '/design-produto/embalagens', label: 'Embalagens', icon: '▤', hideFor: ['assistente'], moduleKey: 'embalagens' },
+      { to: '/design-produto/embalagens', label: 'Embalagens', icon: '▤', hideFor: ['assistente'], moduleKey: 'embalagens', hiddenByDefault: true },
     ],
   },
   {
@@ -89,8 +92,20 @@ export interface NavVisibilityContext {
 export function isNavItemVisible(item: NavItem, ctx: NavVisibilityContext): boolean {
   if (ctx.hiddenModules.includes(item.moduleKey)) return false;
   if (ctx.extraModules.includes(item.moduleKey)) return true;
+  // opt-in: oculto por padrão, exceto Diretoria/Administrador (que gerenciam quem libera)
+  if (item.hiddenByDefault && ctx.role !== 'diretoria' && ctx.role !== 'administrador') return false;
   if (item.defaultRoles && !item.defaultRoles.includes(ctx.role)) return false;
   if (item.hideFor?.includes(ctx.department)) return false;
+  return true;
+}
+
+// ModuleGate usa isto pra bloquear por URL um módulo opt-in que a pessoa não tem liberado
+// (sem afetar os demais módulos, que seguem só com a checagem de hidden_modules).
+export function isModuleOptInLocked(moduleKey: string, ctx: NavVisibilityContext): boolean {
+  const optIn = NAV_SECTIONS.flatMap((s) => s.items).some((i) => i.moduleKey === moduleKey && i.hiddenByDefault);
+  if (!optIn) return false;
+  if (ctx.extraModules.includes(moduleKey)) return false;
+  if (ctx.role === 'diretoria' || ctx.role === 'administrador') return false;
   return true;
 }
 
