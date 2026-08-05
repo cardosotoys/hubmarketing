@@ -76,6 +76,7 @@ export default function Demandas() {
   // filtros no estilo Embalagens
   const [search, setSearch] = useState('');
   const [fAssignee, setFAssignee] = useState('all');
+  const [fProject, setFProject] = useState('all');
   const [fPriority, setFPriority] = useState<'all' | Priority>('all');
   const [fStage, setFStage] = useState('all');
   const [sort, setSort] = useState<SortKey>('padrao');
@@ -133,6 +134,7 @@ export default function Demandas() {
   }, [tasks]);
 
   const isEquipe = profile?.role === 'equipe';
+  const isPrivileged = profile?.role === 'diretoria' || profile?.role === 'administrador';
   const profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
   const campaignsById = Object.fromEntries(campaigns.map((c) => [c.id, c]));
   const productsById = Object.fromEntries(products.map((p) => [p.id, p]));
@@ -209,7 +211,8 @@ export default function Demandas() {
 
   const rows: DemandRow[] = [...taskRows, ...campaignRows];
 
-  // opções de "Etapa" (nomes distintos que aparecem nas linhas)
+  // opções de "Projeto" e "Etapa" (valores distintos que aparecem nas linhas)
+  const projectOptions = Array.from(new Set(rows.map((r) => r.groupProject))).filter(Boolean).sort();
   const stageOptions = Array.from(new Set(rows.map((r) => r.stageName))).filter((s) => s && s !== '—').sort();
 
   const q = search.trim().toLowerCase();
@@ -221,6 +224,7 @@ export default function Demandas() {
     if (q && !r.search.includes(q)) return false;
     if (fAssignee === 'none' && r.assigneeId) return false;
     if (fAssignee !== 'all' && fAssignee !== 'none' && r.assigneeId !== fAssignee) return false;
+    if (fProject !== 'all' && r.groupProject !== fProject) return false;
     if (fPriority !== 'all' && r.priority !== fPriority) return false;
     if (fStage !== 'all' && r.stageName !== fStage) return false;
     if (hideFinal && r.isFinal) return false;
@@ -321,16 +325,27 @@ export default function Demandas() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ minWidth: 220, flex: 1 }}
         />
-        <select className="chip-select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-          <option value="all">Responsável: todos</option>
-          <option value="none">Sem responsável</option>
-          {profiles
-            .filter((p) => !p.disabled)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+        {/* Responsável: só pra adm/diretoria (que veem todos). Equipe já vê só as suas. */}
+        {isPrivileged && (
+          <select className="chip-select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
+            <option value="all">Responsável: todos</option>
+            <option value="none">Sem responsável</option>
+            {profiles
+              .filter((p) => !p.disabled)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+          </select>
+        )}
+        <select className="chip-select" value={fProject} onChange={(e) => setFProject(e.target.value)}>
+          <option value="all">Projeto: todos</option>
+          {projectOptions.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
         </select>
         <select className="chip-select" value={fPriority} onChange={(e) => setFPriority(e.target.value as 'all' | Priority)}>
           <option value="all">Prioridade: todas</option>
