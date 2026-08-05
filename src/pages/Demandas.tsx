@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import TaskEditModal from '../components/TaskEditModal';
 import ProductImageHover, { type ProductHoverData } from '../components/ProductImageHover';
+import EmptyState from '../components/EmptyState';
+import Loading from '../components/Loading';
 import Modal from '../components/Modal';
 import {
   CAMPAIGN_TASK_STAGES,
@@ -398,7 +400,18 @@ export default function Demandas() {
       </div>
 
       {loading ? (
-        <div className="page-sub">Carregando…</div>
+        <Loading />
+      ) : filteredRows.length === 0 ? (
+        <EmptyState
+          icon="🗂️"
+          title="Nenhuma demanda nessa visão"
+          hint={
+            search || fAssignee !== 'all' || fProject !== 'all' || fPriority !== 'all' || fStage !== 'all'
+              ? 'Nenhuma demanda bate com os filtros atuais. Ajuste ou limpe os filtros — lembrando que as finalizadas ficam ocultas por padrão.'
+              : 'Ainda não há demandas ativas aqui. Crie a primeira ou mostre as finalizadas.'
+          }
+          action={{ label: '+ Nova demanda', onClick: () => setShowNew(true) }}
+        />
       ) : (
         groups.map((g) => (
           <div className="demand-group" key={g.label}>

@@ -5,6 +5,7 @@ import { logActivity } from '../../lib/activityLog';
 import KanbanBoard from '../../components/KanbanBoard';
 import TaskEditModal from '../../components/TaskEditModal';
 import ProductImageHover, { type ProductHoverData } from '../../components/ProductImageHover';
+import EmptyState from '../../components/EmptyState';
 import Modal from '../../components/Modal';
 import ProductCombobox from '../../components/ProductCombobox';
 import { materializeSubsteps } from '../../lib/substeps';
@@ -510,7 +511,14 @@ export default function Embalagens({
                   })}
                 </tbody>
               </table>
-              {filteredTasks.length === 0 && <div className="page-sub" style={{ marginTop: 8 }}>Nenhuma demanda nesta visão.</div>}
+              {filteredTasks.length === 0 && (
+                <EmptyState
+                  icon="🎁"
+                  title="Nenhuma demanda de embalagem aqui"
+                  hint="Ajuste os filtros ou crie uma nova demanda para esta trilha."
+                  action={{ label: '+ Nova demanda', onClick: () => setShowNew(true) }}
+                />
+              )}
             </div>
           )}
         </div>

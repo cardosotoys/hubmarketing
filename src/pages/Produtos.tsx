@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import { normalizeUrl } from '../lib/url';
 import Modal from '../components/Modal';
+import EmptyState from '../components/EmptyState';
+import Loading from '../components/Loading';
 import { PRIORITY_LABELS, type Brand, type Product, type ProjectStage, type Priority } from '../types/database';
 
 type ProductWithBrand = Product & { brand: Brand };
@@ -242,7 +244,14 @@ export default function Produtos() {
       </div>
 
       {loading ? (
-        <div className="page-sub">Carregando…</div>
+        <Loading />
+      ) : total === 0 ? (
+        <EmptyState
+          icon="📦"
+          title="Nenhum produto encontrado"
+          hint="Nenhum produto bate com a busca/filtros atuais. Ajuste ou limpe os filtros."
+          action={canEdit ? { label: '+ Novo produto', onClick: () => setShowNew(true) } : undefined}
+        />
       ) : (
         <table className="simple">
           <thead>
