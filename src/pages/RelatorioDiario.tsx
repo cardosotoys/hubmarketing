@@ -47,6 +47,8 @@ export default function RelatorioDiario() {
   }, [load]);
 
   const myReports = reports.filter((r) => r.user_id === profile?.id);
+  // adm/diretoria veem os relatórios de todos; demais veem só os seus
+  const visibleReports = isPrivileged ? reports : myReports;
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   const daysThisMonth = new Set(
@@ -137,7 +139,7 @@ export default function RelatorioDiario() {
       </div>
 
       <div className="section-head">
-        <h2>Histórico de relatórios da equipe</h2>
+        <h2>{isPrivileged ? 'Histórico de relatórios da equipe' : 'Seus relatórios'}</h2>
       </div>
       {loading ? (
         <div className="page-sub">Carregando…</div>
@@ -153,7 +155,7 @@ export default function RelatorioDiario() {
             </tr>
           </thead>
           <tbody>
-            {reports.map((r) => {
+            {visibleReports.map((r) => {
               const canManage = isPrivileged || r.user_id === profile?.id;
               return (
                 <tr key={r.id}>
@@ -188,7 +190,7 @@ export default function RelatorioDiario() {
                 </tr>
               );
             })}
-            {reports.length === 0 && (
+            {visibleReports.length === 0 && (
               <tr>
                 <td colSpan={5} style={{ color: 'var(--text-faint)' }}>
                   Nenhum relatório registrado ainda.

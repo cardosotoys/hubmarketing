@@ -1,31 +1,65 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import TaskEditModal from '../components/TaskEditModal';
 import Modal from '../components/Modal';
-import { PRIORITIES, PRIORITY_LABELS, type Priority, type Product, type ProjectStage, type Profile, type Project, type Task } from '../types/database';
+import {
+  CAMPAIGN_TASK_STAGES,
+  PRIORITIES,
+  PRIORITY_LABELS,
+  type CampaignTask,
+  type Priority,
+  type Product,
+  type ProjectStage,
+  type Profile,
+  type Project,
+  type Task,
+} from '../types/database';
 
 type TaskWithProject = Task & { project: { id: string; name: string } | null };
 type GroupBy = 'none' | 'assignee' | 'project' | 'priority';
 
-function isTaskOverdue(t: Task, stagesById: Record<string, ProjectStage>) {
-  if (!t.due_date || stagesById[t.stage_id]?.is_final) return false;
-  return new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
+// Linha unificada da tela Demandas: agrega demandas de projeto, de embalagem e de campanha
+// numa lista só, pra dar um filtro rápido de tudo sem abrir cada projeto/campanha.
+type DemandRow = {
+  id: string;
+  source: 'task' | 'campaign';
+  title: string;
+  priority: Priority;
+  assigneeId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  stageName: string;
+  isFinal: boolean;
+  groupProject: string;
+  projectLink: { to: string; name: string } | null;
+  fileCount: number;
+  task: TaskWithProject | null; // preenchido só quando dá pra editar no modal (source 'task')
+};
+
+const CAMPAIGN_STAGE_LABEL = Object.fromEntries(CAMPAIGN_TASK_STAGES.map((s) => [s.key, s.label]));
+
+function isRowOverdue(r: DemandRow) {
+  if (!r.dueDate || r.isFinal) return false;
+  return new Date(r.dueDate + 'T00:00') < new Date(new Date().toDateString());
 }
 
-function cronogramaLabel(t: Task) {
-  if (!t.start_date && !t.due_date) return '—';
+function cronogramaLabel(start: string | null, due: string | null) {
+  if (!start && !due) return '—';
   const fmt = (d: string) => new Date(d + 'T00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-  if (t.start_date && t.due_date) return `${fmt(t.start_date)} – ${fmt(t.due_date)}`;
-  return fmt(t.start_date ?? t.due_date!);
+  if (start && due) return `${fmt(start)} – ${fmt(due)}`;
+  return fmt((start ?? due)!);
 }
 
 export default function Demandas() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
+  const [campaignTasks, setCampaignTasks] = useState<CampaignTask[]>([]);
+  const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -39,20 +73,22 @@ export default function Demandas() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    // packaging_track null = exclui as demandas do módulo Embalagens (que têm board próprio e isolado)
-    let tasksQuery = supabase.from('tasks').select('*, project:projects(id, name)').is('packaging_track', null).order('position');
-    if (profile?.role === 'equipe') {
-      tasksQuery = tasksQuery.eq('assignee_id', profile.id);
-    }
-    const [tasksRes, profilesRes, projectsRes, filesRes, productsRes, stagesRes] = await Promise.all([
-      tasksQuery,
-      supabase.from('profiles').select('*'),
-      supabase.from('projects').select('*').order('name'),
-      supabase.from('project_files').select('task_id').not('task_id', 'is', null),
-      supabase.from('products').select('*').order('code'),
-      supabase.from('stages').select('*').is('packaging_track', null).order('position'),
-    ]);
+    // Agora traz TUDO: demandas de projeto, de embalagem (packaging_track) e de campanha.
+    // A RLS já limita o que cada um pode ler; o filtro "só as minhas" pra Equipe é aplicado abaixo.
+    const [tasksRes, campTasksRes, campaignsRes, profilesRes, projectsRes, filesRes, productsRes, stagesRes] =
+      await Promise.all([
+        supabase.from('tasks').select('*, project:projects(id, name)').order('position'),
+        supabase.from('campaign_tasks').select('*').order('position'),
+        supabase.from('campaigns').select('id, name').order('name'),
+        supabase.from('profiles').select('*'),
+        supabase.from('projects').select('*').order('name'),
+        supabase.from('project_files').select('task_id').not('task_id', 'is', null),
+        supabase.from('products').select('*').order('code'),
+        supabase.from('stages').select('*').order('position'),
+      ]);
     setTasks((tasksRes.data as TaskWithProject[]) ?? []);
+    setCampaignTasks((campTasksRes.data as CampaignTask[]) ?? []);
+    setCampaigns((campaignsRes.data as { id: string; name: string }[]) ?? []);
     setProfiles((profilesRes.data as Profile[]) ?? []);
     setProjects((projectsRes.data as Project[]) ?? []);
     setProducts((productsRes.data as Product[]) ?? []);
@@ -63,7 +99,7 @@ export default function Demandas() {
     });
     setFileCounts(counts);
     setLoading(false);
-  }, [profile?.id, profile?.role]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -86,10 +122,14 @@ export default function Demandas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
 
+  const isEquipe = profile?.role === 'equipe';
   const profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
+  const campaignsById = Object.fromEntries(campaigns.map((c) => [c.id, c]));
   const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
+  // Para o "Nova demanda" (só cria demanda de projeto/avulsa): exclui os estágios de embalagem.
   const stagesByProject: Record<string, ProjectStage[]> = {};
   for (const s of stages) {
+    if (s.packaging_track) continue;
     const key = s.project_id ?? 'GLOBAL';
     (stagesByProject[key] ??= []).push(s);
   }
@@ -97,20 +137,75 @@ export default function Demandas() {
     stagesByProject[key].sort((a, b) => a.position - b.position);
   }
 
-  function groupLabel(t: TaskWithProject): string {
-    if (groupBy === 'assignee') return t.assignee_id ? profilesById[t.assignee_id]?.name ?? '—' : 'Sem responsável';
-    if (groupBy === 'project') return t.project?.name ?? 'Sem projeto (avulsa)';
-    if (groupBy === 'priority') return PRIORITY_LABELS[t.priority];
+  // Estágios da trilha de UMA tarefa (projeto, embalagem, ou avulsa) — usado pelo modal de edição.
+  function stagesForTask(t: TaskWithProject): ProjectStage[] {
+    const list = t.project_id
+      ? stages.filter((s) => s.project_id === t.project_id)
+      : t.packaging_track
+        ? stages.filter((s) => s.packaging_track === t.packaging_track)
+        : stages.filter((s) => !s.project_id && !s.packaging_track);
+    return [...list].sort((a, b) => a.position - b.position);
+  }
+
+  const taskRows: DemandRow[] = tasks
+    .filter((t) => !isEquipe || t.assignee_id === profile?.id)
+    .map((t) => ({
+      id: t.id,
+      source: 'task',
+      title: t.title,
+      priority: t.priority,
+      assigneeId: t.assignee_id,
+      startDate: t.start_date,
+      dueDate: t.due_date,
+      stageName: stagesById[t.stage_id]?.name ?? '—',
+      isFinal: !!stagesById[t.stage_id]?.is_final,
+      groupProject: t.packaging_track ? 'Embalagens' : t.project?.name ?? 'Sem projeto (avulsa)',
+      projectLink: t.project
+        ? { to: `/projetos/${t.project.id}`, name: t.project.name }
+        : t.packaging_track
+          ? { to: '/design-produto/embalagens', name: 'Embalagens' }
+          : null,
+      fileCount: fileCounts[t.id] ?? 0,
+      task: t,
+    }));
+
+  const campaignRows: DemandRow[] = campaignTasks
+    .filter((ct) => !isEquipe || ct.assignee_id === profile?.id)
+    .map((ct) => {
+      const camp = campaignsById[ct.campaign_id];
+      return {
+        id: ct.id,
+        source: 'campaign' as const,
+        title: ct.title,
+        priority: ct.priority,
+        assigneeId: ct.assignee_id,
+        startDate: ct.start_date,
+        dueDate: ct.due_date,
+        stageName: CAMPAIGN_STAGE_LABEL[ct.stage] ?? ct.stage,
+        isFinal: ct.stage === 'concluida' || ct.stage === 'cancelada',
+        groupProject: camp ? `Campanha: ${camp.name}` : 'Campanha',
+        projectLink: camp ? { to: `/campanhas/${camp.id}`, name: camp.name } : null,
+        fileCount: 0,
+        task: null,
+      };
+    });
+
+  const rows: DemandRow[] = [...taskRows, ...campaignRows];
+
+  function groupLabel(r: DemandRow): string {
+    if (groupBy === 'assignee') return r.assigneeId ? profilesById[r.assigneeId]?.name ?? '—' : 'Sem responsável';
+    if (groupBy === 'project') return r.groupProject;
+    if (groupBy === 'priority') return PRIORITY_LABELS[r.priority];
     return '';
   }
 
   const groups =
     groupBy === 'none'
-      ? [{ label: '', items: tasks }]
+      ? [{ label: '', items: rows }]
       : Object.entries(
-          tasks.reduce<Record<string, TaskWithProject[]>>((acc, t) => {
-            const key = groupLabel(t);
-            (acc[key] ??= []).push(t);
+          rows.reduce<Record<string, DemandRow[]>>((acc, r) => {
+            const key = groupLabel(r);
+            (acc[key] ??= []).push(r);
             return acc;
           }, {})
         ).map(([label, items]) => ({ label, items }));
@@ -136,13 +231,13 @@ export default function Demandas() {
     <div className="page">
       <h1 className="page-title">Demandas</h1>
       <div className="page-sub">
-        Fluxo: Recebido → Planejamento → Produção → Revisão → Aprovação → Finalizado. Demandas podem estar ligadas a um
-        projeto ou ser avulsas (algo pontual, sem vínculo).
-        {profile?.role === 'equipe' && ' Aqui aparecem só as demandas atribuídas a você.'}
+        Visão única de todas as demandas — de projetos, de embalagem e de campanhas — pra filtrar rápido sem abrir cada
+        um. Demanda de campanha abre na campanha; as demais abrem aqui.
+        {isEquipe && ' Aqui aparecem só as demandas atribuídas a você.'}
       </div>
 
       <div className="section-head">
-        <h2>{tasks.length} demandas</h2>
+        <h2>{rows.length} demandas</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="group-toggle">
             {(
@@ -192,22 +287,31 @@ export default function Demandas() {
                 </tr>
               </thead>
               <tbody>
-                {g.items.map((t) => (
-                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
+                {g.items.map((r) => (
+                  <tr
+                    key={`${r.source}-${r.id}`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => (r.task ? setEditingTask(r.task) : r.projectLink && navigate(r.projectLink.to))}
+                  >
                     <td data-label="Tarefa">
-                      {t.title}
-                      {fileCounts[t.id] > 0 && <span style={{ color: 'var(--text-faint)', marginLeft: 6 }}>📎{fileCounts[t.id]}</span>}
+                      {r.title}
+                      {r.source === 'campaign' && (
+                        <span className="pill" style={{ marginLeft: 6, background: 'var(--yellow-dim)', color: 'var(--yellow)' }}>
+                          campanha
+                        </span>
+                      )}
+                      {r.fileCount > 0 && <span style={{ color: 'var(--text-faint)', marginLeft: 6 }}>📎{r.fileCount}</span>}
                     </td>
                     {groupBy !== 'project' && (
                       <td data-label="Projeto">
-                        {t.project ? (
+                        {r.projectLink ? (
                           <Link
-                            to={`/projetos/${t.project.id}`}
+                            to={r.projectLink.to}
                             onClick={(e) => e.stopPropagation()}
                             className="pill"
                             style={{ background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
                           >
-                            {t.project.name}
+                            {r.projectLink.name}
                           </Link>
                         ) : (
                           <span style={{ color: 'var(--text-faint)' }}>Avulsa</span>
@@ -215,20 +319,20 @@ export default function Demandas() {
                       </td>
                     )}
                     <td data-label="Prioridade">
-                      <span className={`prio ${t.priority}`}>{t.priority}</span>
+                      <span className={`prio ${r.priority}`}>{r.priority}</span>
                     </td>
                     <td data-label="Estágio" style={{ color: 'var(--text-faint)' }}>
-                      {stagesById[t.stage_id]?.name}
+                      {r.stageName}
                     </td>
                     {groupBy !== 'assignee' && (
                       <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>
-                        {t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}
+                        {r.assigneeId ? profilesById[r.assigneeId]?.name : '—'}
                       </td>
                     )}
                     <td data-label="Prazo" style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-                      {cronogramaLabel(t)}
+                      {cronogramaLabel(r.startDate, r.dueDate)}
                     </td>
-                    <td>{isTaskOverdue(t, stagesById) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                    <td>{isRowOverdue(r) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -242,7 +346,7 @@ export default function Demandas() {
           task={editingTask}
           profiles={profiles}
           products={products}
-          stages={stagesByProject[editingTask.project_id ?? 'GLOBAL'] ?? []}
+          stages={stagesForTask(editingTask)}
           actorId={profile.id}
           focusComments={focusComments}
           onClose={() => {
