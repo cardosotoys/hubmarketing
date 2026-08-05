@@ -27,3 +27,6 @@ supabase/.temp
 *.njsproj
 *.sln
 *.sw?
+
+# Dump local do Monday (dados — não versionar)
+monday-dump/
