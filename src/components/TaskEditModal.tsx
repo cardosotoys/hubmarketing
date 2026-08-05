@@ -153,6 +153,9 @@ export default function TaskEditModal({
     loadComments();
   }
 
+  // pickers só mostram gente ativa (desativados somem das escolhas, mas seguem aparecendo em
+  // registros antigos pelo nome)
+  const activeProfiles = profiles.filter((p) => !p.disabled);
   const selectedStage = sortedStages.find((s) => s.id === stageId);
   const currentStage = sortedStages.find((s) => s.id === task.stage_id);
   const overdue = dueDate && selectedStage && !selectedStage.is_final ? computeOverdue(dueDate) : false;
@@ -407,7 +410,7 @@ export default function TaskEditModal({
             <label htmlFor="te-assignee">Responsável</label>
             <select id="te-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
               <option value="">Sem responsável</option>
-              {profiles.map((p) => (
+              {activeProfiles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -527,7 +530,7 @@ export default function TaskEditModal({
         <div style={{ marginTop: 10 }}>
           <label style={{ fontSize: 12, color: 'var(--text-faint)' }}>Pedir aprovação a (pode escolher vários):</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0' }}>
-            {profiles.map((p) => {
+            {activeProfiles.map((p) => {
               const already = approvals.some((a) => a.approver_id === p.id);
               const sel = selectedApprovers.includes(p.id);
               return (
@@ -639,7 +642,7 @@ export default function TaskEditModal({
           <div className="form-field">
             <label>Marcar pessoas</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {profiles.map((p) => (
+              {activeProfiles.map((p) => (
                 <span
                   key={p.id}
                   className="pill"

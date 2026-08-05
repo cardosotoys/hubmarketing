@@ -273,7 +273,7 @@ export default function App() {
               ))}
             </Route>
             <Route path="design-produto" element={<ModuleGate moduleKey="design-produto"><DesignProduto /></ModuleGate>} />
-            <Route path="design-produto/embalagens" element={<ModuleGate moduleKey="design-produto"><EmbalagensTeste /></ModuleGate>} />
+            <Route path="design-produto/embalagens" element={<ModuleGate moduleKey="embalagens"><EmbalagensTeste /></ModuleGate>} />
             <Route path="design-produto/:id" element={<ModuleGate moduleKey="design-produto"><ProductDevWorkspace /></ModuleGate>}>
               <Route index element={<Navigate to="resumo" replace />} />
               <Route path="resumo" element={<ProductDevResumo />} />
