@@ -7,6 +7,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import MobileLayout from './mobile/MobileLayout';
 import OfflineBanner from './OfflineBanner';
+import UpdateBanner from './UpdateBanner';
 
 export default function AppLayout() {
   const { session, loading } = useAuth();
@@ -21,10 +22,17 @@ export default function AppLayout() {
   if (loading) return <div className="centered-loading">Carregando…</div>;
   if (!session) return <Navigate to="/login" replace />;
 
-  if (isMobile) return <MobileLayout />;
+  if (isMobile)
+    return (
+      <>
+        <MobileLayout />
+        <UpdateBanner />
+      </>
+    );
 
   return (
     <div className="app">
+      <UpdateBanner />
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className={`sidebar-backdrop${navOpen ? ' open' : ''}`} onClick={() => setNavOpen(false)} />
       <div className="main">

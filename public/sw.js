@@ -1,7 +1,7 @@
 // Service worker do Cardoso Hub — recebe notificação push com o app fechado/em segundo plano
 // (Web Push API) e mantém um cache leve pra abrir offline com os últimos dados vistos. Bump
 // CACHE_VERSION quando quiser forçar a limpeza do cache antigo num próximo deploy.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `cardoso-hub-shell-${CACHE_VERSION}`;
 const DATA_CACHE = `cardoso-hub-data-${CACHE_VERSION}`;
 
@@ -82,6 +82,9 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return; // nunca cacheia escrita — offline, escrita simplesmente falha
 
   const url = new URL(request.url);
+
+  // Checagem de versão do app (UpdateBanner): passa direto pra rede, nunca cacheia.
+  if (url.searchParams.has('__vcheck')) return;
 
   // Leituras da API do Supabase: cache só serve de fallback pra quando não há rede.
   if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/v1/')) {
