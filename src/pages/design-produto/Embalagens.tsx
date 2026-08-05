@@ -34,7 +34,10 @@ export default function Embalagens({
   moduleTitle?: string;
 } = {}) {
   const { profile } = useAuth();
-  const [track, setTrack] = useState<PackagingTrack>(tracks[0].key);
+  // 'geral' = visão principal com TODAS as demandas das duas trilhas (só leitura em lista)
+  const [track, setTrack] = useState<PackagingTrack | 'geral'>('geral');
+  const trackKeys = tracks.map((t) => t.key);
+  const isGeral = track === 'geral';
   const [tab, setTab] = useState<Tab>('demandas');
   const [view, setView] = useState<'kanban' | 'lista'>('kanban');
 
@@ -70,16 +73,28 @@ export default function Embalagens({
 
   const load = useCallback(async () => {
     setLoading(true);
+    // Geral = todas as trilhas; senão, a trilha selecionada.
+    let tasksQ = supabase.from('tasks').select('*').is('project_id', null).order('position');
+    let stagesQ = supabase.from('stages').select('*').order('position');
+    let finalQ = supabase.from('stages').select('id').eq('is_final', true);
+    if (track === 'geral') {
+      tasksQ = tasksQ.in('packaging_track', trackKeys);
+      stagesQ = stagesQ.in('packaging_track', trackKeys);
+      finalQ = finalQ.in('packaging_track', trackKeys);
+    } else {
+      tasksQ = tasksQ.eq('packaging_track', track);
+      stagesQ = stagesQ.eq('packaging_track', track);
+      finalQ = finalQ.eq('packaging_track', track);
+    }
     // Quando "Ocultar finalizadas" está ligado, as finalizadas são excluídas já no servidor.
-    let tasksQ = supabase.from('tasks').select('*').is('project_id', null).eq('packaging_track', track).order('position');
     if (hideDone) {
-      const finalRes = await supabase.from('stages').select('id').eq('packaging_track', track).eq('is_final', true);
+      const finalRes = await finalQ;
       const finalIds = ((finalRes.data as { id: string }[]) ?? []).map((s) => s.id);
       if (finalIds.length) tasksQ = tasksQ.not('stage_id', 'in', `(${finalIds.join(',')})`);
     }
     const [tasksRes, stagesRes, profilesRes, productsRes] = await Promise.all([
       tasksQ,
-      supabase.from('stages').select('*').eq('packaging_track', track).order('position'),
+      stagesQ,
       supabase.from('profiles').select('*'),
       supabase.from('products').select('*').order('code'),
     ]);
@@ -160,6 +175,7 @@ export default function Embalagens({
   const terminalStageIds = sortedStages.filter((s) => s.is_final).map((s) => s.id);
 
   async function createTask(title: string) {
+    if (track === 'geral') return;
     const firstStage = sortedStages[0];
     if (!firstStage) {
       setStageError('Crie ao menos uma etapa antes de adicionar demandas.');
@@ -176,6 +192,7 @@ export default function Embalagens({
   }
 
   async function createDemand(fields: { product_id: string; title: string; start_date: string; target_date: string; due_date: string; priority: Priority }) {
+    if (track === 'geral') return;
     const firstStage = sortedStages[0];
     if (!firstStage) {
       setStageError('Crie ao menos uma etapa antes de adicionar demandas.');
@@ -267,6 +284,7 @@ export default function Embalagens({
   // ---- gestão de etapas (por trilha) ----
   async function addStage(e: FormEvent) {
     e.preventDefault();
+    if (track === 'geral') return;
     if (!newStageName.trim()) return;
     const position = sortedStages.length > 0 ? Math.max(...sortedStages.map((s) => s.position)) + 1 : 1;
     await supabase.from('stages').insert({ project_id: null, packaging_track: track, name: newStageName.trim(), position, is_final: false });
@@ -324,8 +342,15 @@ export default function Embalagens({
         com etapas editáveis, checklist com gate e aprovação por menção.
       </div>
 
-      {/* Trilhas */}
+      {/* Trilhas — "Geral" (todas) é a visão principal; Criação/Melhoria ao lado */}
       <div className="filters-row">
+        <div
+          className={`filter-chip${isGeral ? ' active' : ''}`}
+          onClick={() => { setTrack('geral'); setFStage('all'); }}
+          title="Todas as demandas de embalagem (todas as trilhas)"
+        >
+          Geral
+        </div>
         {tracks.map((t) => (
           <div key={t.key} className={`filter-chip${track === t.key ? ' active' : ''}`} onClick={() => { setTrack(t.key); setFStage('all'); }} title={t.hint}>
             {t.label}
@@ -353,13 +378,21 @@ export default function Embalagens({
         <div className="page-sub" style={{ marginTop: 12 }}>Carregando…</div>
       ) : tab === 'demandas' ? (
         <div style={{ marginTop: 10 }}>
-          {/* Ações — ficam acima, separadas dos filtros */}
-          <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
-            <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
-            <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
-            <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
-            <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
-          </div>
+          {/* Ações — ficam acima, separadas dos filtros. Em "Geral" é só leitura (lista de tudo). */}
+          {isGeral ? (
+            <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)', alignSelf: 'center' }}>
+                Visão geral — todas as demandas. Para criar/editar etapas, escolha uma trilha.
+              </span>
+            </div>
+          ) : (
+            <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
+              <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
+              <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
+              <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
+              <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
+            </div>
+          )}
 
           {/* Filtros — logo acima do board (colados na estrutura das etapas) */}
           <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -400,7 +433,7 @@ export default function Embalagens({
             </label>
           </div>
 
-          {managingStages && (
+          {!isGeral && managingStages && (
             <div className="panel" style={{ marginTop: 10 }}>
               <h4>Etapas da trilha {tracks.find((t) => t.key === track)?.label}</h4>
               {sortedStages.map((s, i) => (
@@ -431,7 +464,7 @@ export default function Embalagens({
             <div className="locked-banner" style={{ marginTop: 10 }}>
               <span className="ic">▤</span>Nenhuma etapa nesta trilha — rode a migration 0038 ou crie etapas em ⚙ Etapas.
             </div>
-          ) : view === 'kanban' ? (
+          ) : !isGeral && view === 'kanban' ? (
             <div style={{ marginTop: 10 }}>
               <KanbanBoard
                 tasks={kanbanTasks}
@@ -473,6 +506,7 @@ export default function Embalagens({
                 <thead>
                   <tr>
                     <th>Demanda</th>
+                    {isGeral && <th>Trilha</th>}
                     <th>SKU</th>
                     <th>Etapa</th>
                     <th>Responsável</th>
@@ -500,6 +534,11 @@ export default function Embalagens({
                         onMouseLeave={() => setHover(null)}
                       >
                         <td data-label="Demanda">{t.title}</td>
+                        {isGeral && (
+                          <td data-label="Trilha" style={{ color: 'var(--text-faint)' }}>
+                            {tracks.find((tk) => tk.key === t.packaging_track)?.label ?? '—'}
+                          </td>
+                        )}
                         <td data-label="SKU" style={{ color: 'var(--text-faint)' }}>{prod ? `${prod.code} — ${prod.name}` : '—'}</td>
                         <td data-label="Etapa" style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name ?? '—'}</td>
                         <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
@@ -515,8 +554,12 @@ export default function Embalagens({
                 <EmptyState
                   icon="🎁"
                   title="Nenhuma demanda de embalagem aqui"
-                  hint="Ajuste os filtros ou crie uma nova demanda para esta trilha."
-                  action={{ label: '+ Nova demanda', onClick: () => setShowNew(true) }}
+                  hint={
+                    isGeral
+                      ? 'Nenhuma demanda nas trilhas. Escolha “Criação” ou “Melhoria” para criar a primeira.'
+                      : 'Ajuste os filtros ou crie uma nova demanda para esta trilha.'
+                  }
+                  action={isGeral ? undefined : { label: '+ Nova demanda', onClick: () => setShowNew(true) }}
                 />
               )}
             </div>
@@ -650,7 +693,7 @@ export default function Embalagens({
           task={editingTask}
           profiles={profiles}
           products={products}
-          stages={stages}
+          stages={stages.filter((s) => s.packaging_track === editingTask.packaging_track)}
           actorId={profile.id}
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}
