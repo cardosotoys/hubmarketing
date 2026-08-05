@@ -355,7 +355,8 @@ export interface Product {
   catalog_page: number | null;
   ean: string;
   inmetro_number: string;
-  image_url: string;
+  image_url: string; // imagem do produto
+  packaging_image_url: string; // imagem da embalagem
   gender: string;
   material: string;
   color: string;

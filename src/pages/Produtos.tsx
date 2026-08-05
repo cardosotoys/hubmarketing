@@ -257,6 +257,13 @@ export default function Produtos() {
                     {p.code}
                   </td>
                   <td data-label="Produto">
+                    {p.image_url && (
+                      <img
+                        src={p.image_url}
+                        alt=""
+                        style={{ width: 26, height: 26, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginRight: 8, border: '1px solid var(--border)' }}
+                      />
+                    )}
                     {p.name}
                     {p.licensed && (
                       <span className="pill" style={{ marginLeft: 6 }}>
@@ -372,6 +379,8 @@ function ProductFormModal({
   const [ean, setEan] = useState(product?.ean ?? '');
   const [inmetroNumber, setInmetroNumber] = useState(product?.inmetro_number ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
+  const [packagingImageUrl, setPackagingImageUrl] = useState(product?.packaging_image_url ?? '');
+  const [uploading, setUploading] = useState<'product' | 'packaging' | null>(null);
   const [needsReview, setNeedsReview] = useState(product?.needs_review ?? false);
 
   const [technicalName, setTechnicalName] = useState(product?.technical_name ?? '');
@@ -417,6 +426,23 @@ function ProductFormModal({
     return s.trim() ? Math.round(Number(s)) : null;
   }
 
+  async function uploadImage(file: File, which: 'product' | 'packaging') {
+    setError(null);
+    setUploading(which);
+    const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const path = `${(code || 'sem-codigo').replace(/[^a-zA-Z0-9.\-_]/g, '_')}/${which}-${Date.now()}-${safe}`;
+    const { error: upErr } = await supabase.storage.from('product-images').upload(path, file, { upsert: true });
+    if (upErr) {
+      setError(upErr.message);
+      setUploading(null);
+      return;
+    }
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+    if (which === 'product') setImageUrl(data.publicUrl);
+    else setPackagingImageUrl(data.publicUrl);
+    setUploading(null);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!brandId) {
@@ -435,6 +461,7 @@ function ProductFormModal({
       ean,
       inmetro_number: inmetroNumber,
       image_url: imageUrl ? normalizeUrl(imageUrl) : '',
+      packaging_image_url: packagingImageUrl ? normalizeUrl(packagingImageUrl) : '',
       needs_review: needsReview,
       technical_name: technicalName,
       gender,
@@ -561,10 +588,24 @@ function ProductFormModal({
             <label htmlFor="np-inmetro">🏅 Nº de registro INMETRO</label>
             <input id="np-inmetro" value={inmetroNumber} onChange={(e) => setInmetroNumber(e.target.value)} placeholder="Ex.: 000000/0000" />
           </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-image">Imagem oficial (link)</label>
-            <input id="np-image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
-          </div>
+        </div>
+
+        {/* Imagens do produto e da embalagem (upload) */}
+        <div className="responsive-row">
+          <ImageUploadField
+            label="📦 Imagem do produto"
+            url={imageUrl}
+            busy={uploading === 'product'}
+            onPick={(f) => uploadImage(f, 'product')}
+            onClear={() => setImageUrl('')}
+          />
+          <ImageUploadField
+            label="🎁 Imagem da embalagem"
+            url={packagingImageUrl}
+            busy={uploading === 'packaging'}
+            onPick={(f) => uploadImage(f, 'packaging')}
+            onClear={() => setPackagingImageUrl('')}
+          />
         </div>
 
         <div className="responsive-row">
@@ -715,5 +756,70 @@ function ProductFormModal({
         )}
       </form>
     </Modal>
+  );
+}
+
+function ImageUploadField({
+  label,
+  url,
+  busy,
+  onPick,
+  onClear,
+}: {
+  label: string;
+  url: string;
+  busy: boolean;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="form-field" style={{ flex: 1 }}>
+      <label>{label}</label>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <div
+          style={{
+            width: 96,
+            height: 96,
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--surface-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}
+        >
+          {url ? (
+            <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+              <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </a>
+          ) : (
+            <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>Sem imagem</span>
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label className="btn ghost sm" style={{ cursor: busy ? 'wait' : 'pointer' }}>
+            {busy ? 'Enviando…' : url ? 'Trocar imagem' : 'Enviar imagem'}
+            <input
+              type="file"
+              accept="image/*"
+              disabled={busy}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onPick(f);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          {url && (
+            <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={onClear}>
+              Remover
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
