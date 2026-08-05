@@ -31,6 +31,7 @@ const KEEP = new Set([
   'marketing.operacoes@cardosotoys.com.br',
   'matheus.cardoso@cardosotoys.com.br',
   'marketing.digital@cardosotoys.com.br',
+  'aldair.bras@hotmail.com', // login de admin do Aldair — NÃO desativar
 ]);
 
 const BAN_100Y = '876000h'; // ~100 anos = desativado
