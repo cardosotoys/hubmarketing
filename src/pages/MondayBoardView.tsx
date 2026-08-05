@@ -15,6 +15,30 @@ function fmtDateTime(iso: string | null): string {
   return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR');
 }
 
+function isImageUrl(url: string): boolean {
+  return /\.(png|jpe?g|gif|webp|svg|bmp)(\?|$)/i.test(url) || /\/storage\/v1\/object\/public\/monday-assets\//.test(url);
+}
+
+// Texto com URLs → links clicáveis; URLs de imagem → miniatura.
+function RichText({ text }: { text: string }) {
+  const parts = String(text || '').split(/(https?:\/\/[^\s)"]+)/g);
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (!/^https?:\/\//.test(p)) return <span key={i}>{p}</span>;
+        if (isImageUrl(p)) {
+          return (
+            <a key={i} href={p} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
+              <img src={p} alt="anexo" style={{ maxWidth: 200, maxHeight: 150, borderRadius: 6, display: 'block', margin: '4px 0', border: '1px solid var(--border)' }} />
+            </a>
+          );
+        }
+        return <a key={i} href={p} target="_blank" rel="noreferrer">{p}</a>;
+      })}
+    </>
+  );
+}
+
 export default function MondayBoardView() {
   const { id } = useParams<{ id: string }>();
   const [board, setBoard] = useState<MondayBoard | null>(null);
@@ -139,10 +163,10 @@ function ItemModal({ item, onClose }: { item: MondayItem; onClose: () => void })
       {tab === 'dados' && (
         <div className="panel" style={{ marginTop: 10 }}>
           {item.column_values.filter((c) => c.text).length === 0 && <div className="page-sub">Sem colunas preenchidas.</div>}
-          {item.column_values.filter((c) => c.text).map((c) => (
+          {item.column_values.filter((c) => c.text || c.url).map((c) => (
             <div className="field-row" key={c.id}>
               <span className="k">{c.title}</span>
-              <span>{c.text}</span>
+              <span>{c.url ? <RichText text={c.url} /> : <RichText text={c.text} />}</span>
             </div>
           ))}
           {item.subitems.length > 0 && (
@@ -168,7 +192,7 @@ function ItemModal({ item, onClose }: { item: MondayItem; onClose: () => void })
                 <span className="name">{u.author_name || 'Alguém'}</span>
                 <span className="time">{fmtDateTime(u.monday_created_at)}</span>
               </div>
-              <div className="body" style={{ whiteSpace: 'pre-wrap' }}>{u.body}</div>
+              <div className="body" style={{ whiteSpace: 'pre-wrap' }}><RichText text={u.body} /></div>
             </div>
           ))}
         </div>

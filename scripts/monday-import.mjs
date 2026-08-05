@@ -1,22 +1,17 @@
 #!/usr/bin/env node
 // Cardoso Hub — Importador do dump do Monday → módulo "Monday" (arquivo)
 // ---------------------------------------------------------------------------
-// Lê ./monday-dump/*.json e popula as tabelas monday_boards / monday_items /
-// monday_updates / monday_activity no Supabase, preservando datas e autores.
-// NÃO mexe em nada do resto do hub — é só o arquivo, pra você depois decidir
-// onde encaixar cada coisa.
+// Lê ./monday-dump/*.json e popula monday_boards / monday_items / monday_updates /
+// monday_activity no Supabase, preservando datas, autores e URLs (links/imagens/
+// arquivos re-hospedados pelo monday-assets.mjs). NÃO mexe no resto do hub.
 //
-// SEGURO: por padrão é DRY-RUN (só conta). Só grava com --commit.
+// Por padrão importa SÓ os 4 quadros escolhidos e APAGA os demais do arquivo.
+// SEGURO: dry-run por padrão. Só grava com --commit. Reimport é idempotente.
 //
-// COMO RODAR (dentro da pasta do projeto):
-//   1) Supabase → Settings → API: Project URL e a service_role key
-//   2) Teste:
-//      SUPABASE_URL="https://xxx.supabase.co" SUPABASE_SERVICE_ROLE_KEY="ey..." \
-//        node scripts/monday-import.mjs
-//   3) Gravar:
-//      SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/monday-import.mjs --commit
-//
-//   Reimportar é seguro: cada quadro é apagado e recriado (não duplica).
+//   export SUPABASE_URL="https://xxx.supabase.co"
+//   export SUPABASE_SERVICE_ROLE_KEY="sb_secret_..."
+//   node scripts/monday-import.mjs            # dry-run
+//   node scripts/monday-import.mjs --commit   # grava
 // ---------------------------------------------------------------------------
 
 import { readdir, readFile } from 'node:fs/promises';
@@ -27,6 +22,9 @@ const DUMP_DIR = join(process.cwd(), 'monday-dump');
 const args = process.argv.slice(2);
 const COMMIT = args.includes('--commit');
 const ONLY = (args.find((a) => a.startsWith('--only=')) || '').replace('--only=', '').split(',').filter(Boolean);
+// Só estes quadros ficam no arquivo (o resto é excluído). Sobrescreva com --only=IDs.
+const TARGET_BOARDS = ['18408568242', '18404210044', '9901058220', '18403298414'];
+const KEEP = ONLY.length ? ONLY : TARGET_BOARDS;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,20 +34,31 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 }
 const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
+let ASSET_MAP = {}; // assetId → URL re-hospedada no hub
+
 function tsToIso(ticks) {
   const seconds = Number(ticks) / 1e7;
   if (!isFinite(seconds) || seconds <= 0) return null;
   return new Date(seconds * 1000).toISOString();
 }
+function mapAsset(url) {
+  // troca URL protegida do Monday (/resources/<assetId>/) pela URL re-hospedada, se houver
+  const m = String(url || '').match(/\/resources\/(\d+)\//);
+  if (m && ASSET_MAP[m[1]]) return ASSET_MAP[m[1]];
+  return url;
+}
 function htmlToText(html) {
   if (!html) return '';
   return String(html)
-    .replace(/<img[^>]*>/gi, '[imagem]')
+    // <img> vira a URL re-hospedada (ou a original) em linha própria
+    .replace(/<img[^>]*data-asset_id="(\d+)"[^>]*>/gi, (_, id) => `\n${ASSET_MAP[id] || '[imagem]'}\n`)
+    .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, (_, src) => `\n${mapAsset(src)}\n`)
     .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '$2 ($1)')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 function chunk(a, n) { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
@@ -76,6 +85,20 @@ function suggestDestination(name) {
   return 'A definir';
 }
 
+// col: {id,text,value,type} → adiciona url (link/arquivo re-hospedado) quando houver
+function colToEntry(c, colTitleById) {
+  const entry = { id: c.id, title: colTitleById.get(c.id) || c.id, type: c.type, text: c.text ?? '' };
+  if (c.type === 'link') {
+    try { const v = JSON.parse(c.value); if (v?.url) entry.url = v.url; } catch {}
+  }
+  if (c.type === 'file') {
+    // o text costuma ser a URL do Monday; re-mapeia pra URL do hub
+    if (c.text && /https?:\/\//.test(c.text)) entry.url = mapAsset(c.text.split(/\s+/)[0]);
+    try { const v = JSON.parse(c.value); const a = (v.files || [])[0]; if (a?.assetId && ASSET_MAP[a.assetId]) entry.url = ASSET_MAP[a.assetId]; } catch {}
+  }
+  return entry;
+}
+
 async function importBoard(file, monUsersById) {
   const raw = JSON.parse(await readFile(join(DUMP_DIR, file), 'utf8'));
   const board = raw.board;
@@ -86,7 +109,6 @@ async function importBoard(file, monUsersById) {
   const upCount = items.reduce((n, it) => n + (it.updates?.length ?? 0), 0);
   console.log(`\n📦 ${board.name}  (${items.length} itens, ${upCount} comentários, ${activity.length} eventos)`);
 
-  // 1) apaga versão anterior deste quadro (reimport seguro) e cria o board
   let boardId = 'dry-board';
   if (COMMIT) {
     await db.from('monday_boards').delete().eq('monday_id', String(board.id));
@@ -109,7 +131,6 @@ async function importBoard(file, monUsersById) {
     boardId = data.id;
   }
 
-  // 2) itens (com colunas legíveis enriquecidas com título)
   const itemRows = items.map((it, i) => ({
     board_id: boardId,
     monday_id: String(it.id),
@@ -118,9 +139,7 @@ async function importBoard(file, monUsersById) {
     group_title: it.group?.title || '',
     creator_name: it.creator?.name || '',
     monday_created_at: it.created_at || null,
-    column_values: (it.column_values || [])
-      .filter((c) => c.text || c.value)
-      .map((c) => ({ id: c.id, title: colTitleById.get(c.id) || c.id, type: c.type, text: c.text ?? '' })),
+    column_values: (it.column_values || []).filter((c) => c.text || c.value).map((c) => colToEntry(c, colTitleById)),
     subitems: (it.subitems || []).map((s) => ({
       name: s.name,
       status: (s.column_values || []).find((x) => x.type === 'status')?.text || '',
@@ -131,7 +150,6 @@ async function importBoard(file, monUsersById) {
   const itemIdByMonday = new Map();
   items.forEach((it, i) => itemIdByMonday.set(String(it.id), insertedItems[i]?.id));
 
-  // 3) comentários (updates)
   const updateRows = [];
   for (const it of items) {
     const iid = itemIdByMonday.get(String(it.id));
@@ -139,18 +157,17 @@ async function importBoard(file, monUsersById) {
       updateRows.push({
         item_id: iid,
         author_name: up.creator?.name || '',
-        body: ((up.text_body && up.text_body.trim()) || htmlToText(up.body) || '[anexo/imagem]').slice(0, 8000),
+        body: ((up.text_body && up.text_body.trim()) || htmlToText(up.body) || '[anexo]').slice(0, 8000),
         monday_created_at: up.created_at || null,
       });
     }
   }
   await insertMany('monday_updates', updateRows);
 
-  // 4) histórico (activity_logs) — eventos relevantes, com data e autor originais
-  const KEEP = /create_pulse|update_column_value|create_update|move_pulse|delete_pulse|create_subitem|update_name/i;
+  const KEEP_EV = /create_pulse|update_column_value|create_update|move_pulse|delete_pulse|create_subitem|update_name/i;
   const actRows = [];
   for (const ev of activity) {
-    if (!KEEP.test(ev.event)) continue;
+    if (!KEEP_EV.test(ev.event)) continue;
     let data = {};
     try { data = ev.data ? JSON.parse(ev.data) : {}; } catch {}
     const pulseId = data.pulse_id ?? data.item_id ?? null;
@@ -181,6 +198,13 @@ async function importBoard(file, monUsersById) {
 
 async function main() {
   console.log(`\n${COMMIT ? '💾 IMPORTANDO para o módulo Monday (grava)' : '🧪 DRY-RUN (não grava — use --commit)'}\n`);
+  try {
+    ASSET_MAP = JSON.parse(await readFile(join(DUMP_DIR, 'asset-map.json'), 'utf8'));
+    console.log(`🖼  ${Object.keys(ASSET_MAP).length} arquivos re-hospedados carregados do asset-map.json`);
+  } catch {
+    console.log('⚠️  Sem asset-map.json — rode antes: node scripts/monday-assets.mjs (links de arquivo/imagem ficam sem re-hospedar).');
+  }
+
   const monUsers = JSON.parse(await readFile(join(DUMP_DIR, 'users.json'), 'utf8'));
   const monUsersById = new Map(monUsers.map((u) => [String(u.id), u]));
   const summary = JSON.parse(await readFile(join(DUMP_DIR, 'summary.json'), 'utf8'));
@@ -189,13 +213,18 @@ async function main() {
   const files = (await readdir(DUMP_DIR)).filter((f) => f.startsWith('board-') && f.endsWith('.json'));
   const toImport = files.filter((f) => {
     const id = f.match(/board-(\d+)-/)?.[1];
-    const meta = metaById.get(String(id));
-    if (ONLY.length && !ONLY.includes(id)) return false;
-    if (!meta || meta.state !== 'active') return false;
-    if (/^Subelementos de /i.test(meta.name)) return false; // subitens vêm inline no quadro-pai
-    if ((meta.items ?? 0) === 0) return false;
-    return true;
+    return KEEP.includes(id) && metaById.get(String(id));
   });
+
+  // limpeza: apaga do arquivo qualquer quadro que não esteja na lista mantida
+  if (COMMIT) {
+    const { data: existing } = await db.from('monday_boards').select('id, monday_id');
+    const toDelete = (existing ?? []).filter((b) => !KEEP.includes(String(b.monday_id)));
+    if (toDelete.length) {
+      await db.from('monday_boards').delete().in('id', toDelete.map((b) => b.id));
+      console.log(`🧹 Removidos ${toDelete.length} quadros que não estão na lista mantida.`);
+    }
+  }
 
   console.log(`Quadros a importar: ${toImport.length}\n`);
   const results = [];

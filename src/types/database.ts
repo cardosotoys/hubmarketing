@@ -1294,6 +1294,7 @@ export interface MondayColumnValue {
   title: string;
   type: string;
   text: string;
+  url?: string;
 }
 export interface MondayBoard {
   id: string;
