@@ -681,6 +681,7 @@ function ProductFormModal({
             label="📦 Imagem do produto"
             url={imageUrl}
             busy={uploading === 'product'}
+            downloadName={`${code || 'produto'}-produto`}
             onPick={(f) => uploadImage(f, 'product')}
             onClear={() => setImageUrl('')}
           />
@@ -688,6 +689,7 @@ function ProductFormModal({
             label="🎁 Imagem da embalagem"
             url={packagingImageUrl}
             busy={uploading === 'packaging'}
+            downloadName={`${code || 'produto'}-embalagem`}
             onPick={(f) => uploadImage(f, 'packaging')}
             onClear={() => setPackagingImageUrl('')}
           />
@@ -844,16 +846,37 @@ function ProductFormModal({
   );
 }
 
+async function downloadImage(url: string, baseName: string) {
+  const ext = (url.split('?')[0].split('.').pop() || 'jpg').toLowerCase().slice(0, 5);
+  const filename = `${baseName}.${ext}`;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objUrl);
+  } catch {
+    window.open(url, '_blank'); // fallback: abre em nova aba pra salvar manualmente
+  }
+}
+
 function ImageUploadField({
   label,
   url,
   busy,
+  downloadName,
   onPick,
   onClear,
 }: {
   label: string;
   url: string;
   busy: boolean;
+  downloadName: string;
   onPick: (file: File) => void;
   onClear: () => void;
 }) {
@@ -898,6 +921,11 @@ function ImageUploadField({
               }}
             />
           </label>
+          {url && (
+            <button type="button" className="btn ghost sm" onClick={() => downloadImage(url, downloadName)}>
+              ⬇ Baixar
+            </button>
+          )}
           {url && (
             <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={onClear}>
               Remover
