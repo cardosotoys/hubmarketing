@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { ActivityWithActor, MentionRow } from '../hooks/useNotifications';
+import type { ActivityWithActor, NotificationRow } from '../hooks/useNotifications';
 
 const trunc = (s: string, n: number) => {
   const t = (s ?? '').replace(/\s+/g, ' ').trim();
@@ -7,65 +7,63 @@ const trunc = (s: string, n: number) => {
 };
 
 export default function NotificationsPanel({
-  mentions,
+  notifications,
   recent,
-  readIds,
   onMarkRead,
   onMarkAllRead,
   onClose,
 }: {
-  mentions: MentionRow[];
+  notifications: NotificationRow[];
   recent: ActivityWithActor[];
-  readIds: Set<string>;
   onMarkRead: (id: string) => void;
-  onMarkAllRead: (ids: string[]) => void;
+  onMarkAllRead: () => void;
   onClose: () => void;
 }) {
-  const unreadMentions = mentions.filter((m) => !readIds.has(m.id));
+  const unread = notifications.filter((n) => !n.read);
 
   return (
     <div className="notif-panel" style={{ width: 'min(420px, 92vw)' }}>
-      {mentions.length > 0 && (
+      {notifications.length > 0 && (
         <>
           <div className="head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>
-              Menções pra você
-              {unreadMentions.length > 0 && (
+              Notificações
+              {unread.length > 0 && (
                 <span
                   style={{ marginLeft: 6, background: 'var(--accent)', color: '#fff', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}
                 >
-                  {unreadMentions.length}
+                  {unread.length}
                 </span>
               )}
             </span>
-            {unreadMentions.length > 0 && (
+            {unread.length > 0 && (
               <button
                 type="button"
-                onClick={() => onMarkAllRead(mentions.map((m) => m.id))}
+                onClick={onMarkAllRead}
                 style={{ background: 'none', border: 'none', color: 'var(--violet)', cursor: 'pointer', fontSize: 11, padding: 0 }}
               >
                 Marcar todas como lidas
               </button>
             )}
           </div>
-          {mentions.map((m) => {
-            const unread = !readIds.has(m.id);
+          {notifications.map((n) => {
+            const unreadItem = !n.read;
             return (
               <Link
                 className="item"
-                key={m.id}
-                to={`/demandas?task=${m.task_id}&focus=comments`}
+                key={n.id}
+                to={n.task_id ? `/demandas?task=${n.task_id}&focus=comments` : '/demandas'}
                 onClick={() => {
-                  onMarkRead(m.id);
+                  onMarkRead(n.id);
                   onClose();
                 }}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 8,
-                  background: unread ? 'var(--accent-dim)' : undefined,
-                  fontWeight: unread ? 600 : 400,
-                  opacity: unread ? 1 : 0.62,
+                  background: unreadItem ? 'var(--accent-dim)' : undefined,
+                  fontWeight: unreadItem ? 600 : 400,
+                  opacity: unreadItem ? 1 : 0.62,
                 }}
               >
                 <span
@@ -76,17 +74,17 @@ export default function NotificationsPanel({
                     height: 8,
                     borderRadius: '50%',
                     flexShrink: 0,
-                    background: unread ? 'var(--accent)' : 'transparent',
-                    border: unread ? 'none' : '1px solid var(--border)',
+                    background: unreadItem ? 'var(--accent)' : 'transparent',
+                    border: unreadItem ? 'none' : '1px solid var(--border)',
                   }}
                 />
                 <span style={{ minWidth: 0, fontSize: 12.5, lineHeight: 1.4, overflowWrap: 'anywhere' }}>
                   <span style={{ display: 'block' }}>
-                    <b>{m.author?.name ?? 'Alguém'}</b> te marcou em “{trunc(m.task?.title ?? 'uma demanda', 42)}”
+                    <b>{n.actor?.name ?? 'Alguém'}</b> te marcou em “{trunc(n.title || 'uma demanda', 42)}”
                   </span>
-                  {m.body && (
+                  {n.body && (
                     <span style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 400, marginTop: 2 }}>
-                      {trunc(m.body, 90)}
+                      {trunc(n.body, 90)}
                     </span>
                   )}
                 </span>

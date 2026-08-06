@@ -11,7 +11,7 @@ export default function MobileTopBar() {
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const { mentions, recent, unreadCount, readIds, markRead, markAllRead, loadRecent, markSeen } = useNotifications(profile?.id);
+  const { notifications, recent, unreadCount, markRead, markAllRead, loadRecent, reload } = useNotifications(profile?.id);
   const { query, setQuery, searching, results, hasResults, goTo } = useGlobalSearch();
 
   function handleGoTo(path: string) {
@@ -23,7 +23,7 @@ export default function MobileTopBar() {
     setNotifOpen((s) => {
       if (!s) {
         loadRecent();
-        markSeen();
+        reload();
       }
       return !s;
     });
@@ -123,9 +123,8 @@ export default function MobileTopBar() {
           <div className="mobile-more-sheet mobile-notif-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-sheet-handle" />
             <NotificationsPanel
-              mentions={mentions}
+              notifications={notifications}
               recent={recent}
-              readIds={readIds}
               onMarkRead={markRead}
               onMarkAllRead={markAllRead}
               onClose={() => setNotifOpen(false)}

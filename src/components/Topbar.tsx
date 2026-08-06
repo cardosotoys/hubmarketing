@@ -10,7 +10,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
   const { profile, setTheme } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { mentions, recent, unreadCount, readIds, markRead, markAllRead, loadRecent, markSeen } = useNotifications(profile?.id);
+  const { notifications, recent, unreadCount, markRead, markAllRead, loadRecent, reload } = useNotifications(profile?.id);
   const { query, setQuery, searching, results, hasResults, goTo: searchGoTo } = useGlobalSearch();
 
   function goTo(path: string) {
@@ -22,7 +22,7 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
     setShowNotif((s) => {
       if (!s) {
         loadRecent();
-        markSeen();
+        reload();
       }
       return !s;
     });
@@ -137,9 +137,8 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
 
       {showNotif && (
         <NotificationsPanel
-          mentions={mentions}
+          notifications={notifications}
           recent={recent}
-          readIds={readIds}
           onMarkRead={markRead}
           onMarkAllRead={markAllRead}
           onClose={() => setShowNotif(false)}

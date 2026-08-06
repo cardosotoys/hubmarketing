@@ -732,6 +732,19 @@ export const CAMPAIGN_TASK_STAGES: { key: CampaignTaskStage; label: string }[] =
   { key: 'cancelada', label: 'Cancelada' },
 ];
 
+export interface Notification {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: string;
+  title: string;
+  body: string;
+  task_id: string | null;
+  project_id: string | null;
+  read: boolean;
+  created_at: string;
+}
+
 export interface AccessPreset {
   id: string;
   name: string;
