@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { materializeSubsteps } from '../lib/substeps';
 import TaskEditModal from '../components/TaskEditModal';
 import ProductImageHover, { type ProductHoverData } from '../components/ProductImageHover';
 import EmptyState from '../components/EmptyState';
@@ -308,6 +309,26 @@ export default function Demandas() {
     load();
   }
 
+  // Transforma os itens do "checklist livre" da demanda aberta em demandas individuais, no MESMO
+  // escopo dela (projeto / embalagem / marca), entrando na primeira etapa da trilha.
+  async function spawnFromLabels(labels: string[]) {
+    const t = editingTask;
+    if (!t || labels.length === 0) return;
+    const first = [...stagesForTask(t)].sort((a, b) => a.position - b.position)[0];
+    if (!first) return;
+    for (const label of labels) {
+      const { data } = await supabase
+        .from('tasks')
+        .insert({ project_id: t.project_id, packaging_track: t.packaging_track, brand_id: t.brand_id, stage_id: first.id, title: label, priority: 'medium' })
+        .select()
+        .single();
+      if (data) await materializeSubsteps(data.id, first.id);
+    }
+    if (profile) await logActivity({ actorId: profile.id, actionText: 'Checklist transformado em demandas', detail: `${labels.length} itens`, projectId: t.project_id ?? undefined });
+    setEditingTask(null);
+    load();
+  }
+
   async function deleteTask(taskId: string, title: string, projectId?: string | null) {
     await supabase.from('tasks').delete().eq('id', taskId);
     if (profile) await logActivity({ actorId: profile.id, actionText: 'Demanda excluída', detail: title, projectId: projectId ?? undefined });
@@ -532,6 +553,7 @@ export default function Demandas() {
           }}
           onSave={(fields) => saveTask(editingTask.id, fields)}
           onDelete={() => deleteTask(editingTask.id, editingTask.title, editingTask.project_id)}
+          onSpawnDemandas={spawnFromLabels}
         />
       )}
 
