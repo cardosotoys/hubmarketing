@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import { normalizeUrl } from '../lib/url';
+import Loading from '../components/Loading';
 import type { DriveKey, LibraryFolder, LibraryLink } from '../types/database';
 
 const DRIVE_INFO: Record<DriveKey, { label: string; color: string; formula: string; example: string }> = {
@@ -300,7 +301,7 @@ export default function Biblioteca() {
         <div className="panel">
           <h4>Árvore do Drive {info.label}</h4>
           {loading ? (
-            <div className="page-sub">Carregando…</div>
+            <Loading />
           ) : (
             <div className="folder-tree">
               {roots.map((f) => (

@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import Modal from '../components/Modal';
+import EmptyState from '../components/EmptyState';
+import Loading from '../components/Loading';
 import { CAMPAIGN_STATUSES, type Brand, type Campaign, type CampaignStatus, type Category, type Priority } from '../types/database';
 
 type CampaignWithRelations = Campaign & { brand: Brand };
@@ -94,11 +96,14 @@ export default function Campaigns() {
       </div>
 
       {loading ? (
-        <div className="page-sub">Carregando…</div>
+        <Loading />
       ) : filtered.length === 0 ? (
-        <div className="locked-banner">
-          <span className="ic">◐</span>Nenhuma campanha ainda — crie a primeira.
-        </div>
+        <EmptyState
+          icon="◆"
+          title="Nenhuma campanha ainda"
+          hint="Ajuste os filtros ou crie a primeira campanha."
+          action={{ label: '+ Nova campanha', onClick: () => setShowNew(true) }}
+        />
       ) : (
         <div className="project-grid">
           {filtered.map((c) => (

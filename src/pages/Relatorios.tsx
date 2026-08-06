@@ -9,6 +9,7 @@ import {
   type ProjectStage,
   type ProjectStatus,
 } from '../types/database';
+import Loading from '../components/Loading';
 
 function formatBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -149,7 +150,7 @@ export default function Relatorios() {
     return (
       <div className="page">
         <h1 className="page-title">Relatórios</h1>
-        <div className="page-sub">Carregando…</div>
+        <Loading />
       </div>
     );
   }

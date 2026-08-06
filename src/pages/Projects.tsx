@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import ProjectCard from '../components/ProjectCard';
 import Modal from '../components/Modal';
+import EmptyState from '../components/EmptyState';
+import Loading from '../components/Loading';
 import {
   PRIORITIES,
   PRIORITY_LABELS,
@@ -327,11 +329,14 @@ export default function Projects() {
           )}
 
           {loading ? (
-            <div className="page-sub">Carregando…</div>
+            <Loading />
           ) : filtered.length === 0 ? (
-            <div className="locked-banner">
-              <span className="ic">◐</span>Nenhum projeto encontrado para esse filtro.
-            </div>
+            <EmptyState
+              icon="◧"
+              title="Nenhum projeto encontrado"
+              hint="Ajuste os filtros ou crie um novo projeto."
+              action={{ label: '+ Novo projeto', onClick: () => setShowNew(true) }}
+            />
           ) : (
             groups.map((g) => (
               <div key={g.label || 'all'} style={{ marginBottom: 22 }}>
