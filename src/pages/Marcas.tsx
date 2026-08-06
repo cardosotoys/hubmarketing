@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import Loading from '../components/Loading';
+import BrandDemandas from '../components/BrandDemandas';
 import { BRAND_IDENTITY, IDENTITY_STATUS, type BrandIdentityStatus } from '../lib/brandIdentity';
 import type { Brand } from '../types/database';
 
@@ -218,6 +219,8 @@ export default function Marcas() {
             })}
           </div>
         )
+      ) : tab === 'demandas' ? (
+        brandId ? <BrandDemandas brandId={brandId} brandLabel={brand?.label ?? 'marca'} /> : <Loading />
       ) : (
         <div
           style={{
@@ -229,14 +232,11 @@ export default function Marcas() {
             marginTop: 16,
           }}
         >
-          <div style={{ fontSize: 34, marginBottom: 8 }}>{tab === 'demandas' ? '☰' : '🗂️'}</div>
-          <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 6 }}>
-            {tab === 'demandas' ? 'Demandas da marca — em breve' : 'Arquivos da marca — em breve'}
-          </div>
+          <div style={{ fontSize: 34, marginBottom: 8 }}>🗂️</div>
+          <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 6 }}>Arquivos da marca — em breve</div>
           <p style={{ fontSize: 13, maxWidth: 460, margin: '0 auto', lineHeight: 1.5 }}>
-            {tab === 'demandas'
-              ? 'Próxima etapa: criar e acompanhar demandas por marca (etapas, sub-etapas, prazos, comentários/menções e aprovações), no mesmo motor do módulo Embalagens.'
-              : 'Próxima etapa: biblioteca de arquivos da marca — muitos materiais serão espelhados do Google Drive quando a sincronização estiver pronta.'}
+            Próxima etapa: biblioteca de arquivos da marca — muitos materiais serão espelhados do Google Drive quando a
+            sincronização estiver pronta.
           </p>
         </div>
       )}

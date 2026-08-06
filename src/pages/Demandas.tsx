@@ -206,12 +206,14 @@ export default function Demandas() {
       dueDate: t.due_date,
       stageName: stagesById[t.stage_id]?.name ?? '—',
       isFinal: !!stagesById[t.stage_id]?.is_final,
-      groupProject: t.packaging_track ? 'Embalagens' : t.project?.name ?? 'Sem projeto (avulsa)',
+      groupProject: t.packaging_track === 'marca' ? 'Marcas' : t.packaging_track ? 'Embalagens' : t.project?.name ?? 'Sem projeto (avulsa)',
       projectLink: t.project
         ? { to: `/projetos/${t.project.id}`, name: t.project.name }
-        : t.packaging_track
-          ? { to: '/design-produto/embalagens', name: 'Embalagens' }
-          : null,
+        : t.packaging_track === 'marca'
+          ? { to: '/marcas', name: 'Marcas' }
+          : t.packaging_track
+            ? { to: '/design-produto/embalagens', name: 'Embalagens' }
+            : null,
       fileCount: fileCounts[t.id] ?? 0,
       search: `${t.title}${productSearch(t.product_id)}`.toLowerCase(),
       product: t.product_id ? productsById[t.product_id] ?? null : null,

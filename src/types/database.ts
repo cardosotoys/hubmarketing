@@ -134,7 +134,7 @@ export interface Brand {
   color: string;
 }
 
-export type PackagingTrack = 'criacao' | 'melhoria' | 'criacao_teste' | 'melhoria_teste';
+export type PackagingTrack = 'criacao' | 'melhoria' | 'criacao_teste' | 'melhoria_teste' | 'marca';
 export const PACKAGING_TRACKS: { key: PackagingTrack; label: string; hint: string }[] = [
   { key: 'criacao', label: 'Criação', hint: 'Embalagem nova — do planejamento à produção' },
   { key: 'melhoria', label: 'Melhoria', hint: 'Corrigir/aprovar embalagem de produto existente' },
@@ -262,6 +262,7 @@ export interface Task {
   notes: string;
   budget: number | null;
   packaging_track: PackagingTrack | null;
+  brand_id: string | null;
   approval_state: ApprovalState;
   approval_requested_to: string | null;
   approval_note: string;

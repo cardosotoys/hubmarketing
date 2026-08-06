@@ -285,6 +285,8 @@ export default function TaskEditModal({
 
   // Embalagem "aprovada": pela aprovação por menção OU pela etapa (ex.: "Aprovado para Impressão")
   const embalagemAprovada = apprState === 'aprovado' || /aprovad/i.test(selectedStage?.name ?? '');
+  // UI específica de embalagem (SKU/mockup) não vale pra demandas de marca (packaging_track = 'marca')
+  const isPackagingDemand = !!task.packaging_track && task.packaging_track !== 'marca';
 
   // Sobe o mockup da embalagem aprovada e grava direto no produto vinculado (SKU) — a lista de
   // Produtos (e o pop-up/preview) passam a mostrar automaticamente, pois é o mesmo registro.
@@ -527,7 +529,7 @@ export default function TaskEditModal({
         })()}
 
         {/* Mockup da embalagem — condicional: só quando a embalagem está aprovada. Grava no produto. */}
-        {task.packaging_track && embalagemAprovada && !productId && (
+        {isPackagingDemand && embalagemAprovada && !productId && (
           <div
             className="form-field"
             style={{ background: 'var(--yellow-dim)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}
@@ -539,7 +541,7 @@ export default function TaskEditModal({
             </p>
           </div>
         )}
-        {task.packaging_track &&
+        {isPackagingDemand &&
           productId &&
           embalagemAprovada &&
           (() => {
