@@ -82,7 +82,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   demandas: 'Demandas',
   calendario: 'Calendário',
   'redes-sociais': 'Redes Sociais',
-  biblioteca: 'Biblioteca',
+  biblioteca: 'Drive',
   produtos: 'Produtos',
   'monitor-precos': 'Monitor de Preços',
   brand: 'Brand',

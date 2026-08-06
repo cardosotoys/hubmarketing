@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import Avatar from './Avatar';
+import Icon from './Icon';
 import { ROLE_LABELS } from '../types/database';
 import { NAV_GROUPS, isNavItemVisible, type NavItem, type NavModule } from '../lib/navVisibility';
 
@@ -73,7 +74,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
     if (item.requiresConfig && !seesConfig) {
       return (
         <div className="nav-locked" key={item.to} title={collapsed ? item.label : undefined}>
-          <span className="ic">{item.icon}</span>
+          <span className="ic">
+            <Icon name={item.icon} />
+          </span>
           <span className="nav-label-text">{item.label}</span>
           <span className="ic" style={{ marginLeft: 'auto' }}>
             🔒
@@ -89,7 +92,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         title={collapsed ? item.label : undefined}
         className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
       >
-        <span className="ic">{item.icon}</span>
+        <span className="ic">
+          <Icon name={item.icon} />
+        </span>
         <span className="nav-label-text">{item.label}</span>
         {item.to === '/demandas' && openTasks !== null && openTasks > 0 && <span className="badge">{openTasks}</span>}
       </NavLink>
@@ -146,7 +151,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   return (
                     <div key={mod.key} className="nav-module">
                       <button type="button" className="nav-module-head" onClick={() => toggleModule(mod.key)}>
-                        <span className="ic">{mod.icon}</span>
+                        <span className="ic">
+                          <Icon name={mod.icon} />
+                        </span>
                         <span className="nav-label-text">{mod.label}</span>
                         <span className="nav-chevron">{openMod ? '▾' : '▸'}</span>
                       </button>

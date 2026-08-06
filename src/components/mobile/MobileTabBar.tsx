@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getVisibleNavItems, type NavItem } from '../../lib/navVisibility';
+import Icon from '../Icon';
 
 // As 4 posições fixas da barra inferior — as demais entram na folha "Mais". Valor trivial de
 // ajustar depois; a visibilidade real (quem vê o quê) continua vindo de getVisibleNavItems.
@@ -27,7 +28,7 @@ export default function MobileTabBar() {
     if (item.requiresConfig && !seesConfig) {
       return (
         <div className="mobile-sheet-item locked" key={item.to}>
-          <span className="ic">{item.icon}</span>
+          <span className="ic"><Icon name={item.icon} size={18} /></span>
           <span>{item.label}</span>
           <span className="ic lock">🔒</span>
         </div>
@@ -35,7 +36,7 @@ export default function MobileTabBar() {
     }
     return (
       <NavLink key={item.to} to={item.to} end={item.end} className="mobile-sheet-item" onClick={() => setMoreOpen(false)}>
-        <span className="ic">{item.icon}</span>
+        <span className="ic"><Icon name={item.icon} size={18} /></span>
         <span>{item.label}</span>
       </NavLink>
     );
@@ -46,7 +47,7 @@ export default function MobileTabBar() {
       <nav className="mobile-tabbar">
         {primary.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `mobile-tab${isActive ? ' active' : ''}`}>
-            <span className="ic">{item.icon}</span>
+            <span className="ic"><Icon name={item.icon} size={18} /></span>
             <span className="label">{item.label}</span>
           </NavLink>
         ))}
