@@ -43,6 +43,7 @@ export default function TaskEditModal({
   onClose,
   onSave,
   onDelete,
+  onSpawnDemandas,
 }: {
   task: Task;
   profiles: Profile[];
@@ -53,6 +54,8 @@ export default function TaskEditModal({
   onClose: () => void;
   onSave: (fields: Partial<Task>) => void;
   onDelete: () => void;
+  // opcional: transforma os itens do "checklist livre" em demandas individuais (usado no módulo Marcas)
+  onSpawnDemandas?: (labels: string[]) => void | Promise<void>;
 }) {
   const commentsRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(task.title);
@@ -757,8 +760,26 @@ export default function TaskEditModal({
 
         {otherItems.length > 0 && (
           <>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-faint)', margin: '10px 0 4px' }}>
-              Checklist livre
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0 4px' }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-faint)', flex: 1 }}>
+                Checklist livre
+              </div>
+              {onSpawnDemandas && (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  title="Cria uma demanda individual pra cada item do checklist livre"
+                  onClick={() => {
+                    const labels = otherItems.map((c) => c.label).filter(Boolean);
+                    if (labels.length === 0) return;
+                    if (confirm(`Transformar ${labels.length} item(ns) do checklist em demandas individuais?`)) {
+                      onSpawnDemandas(labels);
+                    }
+                  }}
+                >
+                  ➔ Transformar em demandas ({otherItems.length})
+                </button>
+              )}
             </div>
             {otherItems.map(renderChecklistRow)}
           </>

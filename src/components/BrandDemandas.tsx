@@ -136,6 +136,24 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
     load();
   }
 
+  // transforma uma lista de rótulos (ex.: itens do checklist livre) em demandas individuais
+  async function spawnFromLabels(labels: string[]) {
+    const first = sortedStages[0];
+    if (!first || labels.length === 0) return;
+    let pos = tasks.length;
+    for (const label of labels) {
+      const { data } = await supabase
+        .from('tasks')
+        .insert({ project_id: null, packaging_track: 'marca', brand_id: brandId, stage_id: first.id, title: label, priority: 'medium', position: pos++ })
+        .select()
+        .single();
+      if (data) await materializeSubsteps(data.id, first.id);
+    }
+    if (profile) await logActivity({ actorId: profile.id, actionText: 'Checklist transformado em demandas', detail: `${brandLabel}: ${labels.length}` });
+    setEditingTask(null);
+    load();
+  }
+
   async function saveTask(taskId: string, fields: Partial<Task>) {
     await supabase.from('tasks').update({ ...fields, updated_by: profile?.id }).eq('id', taskId);
     setEditingTask(null);
@@ -282,6 +300,7 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
           onClose={() => setEditingTask(null)}
           onSave={(fields) => saveTask(editingTask.id, fields)}
           onDelete={() => deleteTask(editingTask.id)}
+          onSpawnDemandas={spawnFromLabels}
         />
       )}
 
