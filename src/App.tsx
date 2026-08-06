@@ -5,6 +5,7 @@ import RequireRole from './components/RequireRole';
 import RequireDepartment from './components/RequireDepartment';
 import ModuleGate from './components/ModuleGate';
 import EmptyModule from './pages/EmptyModule';
+import Marcas from './pages/Marcas';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -308,6 +309,7 @@ export default function App() {
               }
             />
             <Route path="brand" element={<ModuleGate moduleKey="brand"><Brand /></ModuleGate>} />
+            <Route path="marcas" element={<ModuleGate moduleKey="marcas"><Marcas /></ModuleGate>} />
             <Route path="monday" element={<RequireRole roles={['diretoria', 'administrador']} moduleKey="monday"><Monday /></RequireRole>} />
             <Route path="monday/:id" element={<RequireRole roles={['diretoria', 'administrador']} moduleKey="monday"><MondayBoardView /></RequireRole>} />
           </Route>

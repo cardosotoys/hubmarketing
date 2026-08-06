@@ -83,7 +83,8 @@ export const NAV_GROUPS: NavGroup[] = [
         items: [
           { to: '/redes-sociais', label: 'Redes Sociais', icon: 'redes', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'redes-sociais' },
           { to: '/campanhas', label: 'Campanhas', icon: 'campanhas', moduleKey: 'campanhas' },
-          { to: '/brand', label: 'Brand Center', icon: 'brand', moduleKey: 'brand' },
+          { to: '/marcas', label: 'Marcas', icon: 'brand', moduleKey: 'marcas' },
+          { to: '/brand', label: 'Brand Center', icon: 'design', moduleKey: 'brand' },
         ],
       },
       {
