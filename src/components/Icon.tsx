@@ -1,47 +1,28 @@
-// Ícones do menu padronizados por nome semântico → glifo (sem dependência externa, build leve).
-const MAP: Record<string, string> = {
-  dashboard: '▣',
-  painel: '▣',
-  calendar: '▦',
-  reports: '▥',
-  demandas: '☰',
-  operacao: '☰',
-  projetos: '◧',
-  aprovacoes: '✓',
-  auditoria: '◷',
-  monitor: '⌁',
-  pesquisa: '◍',
-  concorrentes: '⊚',
-  relatorioDiario: '✎',
-  ia: '✦',
-  inteligencia: '⌁',
-  redes: '◎',
-  campanhas: '◆',
-  marketing: '◆',
-  brand: '◈',
-  produtos: '◫',
-  design: '◭',
-  embalagens: '▤',
-  certificacoes: '🏅',
-  drive: '▤',
-  biblioteca: '▤',
-  fotos: '▦',
-  videos: '►',
-  templates: '▧',
-  documentos: '▢',
-  monday: '◱',
-  arquivos: '◱',
-  configuracoes: '⚙',
-  administracao: '⚙',
-  perfil: '◉',
-  usuarios: '◕',
-  permissoes: '⛊',
-};
+import { createElement } from 'react';
+import { ICON_NODES } from './iconNodes';
 
-export default function Icon({ name, size = 18 }: { name: string; size?: number }) {
+// Ícones no traço do Lucide, renderizados inline (SVG) a partir dos nós já embutidos —
+// sem dependência em runtime, build leve.
+export default function Icon({ name, size = 18, strokeWidth = 1.9 }: { name: string; size?: number; strokeWidth?: number }) {
+  const nodes = ICON_NODES[name];
+  if (!nodes) {
+    return <span style={{ display: 'inline-flex', width: size, justifyContent: 'center' }}>•</span>;
+  }
   return (
-    <span style={{ fontSize: size - 2, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-      {MAP[name] ?? '•'}
-    </span>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'block', flexShrink: 0 }}
+      aria-hidden
+    >
+      {nodes.map(([tag, attrs], i) => createElement(tag, { key: i, ...attrs }))}
+    </svg>
   );
 }
