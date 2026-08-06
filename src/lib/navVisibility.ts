@@ -103,15 +103,23 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'RECURSOS',
     modules: [
       {
-        key: 'recursos',
-        label: 'Recursos',
+        key: 'midia',
+        label: 'Mídia',
         icon: '▤',
         items: [
           { to: '/biblioteca', label: 'Biblioteca', icon: '▤', moduleKey: 'biblioteca' },
           { to: '/recursos/fotos', label: 'Fotos', icon: '▦', moduleKey: 'fotos' },
           { to: '/recursos/videos', label: 'Vídeos', icon: '►', moduleKey: 'videos' },
+        ],
+      },
+      {
+        key: 'arquivos',
+        label: 'Arquivos',
+        icon: '▧',
+        items: [
           { to: '/recursos/templates', label: 'Templates', icon: '▧', moduleKey: 'templates' },
           { to: '/recursos/documentos', label: 'Documentos', icon: '▢', moduleKey: 'documentos' },
+          { to: '/monday', label: 'Monday (arquivo)', icon: '◱', hideFor: ['assistente'], moduleKey: 'monday' },
         ],
       },
     ],
@@ -128,7 +136,6 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/perfil', label: 'Perfil', icon: '◉', moduleKey: 'perfil' },
           { to: '/usuarios', label: 'Usuários', icon: '◕', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'usuarios' },
           { to: '/permissoes', label: 'Permissões', icon: '⛊', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'permissoes' },
-          { to: '/monday', label: 'Monday (arquivo)', icon: '◱', hideFor: ['assistente'], moduleKey: 'monday' },
         ],
       },
     ],
