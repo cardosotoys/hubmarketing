@@ -103,11 +103,26 @@ export default function Dashboard() {
       });
   }, [profile?.role]);
 
+  const firstName = (profile?.name ?? '').split(' ')[0] || 'por aqui';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const workspace = localStorage.getItem('workspace') || 'todos';
+  const WS_LABELS: Record<string, string> = {
+    todos: 'Todos',
+    marketing: 'Marketing',
+    comercial: 'Comercial',
+    produtos: 'Produtos',
+    diretoria: 'Diretoria',
+  };
+
   return (
     <div className="page">
-      <h1 className="page-title">Dashboard</h1>
+      <h1 className="page-title">
+        {greeting}, {firstName} 👋
+      </h1>
       <div className="page-sub">
         {seesEverything ? 'Visão consolidada de Cardoso, Playmi e Tópi.' : 'Seus projetos e demandas — só o que você participa.'}
+        {workspace !== 'todos' && ` · Workspace: ${WS_LABELS[workspace] ?? workspace}`}
       </div>
 
       {error && (
