@@ -10,6 +10,13 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
   const { profile, setTheme } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Workspace = contexto (Todos/Marketing/Comercial/Produtos/Diretoria). Por ora guarda a escolha;
+  // a segmentação real dos dados por setor entra na fase de multi-tenant.
+  const [workspace, setWorkspace] = useState(() => localStorage.getItem('workspace') || 'todos');
+  function changeWorkspace(w: string) {
+    setWorkspace(w);
+    localStorage.setItem('workspace', w);
+  }
   const { notifications, recent, unreadCount, markRead, markAllRead, loadRecent, reload } = useNotifications(profile?.id);
   const { query, setQuery, searching, results, hasResults, goTo: searchGoTo } = useGlobalSearch();
 
@@ -55,6 +62,18 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
       <div className="breadcrumb">
         <b>{breadcrumb}</b>
       </div>
+      <select
+        className="chip-select ws-select"
+        value={workspace}
+        onChange={(e) => changeWorkspace(e.target.value)}
+        title="Workspace (contexto)"
+      >
+        <option value="todos">🌐 Todos</option>
+        <option value="marketing">Marketing</option>
+        <option value="comercial">Comercial</option>
+        <option value="produtos">Produtos</option>
+        <option value="diretoria">Diretoria</option>
+      </select>
       <div className="search-bar" style={{ cursor: 'text', position: 'relative' }}>
         <span>⌕</span>
         <input
@@ -122,8 +141,8 @@ export default function Topbar({ breadcrumb, onMenuClick }: { breadcrumb: string
         >
           {profile?.theme === 'light' ? '☾' : '☀'}
         </div>
-        <Link className="icon-btn" to="/demandas">
-          ☰
+        <Link className="btn sm" to="/demandas?new=1" title="Nova demanda">
+          + Demanda
         </Link>
         <div className="icon-btn notif-bell" onClick={toggleNotif}>
           🔔

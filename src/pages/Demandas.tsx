@@ -132,6 +132,20 @@ export default function Demandas() {
     load();
   }, [load]);
 
+  // Botão "Nova demanda" da barra superior chega via ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    setShowNew(true);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('new');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const taskId = searchParams.get('task');
     if (!taskId || tasks.length === 0) return;

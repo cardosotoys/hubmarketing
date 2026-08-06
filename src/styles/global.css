@@ -229,6 +229,15 @@ body {
 }
 
 /* Grupos e módulos do menu */
+.ws-select {
+  max-width: 150px;
+  flex-shrink: 0;
+}
+@media (max-width: 880px) {
+  .ws-select {
+    display: none;
+  }
+}
 .nav-group {
   margin-top: 14px;
 }
