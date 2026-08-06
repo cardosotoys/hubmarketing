@@ -8,7 +8,10 @@ import TaskEditModal from './TaskEditModal';
 import Modal from './Modal';
 import Loading from './Loading';
 import EmptyState from './EmptyState';
+import StagesEditor from './StagesEditor';
 import { PRIORITIES, PRIORITY_LABELS, type Priority, type Profile, type ProjectStage, type Task } from '../types/database';
+
+type SortKey = 'recent' | 'title' | 'priority' | 'prazo' | 'prazo_desc' | 'meta' | 'meta_desc';
 
 // Board de demandas de UMA marca — mesmo motor das de embalagem (etapas, sub-etapas, checklist com
 // gate, aprovações e comentários), escopo por brand_id + packaging_track = 'marca'.
@@ -21,7 +24,15 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
   const [view, setView] = useState<'kanban' | 'lista'>('kanban');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [managingStages, setManagingStages] = useState(false);
   const [blockInfo, setBlockInfo] = useState<{ from: string; to: string; pending: string[] } | null>(null);
+  // filtros
+  const [search, setSearch] = useState('');
+  const [fAssignee, setFAssignee] = useState('all');
+  const [fPriority, setFPriority] = useState<'all' | Priority>('all');
+  const [fStage, setFStage] = useState('all');
+  const [sort, setSort] = useState<SortKey>('recent');
+  const [hideDone, setHideDone] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +55,34 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
   const stagesById = Object.fromEntries(stages.map((s) => [s.id, s]));
   const profilesById = Object.fromEntries(profiles.map((p) => [p.id, p]));
   const terminalStageIds = sortedStages.filter((s) => s.is_final).map((s) => s.id);
+
+  const q = search.trim().toLowerCase();
+  const prioRank = (p: Priority) => {
+    const i = (PRIORITIES as readonly Priority[]).indexOf(p);
+    return i === -1 ? 99 : i;
+  };
+  let filteredTasks = tasks.filter((t) => {
+    if (q && !t.title.toLowerCase().includes(q)) return false;
+    if (fAssignee === 'none' && t.assignee_id) return false;
+    if (fAssignee !== 'all' && fAssignee !== 'none' && t.assignee_id !== fAssignee) return false;
+    if (fPriority !== 'all' && t.priority !== fPriority) return false;
+    if (fStage !== 'all' && t.stage_id !== fStage) return false;
+    if (hideDone && stagesById[t.stage_id]?.is_final) return false;
+    return true;
+  });
+  if (sort !== 'recent') {
+    filteredTasks = [...filteredTasks].sort((a, b) => {
+      if (sort === 'title') return a.title.localeCompare(b.title, 'pt-BR');
+      if (sort === 'priority') return prioRank(a.priority) - prioRank(b.priority);
+      const col = sort.startsWith('meta') ? 'target_date' : 'due_date';
+      const av = (a[col] as string | null) ?? '';
+      const bv = (b[col] as string | null) ?? '';
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return sort.endsWith('_desc') ? bv.localeCompare(av) : av.localeCompare(bv);
+    });
+  }
 
   async function createDemand(fields: { title: string; start: string; target: string; due: string; priority: Priority }) {
     const first = sortedStages[0];
@@ -111,16 +150,57 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
 
   if (loading) return <Loading />;
 
-  const kanbanTasks = tasks.map((t) => ({ id: t.id, stage: t.stage_id, priority: t.priority, assignee_id: t.assignee_id, title: t.title, due_date: t.due_date }));
+  const kanbanTasks = filteredTasks.map((t) => ({ id: t.id, stage: t.stage_id, priority: t.priority, assignee_id: t.assignee_id, title: t.title, due_date: t.due_date }));
   const kanbanStages = sortedStages.map((s) => ({ key: s.id, label: s.name }));
 
   return (
     <div style={{ marginTop: 12 }}>
-      <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 8 }}>
+      <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
         <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>
         <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
         <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
+        <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>
       </div>
+
+      <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <input placeholder="Buscar por título…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 200, flex: 1 }} />
+        <select className="chip-select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
+          <option value="all">Responsável: todos</option>
+          <option value="none">Sem responsável</option>
+          {profiles.filter((p) => !p.disabled).map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <select className="chip-select" value={fPriority} onChange={(e) => setFPriority(e.target.value as 'all' | Priority)}>
+          <option value="all">Prioridade: todas</option>
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+          ))}
+        </select>
+        <select className="chip-select" value={fStage} onChange={(e) => setFStage(e.target.value)}>
+          <option value="all">Etapa: todas</option>
+          {sortedStages.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <select className="chip-select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+          <option value="recent">Ordenar: posição</option>
+          <option value="title">Ordenar: título (A-Z)</option>
+          <option value="priority">Ordenar: prioridade</option>
+          <option value="prazo">🏁 Prazo: mais próximo</option>
+          <option value="prazo_desc">🏁 Prazo: mais distante</option>
+          <option value="meta">🎯 Meta: mais próxima</option>
+          <option value="meta_desc">🎯 Meta: mais distante</option>
+        </select>
+        <label className="filter-chip" style={{ cursor: 'pointer' }}>
+          <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} style={{ width: 'auto', marginRight: 6 }} />
+          Ocultar finalizadas
+        </label>
+      </div>
+
+      {managingStages && (
+        <StagesEditor packagingTrack="marca" title="Marcas" taskStageIds={tasks.map((t) => t.stage_id)} onChange={load} />
+      )}
 
       {sortedStages.length === 0 ? (
         <div className="locked-banner">
@@ -144,11 +224,17 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
             if (!t) return null;
             const isFinal = stagesById[t.stage_id]?.is_final;
             const overdue = t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
-            return t.due_date ? (
-              <div style={{ fontSize: 10, color: overdue ? 'var(--red)' : 'var(--text-faint)', fontWeight: overdue ? 700 : 400 }}>
-                🏁 {new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR')}
+            if (!t.target_date && !t.due_date) return null;
+            return (
+              <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
+                {t.target_date && <span style={{ color: 'var(--violet)' }}>🎯 {new Date(t.target_date + 'T00:00').toLocaleDateString('pt-BR')}</span>}
+                {t.due_date && (
+                  <span style={{ color: overdue ? 'var(--red)' : 'var(--text-faint)', fontWeight: overdue ? 700 : 400 }}>
+                    🏁 {new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR')}
+                  </span>
+                )}
               </div>
-            ) : null;
+            );
           }}
         />
       ) : (
@@ -160,11 +246,12 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
                 <th>Etapa</th>
                 <th>Responsável</th>
                 <th>Prioridade</th>
+                <th>🎯 Meta</th>
                 <th>🏁 Prazo</th>
               </tr>
             </thead>
             <tbody>
-              {tasks.map((t) => {
+              {filteredTasks.map((t) => {
                 const isFinal = stagesById[t.stage_id]?.is_final;
                 const overdue = t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
                 return (
@@ -173,6 +260,7 @@ export default function BrandDemandas({ brandId, brandLabel }: { brandId: string
                     <td data-label="Etapa" style={{ color: 'var(--text-faint)' }}>{stagesById[t.stage_id]?.name ?? '—'}</td>
                     <td data-label="Responsável" style={{ color: 'var(--text-faint)' }}>{t.assignee_id ? profilesById[t.assignee_id]?.name : '—'}</td>
                     <td data-label="Prioridade"><span className={`prio ${t.priority}`}>{PRIORITY_LABELS[t.priority]}</span></td>
+                    <td data-label="Meta" style={{ color: 'var(--violet)' }}>{t.target_date ? new Date(t.target_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}</td>
                     <td data-label="Prazo" style={{ color: overdue ? 'var(--red)' : 'var(--text-faint)', fontWeight: overdue ? 700 : 400 }}>
                       {t.due_date ? new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR') : '—'}
                     </td>
