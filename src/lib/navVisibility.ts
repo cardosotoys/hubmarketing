@@ -14,65 +14,123 @@ export interface NavItem {
   hiddenByDefault?: boolean;
 }
 
-export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
+// Um "módulo" agrupa páginas relacionadas dentro de um grupo do menu (colapsável na sidebar).
+export interface NavModule {
+  key: string;
+  label: string;
+  icon: string;
+  items: NavItem[];
+}
+
+// Um "grupo" é a seção com título maiúsculo (GERAL, GESTÃO, NEGÓCIOS, RECURSOS, SISTEMA).
+export interface NavGroup {
+  title: string;
+  modules: NavModule[];
+}
+
+// Estrutura por MÓDULOS (não por páginas). Grupo → Módulo → páginas.
+export const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Visão geral',
-    items: [
-      { to: '/', label: 'Dashboard', icon: '▣', end: true, moduleKey: 'dashboard' },
-      { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'], moduleKey: 'relatorios' },
-    ],
-  },
-  {
-    label: 'Trabalho',
-    items: [
-      { to: '/projetos', label: 'Projetos', icon: '◧', moduleKey: 'projetos' },
-      { to: '/demandas', label: 'Demandas', icon: '☰', moduleKey: 'demandas' },
-      { to: '/calendario', label: 'Calendário', icon: '▦', moduleKey: 'calendario' },
-    ],
-  },
-  {
-    label: 'Marca & conteúdo',
-    items: [
+    title: 'GERAL',
+    modules: [
       {
-        to: '/redes-sociais',
-        label: 'Redes Sociais',
-        icon: '◎',
-        defaultRoles: ['diretoria', 'administrador'],
-        moduleKey: 'redes-sociais',
+        key: 'painel',
+        label: 'Painel',
+        icon: '▣',
+        items: [
+          { to: '/', label: 'Dashboard', icon: '▣', end: true, moduleKey: 'dashboard' },
+          { to: '/calendario', label: 'Calendário', icon: '▦', moduleKey: 'calendario' },
+          { to: '/relatorios', label: 'Relatórios', icon: '▥', hideFor: ['design', 'assistente'], moduleKey: 'relatorios' },
+        ],
       },
-      { to: '/biblioteca', label: 'Biblioteca', icon: '▤', moduleKey: 'biblioteca' },
-      { to: '/produtos', label: 'Produtos', icon: '◫', moduleKey: 'produtos' },
-      { to: '/monitor-precos', label: 'Monitor de Preços', icon: '⌁', hideFor: ['design', 'assistente'], moduleKey: 'monitor-precos' },
-      { to: '/brand', label: 'Brand', icon: '◈', moduleKey: 'brand' },
     ],
   },
   {
-    label: 'Campanhas',
-    items: [
-      { to: '/campanhas', label: 'Campanhas', icon: '◆', moduleKey: 'campanhas' },
-      { to: '/ia', label: 'IA', icon: '✦', moduleKey: 'ia' },
+    title: 'GESTÃO',
+    modules: [
+      {
+        key: 'operacao',
+        label: 'Operação',
+        icon: '☰',
+        items: [
+          { to: '/demandas', label: 'Demandas', icon: '☰', moduleKey: 'demandas' },
+          { to: '/projetos', label: 'Projetos', icon: '◧', moduleKey: 'projetos' },
+          { to: '/aprovacoes', label: 'Aprovações', icon: '✓', moduleKey: 'aprovacoes' },
+          { to: '/auditoria', label: 'Auditoria', icon: '◷', moduleKey: 'auditoria' },
+        ],
+      },
     ],
   },
   {
-    label: 'Design de Produtos',
-    items: [
-      { to: '/design-produto', label: 'Design de Produto', icon: '◭', hideFor: ['assistente'], moduleKey: 'design-produto' },
-      { to: '/design-produto/embalagens', label: 'Embalagens', icon: '▤', hideFor: ['assistente'], moduleKey: 'embalagens', hiddenByDefault: true },
+    title: 'NEGÓCIOS',
+    modules: [
+      {
+        key: 'inteligencia',
+        label: 'Inteligência',
+        icon: '⌁',
+        items: [
+          { to: '/monitor-precos', label: 'Monitor de Preços', icon: '⌁', hideFor: ['design', 'assistente'], moduleKey: 'monitor-precos' },
+          { to: '/pesquisa-mercado', label: 'Pesquisa de Mercado', icon: '◍', moduleKey: 'pesquisa-mercado' },
+          { to: '/concorrentes', label: 'Concorrentes', icon: '⊚', moduleKey: 'concorrentes' },
+          { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎', moduleKey: 'relatorio-diario' },
+          { to: '/ia', label: 'IA', icon: '✦', moduleKey: 'ia' },
+        ],
+      },
+      {
+        key: 'marketing',
+        label: 'Marketing',
+        icon: '◎',
+        items: [
+          { to: '/redes-sociais', label: 'Redes Sociais', icon: '◎', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'redes-sociais' },
+          { to: '/campanhas', label: 'Campanhas', icon: '◆', moduleKey: 'campanhas' },
+          { to: '/brand', label: 'Brand Center', icon: '◈', moduleKey: 'brand' },
+        ],
+      },
+      {
+        key: 'produtos',
+        label: 'Produtos',
+        icon: '◫',
+        items: [
+          { to: '/produtos', label: 'Produtos', icon: '◫', moduleKey: 'produtos' },
+          { to: '/design-produto', label: 'Design', icon: '◭', hideFor: ['assistente'], moduleKey: 'design-produto' },
+          { to: '/design-produto/embalagens', label: 'Embalagens', icon: '▤', hideFor: ['assistente'], moduleKey: 'embalagens', hiddenByDefault: true },
+          { to: '/certificacoes', label: 'Certificações', icon: '🏅', moduleKey: 'certificacoes' },
+        ],
+      },
     ],
   },
   {
-    label: 'Registro',
-    items: [
-      { to: '/relatorio-diario', label: 'Relatório Diário', icon: '✎', moduleKey: 'relatorio-diario' },
-      { to: '/auditoria', label: 'Auditoria', icon: '◷', moduleKey: 'auditoria' },
-      { to: '/monday', label: 'Monday (arquivo)', icon: '◱', hideFor: ['assistente'], moduleKey: 'monday' },
+    title: 'RECURSOS',
+    modules: [
+      {
+        key: 'recursos',
+        label: 'Recursos',
+        icon: '▤',
+        items: [
+          { to: '/biblioteca', label: 'Biblioteca', icon: '▤', moduleKey: 'biblioteca' },
+          { to: '/recursos/fotos', label: 'Fotos', icon: '▦', moduleKey: 'fotos' },
+          { to: '/recursos/videos', label: 'Vídeos', icon: '►', moduleKey: 'videos' },
+          { to: '/recursos/templates', label: 'Templates', icon: '▧', moduleKey: 'templates' },
+          { to: '/recursos/documentos', label: 'Documentos', icon: '▢', moduleKey: 'documentos' },
+        ],
+      },
     ],
   },
   {
-    label: 'Sistema',
-    items: [
-      { to: '/configuracoes', label: 'Configurações', icon: '⚙', requiresConfig: true, moduleKey: 'configuracoes' },
-      { to: '/perfil', label: 'Perfil', icon: '◉', moduleKey: 'perfil' },
+    title: 'SISTEMA',
+    modules: [
+      {
+        key: 'administracao',
+        label: 'Administração',
+        icon: '⚙',
+        items: [
+          { to: '/configuracoes', label: 'Configurações', icon: '⚙', requiresConfig: true, moduleKey: 'configuracoes' },
+          { to: '/perfil', label: 'Perfil', icon: '◉', moduleKey: 'perfil' },
+          { to: '/usuarios', label: 'Usuários', icon: '◕', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'usuarios' },
+          { to: '/permissoes', label: 'Permissões', icon: '⛊', defaultRoles: ['diretoria', 'administrador'], moduleKey: 'permissoes' },
+          { to: '/monday', label: 'Monday (arquivo)', icon: '◱', hideFor: ['assistente'], moduleKey: 'monday' },
+        ],
+      },
     ],
   },
 ];
@@ -80,14 +138,11 @@ export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
 export interface NavVisibilityContext {
   role: Role;
   department: Department;
-  // profiles.hidden_modules/extra_modules são text[] no banco (Profile os tipa como string[]),
-  // não ModuleKey[] — mantém o mesmo tipo pra aceitar o valor real vindo de useAuth() sem forçar
-  // um cast em quem chama.
   hiddenModules: string[];
   extraModules: string[];
 }
 
-// Regra única de visibilidade de item de menu — consumida pelo Sidebar (desktop) e pela
+// Regra única de visibilidade de item de menu — consumida pela Sidebar (desktop) e pela
 // MobileTabBar/folha "Mais" (celular), pra nunca ter duas cópias da mesma regra de permissão.
 export function isNavItemVisible(item: NavItem, ctx: NavVisibilityContext): boolean {
   if (ctx.hiddenModules.includes(item.moduleKey)) return false;
@@ -102,13 +157,18 @@ export function isNavItemVisible(item: NavItem, ctx: NavVisibilityContext): bool
 // ModuleGate usa isto pra bloquear por URL um módulo opt-in que a pessoa não tem liberado
 // (sem afetar os demais módulos, que seguem só com a checagem de hidden_modules).
 export function isModuleOptInLocked(moduleKey: string, ctx: NavVisibilityContext): boolean {
-  const optIn = NAV_SECTIONS.flatMap((s) => s.items).some((i) => i.moduleKey === moduleKey && i.hiddenByDefault);
+  const optIn = NAV_GROUPS.flatMap((g) => g.modules)
+    .flatMap((m) => m.items)
+    .some((i) => i.moduleKey === moduleKey && i.hiddenByDefault);
   if (!optIn) return false;
   if (ctx.extraModules.includes(moduleKey)) return false;
   if (ctx.role === 'diretoria' || ctx.role === 'administrador') return false;
   return true;
 }
 
+// Lista plana de todos os itens visíveis — usada pela barra inferior do celular.
 export function getVisibleNavItems(ctx: NavVisibilityContext): NavItem[] {
-  return NAV_SECTIONS.flatMap((s) => s.items).filter((item) => isNavItemVisible(item, ctx));
+  return NAV_GROUPS.flatMap((g) => g.modules)
+    .flatMap((m) => m.items)
+    .filter((item) => isNavItemVisible(item, ctx));
 }

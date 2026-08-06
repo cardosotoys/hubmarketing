@@ -4,6 +4,7 @@ import AppLayout from './components/AppLayout';
 import RequireRole from './components/RequireRole';
 import RequireDepartment from './components/RequireDepartment';
 import ModuleGate from './components/ModuleGate';
+import EmptyModule from './pages/EmptyModule';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -76,6 +77,17 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<AppLayout />}>
             <Route index element={<ModuleGate moduleKey="dashboard"><Dashboard /></ModuleGate>} />
+            {/* Módulos novos (estrutura vazia — implementação futura) */}
+            <Route path="aprovacoes" element={<ModuleGate moduleKey="aprovacoes"><EmptyModule title="Aprovações" /></ModuleGate>} />
+            <Route path="pesquisa-mercado" element={<ModuleGate moduleKey="pesquisa-mercado"><EmptyModule title="Pesquisa de Mercado" /></ModuleGate>} />
+            <Route path="concorrentes" element={<ModuleGate moduleKey="concorrentes"><EmptyModule title="Concorrentes" /></ModuleGate>} />
+            <Route path="certificacoes" element={<ModuleGate moduleKey="certificacoes"><EmptyModule title="Certificações" /></ModuleGate>} />
+            <Route path="recursos/fotos" element={<ModuleGate moduleKey="fotos"><EmptyModule title="Fotos" /></ModuleGate>} />
+            <Route path="recursos/videos" element={<ModuleGate moduleKey="videos"><EmptyModule title="Vídeos" /></ModuleGate>} />
+            <Route path="recursos/templates" element={<ModuleGate moduleKey="templates"><EmptyModule title="Templates" /></ModuleGate>} />
+            <Route path="recursos/documentos" element={<ModuleGate moduleKey="documentos"><EmptyModule title="Documentos" /></ModuleGate>} />
+            <Route path="usuarios" element={<RequireRole roles={['diretoria', 'administrador']} moduleKey="usuarios"><EmptyModule title="Usuários" /></RequireRole>} />
+            <Route path="permissoes" element={<RequireRole roles={['diretoria', 'administrador']} moduleKey="permissoes"><EmptyModule title="Permissões" /></RequireRole>} />
             <Route path="projetos" element={<ModuleGate moduleKey="projetos"><Projects /></ModuleGate>} />
             <Route path="projetos/:id" element={<ModuleGate moduleKey="projetos"><ProjectDetail /></ModuleGate>} />
             <Route path="demandas" element={<ModuleGate moduleKey="demandas"><Demandas /></ModuleGate>} />

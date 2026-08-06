@@ -62,6 +62,17 @@ export const MODULE_KEYS = [
   'auditoria',
   'configuracoes',
   'perfil',
+  // módulos novos (estrutura vazia — implementação futura)
+  'aprovacoes',
+  'pesquisa-mercado',
+  'concorrentes',
+  'certificacoes',
+  'fotos',
+  'videos',
+  'templates',
+  'documentos',
+  'usuarios',
+  'permissoes',
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 export const MODULE_LABELS: Record<ModuleKey, string> = {
@@ -84,6 +95,16 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   auditoria: 'Auditoria',
   configuracoes: 'Configurações',
   perfil: 'Perfil',
+  aprovacoes: 'Aprovações',
+  'pesquisa-mercado': 'Pesquisa de Mercado',
+  concorrentes: 'Concorrentes',
+  certificacoes: 'Certificações',
+  fotos: 'Fotos',
+  videos: 'Vídeos',
+  templates: 'Templates',
+  documentos: 'Documentos',
+  usuarios: 'Usuários',
+  permissoes: 'Permissões',
 };
 
 export interface Profile {
