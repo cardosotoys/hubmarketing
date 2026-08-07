@@ -124,6 +124,21 @@ export default function Configuracoes() {
     }
   }
 
+  async function changeCanEditProducts(userId: string, can_edit_products: boolean) {
+    const user = users.find((u) => u.id === userId);
+    const { error } = await supabase.from('profiles').update({ can_edit_products }).eq('id', userId);
+    if (!error) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, can_edit_products } : u)));
+      if (profile) {
+        await logActivity({
+          actorId: profile.id,
+          actionText: can_edit_products ? 'Liberado para editar produtos' : 'Removido acesso de editar produtos',
+          detail: user?.name ?? userId,
+        });
+      }
+    }
+  }
+
   async function setModuleOverride(userId: string, moduleKey: ModuleKey, mode: 'padrao' | 'oculto' | 'liberado') {
     const user = users.find((u) => u.id === userId);
     if (!user) return;
@@ -168,6 +183,7 @@ export default function Configuracoes() {
                     <th>Papel</th>
                     <th>Departamento</th>
                     <th>Cargo</th>
+                    <th>Editar produtos</th>
                     <th></th>
                     <th>Acesso</th>
                   </tr>
@@ -203,6 +219,22 @@ export default function Configuracoes() {
                           )}
                         </td>
                         <td data-label="Cargo">{u.job_title || '—'}</td>
+                        <td data-label="Editar produtos">
+                          {u.department === 'assistente' ? (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: restricted ? 'default' : 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={u.can_edit_products}
+                                disabled={restricted}
+                                onChange={(e) => changeCanEditProducts(u.id, e.target.checked)}
+                                style={{ width: 'auto' }}
+                              />
+                              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{u.can_edit_products ? 'liberado' : 'bloqueado'}</span>
+                            </label>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>✓ padrão</span>
+                          )}
+                        </td>
                         <td data-label="Alterar papel">
                           {restricted ? (
                             <span style={{ color: 'var(--text-faint)' }}>🔒 restrito</span>

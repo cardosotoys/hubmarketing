@@ -153,7 +153,9 @@ export default function Produtos() {
   }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, sort]);
 
   const sorted = products; // já vem paginado/filtrado/ordenado do servidor
-  const canEdit = profile?.department !== 'assistente';
+  // Edita produtos: todos, menos assistentes — a não ser que o assistente tenha sido
+  // liberado individualmente (toggle "pode editar produtos" em Configurações → Usuários).
+  const canEdit = profile?.department !== 'assistente' || profile?.can_edit_products === true;
 
   return (
     <div className="page">

@@ -126,6 +126,7 @@ export interface Profile {
   theme: Theme;
   font_scale: FontScale;
   disabled: boolean;
+  can_edit_products: boolean;
   created_at: string;
 }
 
