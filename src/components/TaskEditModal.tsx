@@ -3,6 +3,7 @@ import Modal from './Modal';
 import ProductCombobox from './ProductCombobox';
 import RichText from './RichText';
 import { supabase } from '../lib/supabaseClient';
+import { logActivity } from '../lib/activityLog';
 import { normalizeUrl } from '../lib/url';
 import { materializeSubsteps, recomputeSubstepDueDates } from '../lib/substeps';
 import {
@@ -152,6 +153,12 @@ export default function TaskEditModal({
     setAttachedFileIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
+  // Registra a movimentação na Auditoria (admin vê tudo do time). project_id pode ser null
+  // (demandas de marca/embalagem), então amarramos também pelo task_id.
+  function logTask(actionText: string) {
+    logActivity({ actorId, actionText, detail: task.title, projectId: task.project_id ?? undefined, taskId: task.id });
+  }
+
   async function addComment(e: FormEvent) {
     e.preventDefault();
     if (!commentBody.trim() && attachedFileIds.length === 0) return;
@@ -179,6 +186,7 @@ export default function TaskEditModal({
     setMentionIds([]);
     setAttachedFileIds([]);
     setReplyTo(null);
+    logTask(replyTo ? 'Respondeu um comentário' : 'Comentou na demanda');
     loadComments();
   }
 
@@ -371,8 +379,10 @@ export default function TaskEditModal({
       });
     }
     await supabase.from('tasks').update({ approval_state: 'aguardando' }).eq('id', task.id);
+    const approverNames = selectedApprovers.map((id) => profiles.find((p) => p.id === id)?.name ?? '').filter(Boolean).join(', ');
     setSelectedApprovers([]);
     setApprovalNote('');
+    logActivity({ actorId, actionText: 'Pediu aprovação na demanda', detail: `${task.title}${approverNames ? ` → ${approverNames}` : ''}`, projectId: task.project_id ?? undefined, taskId: task.id });
     loadApprovals();
     loadComments();
   }
@@ -380,6 +390,7 @@ export default function TaskEditModal({
   async function decide(a: TaskApproval, decision: ApprovalDecision) {
     await supabase.from('task_approvals').update({ decision, decided_at: new Date().toISOString() }).eq('id', a.id);
     await setAggregate(approvals.map((x) => (x.id === a.id ? { decision } : { decision: x.decision })));
+    logTask(decision === 'aprovado' ? 'Aprovou a demanda' : decision === 'correcao' ? 'Pediu correção na demanda' : 'Atualizou uma aprovação');
     loadApprovals();
   }
 
@@ -417,6 +428,7 @@ export default function TaskEditModal({
     });
     setFileName('');
     setFileUrl('');
+    logTask('Anexou um link na demanda');
     const { data } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
     setFiles((data as ProjectFile[]) ?? []);
   }
@@ -449,6 +461,7 @@ export default function TaskEditModal({
     }
     setFileName('');
     setFileMsg('Arquivo enviado ✓');
+    logTask('Enviou um arquivo na demanda');
     const { data: rows } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
     setFiles((rows as ProjectFile[]) ?? []);
     setFileBusy(false);
@@ -456,6 +469,7 @@ export default function TaskEditModal({
 
   async function deleteFile(id: string) {
     await supabase.from('project_files').delete().eq('id', id);
+    logTask('Removeu um arquivo da demanda');
     setFiles((prev) => prev.filter((f) => f.id !== id));
   }
 

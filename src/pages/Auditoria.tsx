@@ -29,7 +29,7 @@ export default function Auditoria() {
         .from('activity_log')
         .select('*, actor:profiles(name), project:projects(name), campaign:campaigns(name)')
         .order('created_at', { ascending: false })
-        .limit(300);
+        .limit(isPrivileged ? 1000 : 300);
 
       if (isPrivileged) {
         const { data } = await baseQuery;
