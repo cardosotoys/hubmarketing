@@ -61,6 +61,7 @@ export const MODULE_KEYS = [
   'monday',
   'relatorio-diario',
   'auditoria',
+  'notificacoes',
   'configuracoes',
   'perfil',
   // módulos novos (estrutura vazia — implementação futura)
@@ -95,6 +96,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   monday: 'Monday (arquivo)',
   'relatorio-diario': 'Relatório Diário',
   auditoria: 'Auditoria',
+  notificacoes: 'Notificações',
   configuracoes: 'Configurações',
   perfil: 'Perfil',
   aprovacoes: 'Aprovações',

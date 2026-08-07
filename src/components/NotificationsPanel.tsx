@@ -122,6 +122,14 @@ export default function NotificationsPanel({
           </div>
         );
       })}
+      <Link
+        className="item"
+        to="/notificacoes"
+        onClick={onClose}
+        style={{ justifyContent: 'center', color: 'var(--violet)', fontWeight: 600, marginTop: 4 }}
+      >
+        Ver todas as notificações →
+      </Link>
     </div>
   );
 }

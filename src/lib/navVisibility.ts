@@ -40,6 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
         items: [
           { to: '/', label: 'Dashboard', icon: 'dashboard', end: true, moduleKey: 'dashboard' },
           { to: '/calendario', label: 'Calendário', icon: 'calendar', moduleKey: 'calendario' },
+          { to: '/notificacoes', label: 'Notificações', icon: 'notificacoes', moduleKey: 'notificacoes' },
           { to: '/relatorios', label: 'Relatórios', icon: 'reports', hideFor: ['design', 'assistente'], moduleKey: 'relatorios' },
         ],
       },

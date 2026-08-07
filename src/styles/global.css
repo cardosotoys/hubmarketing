@@ -1543,12 +1543,21 @@ table.simple tr:hover td {
   top: 54px;
   right: 22px;
   width: 300px;
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 6px;
   z-index: 50;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+/* cabeçalho fixo no topo do painel enquanto rola */
+.notif-panel .head {
+  position: sticky;
+  top: -6px;
+  background: var(--surface);
+  z-index: 1;
 }
 .notif-panel .head {
   padding: 10px;
