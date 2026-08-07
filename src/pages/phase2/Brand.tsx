@@ -323,6 +323,45 @@ export default function Brand() {
 
 const isImageUrl = (u: string) => /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(u);
 
+// Miniatura de um arquivo. Imagem web (png/jpg/svg…) mostra a própria imagem; formatos que o
+// navegador não renderiza (eps, ai, pdf, zip, fontes…) mostram um tile com a extensão.
+function AssetThumb({ file, size }: { file: BrandLicenseeFile; size: number }) {
+  if (isImageUrl(file.url)) {
+    return (
+      <a href={file.url} target="_blank" rel="noreferrer" title={`${file.name} — abrir`}>
+        <img src={file.url} alt={file.name} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+      </a>
+    );
+  }
+  const ext = (file.name.split('.').pop() || 'arq').toUpperCase().slice(0, 4);
+  return (
+    <a
+      href={file.url}
+      target="_blank"
+      rel="noreferrer"
+      title={`${file.name} — abrir/baixar`}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        background: 'var(--surface-2)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        textDecoration: 'none',
+        color: 'var(--text-dim)',
+        padding: 4,
+      }}
+    >
+      <span style={{ fontSize: size > 60 ? 15 : 13, fontWeight: 700, letterSpacing: '0.02em' }}>{ext}</span>
+      <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>⬇ abrir</span>
+    </a>
+  );
+}
+
 type UrlKey = 'logos_url' | 'colors_url' | 'typography_url' | 'icons_url' | 'pattern_url';
 const CATEGORIES: { key: UrlKey; cat: BrandAssetCategory; label: string; icon: string }[] = [
   { key: 'logos_url', cat: 'logos', label: 'Logotipos', icon: '🅰' },
@@ -570,29 +609,9 @@ function LicenseesSection() {
                   )}
                   {catFiles.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingLeft: 32 }}>
-                      {catFiles.map((f) =>
-                        isImageUrl(f.url) ? (
-                          <a key={f.id} href={f.url} target="_blank" rel="noreferrer" title={`${f.name} — abrir/baixar`}>
-                            <img
-                              src={f.url}
-                              alt={f.name}
-                              style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
-                            />
-                          </a>
-                        ) : (
-                          <a
-                            key={f.id}
-                            className="pill"
-                            href={f.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={f.name}
-                            style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          >
-                            ⬇ {f.name}
-                          </a>
-                        ),
-                      )}
+                      {catFiles.map((f) => (
+                        <AssetThumb key={f.id} file={f} size={72} />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -673,34 +692,19 @@ function LicenseesSection() {
                 />
                 {lid && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 6 }}>
-                    {catFiles.map((f) =>
-                      isImageUrl(f.url) ? (
-                        <div key={f.id} style={{ position: 'relative' }}>
-                          <a href={f.url} target="_blank" rel="noreferrer" title={`${f.name} — abrir`}>
-                            <img
-                              src={f.url}
-                              alt={f.name}
-                              style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
-                            />
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => removeAsset(f)}
-                            title="Remover"
-                            style={{ position: 'absolute', top: -7, right: -7, width: 19, height: 19, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--red)', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <span key={f.id} className="pill" title={f.name} style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          📎 {f.name}
-                          <button type="button" onClick={() => removeAsset(f)} title="Remover" style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
-                            ✕
-                          </button>
-                        </span>
-                      ),
-                    )}
+                    {catFiles.map((f) => (
+                      <div key={f.id} style={{ position: 'relative' }}>
+                        <AssetThumb file={f} size={56} />
+                        <button
+                          type="button"
+                          onClick={() => removeAsset(f)}
+                          title="Remover"
+                          style={{ position: 'absolute', top: -7, right: -7, width: 19, height: 19, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--red)', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                     <label className="btn ghost sm" style={{ cursor: 'pointer', margin: 0 }}>
                       {uploadingCat === uploadKey ? 'Enviando…' : '⬆ Enviar arquivo'}
                       <input
