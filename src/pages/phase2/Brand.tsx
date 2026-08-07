@@ -672,15 +672,35 @@ function LicenseesSection() {
                   placeholder="link do asset (opcional)"
                 />
                 {lid && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 6 }}>
-                    {catFiles.map((f) => (
-                      <span key={f.id} className="pill" title={f.name} style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        📎 {f.name}
-                        <button type="button" onClick={() => removeAsset(f)} title="Remover" style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
-                          ✕
-                        </button>
-                      </span>
-                    ))}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 6 }}>
+                    {catFiles.map((f) =>
+                      isImageUrl(f.url) ? (
+                        <div key={f.id} style={{ position: 'relative' }}>
+                          <a href={f.url} target="_blank" rel="noreferrer" title={`${f.name} — abrir`}>
+                            <img
+                              src={f.url}
+                              alt={f.name}
+                              style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
+                            />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => removeAsset(f)}
+                            title="Remover"
+                            style={{ position: 'absolute', top: -7, right: -7, width: 19, height: 19, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--red)', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span key={f.id} className="pill" title={f.name} style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          📎 {f.name}
+                          <button type="button" onClick={() => removeAsset(f)} title="Remover" style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                            ✕
+                          </button>
+                        </span>
+                      ),
+                    )}
                     <label className="btn ghost sm" style={{ cursor: 'pointer', margin: 0 }}>
                       {uploadingCat === uploadKey ? 'Enviando…' : '⬆ Enviar arquivo'}
                       <input
