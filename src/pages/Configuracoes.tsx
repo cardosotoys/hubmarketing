@@ -367,50 +367,39 @@ function PermissoesView({
             <span className="ic">🔒</span>Só Diretoria pode moldar o acesso de outra pessoa da Diretoria.
           </div>
         ) : (
-          <table className="simple" style={{ marginTop: 14 }}>
-            <thead>
-              <tr>
-                <th>Módulo</th>
-                <th>Padrão (papel/depto)</th>
-                <th>Ocultar</th>
-                <th>Liberar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MODULE_KEYS.map((key) => {
-                const mode = selected.hidden_modules.includes(key) ? 'oculto' : selected.extra_modules.includes(key) ? 'liberado' : 'padrao';
-                return (
-                  <tr key={key}>
-                    <td>{MODULE_LABELS[key]}</td>
-                    <td>
-                      <span
-                        className={`filter-chip${mode === 'padrao' ? ' active' : ''}`}
-                        onClick={() => onSetOverride(selected.id, key, 'padrao')}
-                      >
-                        Padrão
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`filter-chip${mode === 'oculto' ? ' active' : ''}`}
-                        onClick={() => onSetOverride(selected.id, key, 'oculto')}
-                      >
-                        Ocultar
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`filter-chip${mode === 'liberado' ? ' active' : ''}`}
-                        onClick={() => onSetOverride(selected.id, key, 'liberado')}
-                      >
-                        Liberar
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="perm-list" style={{ marginTop: 14 }}>
+            {MODULE_KEYS.map((key) => {
+              const mode = selected.hidden_modules.includes(key) ? 'oculto' : selected.extra_modules.includes(key) ? 'liberado' : 'padrao';
+              return (
+                <div className="perm-row" key={key}>
+                  <span className="perm-mod">{MODULE_LABELS[key]}</span>
+                  <div className="seg">
+                    <button
+                      type="button"
+                      className={`seg-btn${mode === 'padrao' ? ' active' : ''}`}
+                      onClick={() => onSetOverride(selected.id, key, 'padrao')}
+                    >
+                      Padrão
+                    </button>
+                    <button
+                      type="button"
+                      className={`seg-btn${mode === 'oculto' ? ' off' : ''}`}
+                      onClick={() => onSetOverride(selected.id, key, 'oculto')}
+                    >
+                      Ocultar
+                    </button>
+                    <button
+                      type="button"
+                      className={`seg-btn${mode === 'liberado' ? ' on' : ''}`}
+                      onClick={() => onSetOverride(selected.id, key, 'liberado')}
+                    >
+                      Liberar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ))}
     </div>
   );
@@ -485,37 +474,35 @@ function PresetsView({ presets, onChanged, actorId }: { presets: AccessPreset[];
           {busy ? 'Salvando…' : 'Criar preset'}
         </button>
       </form>
-      <table className="simple">
-        <thead>
-          <tr>
-            <th>Preset</th>
-            <th>Módulos</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {presets.map((p) => (
-            <tr key={p.id}>
-              <td data-label="Preset">{p.name}</td>
-              <td data-label="Módulos" style={{ color: 'var(--text-faint)' }}>
-                {p.modules.map((m) => MODULE_LABELS[m as ModuleKey] ?? m).join(', ') || '—'}
-              </td>
-              <td>
-                <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => remove(p)}>
-                  ✕
-                </button>
-              </td>
-            </tr>
-          ))}
-          {presets.length === 0 && (
-            <tr>
-              <td colSpan={3} style={{ color: 'var(--text-faint)' }}>
-                Nenhum preset ainda. Crie o primeiro acima.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <div className="preset-cards">
+        {presets.map((p) => (
+          <div className="preset-card" key={p.id}>
+            <div className="preset-card-head">
+              <div className="preset-card-name">
+                {p.name}
+                <span className="preset-count">{p.modules.length} módulo{p.modules.length === 1 ? '' : 's'}</span>
+              </div>
+              <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => remove(p)} title="Excluir preset">
+                ✕
+              </button>
+            </div>
+            <div className="preset-mods">
+              {p.modules.length === 0 ? (
+                <span className="umuted">Nenhum módulo</span>
+              ) : (
+                p.modules.map((m) => (
+                  <span className="preset-mod" key={m}>
+                    {MODULE_LABELS[m as ModuleKey] ?? m}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+        {presets.length === 0 && (
+          <div className="umuted" style={{ padding: '4px 2px' }}>Nenhum preset ainda. Crie o primeiro acima.</div>
+        )}
+      </div>
     </div>
   );
 }
