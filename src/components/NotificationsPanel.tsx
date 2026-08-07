@@ -93,8 +93,8 @@ export default function NotificationsPanel({
           })}
         </>
       )}
-      <div className="head">Atividade recente</div>
-      {recent.length === 0 && <div className="item">Nada por aqui ainda.</div>}
+      <div className="head">Nos seus projetos</div>
+      {recent.length === 0 && <div className="item">Sem movimentação de outros nos seus projetos.</div>}
       {recent.map((r) => {
         const content = (
           <>

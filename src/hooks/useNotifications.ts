@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import type { ActivityLogEntry, Notification } from '../types/database';
+import type { Notification } from '../types/database';
+import { fetchMyActivity, type MyActivityRow } from '../lib/myActivity';
 
-export type ActivityWithActor = ActivityLogEntry & { actor: { name: string } | null };
+export type ActivityWithActor = MyActivityRow;
 export type NotificationRow = Notification & { actor: { name: string } | null };
 
 // Central de notificações — usada pelo Topbar (desktop) e pelo MobileTopBar (celular). Agora
 // persistida no banco (public.notifications): lida/não-lida vale em qualquer aparelho e não some
-// depois de X dias. As menções entram por trigger; a "atividade recente" segue do activity_log.
+// depois de X dias. As menções entram por trigger; a "atividade recente" é escopada aos SEUS
+// projetos/campanhas (o que os outros mexeram no que é seu) — a movimentação global fica só na Auditoria.
 export function useNotifications(profileId: string | undefined) {
-  const [recent, setRecent] = useState<ActivityWithActor[]>([]);
+  const [recent, setRecent] = useState<MyActivityRow[]>([]);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -29,13 +31,12 @@ export function useNotifications(profileId: string | undefined) {
   }, [profileId]);
 
   const loadRecent = useCallback(() => {
-    supabase
-      .from('activity_log')
-      .select('*, actor:profiles(name)')
-      .order('created_at', { ascending: false })
-      .limit(5)
-      .then(({ data }) => setRecent((data as ActivityWithActor[] | null) ?? []));
-  }, []);
+    if (!profileId) {
+      setRecent([]);
+      return;
+    }
+    fetchMyActivity(profileId, 8).then((rows) => setRecent(rows));
+  }, [profileId]);
 
   const markRead = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
