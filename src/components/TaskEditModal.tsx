@@ -87,6 +87,7 @@ export default function TaskEditModal({
   const [comments, setComments] = useState<(TaskComment & { author: { name: string } | null })[]>([]);
   const [commentBody, setCommentBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
+  const [attachedFileIds, setAttachedFileIds] = useState<string[]>([]); // arquivos referenciados no comentário
 
   // Fluxo de aprovação — múltiplos decisores (task_approvals)
   const [approvals, setApprovals] = useState<(TaskApproval & { approver: { name: string } | null })[]>([]);
@@ -120,7 +121,7 @@ export default function TaskEditModal({
       .from('task_comments')
       .select('*, author:profiles(name)')
       .eq('task_id', task.id)
-      .order('created_at');
+      .order('created_at', { ascending: false }); // mais recentes primeiro
     setComments((data as (TaskComment & { author: { name: string } | null })[]) ?? []);
   }
 
@@ -142,12 +143,26 @@ export default function TaskEditModal({
   function toggleMention(id: string) {
     setMentionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
+  function toggleFileRef(id: string) {
+    setAttachedFileIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
 
   async function addComment(e: FormEvent) {
     e.preventDefault();
-    if (!commentBody.trim()) return;
+    if (!commentBody.trim() && attachedFileIds.length === 0) return;
     const mentionTags = mentionIds.map((id) => `@${profiles.find((p) => p.id === id)?.name ?? ''}`).join(' ');
-    const body = mentionTags ? `${mentionTags} ${commentBody.trim()}` : commentBody.trim();
+    // referências a arquivos: nome + link (o RichText transforma a URL em link/miniatura clicável)
+    const fileRefs = attachedFileIds
+      .map((id) => files.find((f) => f.id === id))
+      .filter((f): f is ProjectFile => Boolean(f))
+      .map((f) => {
+        const idx = files.findIndex((x) => x.id === f.id);
+        return `📎 arquivo ${idx + 1} — ${f.name}: ${f.url}`;
+      })
+      .join('\n');
+    let body = commentBody.trim();
+    if (mentionTags) body = `${mentionTags} ${body}`.trim();
+    if (fileRefs) body = body ? `${body}\n${fileRefs}` : fileRefs;
     await supabase.from('task_comments').insert({
       task_id: task.id,
       author_id: actorId,
@@ -156,6 +171,7 @@ export default function TaskEditModal({
     });
     setCommentBody('');
     setMentionIds([]);
+    setAttachedFileIds([]);
     loadComments();
   }
 
@@ -800,9 +816,10 @@ export default function TaskEditModal({
 
       <div className="panel">
         <h4>Arquivos</h4>
-        {files.map((f) => (
+        {files.map((f, i) => (
           <div className="field-row" key={f.id}>
             <a href={f.url} target="_blank" rel="noreferrer">
+              <span style={{ color: 'var(--text-faint)', marginRight: 6 }}>📎 {i + 1}</span>
               {f.name}
             </a>
             <button className="btn ghost sm" onClick={() => deleteFile(f.id)}>
@@ -854,9 +871,39 @@ export default function TaskEditModal({
               ))}
             </div>
           </div>
+          {files.length > 0 && (
+            <div className="form-field">
+              <label>Mencionar arquivo</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {files.map((f, i) => {
+                  const on = attachedFileIds.includes(f.id);
+                  return (
+                    <span
+                      key={f.id}
+                      className="pill"
+                      onClick={() => toggleFileRef(f.id)}
+                      title={f.name}
+                      style={{
+                        cursor: 'pointer',
+                        maxWidth: 220,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        background: on ? 'var(--violet-dim)' : 'var(--surface-2)',
+                        color: on ? 'var(--violet)' : 'var(--text-faint)',
+                        border: on ? '1px solid var(--violet)' : '1px solid var(--border)',
+                      }}
+                    >
+                      📎 {i + 1} · {f.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="responsive-row">
             <input
-              placeholder="Escrever um comentário… marque alguém acima pra chamar atenção"
+              placeholder="Escrever um comentário… marque alguém ou um arquivo acima"
               value={commentBody}
               onChange={(e) => setCommentBody(e.target.value)}
               style={{ flex: 1 }}
