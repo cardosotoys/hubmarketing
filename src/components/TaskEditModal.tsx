@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react';
 import Modal from './Modal';
 import ProductCombobox from './ProductCombobox';
 import RichText from './RichText';
@@ -58,6 +58,7 @@ export default function TaskEditModal({
   onSpawnDemandas?: (labels: string[]) => void | Promise<void>;
 }) {
   const commentsRef = useRef<HTMLDivElement>(null);
+  const commentInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(task.title);
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [stageId, setStageId] = useState(task.stage_id);
@@ -88,6 +89,7 @@ export default function TaskEditModal({
   const [commentBody, setCommentBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
   const [attachedFileIds, setAttachedFileIds] = useState<string[]>([]); // arquivos referenciados no comentário
+  const [replyTo, setReplyTo] = useState<{ id: string; author: string; preview: string } | null>(null); // respondendo a um comentário
 
   // Fluxo de aprovação — múltiplos decisores (task_approvals)
   const [approvals, setApprovals] = useState<(TaskApproval & { approver: { name: string } | null })[]>([]);
@@ -168,10 +170,12 @@ export default function TaskEditModal({
       author_id: actorId,
       body,
       mentioned_ids: mentionIds,
+      parent_id: replyTo?.id ?? null,
     });
     setCommentBody('');
     setMentionIds([]);
     setAttachedFileIds([]);
+    setReplyTo(null);
     loadComments();
   }
 
@@ -415,6 +419,52 @@ export default function TaskEditModal({
   async function deleteFile(id: string) {
     await supabase.from('project_files').delete().eq('id', id);
     setFiles((prev) => prev.filter((f) => f.id !== id));
+  }
+
+  // ---- comentários em thread: agrupa por parent_id ----
+  type CommentRow = (typeof comments)[number];
+  const commentsByParent = new Map<string | null, CommentRow[]>();
+  for (const c of comments) {
+    const k = c.parent_id ?? null;
+    if (!commentsByParent.has(k)) commentsByParent.set(k, []);
+    commentsByParent.get(k)!.push(c);
+  }
+  // topo: mais recentes primeiro (vem da query). respostas: cronológicas (mais antigas primeiro).
+  const topLevelComments = commentsByParent.get(null) ?? [];
+  function renderComment(c: CommentRow, depth: number): ReactElement {
+    const replies = [...(commentsByParent.get(c.id) ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    return (
+      <div
+        key={c.id}
+        style={
+          depth > 0
+            ? { marginLeft: 14, borderLeft: '2px solid var(--border)', paddingLeft: 10, marginTop: 6 }
+            : undefined
+        }
+      >
+        <div className="comment">
+          <div className="comment-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="name">{c.author?.name ?? 'Alguém'}</span>
+            <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}</span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ marginLeft: 'auto' }}
+              onClick={() => {
+                setReplyTo({ id: c.id, author: c.author?.name ?? 'Alguém', preview: c.body });
+                commentInputRef.current?.focus();
+              }}
+            >
+              Responder
+            </button>
+          </div>
+          <div className="body" style={{ whiteSpace: 'pre-wrap' }}>
+            <RichText text={c.body} />
+          </div>
+        </div>
+        {replies.map((r) => renderComment(r, depth + 1))}
+      </div>
+    );
   }
 
   return (
@@ -839,15 +889,7 @@ export default function TaskEditModal({
 
       <div className="panel" ref={commentsRef} style={focusComments ? { border: '1px solid var(--accent)' } : undefined}>
         <h4>Comentários</h4>
-        {comments.map((c) => (
-          <div className="comment" key={c.id}>
-            <div className="comment-head">
-              <span className="name">{c.author?.name ?? 'Alguém'}</span>
-              <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}</span>
-            </div>
-            <div className="body" style={{ whiteSpace: 'pre-wrap' }}><RichText text={c.body} /></div>
-          </div>
-        ))}
+        {topLevelComments.map((c) => renderComment(c, 0))}
         {comments.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum comentário ainda.</p>}
 
         <form onSubmit={addComment} style={{ marginTop: 8 }}>
@@ -901,15 +943,38 @@ export default function TaskEditModal({
               </div>
             </div>
           )}
+          {replyTo && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 10px',
+                marginBottom: 6,
+                borderLeft: '2px solid var(--accent)',
+                background: 'var(--accent-dim)',
+                borderRadius: 6,
+                fontSize: 12,
+              }}
+            >
+              <span style={{ color: 'var(--text-dim)', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                Respondendo a <b>{replyTo.author}</b>: {replyTo.preview.replace(/@\S+/g, '').replace(/📎[^\n]*/g, '').trim().slice(0, 70) || '…'}
+              </span>
+              <button type="button" className="btn ghost sm" onClick={() => setReplyTo(null)} title="Cancelar resposta">
+                ✕
+              </button>
+            </div>
+          )}
           <div className="responsive-row">
             <input
-              placeholder="Escrever um comentário… marque alguém ou um arquivo acima"
+              ref={commentInputRef}
+              placeholder={replyTo ? `Respondendo a ${replyTo.author}…` : 'Escrever um comentário… marque alguém ou um arquivo acima'}
               value={commentBody}
               onChange={(e) => setCommentBody(e.target.value)}
               style={{ flex: 1 }}
             />
             <button className="btn sm" type="submit">
-              Comentar
+              {replyTo ? 'Responder' : 'Comentar'}
             </button>
           </div>
         </form>

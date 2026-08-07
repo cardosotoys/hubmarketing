@@ -228,6 +228,7 @@ export interface TaskComment {
   author_id: string;
   body: string;
   mentioned_ids: string[];
+  parent_id: string | null;
   created_at: string;
 }
 
