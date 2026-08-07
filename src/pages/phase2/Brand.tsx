@@ -539,7 +539,7 @@ function LicenseesSection() {
       )}
 
       {open && (
-        <Modal title={open.name} onClose={() => setOpenId(null)}>
+        <Modal wide title={open.name} onClose={() => setOpenId(null)}>
           <p className="page-sub" style={{ marginTop: -4 }}>
             Licenciante: {open.licensor || '—'} · Guia em {open.source_type === 'drive' ? 'Google Drive' : 'site próprio'}
           </p>
@@ -568,7 +568,7 @@ function LicenseesSection() {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 10, alignItems: 'start' }}>
             {CATEGORIES.map((c) => {
               const url = (open[c.key] as string)?.trim();
               const catFiles = filesFor(open.id, c.cat);
