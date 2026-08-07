@@ -145,6 +145,7 @@ export interface BrandLicensee {
   source_type: 'site' | 'drive';
   guide_url: string;
   access_info: string;
+  palette: BrandColor[];
   logos_url: string;
   colors_url: string;
   typography_url: string;
@@ -155,6 +156,10 @@ export interface BrandLicensee {
   updated_at: string;
 }
 
+export interface BrandColor {
+  name: string;
+  hex: string;
+}
 export type BrandAssetCategory = 'logos' | 'colors' | 'typography' | 'icons' | 'pattern';
 export interface BrandLicenseeFile {
   id: string;

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { normalizeUrl } from '../../lib/url';
 import Modal from '../../components/Modal';
-import type { BrandLicensee, BrandLicenseeFile, BrandAssetCategory } from '../../types/database';
+import type { BrandLicensee, BrandLicenseeFile, BrandAssetCategory, BrandColor } from '../../types/database';
 
 export default function Brand() {
   return (
@@ -321,6 +321,8 @@ export default function Brand() {
   );
 }
 
+const isImageUrl = (u: string) => /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(u);
+
 type UrlKey = 'logos_url' | 'colors_url' | 'typography_url' | 'icons_url' | 'pattern_url';
 const CATEGORIES: { key: UrlKey; cat: BrandAssetCategory; label: string; icon: string }[] = [
   { key: 'logos_url', cat: 'logos', label: 'Logotipos', icon: '🅰' },
@@ -337,6 +339,7 @@ const BLANK: Omit<BrandLicensee, 'id' | 'created_at' | 'updated_at'> = {
   source_type: 'site',
   guide_url: '',
   access_info: '',
+  palette: [],
   logos_url: '',
   colors_url: '',
   typography_url: '',
@@ -356,7 +359,18 @@ function LicenseesSection() {
   const [busy, setBusy] = useState(false);
   const [files, setFiles] = useState<BrandLicenseeFile[]>([]);
   const [uploadingCat, setUploadingCat] = useState<string | null>(null);
+  const [newColor, setNewColor] = useState<BrandColor>({ hex: '#3fb68b', name: '' });
   const actorId = profile?.id ?? '';
+
+  function addColor() {
+    const hex = newColor.hex.trim();
+    if (!hex) return;
+    setDraft((d) => ({ ...d, palette: [...(d.palette ?? []), { hex, name: newColor.name.trim() }] }));
+    setNewColor({ hex: '#3fb68b', name: '' });
+  }
+  function removeColor(i: number) {
+    setDraft((d) => ({ ...d, palette: (d.palette ?? []).filter((_, idx) => idx !== i) }));
+  }
 
   async function load() {
     setLoading(true);
@@ -463,7 +477,9 @@ function LicenseesSection() {
       ) : (
         <div className="grid4">
           {rows.map((l) => {
-            const filled = CATEGORIES.filter((c) => (l[c.key] as string)?.trim() || filesFor(l.id, c.cat).length > 0).length;
+            const filled = CATEGORIES.filter(
+              (c) => (l[c.key] as string)?.trim() || filesFor(l.id, c.cat).length > 0 || (c.cat === 'colors' && (l.palette?.length ?? 0) > 0),
+            ).length;
             return (
               <div className="card" key={l.id} style={{ borderTop: `3px solid ${l.color}` }}>
                 <h4>{l.name}</h4>
@@ -517,6 +533,7 @@ function LicenseesSection() {
             {CATEGORIES.map((c) => {
               const url = (open[c.key] as string)?.trim();
               const catFiles = filesFor(open.id, c.cat);
+              const hasContent = !!url || catFiles.length > 0 || (c.cat === 'colors' && (open.palette?.length ?? 0) > 0);
               return (
                 <div
                   key={c.key}
@@ -534,25 +551,48 @@ function LicenseesSection() {
                       <a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">
                         Link →
                       </a>
-                    ) : catFiles.length === 0 ? (
+                    ) : !hasContent ? (
                       <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>vazio</span>
                     ) : null}
                   </div>
-                  {catFiles.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, paddingLeft: 32 }}>
-                      {catFiles.map((f) => (
-                        <a
-                          key={f.id}
-                          className="pill"
-                          href={f.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={f.name}
-                          style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        >
-                          ⬇ {f.name}
-                        </a>
+                  {c.cat === 'colors' && (open.palette?.length ?? 0) > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingLeft: 32 }}>
+                      {open.palette.map((col, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 8, padding: '3px 8px 3px 3px' }}>
+                          <span style={{ width: 22, height: 22, borderRadius: 5, background: col.hex, border: '1px solid var(--border)', flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, lineHeight: 1.2 }}>
+                            {col.name && <span style={{ display: 'block', fontWeight: 600 }}>{col.name}</span>}
+                            <span className="mono" style={{ color: 'var(--text-faint)' }}>{col.hex}</span>
+                          </span>
+                        </div>
                       ))}
+                    </div>
+                  )}
+                  {catFiles.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingLeft: 32 }}>
+                      {catFiles.map((f) =>
+                        isImageUrl(f.url) ? (
+                          <a key={f.id} href={f.url} target="_blank" rel="noreferrer" title={`${f.name} — abrir/baixar`}>
+                            <img
+                              src={f.url}
+                              alt={f.name}
+                              style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            key={f.id}
+                            className="pill"
+                            href={f.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={f.name}
+                            style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          >
+                            ⬇ {f.name}
+                          </a>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
@@ -653,6 +693,33 @@ function LicenseesSection() {
                         }}
                       />
                     </label>
+                  </div>
+                )}
+                {c.cat === 'colors' && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      {(draft.palette ?? []).map((col, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 8, padding: '3px 6px 3px 3px' }}>
+                          <span style={{ width: 20, height: 20, borderRadius: 5, background: col.hex, border: '1px solid var(--border)' }} />
+                          <span style={{ fontSize: 12 }}>
+                            {col.name ? `${col.name} · ` : ''}
+                            <span className="mono" style={{ color: 'var(--text-faint)' }}>{col.hex}</span>
+                          </span>
+                          <button type="button" onClick={() => removeColor(i)} title="Remover" style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                      {(draft.palette ?? []).length === 0 && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Nenhuma cor cadastrada.</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="color" value={newColor.hex} onChange={(e) => setNewColor({ ...newColor, hex: e.target.value })} style={{ width: 38, height: 34, padding: 2, cursor: 'pointer' }} />
+                      <input className="mono" value={newColor.hex} onChange={(e) => setNewColor({ ...newColor, hex: e.target.value })} placeholder="#RRGGBB" style={{ width: 104 }} />
+                      <input value={newColor.name} onChange={(e) => setNewColor({ ...newColor, name: e.target.value })} placeholder="nome (opcional)" style={{ flex: 1 }} />
+                      <button type="button" className="btn ghost sm" onClick={addColor}>
+                        + Cor
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
