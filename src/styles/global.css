@@ -2114,3 +2114,145 @@ table.simple tr:hover td {
     color: #000;
   }
 }
+
+/* Configurações — lista de usuários em cards */
+.user-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.user-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.user-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.user-card.is-disabled {
+  opacity: 0.6;
+}
+.user-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.user-card-id {
+  flex: 1;
+  min-width: 0;
+}
+.user-card-name {
+  font-weight: 600;
+  font-size: 14.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  line-height: 1.3;
+}
+.user-card-role {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.user-card-job {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.role-administrador {
+  background: var(--accent);
+}
+.role-diretoria {
+  background: var(--violet);
+}
+.role-equipe {
+  background: var(--blue);
+}
+.user-card-action {
+  flex-shrink: 0;
+}
+.user-card-fields {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.ucf {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 160px;
+}
+.ucf-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.ucf select {
+  width: 100%;
+}
+.utag {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.utag-self {
+  background: var(--surface-3);
+  color: var(--text-faint);
+}
+.utag-off {
+  background: var(--red-dim);
+  color: var(--red);
+}
+.umuted {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  padding: 6px 0;
+}
+.toggle-pill {
+  align-self: flex-start;
+  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-weight: 500;
+  transition: all 0.12s ease;
+}
+.toggle-pill:hover:not(:disabled) {
+  border-color: var(--green);
+  color: var(--green);
+}
+.toggle-pill.on {
+  background: var(--green-dim);
+  color: var(--green);
+  border-color: var(--green);
+}
+.toggle-pill:disabled {
+  cursor: default;
+  opacity: 0.55;
+}

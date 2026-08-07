@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import Avatar from '../components/Avatar';
 import {
   CAMPAIGN_STATUSES,
   DEPARTMENTS,
@@ -176,36 +177,57 @@ export default function Configuracoes() {
             loading ? (
               <div className="page-sub">Carregando…</div>
             ) : (
-              <table className="simple">
-                <thead>
-                  <tr>
-                    <th>Usuário</th>
-                    <th>Papel</th>
-                    <th>Departamento</th>
-                    <th>Cargo</th>
-                    <th>Editar produtos</th>
-                    <th></th>
-                    <th>Acesso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => {
-                    const restricted = !isDiretoria && u.role === 'diretoria';
-                    const isSelf = u.id === profile?.id;
-                    return (
-                      <tr key={u.id} style={u.disabled ? { opacity: 0.55 } : undefined}>
-                        <td data-label="Usuário">
-                          {u.name}
-                          {u.disabled && (
-                            <span className="pill" style={{ marginLeft: 6, background: 'var(--red-dim)', color: 'var(--red)' }}>
-                              desativado
-                            </span>
+              <div className="user-cards">
+                {users.map((u) => {
+                  const restricted = !isDiretoria && u.role === 'diretoria';
+                  const isSelf = u.id === profile?.id;
+                  return (
+                    <div className={`user-card${u.disabled ? ' is-disabled' : ''}`} key={u.id}>
+                      <div className="user-card-main">
+                        <Avatar profile={u} />
+                        <div className="user-card-id">
+                          <div className="user-card-name">
+                            {u.name}
+                            {isSelf && <span className="utag utag-self">você</span>}
+                            {u.disabled && <span className="utag utag-off">desativado</span>}
+                          </div>
+                          <div className="user-card-role">
+                            <span className={`role-dot role-${u.role}`} />
+                            {ROLE_LABELS[u.role]}
+                            {u.job_title ? <span className="user-card-job"> · {u.job_title}</span> : null}
+                          </div>
+                        </div>
+                        <div className="user-card-action">
+                          {isSelf ? null : restricted ? (
+                            <span className="umuted">🔒 restrito</span>
+                          ) : u.disabled ? (
+                            <button className="btn ghost sm" style={{ color: 'var(--green)' }} onClick={() => changeDisabled(u.id, false)}>
+                              Reativar
+                            </button>
+                          ) : (
+                            <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => changeDisabled(u.id, true)}>
+                              Desativar
+                            </button>
                           )}
-                        </td>
-                        <td data-label="Papel">
-                          <span className="pill">{ROLE_LABELS[u.role]}</span>
-                        </td>
-                        <td data-label="Departamento">
+                        </div>
+                      </div>
+
+                      <div className="user-card-fields">
+                        <label className="ucf">
+                          <span className="ucf-label">Papel</span>
+                          {restricted ? (
+                            <span className="pill">{ROLE_LABELS[u.role]}</span>
+                          ) : (
+                            <select value={u.role} onChange={(e) => changeRole(u.id, e.target.value as Role)}>
+                              <option value="equipe">Equipe</option>
+                              <option value="administrador">Administrador</option>
+                              <option value="diretoria">Diretoria</option>
+                            </select>
+                          )}
+                        </label>
+
+                        <label className="ucf">
+                          <span className="ucf-label">Departamento</span>
                           {restricted ? (
                             <span className="pill">{DEPARTMENT_LABELS[u.department]}</span>
                           ) : (
@@ -217,55 +239,28 @@ export default function Configuracoes() {
                               ))}
                             </select>
                           )}
-                        </td>
-                        <td data-label="Cargo">{u.job_title || '—'}</td>
-                        <td data-label="Editar produtos">
+                        </label>
+
+                        <div className="ucf">
+                          <span className="ucf-label">Editar produtos</span>
                           {u.department === 'assistente' ? (
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: restricted ? 'default' : 'pointer' }}>
-                              <input
-                                type="checkbox"
-                                checked={u.can_edit_products}
-                                disabled={restricted}
-                                onChange={(e) => changeCanEditProducts(u.id, e.target.checked)}
-                                style={{ width: 'auto' }}
-                              />
-                              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{u.can_edit_products ? 'liberado' : 'bloqueado'}</span>
-                            </label>
-                          ) : (
-                            <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>✓ padrão</span>
-                          )}
-                        </td>
-                        <td data-label="Alterar papel">
-                          {restricted ? (
-                            <span style={{ color: 'var(--text-faint)' }}>🔒 restrito</span>
-                          ) : (
-                            <select value={u.role} onChange={(e) => changeRole(u.id, e.target.value as Role)}>
-                              <option value="equipe">Equipe</option>
-                              <option value="administrador">Administrador</option>
-                              <option value="diretoria">Diretoria</option>
-                            </select>
-                          )}
-                        </td>
-                        <td data-label="Acesso">
-                          {isSelf ? (
-                            <span style={{ color: 'var(--text-faint)' }}>você</span>
-                          ) : restricted ? (
-                            <span style={{ color: 'var(--text-faint)' }}>🔒</span>
-                          ) : u.disabled ? (
-                            <button className="btn ghost sm" style={{ color: 'var(--green)' }} onClick={() => changeDisabled(u.id, false)}>
-                              Reativar
+                            <button
+                              type="button"
+                              className={`toggle-pill${u.can_edit_products ? ' on' : ''}`}
+                              disabled={restricted}
+                              onClick={() => changeCanEditProducts(u.id, !u.can_edit_products)}
+                            >
+                              {u.can_edit_products ? '✓ Liberado' : 'Bloqueado'}
                             </button>
                           ) : (
-                            <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => changeDisabled(u.id, true)}>
-                              Desativar
-                            </button>
+                            <span className="umuted">Padrão · já edita</span>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )
           ) : stab === 'perfis' ? (
             loading ? (
