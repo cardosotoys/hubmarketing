@@ -574,7 +574,7 @@ function LicenseesSection() {
       )}
 
       {editingId && (
-        <Modal title={editingId === 'new' ? 'Novo licenciado' : `Editar — ${draft.name}`} onClose={() => setEditingId(null)}>
+        <Modal wide title={editingId === 'new' ? 'Novo licenciado' : `Editar — ${draft.name}`} onClose={() => setEditingId(null)}>
           <div className="form-field">
             <label>Nome</label>
             <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="ex.: Bluey" />
@@ -616,6 +616,7 @@ function LicenseesSection() {
           {editingId === 'new' && (
             <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 0 }}>Salve primeiro para poder anexar arquivos.</p>
           )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0 16px' }}>
           {CATEGORIES.map((c) => {
             const lid = editingId && editingId !== 'new' ? editingId : null;
             const catFiles = lid ? filesFor(lid, c.cat) : [];
@@ -657,6 +658,7 @@ function LicenseesSection() {
               </div>
             );
           })}
+          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button className="btn" disabled={busy || !draft.name.trim()} onClick={save}>
               {busy ? 'Salvando…' : 'Salvar'}
