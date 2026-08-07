@@ -80,6 +80,9 @@ export default function TaskEditModal({
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
+  const [fileBusy, setFileBusy] = useState(false); // upload de anexo em andamento
+  const [fileMsg, setFileMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
   const [newChecklistLabel, setNewChecklistLabel] = useState('');
@@ -402,18 +405,53 @@ export default function TaskEditModal({
 
   async function addFile(e: FormEvent) {
     e.preventDefault();
-    if (!fileName.trim() || !fileUrl.trim()) return;
+    if (!fileUrl.trim()) return;
+    const url = normalizeUrl(fileUrl);
+    const fallbackName = url.split('/').pop()?.split('?')[0] || 'Link';
     await supabase.from('project_files').insert({
       task_id: task.id,
       project_id: task.project_id,
-      name: fileName.trim(),
-      url: normalizeUrl(fileUrl),
+      name: fileName.trim() || fallbackName,
+      url,
       added_by: actorId,
     });
     setFileName('');
     setFileUrl('');
     const { data } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
     setFiles((data as ProjectFile[]) ?? []);
+  }
+
+  // Sobe o arquivo (imagem/PDF/etc.) direto pro bucket e registra em project_files.
+  // Assim a imagem aparece como miniatura na demanda para validação/observações/aprovação.
+  async function uploadFile(file: File) {
+    setFileBusy(true);
+    setFileMsg(null);
+    const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const path = `${task.id}/${Date.now()}-${safe}`;
+    const { error: upErr } = await supabase.storage.from('task-files').upload(path, file, { upsert: true });
+    if (upErr) {
+      setFileMsg(upErr.message);
+      setFileBusy(false);
+      return;
+    }
+    const { data } = supabase.storage.from('task-files').getPublicUrl(path);
+    const { error: dbErr } = await supabase.from('project_files').insert({
+      task_id: task.id,
+      project_id: task.project_id,
+      name: fileName.trim() || file.name,
+      url: data.publicUrl,
+      added_by: actorId,
+    });
+    if (dbErr) {
+      setFileMsg(dbErr.message);
+      setFileBusy(false);
+      return;
+    }
+    setFileName('');
+    setFileMsg('Arquivo enviado ✓');
+    const { data: rows } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
+    setFiles((rows as ProjectFile[]) ?? []);
+    setFileBusy(false);
   }
 
   async function deleteFile(id: string) {
@@ -866,23 +904,57 @@ export default function TaskEditModal({
 
       <div className="panel">
         <h4>Arquivos</h4>
-        {files.map((f, i) => (
-          <div className="field-row" key={f.id}>
-            <a href={f.url} target="_blank" rel="noreferrer">
-              <span style={{ color: 'var(--text-faint)', marginRight: 6 }}>📎 {i + 1}</span>
-              {f.name}
-            </a>
-            <button className="btn ghost sm" onClick={() => deleteFile(f.id)}>
-              ✕
-            </button>
-          </div>
-        ))}
+        {files.map((f, i) => {
+          const isImg = /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(f.url);
+          return (
+            <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+              {isImg && (
+                <a href={f.url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+                  <img
+                    src={f.url}
+                    alt={f.name}
+                    style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
+                  />
+                </a>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <a href={f.url} target="_blank" rel="noreferrer" style={{ overflowWrap: 'anywhere' }}>
+                  <span style={{ color: 'var(--text-faint)', marginRight: 6 }}>📎 {i + 1}</span>
+                  {f.name}
+                </a>
+              </div>
+              <button className="btn ghost sm" onClick={() => deleteFile(f.id)} style={{ flexShrink: 0 }}>
+                ✕
+              </button>
+            </div>
+          );
+        })}
         {files.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum arquivo anexado ainda.</p>}
+
+        {/* Upload real: sobe a imagem/arquivo pra validação */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) uploadFile(f);
+            e.target.value = '';
+          }}
+        />
+        <div className="responsive-row" style={{ marginTop: 8, alignItems: 'center' }}>
+          <input placeholder="Nome (opcional)" value={fileName} onChange={(e) => setFileName(e.target.value)} style={{ flex: 1 }} />
+          <button type="button" className="btn sm" disabled={fileBusy} onClick={() => fileInputRef.current?.click()}>
+            {fileBusy ? 'Enviando…' : '⬆ Enviar imagem/arquivo'}
+          </button>
+        </div>
+        {fileMsg && <p style={{ fontSize: 12, color: fileMsg.includes('✓') ? 'var(--green)' : 'var(--red)', marginTop: 4 }}>{fileMsg}</p>}
+
         <form onSubmit={addFile} className="responsive-row" style={{ marginTop: 8 }}>
-          <input placeholder="Nome" value={fileName} onChange={(e) => setFileName(e.target.value)} style={{ flex: 1 }} />
-          <input placeholder="Link (Drive, etc.)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} style={{ flex: 2 }} />
-          <button className="btn sm" type="submit">
-            Anexar
+          <input placeholder="Ou cole um link (Drive, etc.)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} style={{ flex: 2 }} />
+          <button className="btn ghost sm" type="submit">
+            Anexar link
           </button>
         </form>
       </div>
