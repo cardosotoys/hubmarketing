@@ -25,44 +25,62 @@ export default function Auditoria() {
     setLoading(true);
 
     async function load() {
-      const baseQuery = supabase
+      // Sem embeds de projects/campaigns aqui de propósito: a FK activity_log→campaigns não existe
+      // em produção e o embed fazia a query inteira falhar (0 resultados). Nomes são resolvidos
+      // no cliente logo abaixo. O embed de actor (profiles) é válido e continua.
+      let q = supabase
         .from('activity_log')
-        .select('*, actor:profiles(name), project:projects(name), campaign:campaigns(name)')
+        .select('*, actor:profiles(name)')
         .order('created_at', { ascending: false })
-        .limit(isPrivileged ? 1000 : 300);
+        .limit(isPrivileged ? 2000 : 300);
 
-      if (isPrivileged) {
-        const { data } = await baseQuery;
-        setRows((data as Row[]) ?? []);
-        setLoading(false);
-        return;
+      if (!isPrivileged) {
+        // Escopo pessoal: tudo que a pessoa fez, mais tudo em projetos/campanhas onde ela participa.
+        const [memberProjectsRes, myTasksRes, myCampaignTasksRes, ownedCampaignsRes] = await Promise.all([
+          supabase.from('project_members').select('project_id').eq('user_id', userId),
+          supabase.from('tasks').select('project_id').eq('assignee_id', userId),
+          supabase
+            .from('campaign_tasks')
+            .select('campaign_id')
+            .or(`assignee_id.eq.${userId},reviewer_id.eq.${userId},approver_id.eq.${userId},requester_id.eq.${userId}`),
+          supabase.from('campaigns').select('id').eq('owner_id', userId),
+        ]);
+
+        const projectIds = new Set<string>();
+        (memberProjectsRes.data as { project_id: string }[] | null)?.forEach((r) => projectIds.add(r.project_id));
+        (myTasksRes.data as { project_id: string | null }[] | null)?.forEach((r) => r.project_id && projectIds.add(r.project_id));
+
+        const campaignIds = new Set<string>();
+        (myCampaignTasksRes.data as { campaign_id: string }[] | null)?.forEach((r) => campaignIds.add(r.campaign_id));
+        (ownedCampaignsRes.data as { id: string }[] | null)?.forEach((r) => campaignIds.add(r.id));
+
+        const orParts = [`actor_id.eq.${userId}`];
+        if (projectIds.size > 0) orParts.push(`project_id.in.(${[...projectIds].join(',')})`);
+        if (campaignIds.size > 0) orParts.push(`campaign_id.in.(${[...campaignIds].join(',')})`);
+        q = q.or(orParts.join(','));
       }
 
-      // Escopo pessoal: tudo que a pessoa fez, mais tudo em projetos/campanhas onde ela participa.
-      const [memberProjectsRes, myTasksRes, myCampaignTasksRes, ownedCampaignsRes] = await Promise.all([
-        supabase.from('project_members').select('project_id').eq('user_id', userId),
-        supabase.from('tasks').select('project_id').eq('assignee_id', userId),
-        supabase
-          .from('campaign_tasks')
-          .select('campaign_id')
-          .or(`assignee_id.eq.${userId},reviewer_id.eq.${userId},approver_id.eq.${userId},requester_id.eq.${userId}`),
-        supabase.from('campaigns').select('id').eq('owner_id', userId),
+      const { data, error } = await q;
+      if (error) console.error('Auditoria — falha ao carregar activity_log:', error.message);
+      const logs = (data as (ActivityLogEntry & { actor: { name: string } | null })[] | null) ?? [];
+
+      // Resolve nomes de projeto/campanha no cliente (sem depender de FK/embed)
+      const pIds = [...new Set(logs.map((l) => l.project_id).filter((x): x is string => !!x))];
+      const cIds = [...new Set(logs.map((l) => l.campaign_id).filter((x): x is string => !!x))];
+      const [projRes, campRes] = await Promise.all([
+        pIds.length ? supabase.from('projects').select('id, name').in('id', pIds) : Promise.resolve({ data: [] }),
+        cIds.length ? supabase.from('campaigns').select('id, name').in('id', cIds) : Promise.resolve({ data: [] }),
       ]);
+      const pMap = new Map(((projRes.data as { id: string; name: string }[] | null) ?? []).map((p) => [p.id, p.name]));
+      const cMap = new Map(((campRes.data as { id: string; name: string }[] | null) ?? []).map((c) => [c.id, c.name]));
 
-      const projectIds = new Set<string>();
-      (memberProjectsRes.data as { project_id: string }[] | null)?.forEach((r) => projectIds.add(r.project_id));
-      (myTasksRes.data as { project_id: string | null }[] | null)?.forEach((r) => r.project_id && projectIds.add(r.project_id));
-
-      const campaignIds = new Set<string>();
-      (myCampaignTasksRes.data as { campaign_id: string }[] | null)?.forEach((r) => campaignIds.add(r.campaign_id));
-      (ownedCampaignsRes.data as { id: string }[] | null)?.forEach((r) => campaignIds.add(r.id));
-
-      const orParts = [`actor_id.eq.${userId}`];
-      if (projectIds.size > 0) orParts.push(`project_id.in.(${[...projectIds].join(',')})`);
-      if (campaignIds.size > 0) orParts.push(`campaign_id.in.(${[...campaignIds].join(',')})`);
-
-      const { data } = await baseQuery.or(orParts.join(','));
-      setRows((data as Row[]) ?? []);
+      setRows(
+        logs.map((l) => ({
+          ...l,
+          project: l.project_id ? { name: pMap.get(l.project_id) ?? null } : null,
+          campaign: l.campaign_id ? { name: cMap.get(l.campaign_id) ?? null } : null,
+        })) as Row[],
+      );
       setLoading(false);
     }
 
