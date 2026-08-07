@@ -144,6 +144,7 @@ export interface BrandLicensee {
   color: string;
   source_type: 'site' | 'drive';
   guide_url: string;
+  access_info: string;
   logos_url: string;
   colors_url: string;
   typography_url: string;
@@ -152,6 +153,18 @@ export interface BrandLicensee {
   position: number;
   created_at: string;
   updated_at: string;
+}
+
+export type BrandAssetCategory = 'logos' | 'colors' | 'typography' | 'icons' | 'pattern';
+export interface BrandLicenseeFile {
+  id: string;
+  licensee_id: string;
+  category: BrandAssetCategory;
+  name: string;
+  url: string;
+  path: string;
+  added_by: string | null;
+  created_at: string;
 }
 
 export type PackagingTrack = 'criacao' | 'melhoria' | 'criacao_teste' | 'melhoria_teste' | 'marca';

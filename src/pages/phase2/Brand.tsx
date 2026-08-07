@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { normalizeUrl } from '../../lib/url';
 import Modal from '../../components/Modal';
-import type { BrandLicensee } from '../../types/database';
+import type { BrandLicensee, BrandLicenseeFile, BrandAssetCategory } from '../../types/database';
 
 export default function Brand() {
   return (
@@ -322,12 +322,12 @@ export default function Brand() {
 }
 
 type UrlKey = 'logos_url' | 'colors_url' | 'typography_url' | 'icons_url' | 'pattern_url';
-const CATEGORIES: { key: UrlKey; label: string; icon: string }[] = [
-  { key: 'logos_url', label: 'Logotipos', icon: '🅰' },
-  { key: 'colors_url', label: 'Paleta de cores', icon: '🎨' },
-  { key: 'typography_url', label: 'Tipografia', icon: '🔤' },
-  { key: 'icons_url', label: 'Ícones', icon: '✦' },
-  { key: 'pattern_url', label: 'Pattern', icon: '▦' },
+const CATEGORIES: { key: UrlKey; cat: BrandAssetCategory; label: string; icon: string }[] = [
+  { key: 'logos_url', cat: 'logos', label: 'Logotipos', icon: '🅰' },
+  { key: 'colors_url', cat: 'colors', label: 'Paleta de cores', icon: '🎨' },
+  { key: 'typography_url', cat: 'typography', label: 'Tipografia', icon: '🔤' },
+  { key: 'icons_url', cat: 'icons', label: 'Ícones', icon: '✦' },
+  { key: 'pattern_url', cat: 'pattern', label: 'Pattern', icon: '▦' },
 ];
 
 const BLANK: Omit<BrandLicensee, 'id' | 'created_at' | 'updated_at'> = {
@@ -336,6 +336,7 @@ const BLANK: Omit<BrandLicensee, 'id' | 'created_at' | 'updated_at'> = {
   color: 'var(--accent)',
   source_type: 'site',
   guide_url: '',
+  access_info: '',
   logos_url: '',
   colors_url: '',
   typography_url: '',
@@ -353,16 +354,49 @@ function LicenseesSection() {
   const [editingId, setEditingId] = useState<string | 'new' | null>(null); // form aberto
   const [draft, setDraft] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<BrandLicenseeFile[]>([]);
+  const [uploadingCat, setUploadingCat] = useState<string | null>(null);
+  const actorId = profile?.id ?? '';
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from('brand_licensees').select('*').order('position').order('name');
-    setRows((data as BrandLicensee[]) ?? []);
+    const [licRes, filesRes] = await Promise.all([
+      supabase.from('brand_licensees').select('*').order('position').order('name'),
+      supabase.from('brand_licensee_files').select('*').order('created_at'),
+    ]);
+    setRows((licRes.data as BrandLicensee[]) ?? []);
+    setFiles((filesRes.data as BrandLicenseeFile[]) ?? []);
     setLoading(false);
   }
   useEffect(() => {
     load();
   }, []);
+
+  const filesFor = (licenseeId: string, cat: BrandAssetCategory) =>
+    files.filter((f) => f.licensee_id === licenseeId && f.category === cat);
+
+  async function uploadAsset(licenseeId: string, cat: BrandAssetCategory, file: File) {
+    setUploadingCat(`${licenseeId}:${cat}`);
+    const safe = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const path = `${licenseeId}/${cat}/${Date.now()}-${safe}`;
+    const { error: upErr } = await supabase.storage.from('brand-assets').upload(path, file, { upsert: true });
+    if (upErr) {
+      alert(upErr.message);
+      setUploadingCat(null);
+      return;
+    }
+    const { data } = supabase.storage.from('brand-assets').getPublicUrl(path);
+    await supabase.from('brand_licensee_files').insert({ licensee_id: licenseeId, category: cat, name: file.name, url: data.publicUrl, path, added_by: actorId || null });
+    const { data: rowsF } = await supabase.from('brand_licensee_files').select('*').order('created_at');
+    setFiles((rowsF as BrandLicenseeFile[]) ?? []);
+    setUploadingCat(null);
+  }
+
+  async function removeAsset(f: BrandLicenseeFile) {
+    if (f.path) await supabase.storage.from('brand-assets').remove([f.path]);
+    await supabase.from('brand_licensee_files').delete().eq('id', f.id);
+    setFiles((prev) => prev.filter((x) => x.id !== f.id));
+  }
 
   const open = useMemo(() => rows.find((r) => r.id === openId) ?? null, [rows, openId]);
 
@@ -376,6 +410,7 @@ function LicenseesSection() {
     void _c;
     void _u;
     setDraft(rest);
+    setOpenId(null);
     setEditingId(l.id);
   }
 
@@ -428,7 +463,7 @@ function LicenseesSection() {
       ) : (
         <div className="grid4">
           {rows.map((l) => {
-            const filled = CATEGORIES.filter((c) => (l[c.key] as string)?.trim()).length;
+            const filled = CATEGORIES.filter((c) => (l[c.key] as string)?.trim() || filesFor(l.id, c.cat).length > 0).length;
             return (
               <div className="card" key={l.id} style={{ borderTop: `3px solid ${l.color}` }}>
                 <h4>{l.name}</h4>
@@ -454,36 +489,71 @@ function LicenseesSection() {
             Licenciante: {open.licensor || '—'} · Guia em {open.source_type === 'drive' ? 'Google Drive' : 'site próprio'}
           </p>
 
-          {open.guide_url && (
-            <a className="btn" href={open.guide_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginBottom: 12 }}>
-              Abrir guia completo →
-            </a>
+          {(open.guide_url || open.access_info) && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: '10px 12px',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                background: 'var(--surface-2)',
+              }}
+            >
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 6 }}>
+                Acesso ao guia real
+              </div>
+              {open.guide_url && (
+                <a className="btn sm" href={open.guide_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginBottom: open.access_info ? 8 : 0 }}>
+                  {open.source_type === 'drive' ? '🗂 Abrir no Drive →' : '🌐 Abrir o site →'}
+                </a>
+              )}
+              {open.access_info && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{open.access_info}</div>
+              )}
+            </div>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {CATEGORIES.map((c) => {
               const url = (open[c.key] as string)?.trim();
+              const catFiles = filesFor(open.id, c.cat);
               return (
                 <div
                   key={c.key}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
                     padding: '10px 12px',
                     border: '1px solid var(--border)',
                     borderRadius: 10,
                     background: 'var(--surface)',
                   }}
                 >
-                  <span style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{c.icon}</span>
-                  <span style={{ flex: 1, fontWeight: 600, fontSize: 13.5 }}>{c.label}</span>
-                  {url ? (
-                    <a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">
-                      Abrir →
-                    </a>
-                  ) : (
-                    <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>não definido</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{c.icon}</span>
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: 13.5 }}>{c.label}</span>
+                    {url ? (
+                      <a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">
+                        Link →
+                      </a>
+                    ) : catFiles.length === 0 ? (
+                      <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>vazio</span>
+                    ) : null}
+                  </div>
+                  {catFiles.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, paddingLeft: 32 }}>
+                      {catFiles.map((f) => (
+                        <a
+                          key={f.id}
+                          className="pill"
+                          href={f.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={f.name}
+                          style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                          ⬇ {f.name}
+                        </a>
+                      ))}
+                    </div>
                   )}
                 </div>
               );
@@ -493,7 +563,7 @@ function LicenseesSection() {
           {canManage && (
             <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
               <button className="btn sm" onClick={() => startEdit(open)}>
-                Editar links
+                Editar & anexar arquivos
               </button>
               <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => remove(open.id)}>
                 Excluir
@@ -527,21 +597,66 @@ function LicenseesSection() {
             </div>
           </div>
           <div className="form-field">
-            <label>Guia completo (Drive ou site)</label>
-            <input value={draft.guide_url} onChange={(e) => setDraft({ ...draft, guide_url: e.target.value })} placeholder="cole o link" />
+            <label>Acesso ao guia real — site/Drive</label>
+            <input value={draft.guide_url} onChange={(e) => setDraft({ ...draft, guide_url: e.target.value })} placeholder="cole o link do site ou da pasta do Drive" />
           </div>
-          {CATEGORIES.map((c) => (
-            <div className="form-field" key={c.key}>
-              <label>
-                {c.icon} {c.label}
-              </label>
-              <input
-                value={draft[c.key] as string}
-                onChange={(e) => setDraft({ ...draft, [c.key]: e.target.value })}
-                placeholder="link do asset (opcional)"
-              />
-            </div>
-          ))}
+          <div className="form-field">
+            <label>Como acessar (login / observações)</label>
+            <textarea
+              value={draft.access_info}
+              onChange={(e) => setDraft({ ...draft, access_info: e.target.value })}
+              placeholder="ex.: acessar em brand.marca.com · usuário: cardoso · senha no gerenciador da equipe"
+              rows={2}
+            />
+          </div>
+
+          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-faint)', fontWeight: 600, margin: '10px 0 2px' }}>
+            Assets — envie arquivos ou cole um link
+          </div>
+          {editingId === 'new' && (
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 0 }}>Salve primeiro para poder anexar arquivos.</p>
+          )}
+          {CATEGORIES.map((c) => {
+            const lid = editingId && editingId !== 'new' ? editingId : null;
+            const catFiles = lid ? filesFor(lid, c.cat) : [];
+            const uploadKey = `${editingId}:${c.cat}`;
+            return (
+              <div className="form-field" key={c.key}>
+                <label>
+                  {c.icon} {c.label}
+                </label>
+                <input
+                  value={draft[c.key] as string}
+                  onChange={(e) => setDraft({ ...draft, [c.key]: e.target.value })}
+                  placeholder="link do asset (opcional)"
+                />
+                {lid && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 6 }}>
+                    {catFiles.map((f) => (
+                      <span key={f.id} className="pill" title={f.name} style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        📎 {f.name}
+                        <button type="button" onClick={() => removeAsset(f)} title="Remover" style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                    <label className="btn ghost sm" style={{ cursor: 'pointer', margin: 0 }}>
+                      {uploadingCat === uploadKey ? 'Enviando…' : '⬆ Enviar arquivo'}
+                      <input
+                        type="file"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadAsset(lid, c.cat, file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button className="btn" disabled={busy || !draft.name.trim()} onClick={save}>
               {busy ? 'Salvando…' : 'Salvar'}
