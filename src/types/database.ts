@@ -137,6 +137,23 @@ export interface Brand {
   color: string;
 }
 
+export interface BrandLicensee {
+  id: string;
+  name: string;
+  licensor: string;
+  color: string;
+  source_type: 'site' | 'drive';
+  guide_url: string;
+  logos_url: string;
+  colors_url: string;
+  typography_url: string;
+  icons_url: string;
+  pattern_url: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type PackagingTrack = 'criacao' | 'melhoria' | 'criacao_teste' | 'melhoria_teste' | 'marca';
 export const PACKAGING_TRACKS: { key: PackagingTrack; label: string; hint: string }[] = [
   { key: 'criacao', label: 'Criação', hint: 'Embalagem nova — do planejamento à produção' },

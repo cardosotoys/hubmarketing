@@ -1,12 +1,9 @@
-const LICENSEES: [string, string, string][] = [
-  ['Os Smurfs', 'Schtroumpfs / IMPS', 'var(--blue)'],
-  ['Galinha Pintadinha', 'Pintadinha Ltda', 'var(--yellow)'],
-  ['Marvel Spidey', 'Disney/Marvel', 'var(--red)'],
-  ['Disney (Ariel, Mickey, Minnie, Buzz, Woody)', 'Disney', 'var(--violet)'],
-  ['Bluey', 'BBC Studios', 'var(--accent)'],
-  ['O Show da Luna', 'Mundo Luna', 'var(--green)'],
-  ['Pocoyo', 'Zinkia', 'var(--playmi)'],
-];
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeUrl } from '../../lib/url';
+import Modal from '../../components/Modal';
+import type { BrandLicensee } from '../../types/database';
 
 export default function Brand() {
   return (
@@ -319,23 +316,242 @@ export default function Brand() {
         </div>
       </div>
 
+      <LicenseesSection />
+    </div>
+  );
+}
+
+type UrlKey = 'logos_url' | 'colors_url' | 'typography_url' | 'icons_url' | 'pattern_url';
+const CATEGORIES: { key: UrlKey; label: string; icon: string }[] = [
+  { key: 'logos_url', label: 'Logotipos', icon: '🅰' },
+  { key: 'colors_url', label: 'Paleta de cores', icon: '🎨' },
+  { key: 'typography_url', label: 'Tipografia', icon: '🔤' },
+  { key: 'icons_url', label: 'Ícones', icon: '✦' },
+  { key: 'pattern_url', label: 'Pattern', icon: '▦' },
+];
+
+const BLANK: Omit<BrandLicensee, 'id' | 'created_at' | 'updated_at'> = {
+  name: '',
+  licensor: '',
+  color: 'var(--accent)',
+  source_type: 'site',
+  guide_url: '',
+  logos_url: '',
+  colors_url: '',
+  typography_url: '',
+  icons_url: '',
+  pattern_url: '',
+  position: 99,
+};
+
+function LicenseesSection() {
+  const { profile } = useAuth();
+  const canManage = profile?.role === 'diretoria' || profile?.role === 'administrador';
+  const [rows, setRows] = useState<BrandLicensee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null); // guia aberto
+  const [editingId, setEditingId] = useState<string | 'new' | null>(null); // form aberto
+  const [draft, setDraft] = useState({ ...BLANK });
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from('brand_licensees').select('*').order('position').order('name');
+    setRows((data as BrandLicensee[]) ?? []);
+    setLoading(false);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  const open = useMemo(() => rows.find((r) => r.id === openId) ?? null, [rows, openId]);
+
+  function startAdd() {
+    setDraft({ ...BLANK, position: rows.length + 1 });
+    setEditingId('new');
+  }
+  function startEdit(l: BrandLicensee) {
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = l;
+    void _id;
+    void _c;
+    void _u;
+    setDraft(rest);
+    setEditingId(l.id);
+  }
+
+  async function save() {
+    if (!draft.name.trim()) return;
+    setBusy(true);
+    const payload = {
+      ...draft,
+      name: draft.name.trim(),
+      licensor: draft.licensor.trim(),
+      guide_url: draft.guide_url.trim() ? normalizeUrl(draft.guide_url) : '',
+      logos_url: draft.logos_url.trim() ? normalizeUrl(draft.logos_url) : '',
+      colors_url: draft.colors_url.trim() ? normalizeUrl(draft.colors_url) : '',
+      typography_url: draft.typography_url.trim() ? normalizeUrl(draft.typography_url) : '',
+      icons_url: draft.icons_url.trim() ? normalizeUrl(draft.icons_url) : '',
+      pattern_url: draft.pattern_url.trim() ? normalizeUrl(draft.pattern_url) : '',
+      updated_at: new Date().toISOString(),
+    };
+    if (editingId === 'new') {
+      await supabase.from('brand_licensees').insert(payload);
+    } else if (editingId) {
+      await supabase.from('brand_licensees').update(payload).eq('id', editingId);
+    }
+    setBusy(false);
+    setEditingId(null);
+    await load();
+  }
+
+  async function remove(id: string) {
+    if (!confirm('Excluir este licenciado?')) return;
+    await supabase.from('brand_licensees').delete().eq('id', id);
+    setOpenId(null);
+    setEditingId(null);
+    await load();
+  }
+
+  return (
+    <>
       <div className="section-head">
         <h2>Personagens licenciados</h2>
-        <button className="btn ghost" disabled title="Formulário chega na Fase 2">
-          + Adicionar licenciado
-        </button>
+        {canManage && (
+          <button className="btn ghost" onClick={startAdd}>
+            + Adicionar licenciado
+          </button>
+        )}
       </div>
-      <div className="grid4">
-        {LICENSEES.map(([name, owner, color]) => (
-          <div className="card" key={name} style={{ borderTop: `3px solid ${color}` }}>
-            <h4>{name}</h4>
-            <p>Licenciante: {owner}</p>
-            <span className="pill" style={{ marginTop: 8, display: 'inline-block' }}>
-              Guia de uso da marca
-            </span>
+
+      {loading ? (
+        <div className="page-sub">Carregando…</div>
+      ) : (
+        <div className="grid4">
+          {rows.map((l) => {
+            const filled = CATEGORIES.filter((c) => (l[c.key] as string)?.trim()).length;
+            return (
+              <div className="card" key={l.id} style={{ borderTop: `3px solid ${l.color}` }}>
+                <h4>{l.name}</h4>
+                <p>Licenciante: {l.licensor || '—'}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  <button className="btn sm" onClick={() => setOpenId(l.id)}>
+                    Guia de uso da marca
+                  </button>
+                  <span className="pill" title={l.source_type === 'drive' ? 'Guia no Google Drive' : 'Guia em site próprio'}>
+                    {l.source_type === 'drive' ? '🗂 Drive' : '🌐 Site'}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{filled}/5 assets</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {open && (
+        <Modal title={open.name} onClose={() => setOpenId(null)}>
+          <p className="page-sub" style={{ marginTop: -4 }}>
+            Licenciante: {open.licensor || '—'} · Guia em {open.source_type === 'drive' ? 'Google Drive' : 'site próprio'}
+          </p>
+
+          {open.guide_url && (
+            <a className="btn" href={open.guide_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginBottom: 12 }}>
+              Abrir guia completo →
+            </a>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {CATEGORIES.map((c) => {
+              const url = (open[c.key] as string)?.trim();
+              return (
+                <div
+                  key={c.key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <span style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{c.icon}</span>
+                  <span style={{ flex: 1, fontWeight: 600, fontSize: 13.5 }}>{c.label}</span>
+                  {url ? (
+                    <a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">
+                      Abrir →
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>não definido</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </div>
+
+          {canManage && (
+            <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+              <button className="btn sm" onClick={() => startEdit(open)}>
+                Editar links
+              </button>
+              <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => remove(open.id)}>
+                Excluir
+              </button>
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {editingId && (
+        <Modal title={editingId === 'new' ? 'Novo licenciado' : `Editar — ${draft.name}`} onClose={() => setEditingId(null)}>
+          <div className="form-field">
+            <label>Nome</label>
+            <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="ex.: Bluey" />
+          </div>
+          <div className="responsive-row">
+            <div className="form-field" style={{ flex: 2 }}>
+              <label>Licenciante</label>
+              <input value={draft.licensor} onChange={(e) => setDraft({ ...draft, licensor: e.target.value })} placeholder="ex.: BBC Studios" />
+            </div>
+            <div className="form-field" style={{ flex: 1 }}>
+              <label>Origem do guia</label>
+              <select value={draft.source_type} onChange={(e) => setDraft({ ...draft, source_type: e.target.value as 'site' | 'drive' })}>
+                <option value="site">Site próprio</option>
+                <option value="drive">Google Drive</option>
+              </select>
+            </div>
+            <div className="form-field" style={{ flex: 1 }}>
+              <label>Cor</label>
+              <input value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} placeholder="var(--accent) ou #RRGGBB" />
+            </div>
+          </div>
+          <div className="form-field">
+            <label>Guia completo (Drive ou site)</label>
+            <input value={draft.guide_url} onChange={(e) => setDraft({ ...draft, guide_url: e.target.value })} placeholder="cole o link" />
+          </div>
+          {CATEGORIES.map((c) => (
+            <div className="form-field" key={c.key}>
+              <label>
+                {c.icon} {c.label}
+              </label>
+              <input
+                value={draft[c.key] as string}
+                onChange={(e) => setDraft({ ...draft, [c.key]: e.target.value })}
+                placeholder="link do asset (opcional)"
+              />
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <button className="btn" disabled={busy || !draft.name.trim()} onClick={save}>
+              {busy ? 'Salvando…' : 'Salvar'}
+            </button>
+            <button className="btn ghost" onClick={() => setEditingId(null)}>
+              Cancelar
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }
