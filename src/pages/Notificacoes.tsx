@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
 import { fetchMyActivity, type MyActivityRow } from '../lib/myActivity';
+import { notifVerb } from '../components/NotificationsPanel';
 import type { Notification } from '../types/database';
 
 type Row = Notification & { actor: { name: string } | null };
@@ -193,7 +194,7 @@ export default function Notificacoes() {
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: n.read ? 400 : 600, overflowWrap: 'anywhere' }}>
-                  <b>{n.actor?.name ?? 'Alguém'}</b> te marcou em “{trunc(n.title || 'uma demanda', 60)}”
+                  <b>{n.actor?.name ?? 'Alguém'}</b> {notifVerb(n.type)} “{trunc(n.title || 'uma demanda', 60)}”
                 </div>
                 {n.body && (
                   <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2, overflowWrap: 'anywhere' }}>{trunc(n.body, 160)}</div>

@@ -6,6 +6,15 @@ const trunc = (s: string, n: number) => {
   return t.length > n ? t.slice(0, n).trimEnd() + '…' : t;
 };
 
+export const notifVerb = (type: string) =>
+  type === 'reply'
+    ? 'respondeu você em'
+    : type === 'comment'
+      ? 'comentou em'
+      : type === 'approval'
+        ? 'pediu sua aprovação em'
+        : 'te marcou em';
+
 export default function NotificationsPanel({
   notifications,
   recent,
@@ -80,7 +89,7 @@ export default function NotificationsPanel({
                 />
                 <span style={{ minWidth: 0, fontSize: 12.5, lineHeight: 1.4, overflowWrap: 'anywhere' }}>
                   <span style={{ display: 'block' }}>
-                    <b>{n.actor?.name ?? 'Alguém'}</b> te marcou em “{trunc(n.title || 'uma demanda', 42)}”
+                    <b>{n.actor?.name ?? 'Alguém'}</b> {notifVerb(n.type)} “{trunc(n.title || 'uma demanda', 42)}”
                   </span>
                   {n.body && (
                     <span style={{ display: 'block', color: 'var(--text-dim)', fontWeight: 400, marginTop: 2 }}>
