@@ -149,20 +149,44 @@ export default function Demandas() {
 
   useEffect(() => {
     const taskId = searchParams.get('task');
-    if (!taskId || tasks.length === 0) return;
+    if (!taskId) return;
+    const wantFocus = searchParams.get('focus') === 'comments';
+    const clearParams = () =>
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('task');
+          next.delete('focus');
+          return next;
+        },
+        { replace: true },
+      );
+
     const target = tasks.find((t) => t.id === taskId);
     if (target) {
       setEditingTask(target);
-      setFocusComments(searchParams.get('focus') === 'comments');
+      setFocusComments(wantFocus);
+      clearParams();
+      return;
     }
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete('task');
-      next.delete('focus');
-      return next;
-    }, { replace: true });
+    // ainda carregando a lista — espera o próximo render (o efeito re-roda quando `tasks` muda)
+    if (tasks.length === 0) return;
+    // não está na lista (ex.: demanda finalizada, oculta pelo filtro): busca direto pelo id
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from('tasks').select('*, project:projects(id, name)').eq('id', taskId).maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setEditingTask(data as TaskWithProject);
+        setFocusComments(wantFocus);
+      }
+      clearParams();
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks]);
+  }, [tasks, searchParams]);
 
   const isEquipe = profile?.role === 'equipe';
   const isPrivileged = profile?.role === 'diretoria' || profile?.role === 'administrador';

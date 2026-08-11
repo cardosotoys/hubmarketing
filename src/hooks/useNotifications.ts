@@ -63,7 +63,9 @@ export function useNotifications(profileId: string | undefined) {
       .channel(`notifications-${profileId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${profileId}` },
+        // '*' (INSERT/UPDATE/DELETE) para o contador do sininho ficar em sincronia quando a leitura
+        // é marcada na página de Notificações (ou em outro aparelho), não só em notificação nova.
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${profileId}` },
         () => loadNotifications(),
       )
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, () => loadRecent())
