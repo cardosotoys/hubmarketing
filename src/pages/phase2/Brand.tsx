@@ -325,21 +325,21 @@ const isImageUrl = (u: string) => /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.t
 
 // Miniatura de um arquivo. Imagem web (png/jpg/svg…) mostra a própria imagem; formatos que o
 // navegador não renderiza (eps, ai, pdf, zip, fontes…) mostram um tile com a extensão.
-function AssetThumb({ file, size }: { file: BrandLicenseeFile; size: number }) {
-  if (isImageUrl(file.url)) {
+function AssetThumb({ url, name, size }: { url: string; name: string; size: number }) {
+  if (isImageUrl(url)) {
     return (
-      <a href={file.url} target="_blank" rel="noreferrer" title={`${file.name} — abrir`}>
-        <img src={file.url} alt={file.name} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+      <a href={url} target="_blank" rel="noreferrer" title={`${name} — abrir`}>
+        <img src={url} alt={name} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
       </a>
     );
   }
-  const ext = (file.name.split('.').pop() || 'arq').toUpperCase().slice(0, 4);
+  const ext = (name.split('.').pop() || 'arq').toUpperCase().slice(0, 4);
   return (
     <a
-      href={file.url}
+      href={url}
       target="_blank"
       rel="noreferrer"
-      title={`${file.name} — abrir/baixar`}
+      title={`${name} — abrir/baixar`}
       style={{
         width: size,
         height: size,
@@ -377,7 +377,6 @@ const BLANK: Omit<BrandLicensee, 'id' | 'created_at' | 'updated_at'> = {
   color: 'var(--accent)',
   source_type: 'site',
   guide_url: '',
-  access_info: '',
   palette: [],
   logos_url: '',
   colors_url: '',
@@ -397,8 +396,12 @@ function LicenseesSection() {
   const [draft, setDraft] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
   const [files, setFiles] = useState<BrandLicenseeFile[]>([]);
+  const [signedAssets, setSignedAssets] = useState<Record<string, string>>({}); // fileId -> URL assinada
   const [uploadingCat, setUploadingCat] = useState<string | null>(null);
   const [newColor, setNewColor] = useState<BrandColor>({ hex: '#3fb68b', name: '' });
+  // Instruções de acesso (credenciais) vivem em tabela restrita (só Diretoria/Admin). Mapa licenseeId->texto.
+  const [accessInfo, setAccessInfo] = useState<Record<string, string>>({});
+  const [draftAccess, setDraftAccess] = useState('');
   const actorId = profile?.id ?? '';
 
   function addColor() {
@@ -411,6 +414,21 @@ function LicenseesSection() {
     setDraft((d) => ({ ...d, palette: (d.palette ?? []).filter((_, idx) => idx !== i) }));
   }
 
+  // Bucket brand-assets é privado: gera URLs assinadas temporárias por arquivo (fileId -> url).
+  async function signAssets(fileRows: BrandLicenseeFile[]) {
+    const withPath = fileRows.filter((f) => f.path);
+    if (!withPath.length) {
+      setSignedAssets({});
+      return;
+    }
+    const { data: signed } = await supabase.storage.from('brand-assets').createSignedUrls(withPath.map((f) => f.path), 3600);
+    const map: Record<string, string> = {};
+    ((signed as { signedUrl: string | null }[] | null) ?? []).forEach((s, i) => {
+      if (s?.signedUrl) map[withPath[i].id] = s.signedUrl;
+    });
+    setSignedAssets(map);
+  }
+
   async function load() {
     setLoading(true);
     const [licRes, filesRes] = await Promise.all([
@@ -418,7 +436,18 @@ function LicenseesSection() {
       supabase.from('brand_licensee_files').select('*').order('created_at'),
     ]);
     setRows((licRes.data as BrandLicensee[]) ?? []);
-    setFiles((filesRes.data as BrandLicenseeFile[]) ?? []);
+    const fileRows = (filesRes.data as BrandLicenseeFile[]) ?? [];
+    setFiles(fileRows);
+    await signAssets(fileRows);
+    // Só privilegiado enxerga as instruções de acesso (RLS restringe; se não puder, vem vazio).
+    if (canManage) {
+      const { data: acc } = await supabase.from('brand_licensee_access').select('licensee_id, access_info');
+      const map: Record<string, string> = {};
+      ((acc as { licensee_id: string; access_info: string }[] | null) ?? []).forEach((r) => {
+        map[r.licensee_id] = r.access_info;
+      });
+      setAccessInfo(map);
+    }
     setLoading(false);
   }
   useEffect(() => {
@@ -441,7 +470,9 @@ function LicenseesSection() {
     const { data } = supabase.storage.from('brand-assets').getPublicUrl(path);
     await supabase.from('brand_licensee_files').insert({ licensee_id: licenseeId, category: cat, name: file.name, url: data.publicUrl, path, added_by: actorId || null });
     const { data: rowsF } = await supabase.from('brand_licensee_files').select('*').order('created_at');
-    setFiles((rowsF as BrandLicenseeFile[]) ?? []);
+    const fileRows = (rowsF as BrandLicenseeFile[]) ?? [];
+    setFiles(fileRows);
+    await signAssets(fileRows);
     setUploadingCat(null);
   }
 
@@ -455,6 +486,7 @@ function LicenseesSection() {
 
   function startAdd() {
     setDraft({ ...BLANK, position: rows.length + 1 });
+    setDraftAccess('');
     setEditingId('new');
   }
   function startEdit(l: BrandLicensee) {
@@ -463,6 +495,7 @@ function LicenseesSection() {
     void _c;
     void _u;
     setDraft(rest);
+    setDraftAccess(accessInfo[l.id] ?? '');
     setOpenId(null);
     setEditingId(l.id);
   }
@@ -482,10 +515,16 @@ function LicenseesSection() {
       pattern_url: draft.pattern_url.trim() ? normalizeUrl(draft.pattern_url) : '',
       updated_at: new Date().toISOString(),
     };
+    let savedId = editingId !== 'new' ? editingId : null;
     if (editingId === 'new') {
-      await supabase.from('brand_licensees').insert(payload);
+      const { data: ins } = await supabase.from('brand_licensees').insert(payload).select('id').single();
+      savedId = (ins as { id: string } | null)?.id ?? null;
     } else if (editingId) {
       await supabase.from('brand_licensees').update(payload).eq('id', editingId);
+    }
+    // instruções de acesso em tabela restrita (só privilegiado grava; RLS garante)
+    if (savedId) {
+      await supabase.from('brand_licensee_access').upsert({ licensee_id: savedId, access_info: draftAccess.trim(), updated_at: new Date().toISOString() });
     }
     setBusy(false);
     setEditingId(null);
@@ -544,7 +583,7 @@ function LicenseesSection() {
             Licenciante: {open.licensor || '—'} · Guia em {open.source_type === 'drive' ? 'Google Drive' : 'site próprio'}
           </p>
 
-          {(open.guide_url || open.access_info) && (
+          {(open.guide_url || accessInfo[open.id]) && (
             <div
               style={{
                 marginBottom: 14,
@@ -558,12 +597,12 @@ function LicenseesSection() {
                 Acesso ao guia real
               </div>
               {open.guide_url && (
-                <a className="btn sm" href={open.guide_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginBottom: open.access_info ? 8 : 0 }}>
+                <a className="btn sm" href={open.guide_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginBottom: accessInfo[open.id] ? 8 : 0 }}>
                   {open.source_type === 'drive' ? '🗂 Abrir no Drive →' : '🌐 Abrir o site →'}
                 </a>
               )}
-              {open.access_info && (
-                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{open.access_info}</div>
+              {accessInfo[open.id] && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{accessInfo[open.id]}</div>
               )}
             </div>
           )}
@@ -610,7 +649,7 @@ function LicenseesSection() {
                   {catFiles.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingLeft: 32 }}>
                       {catFiles.map((f) => (
-                        <AssetThumb key={f.id} file={f} size={72} />
+                        <AssetThumb key={f.id} url={signedAssets[f.id] ?? f.url} name={f.name} size={72} />
                       ))}
                     </div>
                   )}
@@ -660,10 +699,10 @@ function LicenseesSection() {
             <input value={draft.guide_url} onChange={(e) => setDraft({ ...draft, guide_url: e.target.value })} placeholder="cole o link do site ou da pasta do Drive" />
           </div>
           <div className="form-field">
-            <label>Como acessar (login / observações)</label>
+            <label>Como acessar — restrito a Diretoria/Admin 🔒</label>
             <textarea
-              value={draft.access_info}
-              onChange={(e) => setDraft({ ...draft, access_info: e.target.value })}
+              value={draftAccess}
+              onChange={(e) => setDraftAccess(e.target.value)}
               placeholder="ex.: acessar em brand.marca.com · usuário: cardoso · senha no gerenciador da equipe"
               rows={2}
             />
@@ -694,7 +733,7 @@ function LicenseesSection() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 6 }}>
                     {catFiles.map((f) => (
                       <div key={f.id} style={{ position: 'relative' }}>
-                        <AssetThumb file={f} size={56} />
+                        <AssetThumb url={signedAssets[f.id] ?? f.url} name={f.name} size={56} />
                         <button
                           type="button"
                           onClick={() => removeAsset(f)}

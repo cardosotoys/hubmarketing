@@ -79,6 +79,7 @@ export default function TaskEditModal({
   const sortedStages = [...stages].sort((a, b) => a.position - b.position);
 
   const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [signedFiles, setSignedFiles] = useState<Record<string, string>>({}); // fileId -> URL assinada (bucket privado)
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [fileBusy, setFileBusy] = useState(false); // upload de anexo em andamento
@@ -106,7 +107,11 @@ export default function TaskEditModal({
       .select('*')
       .eq('task_id', task.id)
       .order('created_at')
-      .then(({ data }) => setFiles((data as ProjectFile[]) ?? []));
+      .then(({ data }) => {
+        const rows = (data as ProjectFile[]) ?? [];
+        setFiles(rows);
+        signTaskFiles(rows);
+      });
     loadComments();
     loadChecklist();
     loadApprovals();
@@ -153,6 +158,28 @@ export default function TaskEditModal({
     setAttachedFileIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
+  // Bucket task-files é privado: gera URLs assinadas temporárias para os anexos (fileId -> url).
+  // Só assina o que está no bucket (extrai o path da URL); links externos (Drive) ficam como estão.
+  async function signTaskFiles(fileRows: ProjectFile[]) {
+    const entries = fileRows
+      .map((f) => ({ id: f.id, path: f.url.match(/\/task-files\/(.+)$/)?.[1] }))
+      .filter((e): e is { id: string; path: string } => !!e.path);
+    if (!entries.length) {
+      setSignedFiles({});
+      return;
+    }
+    const { data } = await supabase.storage.from('task-files').createSignedUrls(
+      entries.map((e) => e.path),
+      3600,
+    );
+    const map: Record<string, string> = {};
+    ((data as { signedUrl: string | null }[] | null) ?? []).forEach((s, i) => {
+      if (s?.signedUrl) map[entries[i].id] = s.signedUrl;
+    });
+    setSignedFiles(map);
+  }
+  const fileHref = (f: ProjectFile) => signedFiles[f.id] ?? f.url;
+
   // Registra a movimentação na Auditoria (admin vê tudo do time). project_id pode ser null
   // (demandas de marca/embalagem), então amarramos também pelo task_id.
   function logTask(actionText: string) {
@@ -163,13 +190,14 @@ export default function TaskEditModal({
     e.preventDefault();
     if (!commentBody.trim() && attachedFileIds.length === 0) return;
     const mentionTags = mentionIds.map((id) => `@${profiles.find((p) => p.id === id)?.name ?? ''}`).join(' ');
-    // referências a arquivos: nome + link (o RichText transforma a URL em link/miniatura clicável)
+    // referências a arquivos: só o nome (o link fica no bloco "Arquivos" com URL assinada; não
+    // embutimos URL crua no comentário porque o bucket é privado e o link expira).
     const fileRefs = attachedFileIds
       .map((id) => files.find((f) => f.id === id))
       .filter((f): f is ProjectFile => Boolean(f))
       .map((f) => {
         const idx = files.findIndex((x) => x.id === f.id);
-        return `📎 arquivo ${idx + 1} — ${f.name}: ${f.url}`;
+        return `📎 arquivo ${idx + 1} — ${f.name} (ver em Arquivos)`;
       })
       .join('\n');
     let body = commentBody.trim();
@@ -430,7 +458,9 @@ export default function TaskEditModal({
     setFileUrl('');
     logTask('Anexou um link na demanda');
     const { data } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
-    setFiles((data as ProjectFile[]) ?? []);
+    const rows = (data as ProjectFile[]) ?? [];
+    setFiles(rows);
+    signTaskFiles(rows);
   }
 
   // Sobe o arquivo (imagem/PDF/etc.) direto pro bucket e registra em project_files.
@@ -463,7 +493,9 @@ export default function TaskEditModal({
     setFileMsg('Arquivo enviado ✓');
     logTask('Enviou um arquivo na demanda');
     const { data: rows } = await supabase.from('project_files').select('*').eq('task_id', task.id).order('created_at');
-    setFiles((rows as ProjectFile[]) ?? []);
+    const fileRows = (rows as ProjectFile[]) ?? [];
+    setFiles(fileRows);
+    signTaskFiles(fileRows);
     setFileBusy(false);
   }
 
@@ -920,19 +952,20 @@ export default function TaskEditModal({
         <h4>Arquivos</h4>
         {files.map((f, i) => {
           const isImg = /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(f.url);
+          const href = fileHref(f);
           return (
             <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
               {isImg && (
-                <a href={f.url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+                <a href={href} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
                   <img
-                    src={f.url}
+                    src={href}
                     alt={f.name}
                     style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
                   />
                 </a>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <a href={f.url} target="_blank" rel="noreferrer" style={{ overflowWrap: 'anywhere' }}>
+                <a href={href} target="_blank" rel="noreferrer" style={{ overflowWrap: 'anywhere' }}>
                   <span style={{ color: 'var(--text-faint)', marginRight: 6 }}>📎 {i + 1}</span>
                   {f.name}
                 </a>

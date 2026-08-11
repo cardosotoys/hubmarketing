@@ -144,7 +144,6 @@ export interface BrandLicensee {
   color: string;
   source_type: 'site' | 'drive';
   guide_url: string;
-  access_info: string;
   palette: BrandColor[];
   logos_url: string;
   colors_url: string;
