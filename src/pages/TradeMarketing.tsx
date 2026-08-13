@@ -3,22 +3,28 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
+import Modal from '../components/Modal';
 
 type Visit = { id: string; promoter_id: string | null; store_id: string | null; visit_date: string; weekday: string | null; raw_store_name: string | null };
-type Store = { id: string; name: string; network_id: string | null; planned_frequency_days: number | null; region: string | null; city: string | null; address: string | null; default_promoter_id: string | null };
+type Store = { id: string; name: string; network_id: string | null; planned_frequency_days: number | null; region: string | null; city: string | null; address: string | null; default_promoter_id: string | null; priority: string | null; status: string | null };
+const STORE_COLS = 'id, name, network_id, planned_frequency_days, region, city, address, default_promoter_id, priority, status';
+const ZONAS = ['Leste', 'Oeste', 'Sul', 'Norte', 'Centro', 'ABC', 'Grande SP', 'Interior'];
+const PRIORIDADES = ['Alta', 'Média', 'Baixa'];
 type Promoter = { id: string; name: string };
 type Network = { id: string; name: string };
 type PlanRoute = { storeId: string; name: string; network: string; zona: string; owner: string | null; ownerName: string; visits: number; cadence: number; daysSince: number; weekday: number; weekOffset: number };
 type PlanVisit = { date: string; storeId: string; name: string; network: string; zona: string; owner: string | null; ownerName: string; weekday: number };
-const WEEK_CAP = 15; // teto de visitas por promotor por semana
+const WEEK_CAP = 16; // teto/alvo de visitas por promotor por semana (preenche até aqui)
 
-type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas';
+type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas' | 'cadastro';
+type StoreDraft = { name: string; network_id: string; city: string; region: string; address: string; priority: string; planned_frequency_days: string; default_promoter_id: string; status: string };
 const TABS: [Tab, string][] = [
   ['planejamento', 'Planejamento'],
   ['promotores', 'Promotores'],
   ['lojas', 'Lojas'],
   ['frequencia', 'Frequência'],
   ['visitas', 'Visitas'],
+  ['cadastro', 'Cadastro'],
 ];
 const CATS = ['var(--tm-accent)', 'var(--tm-purple)', 'var(--tm-cyan)', 'var(--tm-pink)', 'var(--tm-good)', 'var(--tm-warn)', 'var(--tm-accent2)', '#64748b'];
 const WD = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -53,13 +59,17 @@ export default function TradeMarketing() {
   const [planWeekIdx, setPlanWeekIdx] = useState(0);
   const [planDay, setPlanDay] = useState('');
   const [planProm, setPlanProm] = useState('all');
+  const [editStore, setEditStore] = useState<Store | 'new' | null>(null);
+  const [sdraft, setSdraft] = useState<StoreDraft>({ name: '', network_id: '', city: '', region: '', address: '', priority: '', planned_frequency_days: '', default_promoter_id: '', status: 'ativa' });
+  const [cadSearch, setCadSearch] = useState('');
+  const [savingStore, setSavingStore] = useState(false);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       const [v, s, p, n] = await Promise.all([
         supabase.from('tm_visits').select('id, promoter_id, store_id, visit_date, weekday, raw_store_name').order('visit_date'),
-        supabase.from('tm_stores').select('id, name, network_id, planned_frequency_days, region, city, address, default_promoter_id'),
+        supabase.from('tm_stores').select(STORE_COLS),
         supabase.from('tm_promoters').select('id, name').order('name'),
         supabase.from('tm_networks').select('id, name').order('name'),
       ]);
@@ -156,35 +166,20 @@ export default function TradeMarketing() {
       return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', zona: zoneOfStore(sid), owner, ownerName: promoterName(owner), visits, cadence, daysSince, weekday: 0, weekOffset: 0 };
     });
 
-    // Por promotor: (1) TETO de 15/semana — rebaixa cadência das menos prioritárias; (2) LOGÍSTICA —
-    // agrupa por zona para o promotor ficar numa região por dia.
+    // DIA FIXO por loja: agrupa por zona (promotor numa região/dia) e equilibra a contagem entre os 6 dias.
     const byOwner = new Map<string, PlanRoute[]>();
     for (const r of routes) { const k = r.owner ?? '—'; (byOwner.get(k) ?? byOwner.set(k, []).get(k)!).push(r); }
-    const SOFT = WEEK_CAP / 6; // ~2,5 de carga/dia
     for (const list of byOwner.values()) {
-      // (1) teto: enquanto carga semanal > 15, rebaixa a menos prioritária (menos atrasada) de semanal→quinzenal→mensal
-      const load = () => list.reduce((s, r) => s + 1 / r.cadence, 0);
-      let guard = 0;
-      while (load() > WEEK_CAP && guard++ < 500) {
-        const cand = list.filter((r) => r.cadence < 4).sort((a, b) => a.cadence - b.cadence || a.daysSince - b.daysSince)[0];
-        if (!cand) break;
-        cand.cadence = cand.cadence === 1 ? 2 : 4;
-      }
-      // (2) clustering por zona: cada zona ocupa o dia (ou dias) menos carregado, mantendo a região junta
       const zonas = new Map<string, PlanRoute[]>();
       for (const r of list) (zonas.get(r.zona) ?? zonas.set(r.zona, []).get(r.zona)!).push(r);
-      const zonasSorted = [...zonas.entries()].sort((a, b) => b[1].reduce((s, r) => s + 1 / r.cadence, 0) - a[1].reduce((s, r) => s + 1 / r.cadence, 0));
-      const dayLoad = [0, 0, 0, 0, 0, 0];
-      const cntByDay = [0, 0, 0, 0, 0, 0];
-      const argminDay = () => { let d = 0; for (let i = 1; i < 6; i++) if (dayLoad[i] < dayLoad[d]) d = i; return d; };
+      const zonasSorted = [...zonas.entries()].sort((a, b) => b[1].length - a[1].length);
+      const cnt = [0, 0, 0, 0, 0, 0];
+      const argmin = () => { let d = 0; for (let i = 1; i < 6; i++) if (cnt[i] < cnt[d]) d = i; return d; };
+      const perDayCap = Math.ceil(Math.min(WEEK_CAP, list.length) / 6) + 1;
       for (const [, zlist] of zonasSorted) {
-        zlist.sort((a, b) => a.cadence - b.cadence || b.daysSince - a.daysSince);
-        let day = argminDay();
-        for (const r of zlist) {
-          if (dayLoad[day] >= SOFT) day = argminDay(); // dia cheio → próxima região no dia mais vazio
-          r.weekday = day; dayLoad[day] += 1 / r.cadence;
-          r.weekOffset = r.cadence > 1 ? cntByDay[day] % r.cadence : 0; cntByDay[day]++;
-        }
+        zlist.sort((a, b) => b.daysSince - a.daysSince);
+        let day = argmin();
+        for (const r of zlist) { if (cnt[day] >= perDayCap) day = argmin(); r.weekday = day; cnt[day]++; }
       }
     }
     const neglected = routes.filter((r) => r.cadence === 4).sort((a, b) => b.daysSince - a.daysSince);
@@ -201,15 +196,26 @@ export default function TradeMarketing() {
       weeks.push({ monday, days });
     }
 
+    // AGENDA: preenche a semana de cada promotor até o TETO (visitas reais), rotacionando por urgência.
+    // Urgência = semanas desde a última visita planejada × (0,5 + frequência histórica). Assim as lojas
+    // atrasadas sobem, as importantes recorrem, e cada promotor fecha ~WEEK_CAP visitas/semana.
+    const byOwnerR = new Map<string, PlanRoute[]>();
+    for (const r of routes) { const k = r.owner ?? '—'; (byOwnerR.get(k) ?? byOwnerR.set(k, []).get(k)!).push(r); }
+    const lastWk = new Map<string, number>();
+    for (const r of routes) lastWk.set(r.storeId, -Math.ceil(r.daysSince / 7));
+    const imp = new Map<string, number>();
+    for (const r of routes) imp.set(r.storeId, r.visits / spanWeeks);
     const agenda: PlanVisit[] = [];
-    for (const r of routes) {
-      weeks.forEach((wk, wi) => {
-        const include = r.cadence === 1 || (r.cadence === 2 && wi % 2 === r.weekOffset % 2) || (r.cadence === 4 && wi % 4 === r.weekOffset % 4);
-        if (!include) return;
-        const date = addDays(wk.monday, r.weekday);
-        if (wk.days.includes(date)) agenda.push({ date, storeId: r.storeId, name: r.name, network: r.network, zona: r.zona, owner: r.owner, ownerName: r.ownerName, weekday: r.weekday });
-      });
-    }
+    weeks.forEach((wk, wi) => {
+      for (const [, list] of byOwnerR) {
+        const scored = list.map((r) => ({ r, s: (wi - (lastWk.get(r.storeId) ?? 0)) * (0.5 + (imp.get(r.storeId) ?? 0)) })).sort((a, b) => b.s - a.s);
+        for (const { r } of scored.slice(0, WEEK_CAP)) {
+          lastWk.set(r.storeId, wi);
+          const date = addDays(wk.monday, r.weekday);
+          if (wk.days.includes(date)) agenda.push({ date, storeId: r.storeId, name: r.name, network: r.network, zona: r.zona, owner: r.owner, ownerName: r.ownerName, weekday: r.weekday });
+        }
+      }
+    });
     agenda.sort((a, b) => a.date.localeCompare(b.date) || a.ownerName.localeCompare(b.ownerName));
     routes.sort((a, b) => a.ownerName.localeCompare(b.ownerName) || a.weekday - b.weekday || a.name.localeCompare(b.name));
     return { routes, agenda, neglected, weeks };
@@ -231,6 +237,29 @@ export default function TradeMarketing() {
     if (plan.agenda.length) await supabase.from('tm_agenda').insert(plan.agenda.map((a) => ({ store_id: a.storeId, promoter_id: a.owner, planned_date: a.date, source: 'fixo' })));
     setSaving('Plano salvo ✓');
     setTimeout(() => setSaving(''), 2500);
+  }
+
+  function startNewStore() {
+    setSdraft({ name: '', network_id: '', city: '', region: '', address: '', priority: '', planned_frequency_days: '', default_promoter_id: '', status: 'ativa' });
+    setEditStore('new');
+  }
+  function startEditStore(s: Store) {
+    setSdraft({ name: s.name, network_id: s.network_id ?? '', city: s.city ?? '', region: s.region ?? '', address: s.address ?? '', priority: s.priority ?? '', planned_frequency_days: s.planned_frequency_days != null ? String(s.planned_frequency_days) : '', default_promoter_id: s.default_promoter_id ?? '', status: s.status ?? 'ativa' });
+    setEditStore(s);
+  }
+  async function saveStore() {
+    if (!sdraft.name.trim()) return;
+    setSavingStore(true);
+    const payload = {
+      name: sdraft.name.trim(), network_id: sdraft.network_id || null, city: sdraft.city || null, region: sdraft.region || null, address: sdraft.address || null,
+      priority: sdraft.priority || null, planned_frequency_days: sdraft.planned_frequency_days ? Number(sdraft.planned_frequency_days) : null,
+      default_promoter_id: sdraft.default_promoter_id || null, status: sdraft.status || 'ativa',
+    };
+    if (editStore === 'new') await supabase.from('tm_stores').insert(payload);
+    else if (editStore) await supabase.from('tm_stores').update(payload).eq('id', editStore.id);
+    const { data } = await supabase.from('tm_stores').select(STORE_COLS);
+    setStores((data as Store[]) ?? []);
+    setSavingStore(false); setEditStore(null);
   }
 
   if (loading) return <Loading />;
@@ -406,8 +435,61 @@ export default function TradeMarketing() {
           {tab === 'lojas' && <Table head={['Loja', 'Rede', 'Visitas', 'Última', 'Dias s/ visita']} onRow={(i) => setSearch(agg.storeRank[i].name)} rows={agg.storeRank.map((s) => [<b>{s.name}</b>, s.network, s.visits, fmt(s.last), <span style={{ color: s.daysSince > 14 ? 'var(--tm-bad)' : undefined, fontWeight: 600 }}>{s.daysSince}</span>])} />}
           {tab === 'frequencia' && <Table head={['Loja', 'Visitas', 'Última', 'Dias s/ visita', 'Interv. médio', 'Mín', 'Máx']} rows={[...agg.storeRank].sort((a, b) => b.daysSince - a.daysSince).map((s) => [<b>{s.name}</b>, s.visits, fmt(s.last), <span className="tm-badge" style={freqBadge(s.daysSince)}>{s.daysSince}d</span>, s.avgGap != null ? `${s.avgGap.toFixed(0)}d` : '—', s.minGap != null ? `${s.minGap}d` : '—', s.maxGap != null ? `${s.maxGap}d` : '—'])} />}
           {tab === 'visitas' && <Table head={['Data', 'Promotor', 'Loja', 'Rede']} rows={visits.slice(0, 500).map((v) => [fmt(v.visit_date), promoterName(v.promoter_id), storeName(v.store_id), networkOfStore(v.store_id) ?? '—'])} note={visits.length > 500 ? `Mostrando 500 de ${visits.length}.` : undefined} />}
+
+          {tab === 'cadastro' && (() => {
+            const q = cadSearch.trim().toLowerCase();
+            const list = [...stores].filter((s) => !q || s.name.toLowerCase().includes(q) || (s.city ?? '').toLowerCase().includes(q) || (s.region ?? '').toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+            const semZona = stores.filter((s) => !s.region).length;
+            return (
+              <>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+                  <input className="chip-input" placeholder="⌕ Loja, cidade ou zona…" value={cadSearch} onChange={(e) => setCadSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+                  <span style={{ fontSize: 12.5, color: 'var(--tm-ink2)' }}>{stores.length} lojas{semZona ? ` · ${semZona} sem zona` : ''}</span>
+                  {isPrivileged && <button className="btn sm" onClick={startNewStore}>+ Nova loja</button>}
+                </div>
+                <Table
+                  head={['Loja', 'Rede', 'Cidade', 'Zona', 'Responsável', 'Prioridade', 'Freq (d)']}
+                  onRow={isPrivileged ? (i) => startEditStore(list[i]) : undefined}
+                  rows={list.map((s) => [
+                    <b>{s.name}</b>,
+                    s.network_id ? networksById.get(s.network_id)?.name ?? '—' : '—',
+                    s.city || <span style={{ color: 'var(--tm-bad)' }}>—</span>,
+                    s.region || <span style={{ color: 'var(--tm-bad)' }}>sem zona</span>,
+                    s.default_promoter_id ? promotersById.get(s.default_promoter_id)?.name ?? '—' : <span style={{ color: 'var(--tm-ink3)' }}>histórico</span>,
+                    s.priority || '—',
+                    s.planned_frequency_days ?? '—',
+                  ])}
+                />
+                {isPrivileged && <p style={{ fontSize: 12, color: 'var(--tm-ink3)', marginTop: 8 }}>Clique numa loja para editar cidade, zona, endereço, prioridade, frequência e o <b>responsável</b> (que o planejamento passa a usar).</p>}
+              </>
+            );
+          })()}
         </div>
       </div>
+
+      {editStore && (
+        <Modal wide title={editStore === 'new' ? 'Nova loja' : `Editar — ${sdraft.name}`} onClose={() => setEditStore(null)}>
+          <div className="form-field"><label>Nome da loja</label><input value={sdraft.name} onChange={(e) => setSdraft({ ...sdraft, name: e.target.value })} placeholder="ex.: Ri Happy Penha" /></div>
+          <div className="responsive-row">
+            <div className="form-field" style={{ flex: 1 }}><label>Rede</label><select value={sdraft.network_id} onChange={(e) => setSdraft({ ...sdraft, network_id: e.target.value })}><option value="">—</option>{networks.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}</select></div>
+            <div className="form-field" style={{ flex: 1 }}><label>Responsável (promotor)</label><select value={sdraft.default_promoter_id} onChange={(e) => setSdraft({ ...sdraft, default_promoter_id: e.target.value })}><option value="">Automático (histórico)</option>{promoters.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+          </div>
+          <div className="responsive-row">
+            <div className="form-field" style={{ flex: 1 }}><label>Cidade</label><input value={sdraft.city} onChange={(e) => setSdraft({ ...sdraft, city: e.target.value })} placeholder="São Paulo" /></div>
+            <div className="form-field" style={{ flex: 1 }}><label>Zona</label><select value={sdraft.region} onChange={(e) => setSdraft({ ...sdraft, region: e.target.value })}><option value="">Sem zona</option>{ZONAS.map((z) => <option key={z} value={z}>{z}</option>)}</select></div>
+          </div>
+          <div className="form-field"><label>Endereço</label><input value={sdraft.address} onChange={(e) => setSdraft({ ...sdraft, address: e.target.value })} placeholder="Rua, número - Bairro, Cidade - UF" /></div>
+          <div className="responsive-row">
+            <div className="form-field" style={{ flex: 1 }}><label>Prioridade</label><select value={sdraft.priority} onChange={(e) => setSdraft({ ...sdraft, priority: e.target.value })}><option value="">—</option>{PRIORIDADES.map((p) => <option key={p} value={p}>{p}</option>)}</select></div>
+            <div className="form-field" style={{ flex: 1 }}><label>Freq. planejada (dias)</label><input type="number" min="1" value={sdraft.planned_frequency_days} onChange={(e) => setSdraft({ ...sdraft, planned_frequency_days: e.target.value })} placeholder="ex.: 7" /></div>
+            <div className="form-field" style={{ flex: 1 }}><label>Status</label><select value={sdraft.status} onChange={(e) => setSdraft({ ...sdraft, status: e.target.value })}><option value="ativa">Ativa</option><option value="inativa">Inativa</option></select></div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <button className="btn" disabled={savingStore || !sdraft.name.trim()} onClick={saveStore}>{savingStore ? 'Salvando…' : 'Salvar'}</button>
+            <button className="btn ghost" onClick={() => setEditStore(null)}>Cancelar</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
