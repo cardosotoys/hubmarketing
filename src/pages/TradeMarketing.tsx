@@ -8,6 +8,8 @@ type Visit = { id: string; promoter_id: string | null; store_id: string | null; 
 type Store = { id: string; name: string; network_id: string | null; planned_frequency_days: number | null };
 type Promoter = { id: string; name: string };
 type Network = { id: string; name: string };
+type PlanRoute = { storeId: string; name: string; network: string; owner: string | null; ownerName: string; visits: number; cadence: number; weekday: number; weekOffset: number };
+type PlanVisit = { date: string; storeId: string; name: string; network: string; owner: string | null; ownerName: string; weekday: number };
 
 type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas';
 const TABS: [Tab, string][] = [
@@ -19,9 +21,8 @@ const TABS: [Tab, string][] = [
 ];
 const CATS = ['var(--tm-accent)', 'var(--tm-purple)', 'var(--tm-cyan)', 'var(--tm-pink)', 'var(--tm-good)', 'var(--tm-warn)', 'var(--tm-accent2)', '#64748b'];
 const WD = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-// Janela do plano: próxima segunda (17/08/26) até 31/08/26
-const WEEK_STARTS = ['2026-08-17', '2026-08-24', '2026-08-31'];
-const PLAN_END = '2026-08-31';
+const WD_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const MONTHS: [string, string][] = [['2026-08', 'Agosto 2026'], ['2026-09', 'Setembro 2026'], ['2026-10', 'Outubro 2026'], ['2026-11', 'Novembro 2026'], ['2026-12', 'Dezembro 2026']];
 
 const parseYmd = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
 const fmt = (s: string) => { const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
@@ -46,6 +47,11 @@ export default function TradeMarketing() {
   const [networkId, setNetworkId] = useState('all');
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState('');
+  const [planMonth, setPlanMonth] = useState('2026-08'); // YYYY-MM alvo do plano
+  const [planView, setPlanView] = useState<'mes' | 'semana' | 'dia'>('mes');
+  const [planWeekIdx, setPlanWeekIdx] = useState(0);
+  const [planDay, setPlanDay] = useState('');
+  const [planProm, setPlanProm] = useState('all');
 
   useEffect(() => {
     (async () => {
@@ -123,40 +129,68 @@ export default function TradeMarketing() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visits, stores, storesById, networksById, promotersById]);
 
-  // ---------- PLANEJAMENTO: roteiro fixo (histórico) + agenda 17→31/08 ----------
+  // ---------- PLANEJAMENTO: roteiro fixo (histórico) balanceado + agenda do mês alvo ----------
   const plan = useMemo(() => {
-    if (!visitsRaw.length) return { routes: [], agenda: [], sporadic: [] };
+    const empty = { routes: [] as PlanRoute[], agenda: [] as PlanVisit[], sporadic: [] as PlanRoute[], weeks: [] as { monday: string; days: string[] }[] };
+    if (!visitsRaw.length) return empty;
     const spanWeeks = Math.max(1, daysBetween(visitsRaw[0].visit_date, visitsRaw[visitsRaw.length - 1].visit_date) / 7);
-    const per = new Map<string, { prom: Map<string, number>; dates: string[]; wd: number[] }>();
+    const per = new Map<string, { prom: Map<string, number>; dates: string[] }>();
     for (const v of visitsRaw) {
       if (!v.store_id) continue;
-      const e = per.get(v.store_id) ?? { prom: new Map<string, number>(), dates: [] as string[], wd: [0, 0, 0, 0, 0, 0] };
+      const e = per.get(v.store_id) ?? { prom: new Map<string, number>(), dates: [] as string[] };
       if (v.promoter_id) e.prom.set(v.promoter_id, (e.prom.get(v.promoter_id) ?? 0) + 1);
-      e.dates.push(v.visit_date); const d = wdOf(v.visit_date); if (d >= 0 && d < 6) e.wd[d]++;
+      e.dates.push(v.visit_date);
       per.set(v.store_id, e);
     }
-    const routes = [...per.entries()].map(([sid, e]) => {
+    let routes: PlanRoute[] = [...per.entries()].map(([sid, e]) => {
       const owner = [...e.prom.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
       const visits = e.dates.length; const perWeek = visits / spanWeeks;
       const cadence = perWeek >= 0.8 ? 1 : perWeek >= 0.4 ? 2 : perWeek >= 0.2 ? 4 : 0;
-      const weekday = e.wd.indexOf(Math.max(...e.wd));
-      return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', owner, ownerName: promoterName(owner), visits, cadence, weekday };
-    }).sort((a, b) => (b.cadence - a.cadence) || (b.visits - a.visits));
-    const agenda: { date: string; storeId: string; name: string; network: string; owner: string | null; ownerName: string; weekday: number }[] = [];
+      return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', owner, ownerName: promoterName(owner), visits, cadence, weekday: 0, weekOffset: 0 };
+    });
+    const sporadic = routes.filter((r) => !r.cadence).sort((a, b) => b.visits - a.visits);
+    routes = routes.filter((r) => r.cadence);
+
+    // BALANCEAMENTO: por promotor, distribui as lojas nos 6 dias equilibrando a carga (peso = 1/cadência)
+    const byOwner = new Map<string, PlanRoute[]>();
+    for (const r of routes) { const k = r.owner ?? '—'; (byOwner.get(k) ?? byOwner.set(k, []).get(k)!).push(r); }
+    for (const list of byOwner.values()) {
+      list.sort((a, b) => a.cadence - b.cadence || b.visits - a.visits); // semanais primeiro
+      const dayLoad = [0, 0, 0, 0, 0, 0];
+      const weekCnt = [0, 0, 0, 0, 0, 0];
+      for (const r of list) {
+        let day = 0; for (let i = 1; i < 6; i++) if (dayLoad[i] < dayLoad[day]) day = i;
+        r.weekday = day; dayLoad[day] += 1 / r.cadence;
+        r.weekOffset = r.cadence > 1 ? weekCnt[day] % r.cadence : 0; weekCnt[day]++;
+      }
+    }
+
+    // Semanas do mês alvo (segunda a sábado, só dias dentro do mês)
+    const [Y, M] = planMonth.split('-').map(Number);
+    const first = new Date(Y, M - 1, 1, 12); const last = new Date(Y, M, 0, 12);
+    const start = new Date(first); start.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    const weeks: { monday: string; days: string[] }[] = [];
+    for (let cur = new Date(start); cur <= last; cur.setDate(cur.getDate() + 7)) {
+      const monday = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+      const days: string[] = [];
+      for (let i = 0; i < 6; i++) { const d = new Date(cur); d.setDate(cur.getDate() + i); if (d.getMonth() === M - 1) days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); }
+      weeks.push({ monday, days });
+    }
+
+    const agenda: PlanVisit[] = [];
     for (const r of routes) {
-      if (!r.cadence) continue;
-      WEEK_STARTS.forEach((ws, wi) => {
-        const include = r.cadence === 1 || (r.cadence === 2 && wi % 2 === 0) || (r.cadence === 4 && wi === 0);
+      weeks.forEach((wk, wi) => {
+        const include = r.cadence === 1 || (r.cadence === 2 && wi % 2 === r.weekOffset % 2) || (r.cadence === 4 && wi % 4 === r.weekOffset % 4);
         if (!include) return;
-        const d = addDays(ws, r.weekday);
-        if (d >= WEEK_STARTS[0] && d <= PLAN_END) agenda.push({ date: d, storeId: r.storeId, name: r.name, network: r.network, owner: r.owner, ownerName: r.ownerName, weekday: r.weekday });
+        const date = addDays(wk.monday, r.weekday);
+        if (wk.days.includes(date)) agenda.push({ date, storeId: r.storeId, name: r.name, network: r.network, owner: r.owner, ownerName: r.ownerName, weekday: r.weekday });
       });
     }
     agenda.sort((a, b) => a.date.localeCompare(b.date) || a.ownerName.localeCompare(b.ownerName));
-    const sporadic = routes.filter((r) => !r.cadence);
-    return { routes: routes.filter((r) => r.cadence), agenda, sporadic };
+    routes.sort((a, b) => a.ownerName.localeCompare(b.ownerName) || a.weekday - b.weekday || a.name.localeCompare(b.name));
+    return { routes, agenda, sporadic, weeks };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visitsRaw, storesById, promotersById, networksById]);
+  }, [visitsRaw, storesById, promotersById, networksById, planMonth]);
 
   function exportCsv(name: string, header: string[], rows: (string | number)[][]) {
     const csv = [header.join(';'), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';'))].join('\n');
@@ -180,12 +214,21 @@ export default function TradeMarketing() {
 
   const netItems = agg.networkRank.map((n, i) => ({ label: n.name, value: n.visits, color: CATS[i % CATS.length] }));
 
-  // agenda agrupada por promotor -> dia da semana (para a grade)
-  const agendaByProm = new Map<string, Map<number, { name: string; date: string }[]>>();
-  for (const a of plan.agenda) {
-    const pm = agendaByProm.get(a.ownerName) ?? new Map();
-    const arr = pm.get(a.weekday) ?? []; arr.push({ name: a.name, date: a.date }); pm.set(a.weekday, arr); agendaByProm.set(a.ownerName, pm);
+  // filtro por promotor dentro do planejamento
+  const planAgenda = planProm === 'all' ? plan.agenda : plan.agenda.filter((a) => a.owner === planProm);
+  const dayCount = new Map<string, number>();
+  for (const a of planAgenda) dayCount.set(a.date, (dayCount.get(a.date) ?? 0) + 1);
+  const maxDay = Math.max(1, ...dayCount.values());
+  const selWeek = plan.weeks[Math.min(planWeekIdx, plan.weeks.length - 1)] ?? plan.weeks[0];
+  const weekAgenda = selWeek ? planAgenda.filter((a) => selWeek.days.includes(a.date)) : [];
+  const byPromDay = new Map<string, string[][]>();
+  for (const a of weekAgenda) {
+    const pm = byPromDay.get(a.ownerName) ?? [[], [], [], [], [], []];
+    if (!pm[a.weekday].includes(a.name)) pm[a.weekday].push(a.name);
+    byPromDay.set(a.ownerName, pm);
   }
+  const dayVisits = planDay ? planAgenda.filter((a) => a.date === planDay).sort((x, y) => x.ownerName.localeCompare(y.ownerName) || x.name.localeCompare(y.name)) : [];
+  const monthLabel = MONTHS.find(([k]) => k === planMonth)?.[1] ?? planMonth;
 
   return (
     <div className="page tm-root">
@@ -235,42 +278,88 @@ export default function TradeMarketing() {
           {tab === 'planejamento' && (
             <>
               <div className="tm-card" style={{ marginBottom: 14 }}>
-                <h3>Roteiro fixo sugerido <span className="hint">gerado do histórico · 17/08 a 31/08</span></h3>
+                <h3>Roteiro fixo — {monthLabel} <span className="hint">balanceado · {planAgenda.length} visitas planejadas</span></h3>
                 <p style={{ fontSize: 12.5, color: 'var(--tm-ink2)', margin: '6px 0 12px' }}>
-                  Cada loja recebe <b>responsável fixo</b> (quem mais visitou), <b>dia fixo</b> (dia que mais recebeu visita) e <b>cadência</b> pela frequência histórica.
-                  Lojas esporádicas ficam fora do fixo (entram sob demanda / expedição).
+                  Responsável fixo (quem mais visitou) + cadência pela frequência histórica. Os dias são <b>distribuídos para equilibrar a carga</b> de cada promotor na semana. Trocar o mês gera o plano dele com base em todo o histórico atual.
                 </p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button className="btn sm" onClick={() => exportCsv('agenda_17-31-08.csv', ['Data', 'Dia', 'Promotor', 'Loja', 'Rede'], plan.agenda.map((a) => [fmt(a.date), WD[a.weekday], a.ownerName, a.name, a.network]))}>⬇ Exportar agenda (CSV)</button>
-                  <button className="btn sm" onClick={() => exportCsv('roteiro_fixo.csv', ['Loja', 'Rede', 'Responsavel', 'Dia', 'Cadencia', 'Visitas_hist'], plan.routes.map((r) => [r.name, r.network, r.ownerName, WD[r.weekday], cadLabel(r.cadence), r.visits]))}>⬇ Exportar roteiro (CSV)</button>
-                  {isPrivileged && <button className="btn" onClick={savePlan}>{saving || '💾 Salvar plano no sistema'}</button>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select className="chip-select" value={planMonth} onChange={(e) => { setPlanMonth(e.target.value); setPlanWeekIdx(0); }}>{MONTHS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+                  <div className="group-toggle">
+                    {(['mes', 'semana', 'dia'] as const).map((vw) => <div key={vw} className={`filter-chip${planView === vw ? ' active' : ''}`} onClick={() => setPlanView(vw)}>{vw === 'mes' ? 'Mês' : vw === 'semana' ? 'Semana' : 'Dia'}</div>)}
+                  </div>
+                  <select className="chip-select" value={planProm} onChange={(e) => setPlanProm(e.target.value)}><option value="all">Todos promotores</option>{promoters.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                  <button className="btn ghost sm" onClick={() => exportCsv(`agenda_${planMonth}.csv`, ['Data', 'Dia', 'Promotor', 'Loja', 'Rede'], planAgenda.map((a) => [fmt(a.date), WD[a.weekday], a.ownerName, a.name, a.network]))}>⬇ Agenda CSV</button>
+                  <button className="btn ghost sm" onClick={() => exportCsv('roteiro_fixo.csv', ['Loja', 'Rede', 'Responsavel', 'Dia', 'Cadencia', 'Visitas_hist'], plan.routes.map((r) => [r.name, r.network, r.ownerName, WD[r.weekday], cadLabel(r.cadence), r.visits]))}>⬇ Roteiro CSV</button>
+                  {isPrivileged && <button className="btn sm" onClick={savePlan}>{saving || '💾 Salvar plano'}</button>}
                 </div>
               </div>
 
-              <div className="tm-section-title" style={{ marginTop: 6 }}>Agenda por promotor · Semana-modelo</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[...agendaByProm.entries()].sort().map(([pm, byday]) => (
-                  <div className="tm-card" key={pm}>
-                    <h3>{pm} <span className="hint">{[...byday.values()].reduce((a, b) => a + b.length, 0)} visitas planejadas (3 semanas)</span></h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8, marginTop: 8 }}>
-                      {WD.map((d, wi) => {
-                        const names = [...new Set((byday.get(wi) ?? []).map((x) => x.name))];
-                        return (
-                          <div key={d} style={{ border: '1px solid var(--tm-line)', borderRadius: 10, padding: '8px 10px', background: 'var(--tm-panel2)' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tm-ink2)', marginBottom: 5 }}>{d} <span style={{ color: 'var(--tm-ink3)' }}>({names.length})</span></div>
-                            {names.slice(0, 12).map((n) => <div key={n} style={{ fontSize: 11.5, color: 'var(--tm-ink)', padding: '1px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</div>)}
-                            {names.length === 0 && <div style={{ fontSize: 11, color: 'var(--tm-ink3)' }}>—</div>}
-                          </div>
-                        );
-                      })}
-                    </div>
+              {/* ===== VISÃO MÊS: calendário ===== */}
+              {planView === 'mes' && (
+                <div className="tm-card">
+                  <h3>Calendário — {monthLabel} <span className="hint">clique num dia para ver as visitas</span></h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 6, marginTop: 10 }}>
+                    {WD_SHORT.map((d) => <div key={d} style={{ fontSize: 11, fontWeight: 700, color: 'var(--tm-ink3)', textAlign: 'center' }}>{d}</div>)}
+                    {plan.weeks.map((wk) => WD_SHORT.map((_, wi) => {
+                      const date = addDays(wk.monday, wi);
+                      const inMonth = wk.days.includes(date);
+                      const c = dayCount.get(date) ?? 0;
+                      const intensity = c ? 0.12 + 0.5 * (c / maxDay) : 0;
+                      return (
+                        <div key={date} onClick={() => inMonth && (setPlanDay(date), setPlanView('dia'))}
+                          style={{ minHeight: 62, borderRadius: 9, border: '1px solid var(--tm-line)', padding: '6px 7px', cursor: inMonth ? 'pointer' : 'default', opacity: inMonth ? 1 : 0.35, background: c ? `color-mix(in srgb, var(--tm-accent) ${intensity * 100}%, var(--tm-panel))` : 'var(--tm-panel)' }}>
+                          <div style={{ fontSize: 11, color: 'var(--tm-ink2)', fontWeight: 600 }}>{date.slice(8)}</div>
+                          {inMonth && c > 0 && <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{c}</div>}
+                          {inMonth && c > 0 && <div style={{ fontSize: 9.5, color: 'var(--tm-ink3)' }}>visitas</div>}
+                        </div>
+                      );
+                    }))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* ===== VISÃO SEMANA: grade promotor x dia ===== */}
+              {planView === 'semana' && selWeek && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '2px 0 10px' }}>
+                    <button className="btn ghost sm" disabled={planWeekIdx <= 0} onClick={() => setPlanWeekIdx((i) => Math.max(0, i - 1))}>‹</button>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Semana de {fmt(selWeek.days[0])} a {fmt(selWeek.days[selWeek.days.length - 1])}</span>
+                    <button className="btn ghost sm" disabled={planWeekIdx >= plan.weeks.length - 1} onClick={() => setPlanWeekIdx((i) => Math.min(plan.weeks.length - 1, i + 1))}>›</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {[...byPromDay.entries()].sort().map(([pm, days]) => (
+                      <div className="tm-card" key={pm}>
+                        <h3>{pm} <span className="hint">{days.reduce((a, b) => a + b.length, 0)} visitas na semana</span></h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8, marginTop: 8 }}>
+                          {WD.map((d, wi) => (
+                            <div key={d} style={{ border: '1px solid var(--tm-line)', borderRadius: 10, padding: '8px 10px', background: 'var(--tm-panel2)' }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tm-ink2)', marginBottom: 5 }}>{d} <span style={{ color: 'var(--tm-ink3)' }}>({days[wi].length})</span></div>
+                              {days[wi].slice(0, 14).map((n) => <div key={n} style={{ fontSize: 11.5, padding: '1px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</div>)}
+                              {days[wi].length === 0 && <div style={{ fontSize: 11, color: 'var(--tm-ink3)' }}>—</div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {byPromDay.size === 0 && <div className="tm-card"><p style={{ color: 'var(--tm-ink3)', fontSize: 13 }}>Sem visitas nesta semana.</p></div>}
+                  </div>
+                </>
+              )}
+
+              {/* ===== VISÃO DIA ===== */}
+              {planView === 'dia' && (
+                <div className="tm-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                    <input type="date" className="chip-select" value={planDay} min={`${planMonth}-01`} onChange={(e) => setPlanDay(e.target.value)} />
+                    <span style={{ fontSize: 13, color: 'var(--tm-ink2)' }}>{planDay ? `${dayVisits.length} visitas em ${fmt(planDay)}` : 'Escolha um dia (ou clique no calendário do Mês)'}</span>
+                  </div>
+                  {planDay && <Table head={['Promotor', 'Loja', 'Rede']} rows={dayVisits.map((a) => [<b>{a.ownerName}</b>, a.name, a.network])} />}
+                </div>
+              )}
 
               {plan.sporadic.length > 0 && (
                 <>
-                  <div className="tm-section-title">Sob demanda / expedição <span style={{ textTransform: 'none', fontWeight: 500 }}>({plan.sporadic.length} lojas esporádicas — fora do roteiro fixo)</span></div>
+                  <div className="tm-section-title">Sob demanda / expedição <span style={{ textTransform: 'none', fontWeight: 500 }}>({plan.sporadic.length} lojas esporádicas — fora do roteiro fixo; entram quando chegar produto)</span></div>
                   <Table head={['Loja', 'Rede', 'Últ. responsável', 'Visitas hist.']} rows={plan.sporadic.slice(0, 40).map((r) => [<b>{r.name}</b>, r.network, r.ownerName, r.visits])} />
                 </>
               )}
