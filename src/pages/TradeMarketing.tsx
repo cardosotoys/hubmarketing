@@ -8,7 +8,7 @@ type Visit = { id: string; promoter_id: string | null; store_id: string | null; 
 type Store = { id: string; name: string; network_id: string | null; planned_frequency_days: number | null };
 type Promoter = { id: string; name: string };
 type Network = { id: string; name: string };
-type PlanRoute = { storeId: string; name: string; network: string; owner: string | null; ownerName: string; visits: number; cadence: number; weekday: number; weekOffset: number };
+type PlanRoute = { storeId: string; name: string; network: string; owner: string | null; ownerName: string; visits: number; cadence: number; daysSince: number; weekday: number; weekOffset: number };
 type PlanVisit = { date: string; storeId: string; name: string; network: string; owner: string | null; ownerName: string; weekday: number };
 
 type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas';
@@ -131,8 +131,9 @@ export default function TradeMarketing() {
 
   // ---------- PLANEJAMENTO: roteiro fixo (histórico) balanceado + agenda do mês alvo ----------
   const plan = useMemo(() => {
-    const empty = { routes: [] as PlanRoute[], agenda: [] as PlanVisit[], sporadic: [] as PlanRoute[], weeks: [] as { monday: string; days: string[] }[] };
+    const empty = { routes: [] as PlanRoute[], agenda: [] as PlanVisit[], neglected: [] as PlanRoute[], weeks: [] as { monday: string; days: string[] }[] };
     if (!visitsRaw.length) return empty;
+    const today = todayYmd();
     const spanWeeks = Math.max(1, daysBetween(visitsRaw[0].visit_date, visitsRaw[visitsRaw.length - 1].visit_date) / 7);
     const per = new Map<string, { prom: Map<string, number>; dates: string[] }>();
     for (const v of visitsRaw) {
@@ -142,28 +143,33 @@ export default function TradeMarketing() {
       e.dates.push(v.visit_date);
       per.set(v.store_id, e);
     }
-    let routes: PlanRoute[] = [...per.entries()].map(([sid, e]) => {
+    // COBERTURA: TODA loja entra no plano (piso mensal). Frequentes = semanais/quinzenais.
+    const routes: PlanRoute[] = [...per.entries()].map(([sid, e]) => {
       const owner = [...e.prom.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
       const visits = e.dates.length; const perWeek = visits / spanWeeks;
-      const cadence = perWeek >= 0.8 ? 1 : perWeek >= 0.4 ? 2 : perWeek >= 0.2 ? 4 : 0;
-      return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', owner, ownerName: promoterName(owner), visits, cadence, weekday: 0, weekOffset: 0 };
+      const last = [...e.dates].sort().pop() as string;
+      const daysSince = daysBetween(last, today);
+      const cadence = perWeek >= 0.8 ? 1 : perWeek >= 0.35 ? 2 : 4; // sempre >= mensal
+      return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', owner, ownerName: promoterName(owner), visits, cadence, daysSince, weekday: 0, weekOffset: 0 };
     });
-    const sporadic = routes.filter((r) => !r.cadence).sort((a, b) => b.visits - a.visits);
-    routes = routes.filter((r) => r.cadence);
+    // "Negligenciadas" = as de cobertura mínima (mensal), priorizadas pelas mais atrasadas
+    const neglected = routes.filter((r) => r.cadence === 4).sort((a, b) => b.daysSince - a.daysSince);
 
     // BALANCEAMENTO: por promotor, distribui as lojas nos 6 dias equilibrando a carga (peso = 1/cadência)
     const byOwner = new Map<string, PlanRoute[]>();
     for (const r of routes) { const k = r.owner ?? '—'; (byOwner.get(k) ?? byOwner.set(k, []).get(k)!).push(r); }
     for (const list of byOwner.values()) {
-      list.sort((a, b) => a.cadence - b.cadence || b.visits - a.visits); // semanais primeiro
+      list.sort((a, b) => a.cadence - b.cadence || b.daysSince - a.daysSince); // semanais primeiro; atrasadas antes
       const dayLoad = [0, 0, 0, 0, 0, 0];
-      const weekCnt = [0, 0, 0, 0, 0, 0];
+      const biCnt = [0, 0, 0, 0, 0, 0];
       for (const r of list) {
         let day = 0; for (let i = 1; i < 6; i++) if (dayLoad[i] < dayLoad[day]) day = i;
         r.weekday = day; dayLoad[day] += 1 / r.cadence;
-        r.weekOffset = r.cadence > 1 ? weekCnt[day] % r.cadence : 0; weekCnt[day]++;
+        if (r.cadence === 2) { r.weekOffset = biCnt[day] % 2; biCnt[day]++; }
       }
     }
+    // Mensais: priorizar as mais atrasadas nas primeiras semanas (round-robin por atraso)
+    neglected.forEach((r, i) => { r.weekOffset = i % 4; });
 
     // Semanas do mês alvo (segunda a sábado, só dias dentro do mês)
     const [Y, M] = planMonth.split('-').map(Number);
@@ -188,7 +194,7 @@ export default function TradeMarketing() {
     }
     agenda.sort((a, b) => a.date.localeCompare(b.date) || a.ownerName.localeCompare(b.ownerName));
     routes.sort((a, b) => a.ownerName.localeCompare(b.ownerName) || a.weekday - b.weekday || a.name.localeCompare(b.name));
-    return { routes, agenda, sporadic, weeks };
+    return { routes, agenda, neglected, weeks };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visitsRaw, storesById, promotersById, networksById, planMonth]);
 
@@ -330,14 +336,23 @@ export default function TradeMarketing() {
                     {[...byPromDay.entries()].sort().map(([pm, days]) => (
                       <div className="tm-card" key={pm}>
                         <h3>{pm} <span className="hint">{days.reduce((a, b) => a + b.length, 0)} visitas na semana</span></h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8, marginTop: 8 }}>
-                          {WD.map((d, wi) => (
-                            <div key={d} style={{ border: '1px solid var(--tm-line)', borderRadius: 10, padding: '8px 10px', background: 'var(--tm-panel2)' }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tm-ink2)', marginBottom: 5 }}>{d} <span style={{ color: 'var(--tm-ink3)' }}>({days[wi].length})</span></div>
-                              {days[wi].slice(0, 14).map((n) => <div key={n} style={{ fontSize: 11.5, padding: '1px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</div>)}
-                              {days[wi].length === 0 && <div style={{ fontSize: 11, color: 'var(--tm-ink3)' }}>—</div>}
-                            </div>
-                          ))}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 8, marginTop: 10 }}>
+                          {WD.map((d, wi) => {
+                            const list = days[wi];
+                            return (
+                              <div key={d} style={{ border: '1px solid var(--tm-line)', borderRadius: 10, background: 'var(--tm-panel2)', minHeight: 118, display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, padding: '7px 9px', borderBottom: '1px solid var(--tm-line)' }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tm-ink2)', whiteSpace: 'nowrap' }}>{WD_SHORT[wi]}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: list.length ? 'var(--tm-accent-ink)' : 'var(--tm-ink3)', background: list.length ? 'var(--tm-soft)' : 'transparent', borderRadius: 20, padding: list.length ? '1px 7px' : 0 }}>{list.length}</span>
+                                </div>
+                                <div style={{ padding: '6px 9px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  {list.slice(0, 12).map((n) => <span key={n} title={n} style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>)}
+                                  {list.length > 12 && <span style={{ fontSize: 10.5, color: 'var(--tm-ink3)' }}>+{list.length - 12}</span>}
+                                  {list.length === 0 && <span style={{ fontSize: 11, color: 'var(--tm-ink3)' }}>—</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -357,10 +372,10 @@ export default function TradeMarketing() {
                 </div>
               )}
 
-              {plan.sporadic.length > 0 && (
+              {plan.neglected.length > 0 && (
                 <>
-                  <div className="tm-section-title">Sob demanda / expedição <span style={{ textTransform: 'none', fontWeight: 500 }}>({plan.sporadic.length} lojas esporádicas — fora do roteiro fixo; entram quando chegar produto)</span></div>
-                  <Table head={['Loja', 'Rede', 'Últ. responsável', 'Visitas hist.']} rows={plan.sporadic.slice(0, 40).map((r) => [<b>{r.name}</b>, r.network, r.ownerName, r.visits])} />
+                  <div className="tm-section-title">Lojas com baixa cobertura <span style={{ textTransform: 'none', fontWeight: 500 }}>({plan.neglected.length} lojas mensais — já entram na agenda, as mais atrasadas primeiro)</span></div>
+                  <Table head={['Loja', 'Rede', 'Responsável', 'Visitas hist.', 'Dias s/ visita']} rows={plan.neglected.slice(0, 40).map((r) => [<b>{r.name}</b>, r.network, r.ownerName, r.visits, <span style={{ color: r.daysSince > 30 ? 'var(--tm-bad)' : undefined, fontWeight: 600 }}>{r.daysSince}</span>])} />
                 </>
               )}
             </>
