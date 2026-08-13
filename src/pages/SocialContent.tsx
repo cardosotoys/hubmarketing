@@ -4,28 +4,29 @@ import { useAuth } from '../context/AuthContext';
 import { logActivity } from '../lib/activityLog';
 import Loading from '../components/Loading';
 import Modal from '../components/Modal';
-import type { Brand, Profile } from '../types/database';
+import ProductCombobox from '../components/ProductCombobox';
+import type { Brand, Profile, Product } from '../types/database';
 
-type Stage = 'planejamento' | 'aprov_conteudo' | 'producao' | 'aprov_arte' | 'mlabs' | 'publicado' | 'lojistas';
-const STAGES: { key: Stage; label: string; icon: string; gate?: 'conteudo' | 'arte' }[] = [
-  { key: 'planejamento', label: 'Planejamento', icon: '📝' },
-  { key: 'aprov_conteudo', label: 'Aprov. conteúdo', icon: '👁️', gate: 'conteudo' },
+type Gate = 'conteudo' | 'arte' | 'mlabs';
+type Stage = 'planejamento' | 'producao' | 'aprov_arte' | 'mlabs' | 'publicado' | 'acompanhamento' | 'aprov_conteudo' | 'lojistas';
+const STAGES: { key: Stage; label: string; icon: string; gate?: Gate }[] = [
+  { key: 'planejamento', label: 'Planejamento', icon: '📝', gate: 'conteudo' },
   { key: 'producao', label: 'Produção', icon: '🎬' },
   { key: 'aprov_arte', label: 'Aprov. arte', icon: '🖼️', gate: 'arte' },
-  { key: 'mlabs', label: 'mLabs', icon: '📤' },
+  { key: 'mlabs', label: 'mLabs', icon: '📤', gate: 'mlabs' },
   { key: 'publicado', label: 'Publicado', icon: '✅' },
-  { key: 'lojistas', label: 'Lojistas', icon: '🏬' },
+  { key: 'acompanhamento', label: 'Acompanhamento', icon: '🏬' },
 ];
-const CHANNELS = ['Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Kwai'];
-const FORMATS = ['Feed', 'Story', 'Reels', 'Carrossel', 'Vídeo', 'Live'];
+const CHANNELS = ['Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Kwai', 'Pinterest'];
+const FORMATS = ['Feed', 'Story', 'Reels', 'Carrossel', 'Vídeo', 'Live', 'Pin'];
 const nextStage = (s: Stage): Stage => STAGES[Math.min(STAGES.length - 1, STAGES.findIndex((x) => x.key === s) + 1)].key;
-const prevWork = (gate: 'conteudo' | 'arte'): Stage => (gate === 'conteudo' ? 'planejamento' : 'producao');
+const prevWork = (gate: Gate): Stage => (gate === 'arte' ? 'producao' : gate === 'mlabs' ? 'mlabs' : 'planejamento');
 const fmtDate = (s: string | null) => (s ? s.split('-').reverse().join('/') : '—');
 
-type Content = { id: string; title: string; brand_id: string | null; channel: string; format: string; scheduled_date: string | null; copy: string; stage: Stage; mlabs_url: string; post_url: string; drive_url: string; created_by: string | null; position: number; tipo: string; pilar: string; campaign: string; block: string; product: string; objective: string; cta: string; media_use: string; line_axis: string };
+type Content = { id: string; title: string; brand_id: string | null; channel: string; format: string; scheduled_date: string | null; copy: string; stage: Stage; mlabs_url: string; post_url: string; drive_url: string; created_by: string | null; position: number; tipo: string; pilar: string; campaign: string; block: string; product: string; objective: string; cta: string; media_use: string; line_axis: string; product_id: string | null };
 const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 type Media = { id: string; content_id: string; url: string; path: string; type: string; name: string };
-type Approval = { id: string; content_id: string; gate: 'conteudo' | 'arte'; approver_id: string; decision: 'pendente' | 'aprovado' | 'alteracao'; note: string };
+type Approval = { id: string; content_id: string; gate: Gate; approver_id: string; decision: 'pendente' | 'aprovado' | 'alteracao'; note: string };
 type Comment = { id: string; content_id: string; author_id: string; body: string; created_at: string };
 const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(u);
 
@@ -43,7 +44,8 @@ export default function SocialContent() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [view, setView] = useState<'kanban' | 'calendario'>('calendario');
+  const [view, setView] = useState<'kanban' | 'calendario' | 'lista'>('calendario');
+  const [products, setProducts] = useState<Product[]>([]);
   const [calMonth, setCalMonth] = useState('2026-08');
   const [calDay, setCalDay] = useState<string | null>(null);
 
@@ -56,6 +58,7 @@ export default function SocialContent() {
       supabase.from('brands').select('*'),
       supabase.from('profiles').select('*').order('name'),
     ]);
+    supabase.from('products').select('id, code, name').order('code').then(({ data }) => setProducts((data as Product[]) ?? []));
     setItems((c.data as Content[]) ?? []);
     setMedia((m.data as Media[]) ?? []);
     setApprovals((a.data as Approval[]) ?? []);
@@ -76,7 +79,7 @@ export default function SocialContent() {
   const brandById = useMemo(() => new Map(brands.map((b) => [b.id, b])), [brands]);
   const profById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const mediaOf = (id: string) => media.filter((m) => m.content_id === id);
-  const apprOf = (id: string, gate: 'conteudo' | 'arte') => approvals.filter((a) => a.content_id === id && a.gate === gate);
+  const apprOf = (id: string, gate: Gate) => approvals.filter((a) => a.content_id === id && a.gate === gate);
   const iAmPendingApprover = (id: string) => approvals.some((a) => a.content_id === id && a.approver_id === me && a.decision === 'pendente');
 
   const visible = items.filter((i) => (brandFilter === 'all' || i.brand_id === brandFilter) && (!onlyMine || iAmPendingApprover(i.id)));
@@ -124,7 +127,7 @@ export default function SocialContent() {
 
       <div className="filters-row" style={{ alignItems: 'center' }}>
         <div className="group-toggle">
-          {(['calendario', 'kanban'] as const).map((v) => <div key={v} className={`filter-chip${view === v ? ' active' : ''}`} onClick={() => setView(v)}>{v === 'calendario' ? '📅 Calendário' : '🗂 Kanban'}</div>)}
+          {(['calendario', 'kanban', 'lista'] as const).map((v) => <div key={v} className={`filter-chip${view === v ? ' active' : ''}`} onClick={() => setView(v)}>{v === 'calendario' ? '📅 Calendário' : v === 'kanban' ? '🗂 Kanban' : '📋 Lista'}</div>)}
         </div>
         <div className={`filter-chip${onlyMine ? ' active' : ''}`} onClick={() => setOnlyMine((v) => !v)}>
           ⏳ Aguardando minha aprovação{myPending > 0 ? ` (${myPending})` : ''}
@@ -175,8 +178,31 @@ export default function SocialContent() {
       </div>
       )}
 
+      {view === 'lista' && (
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 12, marginTop: 14 }}>
+          <table className="simple">
+            <thead><tr><th>Data</th><th>Tema</th><th>Marca</th><th>Canal · Formato</th><th>Pilar</th><th>Etapa</th></tr></thead>
+            <tbody>
+              {[...visible].sort((a, b) => (a.scheduled_date ?? '').localeCompare(b.scheduled_date ?? '')).map((i) => {
+                const b = i.brand_id ? brandById.get(i.brand_id) : null; const st = STAGES.find((s) => s.key === i.stage);
+                return (
+                  <tr key={i.id} onClick={() => setOpenId(i.id)} style={{ cursor: 'pointer' }}>
+                    <td>{fmtDate(i.scheduled_date)}</td>
+                    <td style={{ fontWeight: 600 }}>{i.title}{i.objective ? <span style={{ display: 'block', fontSize: 11, color: 'var(--text-faint)', fontWeight: 400 }}>🎯 {i.objective}</span> : null}</td>
+                    <td>{b ? <span className="pill" style={{ background: `${b.color}22`, color: b.color }}>{b.label}</span> : '—'}</td>
+                    <td>{[i.channel, i.format].filter(Boolean).join(' · ') || '—'}</td>
+                    <td>{i.pilar || '—'}</td>
+                    <td><span className="pill">{st?.icon} {st?.label ?? i.stage}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {open && (
-        <Detail key={open.id} item={open} brands={brands} profiles={profiles} me={me} profById={profById}
+        <Detail key={open.id} item={open} brands={brands} profiles={profiles} products={products} me={me} profById={profById}
           media={mediaOf(open.id)} approvals={approvals.filter((a) => a.content_id === open.id)} comments={comments.filter((c) => c.content_id === open.id)}
           onClose={() => setOpenId(null)} onChange={load} onDecide={decide} onStage={updateStage} />
       )}
@@ -185,12 +211,14 @@ export default function SocialContent() {
 }
 
 // ---------------- Detalhe da peça ----------------
-function Detail({ item, brands, profiles, me, profById, media, approvals, comments, onClose, onChange, onDecide, onStage }: {
-  item: Content; brands: Brand[]; profiles: Profile[]; me: string; profById: Map<string, Profile>;
+function Detail({ item, brands, profiles, products, me, profById, media, approvals, comments, onClose, onChange, onDecide, onStage }: {
+  item: Content; brands: Brand[]; profiles: Profile[]; products: Product[]; me: string; profById: Map<string, Profile>;
   media: Media[]; approvals: Approval[]; comments: Comment[]; onClose: () => void; onChange: () => void;
   onDecide: (ap: Approval, d: 'aprovado' | 'alteracao', note: string) => void; onStage: (id: string, s: Stage) => void;
 }) {
-  const [f, setF] = useState({ title: item.title, brand_id: item.brand_id ?? '', channel: item.channel, format: item.format, scheduled_date: item.scheduled_date ?? '', copy: item.copy, mlabs_url: item.mlabs_url, post_url: item.post_url, drive_url: item.drive_url, tipo: item.tipo ?? '', pilar: item.pilar ?? '', campaign: item.campaign ?? '', product: item.product ?? '', objective: item.objective ?? '', cta: item.cta ?? '', media_use: item.media_use ?? '', line_axis: item.line_axis ?? '' });
+  const [f, setF] = useState({ title: item.title, brand_id: item.brand_id ?? '', channel: item.channel, format: item.format, scheduled_date: item.scheduled_date ?? '', copy: item.copy, mlabs_url: item.mlabs_url, post_url: item.post_url, drive_url: item.drive_url, tipo: item.tipo ?? '', pilar: item.pilar ?? '', campaign: item.campaign ?? '', product: item.product ?? '', objective: item.objective ?? '', cta: item.cta ?? '', media_use: item.media_use ?? '', line_axis: item.line_axis ?? '', product_id: item.product_id ?? '' });
+  const brandLabel = brands.find((b) => b.id === f.brand_id)?.label ?? '';
+  const showSku = brandLabel === 'Playmi' || brandLabel === 'Tópi';
   const [busy, setBusy] = useState(false);
   const [pickApprovers, setPickApprovers] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -200,7 +228,7 @@ function Detail({ item, brands, profiles, me, profById, media, approvals, commen
 
   async function save() {
     setBusy(true);
-    await supabase.from('social_content').update({ ...f, brand_id: f.brand_id || null, scheduled_date: f.scheduled_date || null, updated_at: new Date().toISOString() }).eq('id', item.id);
+    await supabase.from('social_content').update({ ...f, brand_id: f.brand_id || null, product_id: f.product_id || null, scheduled_date: f.scheduled_date || null, updated_at: new Date().toISOString() }).eq('id', item.id);
     setBusy(false); onChange();
   }
   async function upload(file: File) {
@@ -249,6 +277,11 @@ function Detail({ item, brands, profiles, me, profById, media, approvals, commen
           <div className="form-field" style={{ flex: 1 }}><label>Campanha / Fase</label><input value={f.campaign} onChange={(e) => setF({ ...f, campaign: e.target.value })} /></div>
         </div>
         <div className="form-field"><label>Produto / SKU / Licenciado</label><input value={f.product} onChange={(e) => setF({ ...f, product: e.target.value })} /></div>
+        {showSku && (
+          <div className="form-field"><label>🔗 Vincular SKU do catálogo ({brandLabel})</label>
+            <ProductCombobox products={products} value={f.product_id} onChange={(id) => setF({ ...f, product_id: id })} />
+          </div>
+        )}
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}><label>Objetivo</label><input value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} placeholder="o que essa peça precisa fazer" /></div>
           <div className="form-field" style={{ flex: 1 }}><label>CTA</label><input value={f.cta} onChange={(e) => setF({ ...f, cta: e.target.value })} placeholder="chamada para ação" /></div>
@@ -278,10 +311,25 @@ function Detail({ item, brands, profiles, me, profById, media, approvals, commen
         <label className="btn ghost sm" style={{ cursor: 'pointer' }}>⬆ Enviar arte<input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.target.value = ''; }} /></label>
       </div>
 
+      {/* publicado → acompanhamento */}
+      {item.stage === 'publicado' && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <h4>Publicação</h4>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '4px 0 10px' }}>Publicado no mLabs? Marque como realizado — a peça vai automaticamente para o Acompanhamento (Drive, lojistas…).</p>
+          <button className="btn" onClick={() => onStage(item.id, 'acompanhamento')}>✅ Marcar como realizado → Acompanhamento</button>
+        </div>
+      )}
+
       {/* aprovação (só nos gates) */}
       {stageDef.gate && (
         <div className="panel" style={{ marginTop: 14, border: '1px solid var(--accent)' }}>
-          <h4>Aprovação — {stageDef.gate === 'conteudo' ? 'conteúdo' : 'arte'}</h4>
+          <h4>{stageDef.gate === 'conteudo' ? '👁️ Aceite do planejado' : stageDef.gate === 'arte' ? '🖼️ Aprovação da arte' : '📤 Aprovação no mLabs'}</h4>
+          {stageDef.gate === 'mlabs' && (
+            <div style={{ marginBottom: 10 }}>
+              {f.mlabs_url ? <a className="btn sm" href={f.mlabs_url} target="_blank" rel="noreferrer">📤 Abrir no mLabs →</a> : <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Cole o link do mLabs no campo acima para o aprovador acessar.</span>}
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>O aprovador faz os ajustes no mLabs e sinaliza aqui só se está <b>aprovado</b> ou <b>tem alteração</b>.</p>
+            </div>
+          )}
           {gateAppr.map((a) => {
             const canDecide = a.approver_id === me && a.decision === 'pendente';
             return (
