@@ -19,7 +19,7 @@ import Configuracoes from './pages/Configuracoes';
 import Produtos from './pages/Produtos';
 import MonitorPrecos from './pages/MonitorPrecos';
 import TradeMarketing from './pages/TradeMarketing';
-import RedesSociais from './pages/RedesSociais';
+import SocialContent from './pages/SocialContent';
 import Biblioteca from './pages/Biblioteca';
 import Campaigns from './pages/Campaigns';
 import Calendario from './pages/Calendario';
@@ -106,14 +106,7 @@ export default function App() {
               }
             />
             <Route path="calendario" element={<ModuleGate moduleKey="calendario"><Calendario /></ModuleGate>} />
-            <Route
-              path="redes-sociais"
-              element={
-                <RequireRole roles={['diretoria', 'administrador']} moduleKey="redes-sociais">
-                  <RedesSociais />
-                </RequireRole>
-              }
-            />
+            <Route path="redes-sociais" element={<ModuleGate moduleKey="redes-sociais"><SocialContent /></ModuleGate>} />
             <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
             <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
             <Route path="trade" element={<ModuleGate moduleKey="trade-marketing"><TradeMarketing /></ModuleGate>} />
