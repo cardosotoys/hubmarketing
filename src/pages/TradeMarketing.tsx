@@ -5,11 +5,12 @@ import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
 
 type Visit = { id: string; promoter_id: string | null; store_id: string | null; visit_date: string; weekday: string | null; raw_store_name: string | null };
-type Store = { id: string; name: string; network_id: string | null; planned_frequency_days: number | null };
+type Store = { id: string; name: string; network_id: string | null; planned_frequency_days: number | null; region: string | null; city: string | null; address: string | null; default_promoter_id: string | null };
 type Promoter = { id: string; name: string };
 type Network = { id: string; name: string };
-type PlanRoute = { storeId: string; name: string; network: string; owner: string | null; ownerName: string; visits: number; cadence: number; daysSince: number; weekday: number; weekOffset: number };
-type PlanVisit = { date: string; storeId: string; name: string; network: string; owner: string | null; ownerName: string; weekday: number };
+type PlanRoute = { storeId: string; name: string; network: string; zona: string; owner: string | null; ownerName: string; visits: number; cadence: number; daysSince: number; weekday: number; weekOffset: number };
+type PlanVisit = { date: string; storeId: string; name: string; network: string; zona: string; owner: string | null; ownerName: string; weekday: number };
+const WEEK_CAP = 15; // teto de visitas por promotor por semana
 
 type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas';
 const TABS: [Tab, string][] = [
@@ -58,7 +59,7 @@ export default function TradeMarketing() {
       setLoading(true);
       const [v, s, p, n] = await Promise.all([
         supabase.from('tm_visits').select('id, promoter_id, store_id, visit_date, weekday, raw_store_name').order('visit_date'),
-        supabase.from('tm_stores').select('id, name, network_id, planned_frequency_days'),
+        supabase.from('tm_stores').select('id, name, network_id, planned_frequency_days, region, city, address, default_promoter_id'),
         supabase.from('tm_promoters').select('id, name').order('name'),
         supabase.from('tm_networks').select('id, name').order('name'),
       ]);
@@ -80,6 +81,7 @@ export default function TradeMarketing() {
   const storeName = (id: string | null) => (id ? storesById.get(id)?.name ?? '—' : '—');
   const promoterName = (id: string | null) => (id ? promotersById.get(id)?.name ?? '—' : '—');
   const networkOfStore = (storeId: string | null) => { const st = storeId ? storesById.get(storeId) : null; return st?.network_id ? networksById.get(st.network_id)?.name ?? null : null; };
+  const zoneOfStore = (storeId: string | null) => (storeId ? storesById.get(storeId)?.region || 'Sem zona' : 'Sem zona');
 
   const visits = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -143,33 +145,49 @@ export default function TradeMarketing() {
       e.dates.push(v.visit_date);
       per.set(v.store_id, e);
     }
-    // COBERTURA: TODA loja entra no plano (piso mensal). Frequentes = semanais/quinzenais.
+    // COBERTURA: TODA loja entra no plano (piso mensal). Responsável = atribuído (cadastro) OU histórico.
     const routes: PlanRoute[] = [...per.entries()].map(([sid, e]) => {
-      const owner = [...e.prom.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const histOwner = [...e.prom.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const owner = storesById.get(sid)?.default_promoter_id || histOwner;
       const visits = e.dates.length; const perWeek = visits / spanWeeks;
       const last = [...e.dates].sort().pop() as string;
       const daysSince = daysBetween(last, today);
       const cadence = perWeek >= 0.8 ? 1 : perWeek >= 0.35 ? 2 : 4; // sempre >= mensal
-      return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', owner, ownerName: promoterName(owner), visits, cadence, daysSince, weekday: 0, weekOffset: 0 };
+      return { storeId: sid, name: storeName(sid), network: networkOfStore(sid) ?? '—', zona: zoneOfStore(sid), owner, ownerName: promoterName(owner), visits, cadence, daysSince, weekday: 0, weekOffset: 0 };
     });
-    // "Negligenciadas" = as de cobertura mínima (mensal), priorizadas pelas mais atrasadas
-    const neglected = routes.filter((r) => r.cadence === 4).sort((a, b) => b.daysSince - a.daysSince);
 
-    // BALANCEAMENTO: por promotor, distribui as lojas nos 6 dias equilibrando a carga (peso = 1/cadência)
+    // Por promotor: (1) TETO de 15/semana — rebaixa cadência das menos prioritárias; (2) LOGÍSTICA —
+    // agrupa por zona para o promotor ficar numa região por dia.
     const byOwner = new Map<string, PlanRoute[]>();
     for (const r of routes) { const k = r.owner ?? '—'; (byOwner.get(k) ?? byOwner.set(k, []).get(k)!).push(r); }
+    const SOFT = WEEK_CAP / 6; // ~2,5 de carga/dia
     for (const list of byOwner.values()) {
-      list.sort((a, b) => a.cadence - b.cadence || b.daysSince - a.daysSince); // semanais primeiro; atrasadas antes
+      // (1) teto: enquanto carga semanal > 15, rebaixa a menos prioritária (menos atrasada) de semanal→quinzenal→mensal
+      const load = () => list.reduce((s, r) => s + 1 / r.cadence, 0);
+      let guard = 0;
+      while (load() > WEEK_CAP && guard++ < 500) {
+        const cand = list.filter((r) => r.cadence < 4).sort((a, b) => a.cadence - b.cadence || a.daysSince - b.daysSince)[0];
+        if (!cand) break;
+        cand.cadence = cand.cadence === 1 ? 2 : 4;
+      }
+      // (2) clustering por zona: cada zona ocupa o dia (ou dias) menos carregado, mantendo a região junta
+      const zonas = new Map<string, PlanRoute[]>();
+      for (const r of list) (zonas.get(r.zona) ?? zonas.set(r.zona, []).get(r.zona)!).push(r);
+      const zonasSorted = [...zonas.entries()].sort((a, b) => b[1].reduce((s, r) => s + 1 / r.cadence, 0) - a[1].reduce((s, r) => s + 1 / r.cadence, 0));
       const dayLoad = [0, 0, 0, 0, 0, 0];
-      const biCnt = [0, 0, 0, 0, 0, 0];
-      for (const r of list) {
-        let day = 0; for (let i = 1; i < 6; i++) if (dayLoad[i] < dayLoad[day]) day = i;
-        r.weekday = day; dayLoad[day] += 1 / r.cadence;
-        if (r.cadence === 2) { r.weekOffset = biCnt[day] % 2; biCnt[day]++; }
+      const cntByDay = [0, 0, 0, 0, 0, 0];
+      const argminDay = () => { let d = 0; for (let i = 1; i < 6; i++) if (dayLoad[i] < dayLoad[d]) d = i; return d; };
+      for (const [, zlist] of zonasSorted) {
+        zlist.sort((a, b) => a.cadence - b.cadence || b.daysSince - a.daysSince);
+        let day = argminDay();
+        for (const r of zlist) {
+          if (dayLoad[day] >= SOFT) day = argminDay(); // dia cheio → próxima região no dia mais vazio
+          r.weekday = day; dayLoad[day] += 1 / r.cadence;
+          r.weekOffset = r.cadence > 1 ? cntByDay[day] % r.cadence : 0; cntByDay[day]++;
+        }
       }
     }
-    // Mensais: priorizar as mais atrasadas nas primeiras semanas (round-robin por atraso)
-    neglected.forEach((r, i) => { r.weekOffset = i % 4; });
+    const neglected = routes.filter((r) => r.cadence === 4).sort((a, b) => b.daysSince - a.daysSince);
 
     // Semanas do mês alvo (segunda a sábado, só dias dentro do mês)
     const [Y, M] = planMonth.split('-').map(Number);
@@ -189,7 +207,7 @@ export default function TradeMarketing() {
         const include = r.cadence === 1 || (r.cadence === 2 && wi % 2 === r.weekOffset % 2) || (r.cadence === 4 && wi % 4 === r.weekOffset % 4);
         if (!include) return;
         const date = addDays(wk.monday, r.weekday);
-        if (wk.days.includes(date)) agenda.push({ date, storeId: r.storeId, name: r.name, network: r.network, owner: r.owner, ownerName: r.ownerName, weekday: r.weekday });
+        if (wk.days.includes(date)) agenda.push({ date, storeId: r.storeId, name: r.name, network: r.network, zona: r.zona, owner: r.owner, ownerName: r.ownerName, weekday: r.weekday });
       });
     }
     agenda.sort((a, b) => a.date.localeCompare(b.date) || a.ownerName.localeCompare(b.ownerName));
@@ -227,10 +245,12 @@ export default function TradeMarketing() {
   const maxDay = Math.max(1, ...dayCount.values());
   const selWeek = plan.weeks[Math.min(planWeekIdx, plan.weeks.length - 1)] ?? plan.weeks[0];
   const weekAgenda = selWeek ? planAgenda.filter((a) => selWeek.days.includes(a.date)) : [];
-  const byPromDay = new Map<string, string[][]>();
+  type DayCell = { names: string[]; zonas: Set<string> };
+  const byPromDay = new Map<string, DayCell[]>();
   for (const a of weekAgenda) {
-    const pm = byPromDay.get(a.ownerName) ?? [[], [], [], [], [], []];
-    if (!pm[a.weekday].includes(a.name)) pm[a.weekday].push(a.name);
+    const pm = byPromDay.get(a.ownerName) ?? Array.from({ length: 6 }, () => ({ names: [] as string[], zonas: new Set<string>() }));
+    if (!pm[a.weekday].names.includes(a.name)) pm[a.weekday].names.push(a.name);
+    pm[a.weekday].zonas.add(a.zona);
     byPromDay.set(a.ownerName, pm);
   }
   const dayVisits = planDay ? planAgenda.filter((a) => a.date === planDay).sort((x, y) => x.ownerName.localeCompare(y.ownerName) || x.name.localeCompare(y.name)) : [];
@@ -335,20 +355,21 @@ export default function TradeMarketing() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {[...byPromDay.entries()].sort().map(([pm, days]) => (
                       <div className="tm-card" key={pm}>
-                        <h3>{pm} <span className="hint">{days.reduce((a, b) => a + b.length, 0)} visitas na semana</span></h3>
+                        <h3>{pm} <span className="hint">{days.reduce((a, b) => a + b.names.length, 0)} visitas na semana (teto {WEEK_CAP})</span></h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 8, marginTop: 10 }}>
                           {WD.map((d, wi) => {
-                            const list = days[wi];
+                            const cell = days[wi]; const zonas = [...cell.zonas];
                             return (
                               <div key={d} style={{ border: '1px solid var(--tm-line)', borderRadius: 10, background: 'var(--tm-panel2)', minHeight: 118, display: 'flex', flexDirection: 'column' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, padding: '7px 9px', borderBottom: '1px solid var(--tm-line)' }}>
                                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tm-ink2)', whiteSpace: 'nowrap' }}>{WD_SHORT[wi]}</span>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: list.length ? 'var(--tm-accent-ink)' : 'var(--tm-ink3)', background: list.length ? 'var(--tm-soft)' : 'transparent', borderRadius: 20, padding: list.length ? '1px 7px' : 0 }}>{list.length}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: cell.names.length ? 'var(--tm-accent-ink)' : 'var(--tm-ink3)', background: cell.names.length ? 'var(--tm-soft)' : 'transparent', borderRadius: 20, padding: cell.names.length ? '1px 7px' : 0 }}>{cell.names.length}</span>
                                 </div>
+                                {zonas.length > 0 && <div style={{ padding: '4px 9px 0', fontSize: 9.5, fontWeight: 700, color: 'var(--tm-purple)', textTransform: 'uppercase', letterSpacing: '.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📍 {zonas.join(' · ')}</div>}
                                 <div style={{ padding: '6px 9px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                  {list.slice(0, 12).map((n) => <span key={n} title={n} style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>)}
-                                  {list.length > 12 && <span style={{ fontSize: 10.5, color: 'var(--tm-ink3)' }}>+{list.length - 12}</span>}
-                                  {list.length === 0 && <span style={{ fontSize: 11, color: 'var(--tm-ink3)' }}>—</span>}
+                                  {cell.names.slice(0, 12).map((n) => <span key={n} title={n} style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>)}
+                                  {cell.names.length > 12 && <span style={{ fontSize: 10.5, color: 'var(--tm-ink3)' }}>+{cell.names.length - 12}</span>}
+                                  {cell.names.length === 0 && <span style={{ fontSize: 11, color: 'var(--tm-ink3)' }}>—</span>}
                                 </div>
                               </div>
                             );
