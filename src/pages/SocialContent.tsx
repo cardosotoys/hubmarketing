@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { logActivity } from '../lib/activityLog';
@@ -12,7 +12,6 @@ type Stage = 'planejamento' | 'producao' | 'aprov_arte' | 'mlabs' | 'publicado' 
 const STAGES: { key: Stage; label: string; icon: string; gate?: Gate }[] = [
   { key: 'planejamento', label: 'Planejamento', icon: '📝', gate: 'conteudo' },
   { key: 'producao', label: 'Produção', icon: '🎬' },
-  { key: 'aprov_arte', label: 'Aprov. arte', icon: '🖼️', gate: 'arte' },
   { key: 'mlabs', label: 'mLabs', icon: '📤', gate: 'mlabs' },
   { key: 'publicado', label: 'Publicado', icon: '✅' },
   { key: 'acompanhamento', label: 'Acompanhamento', icon: '🏬' },
@@ -20,7 +19,7 @@ const STAGES: { key: Stage; label: string; icon: string; gate?: Gate }[] = [
 const CHANNELS = ['Instagram', 'Facebook', 'TikTok', 'YouTube', 'LinkedIn', 'Kwai', 'Pinterest'];
 const FORMATS = ['Feed', 'Story', 'Reels', 'Carrossel', 'Vídeo', 'Live', 'Pin'];
 const nextStage = (s: Stage): Stage => STAGES[Math.min(STAGES.length - 1, STAGES.findIndex((x) => x.key === s) + 1)].key;
-const prevWork = (gate: Gate): Stage => (gate === 'arte' ? 'producao' : gate === 'mlabs' ? 'mlabs' : 'planejamento');
+const prevWork = (gate: Gate): Stage => (gate === 'mlabs' ? 'producao' : 'planejamento');
 const fmtDate = (s: string | null) => (s ? s.split('-').reverse().join('/') : '—');
 
 type Content = { id: string; title: string; brand_id: string | null; channel: string; format: string; scheduled_date: string | null; copy: string; stage: Stage; mlabs_url: string; post_url: string; drive_url: string; created_by: string | null; position: number; tipo: string; pilar: string; campaign: string; block: string; product: string; objective: string; cta: string; media_use: string; line_axis: string; product_id: string | null };
@@ -136,11 +135,25 @@ export default function SocialContent() {
         <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={newPiece}>+ Nova peça</button>
       </div>
 
-      {view === 'calendario' && (
+      {/* modo aprovação visual — quando filtra "aguardando minha aprovação" */}
+      {onlyMine && (
+        <div style={{ marginTop: 14 }}>
+          {visible.length === 0 && <div className="panel"><p style={{ color: 'var(--text-faint)' }}>Nada aguardando sua aprovação 🎉</p></div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+            {visible.map((i) => {
+              const myAppr = approvals.find((a) => a.content_id === i.id && a.approver_id === me && a.decision === 'pendente');
+              if (!myAppr) return null;
+              return <ApprovalCard key={i.id} item={i} appr={myAppr} brand={i.brand_id ? brandById.get(i.brand_id) ?? null : null} thumb={mediaOf(i.id).find((m) => isImg(m.url))?.url ?? null} onOpen={() => setOpenId(i.id)} onDecide={decide} />;
+            })}
+          </div>
+        </div>
+      )}
+
+      {!onlyMine && view === 'calendario' && (
         <CalendarView month={calMonth} setMonth={setCalMonth} items={visible} brandById={brandById} calDay={calDay} setCalDay={setCalDay} onOpen={setOpenId} />
       )}
 
-      {view === 'kanban' && (
+      {!onlyMine && view === 'kanban' && (
       <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, marginTop: 14 }}>
         {STAGES.map((st) => {
           const col = visible.filter((i) => i.stage === st.key);
@@ -178,7 +191,7 @@ export default function SocialContent() {
       </div>
       )}
 
-      {view === 'lista' && (
+      {!onlyMine && view === 'lista' && (
         <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 12, marginTop: 14 }}>
           <table className="simple">
             <thead><tr><th>Data</th><th>Tema</th><th>Marca</th><th>Canal · Formato</th><th>Pilar</th><th>Etapa</th></tr></thead>
@@ -259,6 +272,7 @@ function Detail({ item, brands, profiles, products, me, profById, media, approva
         ))}
       </div>
 
+      <Section title="📝 Planejamento & briefing" open={item.stage === 'planejamento'}>
       <div className="responsive-row">
         <div className="form-field" style={{ flex: 2 }}><label>Tema / título</label><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
         <div className="form-field" style={{ flex: 1 }}><label>Marca</label><select value={f.brand_id} onChange={(e) => setF({ ...f, brand_id: e.target.value })}><option value="">—</option>{brands.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select></div>
@@ -289,16 +303,19 @@ function Detail({ item, brands, profiles, products, me, profById, media, approva
         <div className="form-field"><label>Uso de mídia</label><input value={f.media_use} onChange={(e) => setF({ ...f, media_use: e.target.value })} placeholder="orgânico / mídia paga…" /></div>
       </div>
       <div className="form-field"><label>Copy / legenda</label><textarea rows={3} value={f.copy} onChange={(e) => setF({ ...f, copy: e.target.value })} /></div>
-      <div className="responsive-row">
-        <div className="form-field" style={{ flex: 1 }}><label>Link mLabs</label><input value={f.mlabs_url} onChange={(e) => setF({ ...f, mlabs_url: e.target.value })} placeholder="cole o link" /></div>
-        <div className="form-field" style={{ flex: 1 }}><label>Link do post</label><input value={f.post_url} onChange={(e) => setF({ ...f, post_url: e.target.value })} /></div>
-        <div className="form-field" style={{ flex: 1 }}><label>Link Drive (lojistas)</label><input value={f.drive_url} onChange={(e) => setF({ ...f, drive_url: e.target.value })} /></div>
-      </div>
-      <button className="btn sm" disabled={busy} onClick={save}>{busy ? 'Salvando…' : 'Salvar dados'}</button>
+      </Section>
+
+      <Section title="🔗 Links & publicação" open={['mlabs', 'publicado', 'acompanhamento'].includes(item.stage)}>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}><label>Link mLabs</label><input value={f.mlabs_url} onChange={(e) => setF({ ...f, mlabs_url: e.target.value })} placeholder="cole o link" /></div>
+          <div className="form-field" style={{ flex: 1 }}><label>Link do post</label><input value={f.post_url} onChange={(e) => setF({ ...f, post_url: e.target.value })} /></div>
+          <div className="form-field" style={{ flex: 1 }}><label>Link Drive (lojistas)</label><input value={f.drive_url} onChange={(e) => setF({ ...f, drive_url: e.target.value })} /></div>
+        </div>
+      </Section>
+      <button className="btn sm" style={{ marginTop: 12 }} disabled={busy} onClick={save}>{busy ? 'Salvando…' : '💾 Salvar dados'}</button>
 
       {/* mídia */}
-      <div className="panel" style={{ marginTop: 14 }}>
-        <h4>Arte / mídia</h4>
+      <Section title="🎨 Arte / mídia" open={['producao', 'mlabs'].includes(item.stage)}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
           {media.map((m) => (
             <div key={m.id} style={{ position: 'relative' }}>
@@ -309,7 +326,7 @@ function Detail({ item, brands, profiles, products, me, profById, media, approva
           ))}
         </div>
         <label className="btn ghost sm" style={{ cursor: 'pointer' }}>⬆ Enviar arte<input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.target.value = ''; }} /></label>
-      </div>
+      </Section>
 
       {/* publicado → acompanhamento */}
       {item.stage === 'publicado' && (
@@ -381,10 +398,58 @@ function Detail({ item, brands, profiles, products, me, profById, media, approva
   );
 }
 
+function Section({ title, open: defaultOpen, children }: { title: string; open: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="panel" style={{ marginTop: 12 }}>
+      <div onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <h4 style={{ margin: 0 }}>{title}{!open ? <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-faint)', marginLeft: 8 }}>(registrado — clique para ver)</span> : null}</h4>
+        <span style={{ color: 'var(--text-faint)' }}>{open ? '▾' : '▸'}</span>
+      </div>
+      {open && <div style={{ marginTop: 10 }}>{children}</div>}
+    </div>
+  );
+}
+
 function BrandTab({ active, label, color, count, onClick }: { active: boolean; label: string; color: string; count: number; onClick: () => void }) {
   return (
     <div onClick={onClick} style={{ cursor: 'pointer', padding: '8px 15px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: `2px solid ${active ? color : 'var(--border)'}`, background: active ? `${color}18` : 'var(--surface)', color: active ? color : 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />{label}<span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{count}</span>
+    </div>
+  );
+}
+
+function ApprovalCard({ item, appr, brand, thumb, onOpen, onDecide }: { item: Content; appr: Approval; brand: Brand | null; thumb: string | null; onOpen: () => void; onDecide: (ap: Approval, d: 'aprovado' | 'alteracao', note: string) => void }) {
+  const [note, setNote] = useState('');
+  const [asking, setAsking] = useState(false);
+  const gateLabel = appr.gate === 'conteudo' ? '👁️ Aceite do planejado' : '📤 Aprovação (mLabs)';
+  return (
+    <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+      <div onClick={onOpen} style={{ cursor: 'pointer', height: 180, background: thumb ? `center/cover no-repeat url(${thumb})` : 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>{!thumb && '🎨'}</div>
+      <div style={{ padding: '12px 14px' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+          {brand && <span className="pill" style={{ background: `${brand.color}22`, color: brand.color, fontSize: 10 }}>{brand.label}</span>}
+          <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>{gateLabel}</span>
+        </div>
+        <div onClick={onOpen} style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15, lineHeight: 1.25 }}>{item.title}</div>
+        {item.objective && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>🎯 {item.objective}</div>}
+        {item.copy && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6, whiteSpace: 'pre-wrap', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.copy}</div>}
+        {appr.gate === 'mlabs' && item.mlabs_url && <a className="btn ghost sm" href={item.mlabs_url} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: 'inline-block' }}>📤 Abrir no mLabs →</a>}
+        {asking ? (
+          <div style={{ marginTop: 10 }}>
+            <input placeholder="O que ajustar?" value={note} onChange={(e) => setNote(e.target.value)} />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button className="btn sm" onClick={() => onDecide(appr, 'alteracao', note || 'Ajustar')}>Enviar</button>
+              <button className="btn ghost sm" onClick={() => setAsking(false)}>Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn" style={{ flex: 1, background: 'var(--green)', borderColor: 'var(--green)' }} onClick={() => onDecide(appr, 'aprovado', '')}>✅ Aprovar</button>
+            <button className="btn ghost" onClick={() => (appr.gate === 'mlabs' ? onDecide(appr, 'alteracao', '') : setAsking(true))}>✏️ Alteração</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
