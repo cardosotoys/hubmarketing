@@ -18,6 +18,7 @@ import Perfil from './pages/Perfil';
 import Configuracoes from './pages/Configuracoes';
 import Produtos from './pages/Produtos';
 import MonitorPrecos from './pages/MonitorPrecos';
+import TradeMarketing from './pages/TradeMarketing';
 import RedesSociais from './pages/RedesSociais';
 import Biblioteca from './pages/Biblioteca';
 import Campaigns from './pages/Campaigns';
@@ -115,6 +116,7 @@ export default function App() {
             />
             <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
             <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
+            <Route path="trade" element={<ModuleGate moduleKey="trade-marketing"><TradeMarketing /></ModuleGate>} />
             <Route
               path="monitor-precos"
               element={

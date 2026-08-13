@@ -64,6 +64,7 @@ export const MODULE_KEYS = [
   'notificacoes',
   'configuracoes',
   'perfil',
+  'trade-marketing',
   // módulos novos (estrutura vazia — implementação futura)
   'aprovacoes',
   'pesquisa-mercado',
@@ -99,6 +100,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   notificacoes: 'Notificações',
   configuracoes: 'Configurações',
   perfil: 'Perfil',
+  'trade-marketing': 'Trade Marketing',
   aprovacoes: 'Aprovações',
   'pesquisa-mercado': 'Pesquisa de Mercado',
   concorrentes: 'Concorrentes',

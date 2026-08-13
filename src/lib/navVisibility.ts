@@ -70,6 +70,7 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Inteligência',
         icon: 'inteligencia',
         items: [
+          { to: '/trade', label: 'Trade Marketing', icon: 'monitor', moduleKey: 'trade-marketing' },
           { to: '/monitor-precos', label: 'Monitor de Preços', icon: 'monitor', hideFor: ['design', 'assistente'], moduleKey: 'monitor-precos' },
           { to: '/pesquisa-mercado', label: 'Pesquisa de Mercado', icon: 'pesquisa', moduleKey: 'pesquisa-mercado' },
           { to: '/concorrentes', label: 'Concorrentes', icon: 'concorrentes', moduleKey: 'concorrentes' },
