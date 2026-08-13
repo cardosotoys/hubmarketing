@@ -22,7 +22,8 @@ const nextStage = (s: Stage): Stage => STAGES[Math.min(STAGES.length - 1, STAGES
 const prevWork = (gate: 'conteudo' | 'arte'): Stage => (gate === 'conteudo' ? 'planejamento' : 'producao');
 const fmtDate = (s: string | null) => (s ? s.split('-').reverse().join('/') : '—');
 
-type Content = { id: string; title: string; brand_id: string | null; channel: string; format: string; scheduled_date: string | null; copy: string; stage: Stage; mlabs_url: string; post_url: string; drive_url: string; created_by: string | null; position: number };
+type Content = { id: string; title: string; brand_id: string | null; channel: string; format: string; scheduled_date: string | null; copy: string; stage: Stage; mlabs_url: string; post_url: string; drive_url: string; created_by: string | null; position: number; tipo: string; pilar: string; campaign: string; block: string; product: string; objective: string; cta: string; media_use: string; line_axis: string };
+const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 type Media = { id: string; content_id: string; url: string; path: string; type: string; name: string };
 type Approval = { id: string; content_id: string; gate: 'conteudo' | 'arte'; approver_id: string; decision: 'pendente' | 'aprovado' | 'alteracao'; note: string };
 type Comment = { id: string; content_id: string; author_id: string; body: string; created_at: string };
@@ -42,6 +43,9 @@ export default function SocialContent() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [view, setView] = useState<'kanban' | 'calendario'>('calendario');
+  const [calMonth, setCalMonth] = useState('2026-08');
+  const [calDay, setCalDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [c, m, a, cm, b, p] = await Promise.all([
@@ -110,11 +114,18 @@ export default function SocialContent() {
       <h1 className="page-title">Social Media — Conteúdo</h1>
       <div className="page-sub">Do planejamento à divulgação pros lojistas. Arraste a peça entre as etapas; aprovações acontecem nos gates 👁️ e 🖼️.</div>
 
+      {/* abas por marca */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0 12px' }}>
+        <BrandTab active={brandFilter === 'all'} label="Todas" color="var(--text-dim)" count={items.length} onClick={() => setBrandFilter('all')} />
+        {brands.map((b) => (
+          <BrandTab key={b.id} active={brandFilter === b.id} label={b.label} color={b.color} count={items.filter((i) => i.brand_id === b.id).length} onClick={() => setBrandFilter(b.id)} />
+        ))}
+      </div>
+
       <div className="filters-row" style={{ alignItems: 'center' }}>
-        <select className="chip-select" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
-          <option value="all">Todas as marcas</option>
-          {brands.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-        </select>
+        <div className="group-toggle">
+          {(['calendario', 'kanban'] as const).map((v) => <div key={v} className={`filter-chip${view === v ? ' active' : ''}`} onClick={() => setView(v)}>{v === 'calendario' ? '📅 Calendário' : '🗂 Kanban'}</div>)}
+        </div>
         <div className={`filter-chip${onlyMine ? ' active' : ''}`} onClick={() => setOnlyMine((v) => !v)}>
           ⏳ Aguardando minha aprovação{myPending > 0 ? ` (${myPending})` : ''}
         </div>
@@ -122,6 +133,11 @@ export default function SocialContent() {
         <button className="btn sm" style={{ marginLeft: 'auto' }} onClick={newPiece}>+ Nova peça</button>
       </div>
 
+      {view === 'calendario' && (
+        <CalendarView month={calMonth} setMonth={setCalMonth} items={visible} brandById={brandById} calDay={calDay} setCalDay={setCalDay} onOpen={setOpenId} />
+      )}
+
+      {view === 'kanban' && (
       <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, marginTop: 14 }}>
         {STAGES.map((st) => {
           const col = visible.filter((i) => i.stage === st.key);
@@ -142,6 +158,7 @@ export default function SocialContent() {
                     {thumb ? <img src={thumb.url} alt="" style={{ width: '100%', height: 64, objectFit: 'cover', borderRadius: 7, marginBottom: 6, display: 'block' }} />
                       : <div style={{ height: 40, borderRadius: 7, marginBottom: 6, background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{st.icon}</div>}
                     <div style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.25 }}>{i.title || 'Sem título'}</div>
+                    {(i.objective || i.pilar) && <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.objective ? `🎯 ${i.objective}` : i.pilar}</div>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
                       {b && <span className="pill" style={{ fontSize: 9.5, background: `${b.color}22`, color: b.color }}>{b.label}</span>}
                       <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>{[i.channel, i.format].filter(Boolean).join(' · ')}</span>
@@ -156,6 +173,7 @@ export default function SocialContent() {
           );
         })}
       </div>
+      )}
 
       {open && (
         <Detail key={open.id} item={open} brands={brands} profiles={profiles} me={me} profById={profById}
@@ -172,7 +190,7 @@ function Detail({ item, brands, profiles, me, profById, media, approvals, commen
   media: Media[]; approvals: Approval[]; comments: Comment[]; onClose: () => void; onChange: () => void;
   onDecide: (ap: Approval, d: 'aprovado' | 'alteracao', note: string) => void; onStage: (id: string, s: Stage) => void;
 }) {
-  const [f, setF] = useState({ title: item.title, brand_id: item.brand_id ?? '', channel: item.channel, format: item.format, scheduled_date: item.scheduled_date ?? '', copy: item.copy, mlabs_url: item.mlabs_url, post_url: item.post_url, drive_url: item.drive_url });
+  const [f, setF] = useState({ title: item.title, brand_id: item.brand_id ?? '', channel: item.channel, format: item.format, scheduled_date: item.scheduled_date ?? '', copy: item.copy, mlabs_url: item.mlabs_url, post_url: item.post_url, drive_url: item.drive_url, tipo: item.tipo ?? '', pilar: item.pilar ?? '', campaign: item.campaign ?? '', product: item.product ?? '', objective: item.objective ?? '', cta: item.cta ?? '', media_use: item.media_use ?? '', line_axis: item.line_axis ?? '' });
   const [busy, setBusy] = useState(false);
   const [pickApprovers, setPickApprovers] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -221,6 +239,21 @@ function Detail({ item, brands, profiles, me, profById, media, approvals, commen
         <div className="form-field" style={{ flex: 1 }}><label>Canal</label><select value={f.channel} onChange={(e) => setF({ ...f, channel: e.target.value })}><option value="">—</option>{CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
         <div className="form-field" style={{ flex: 1 }}><label>Formato</label><select value={f.format} onChange={(e) => setF({ ...f, format: e.target.value })}><option value="">—</option>{FORMATS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
         <div className="form-field" style={{ flex: 1 }}><label>Data de publicação</label><input type="date" value={f.scheduled_date} onChange={(e) => setF({ ...f, scheduled_date: e.target.value })} /></div>
+      </div>
+      {/* Briefing editorial — o "porquê" da peça, gostoso de ler */}
+      <div className="panel" style={{ background: 'var(--surface-2)' }}>
+        <h4>📋 Briefing</h4>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}><label>Pilar</label><input value={f.pilar} onChange={(e) => setF({ ...f, pilar: e.target.value })} placeholder="ex.: Prova e confiança" /></div>
+          <div className="form-field" style={{ flex: 1 }}><label>Tipo</label><input value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })} placeholder="ex.: Reels, Carrossel" /></div>
+          <div className="form-field" style={{ flex: 1 }}><label>Campanha / Fase</label><input value={f.campaign} onChange={(e) => setF({ ...f, campaign: e.target.value })} /></div>
+        </div>
+        <div className="form-field"><label>Produto / SKU / Licenciado</label><input value={f.product} onChange={(e) => setF({ ...f, product: e.target.value })} /></div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}><label>Objetivo</label><input value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} placeholder="o que essa peça precisa fazer" /></div>
+          <div className="form-field" style={{ flex: 1 }}><label>CTA</label><input value={f.cta} onChange={(e) => setF({ ...f, cta: e.target.value })} placeholder="chamada para ação" /></div>
+        </div>
+        <div className="form-field"><label>Uso de mídia</label><input value={f.media_use} onChange={(e) => setF({ ...f, media_use: e.target.value })} placeholder="orgânico / mídia paga…" /></div>
       </div>
       <div className="form-field"><label>Copy / legenda</label><textarea rows={3} value={f.copy} onChange={(e) => setF({ ...f, copy: e.target.value })} /></div>
       <div className="responsive-row">
@@ -297,6 +330,52 @@ function Detail({ item, brands, profiles, me, profById, media, approvals, commen
         </div>
       </div>
     </Modal>
+  );
+}
+
+function BrandTab({ active, label, color, count, onClick }: { active: boolean; label: string; color: string; count: number; onClick: () => void }) {
+  return (
+    <div onClick={onClick} style={{ cursor: 'pointer', padding: '8px 15px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: `2px solid ${active ? color : 'var(--border)'}`, background: active ? `${color}18` : 'var(--surface)', color: active ? color : 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />{label}<span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{count}</span>
+    </div>
+  );
+}
+
+const MONTH_OPTS = ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03'];
+function CalendarView({ month, setMonth, items, brandById, onOpen }: { month: string; setMonth: (m: string) => void; items: Content[]; brandById: Map<string, Brand>; calDay: string | null; setCalDay: (d: string | null) => void; onOpen: (id: string) => void }) {
+  const [Y, M] = month.split('-').map(Number);
+  const first = new Date(Y, M - 1, 1, 12); const last = new Date(Y, M, 0, 12);
+  const start = new Date(first); start.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+  const cells: string[] = [];
+  for (let cur = new Date(start); cur <= last || cells.length % 7 !== 0; cur.setDate(cur.getDate() + 1)) cells.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
+  const byDate = new Map<string, Content[]>();
+  for (const i of items) if (i.scheduled_date) (byDate.get(i.scheduled_date) ?? byDate.set(i.scheduled_date, []).get(i.scheduled_date)!).push(i);
+  const mi = MONTH_OPTS.indexOf(month);
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <button className="btn ghost sm" disabled={mi <= 0} onClick={() => setMonth(MONTH_OPTS[mi - 1])}>‹</button>
+        <span style={{ fontSize: 15, fontWeight: 700 }}>{MONTHS_PT[M - 1]} {Y}</span>
+        <button className="btn ghost sm" disabled={mi >= MONTH_OPTS.length - 1} onClick={() => setMonth(MONTH_OPTS[mi + 1])}>›</button>
+        <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 8 }}>{items.filter((i) => (i.scheduled_date ?? '').startsWith(month)).length} peças no mês</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textAlign: 'center' }}>{d}</div>)}
+        {cells.map((date) => {
+          const inMonth = date.startsWith(month); const list = byDate.get(date) ?? [];
+          return (
+            <div key={date} style={{ minHeight: 96, borderRadius: 9, border: '1px solid var(--border)', padding: 5, opacity: inMonth ? 1 : 0.4, background: 'var(--surface)', overflow: 'hidden' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600, marginBottom: 3 }}>{date.slice(8)}</div>
+              {list.slice(0, 4).map((i) => {
+                const b = i.brand_id ? brandById.get(i.brand_id) : null; const col = b?.color ?? 'var(--text-dim)';
+                return <div key={i.id} onClick={() => onOpen(i.id)} title={i.title} style={{ cursor: 'pointer', fontSize: 10.5, lineHeight: 1.25, padding: '2px 5px', marginBottom: 2, borderRadius: 5, background: `${col}18`, color: col, borderLeft: `2px solid ${col}`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{i.title || '—'}</div>;
+              })}
+              {list.length > 4 && <div style={{ fontSize: 9.5, color: 'var(--text-faint)' }}>+{list.length - 4}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
