@@ -1,0 +1,146 @@
+
+Americanas (17):
+  - Americanas Aricanduva
+  - Americanas Interlagos
+  - Americanas Internacional
+  - Americanas Itaquera
+  - Americanas Jardim Sul
+  - Americanas Lapa
+  - Americanas Market Place
+  - Americanas Maua
+  - Americanas Mogi
+  - Americanas Penha
+  - Americanas Sbplaza
+  - Americanas Shopping Taboao
+  - Americanas Spmarket
+  - Americanas Taboao
+  - Americanas Taboao Da Serra
+  - Americanas Tatuape
+  - Americanas Uniao
+
+Armarinhos Fernando (13):
+  - Armarinhos Fernando
+  - Armarinhos Fernando Bras
+  - Armarinhos Fernando Guarulhos
+  - Armarinhos Fernando Ipiranga
+  - Armarinhos Fernando Mooca
+  - Armarinhos Fernando Osasco
+  - Armarinhos Fernando S Amaro
+  - Armarinhos Fernando S Miguel
+  - Armarinhos Fernando Sto Amaro
+  - Armarinhos Fernando Sto Andre
+  - Armarinhos Fernando Suzano
+  - Armarinhos Fernando Tatuape
+  - Armarinhos Fernando Yiete
+
+Atacadão (32):
+  - Atacadão Amador Bueno
+  - Atacadão Aricanduva
+  - Atacadão Capuava
+  - Atacadão Centro Gua
+  - Atacadão Cupece
+  - Atacadão Diadema
+  - Atacadão Dutra
+  - Atacadão Gua Centro
+  - Atacadão Gua I
+  - Atacadão Gua Ii
+  - Atacadão Guarulhos 2
+  - Atacadão Indaiatuba
+  - Atacadão Ipiranga
+  - Atacadão Itaim
+  - Atacadão Itaquera
+  - Atacadão Jacui
+  - Atacadão Osasco
+  - Atacadão Otavio Braga
+  - Atacadão Parelheiros
+  - Atacadão Penha
+  - Atacadão Piraporinha
+  - Atacadão Santo Amaro
+  - Atacadão Sb Centro
+  - Atacadão Sto Andre
+  - Atacadão Suzano
+  - Atacadão Taboao I
+  - Atacadão Taboao Ii
+  - Atacadão Taboao Lj I
+  - Atacadão Taboao Loja 1
+  - Atacadão Taboao Loja 2
+  - Atacadão Vila Guilherme
+  - Atacadão Vila Maria
+
+B-Mart Brinquedos (3):
+  - B-Mart Brinquedos
+  - B-Mart Brinquedos Itaquera
+  - B-Mart Brinquedos Taboao
+
+Barracão (6):
+  - Barracão
+  - Barracão Centro
+  - Barracão Itaim
+  - Barracão Pimentas
+  - Barracão S Miguel
+  - Barracão Sto Amaro
+
+Carrefour (1):
+  - Carrefour Analia
+
+Magazine (1):
+  - Magazine
+
+MiniPreço (1):
+  - MiniPreço
+
+PB Kids (10):
+  - PB Kids Analia
+  - PB Kids Eldorado
+  - PB Kids G Vianna
+  - PB Kids Gra Vianna
+  - PB Kids Granja V
+  - PB Kids Granja Viana
+  - PB Kids Jardim Sul
+  - PB Kids Maia
+  - PB Kids Morumbi
+  - PB Kids Tambore
+
+Pirueta (8):
+  - Pirueta
+  - Pirueta Atibaia
+  - Pirueta C Plaza
+  - Pirueta Centralplaza
+  - Pirueta Grimalde
+  - Pirueta Ragueb
+  - Pirueta Taubate
+  - Pirueta V Prudente
+
+Renascer (2):
+  - Renascer
+  - Renascer L1
+
+Ri Happy (28):
+  - Ri Happy Aricanduva
+  - Ri Happy Augusta
+  - Ri Happy Cid De Sao Paulo
+  - Ri Happy Cidade De S Paulo
+  - Ri Happy Eldorado
+  - Ri Happy Interlagos
+  - Ri Happy Internacional
+  - Ri Happy Itaim
+  - Ri Happy Itaquera
+  - Ri Happy Maua
+  - Ri Happy Mogi
+  - Ri Happy Morumbi
+  - Ri Happy Morumbi Tow
+  - Ri Happy Morumbi Town
+  - Ri Happy Otto Baumgard
+  - Ri Happy Pca Da Moca
+  - Ri Happy Penha
+  - Ri Happy Raposo
+  - Ri Happy Sb Plaza
+  - Ri Happy Shop Cid Sao Paulo
+  - Ri Happy Sp Market
+  - Ri Happy Tatuape
+  - Ri Happy Tiete
+  - Ri Happy Tucuruvi
+  - Ri Happy Uniao
+  - Ri Happy V Mariana
+  - Ri Happy Vila Mariana
+  - Ri Happy Villa Lobos
