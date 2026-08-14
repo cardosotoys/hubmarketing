@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import { normalizeUrl } from '../lib/url';
 import { materializeSubsteps, recomputeSubstepDueDates } from '../lib/substeps';
+import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import {
   APPROVAL_STATE_LABELS,
   PRIORITIES,
@@ -91,6 +92,9 @@ export default function TaskEditModal({
   const [newChecklistGate, setNewChecklistGate] = useState(false);
 
   const [comments, setComments] = useState<(TaskComment & { author: { name: string } | null })[]>([]);
+  const [reactions, setReactions] = useState<ReactionMap>(new Map());
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
   const [commentBody, setCommentBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
   const [attachedFileIds, setAttachedFileIds] = useState<string[]>([]); // arquivos referenciados no comentário
@@ -133,7 +137,28 @@ export default function TaskEditModal({
       .select('*, author:profiles(name)')
       .eq('task_id', task.id)
       .order('created_at', { ascending: false }); // mais recentes primeiro
-    setComments((data as (TaskComment & { author: { name: string } | null })[]) ?? []);
+    const list = (data as (TaskComment & { author: { name: string } | null })[]) ?? [];
+    setComments(list);
+    setReactions(await fetchReactions('task', list.map((c) => c.id), actorId));
+  }
+
+  async function likeComment(cid: string) {
+    const cur = reactions.get(cid) ?? { count: 0, mine: false };
+    setReactions((prev) => {
+      const m = new Map(prev);
+      m.set(cid, { count: cur.count + (cur.mine ? -1 : 1), mine: !cur.mine });
+      return m;
+    });
+    await toggleReaction('task', cid, actorId, cur.mine);
+  }
+
+  async function saveCommentEdit(cid: string) {
+    const body = editingText.trim();
+    if (!body) return;
+    await supabase.from('task_comments').update({ body, edited_at: new Date().toISOString() }).eq('id', cid);
+    setEditingCommentId(null);
+    setEditingText('');
+    await loadComments();
   }
 
   async function loadChecklist() {
@@ -529,7 +554,7 @@ export default function TaskEditModal({
         <div className="comment">
           <div className="comment-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="name">{c.author?.name ?? 'Alguém'}</span>
-            <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}</span>
+            <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}{c.edited_at ? ' · editado' : ''}</span>
             <button
               type="button"
               className="btn ghost sm"
@@ -542,8 +567,39 @@ export default function TaskEditModal({
               Responder
             </button>
           </div>
-          <div className="body" style={{ whiteSpace: 'pre-wrap' }}>
-            <RichText text={c.body} />
+          {editingCommentId === c.id ? (
+            <div style={{ margin: '4px 0' }}>
+              <textarea rows={3} value={editingText} onChange={(e) => setEditingText(e.target.value)} style={{ width: '100%' }} autoFocus />
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button type="button" className="btn sm" onClick={() => saveCommentEdit(c.id)} disabled={!editingText.trim()}>Salvar</button>
+                <button type="button" className="btn ghost sm" onClick={() => { setEditingCommentId(null); setEditingText(''); }}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <div className="body" style={{ whiteSpace: 'pre-wrap' }}>
+              <RichText text={c.body} />
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            {(() => {
+              const r = reactions.get(c.id) ?? { count: 0, mine: false };
+              return (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  style={r.mine ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}
+                  onClick={() => likeComment(c.id)}
+                  title="Curtir / li"
+                >
+                  👍{r.count > 0 ? ` ${r.count}` : ''}
+                </button>
+              );
+            })()}
+            {c.author_id === actorId && editingCommentId !== c.id && (
+              <button type="button" className="btn ghost sm" onClick={() => { setEditingCommentId(c.id); setEditingText(c.body); }}>
+                Editar
+              </button>
+            )}
           </div>
         </div>
         {replies.map((r) => renderComment(r, depth + 1))}

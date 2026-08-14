@@ -267,6 +267,7 @@ export interface TaskComment {
   mentioned_ids: string[];
   parent_id: string | null;
   created_at: string;
+  edited_at?: string | null;
 }
 
 export interface PushSubscriptionRow {
@@ -854,6 +855,7 @@ export interface SocialPlanComment {
   mentioned_ids: string[];
   parent_id: string | null;
   created_at: string;
+  edited_at: string | null;
 }
 
 export interface SocialPlanDeadline {

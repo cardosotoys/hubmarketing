@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
+import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialPlanItem, SocialPlanComment, SocialPlanDeadline } from '../types/database';
 
 /* ------------------------------------------------------------------ *
@@ -499,6 +500,9 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
   onChanged: () => void;
 }) {
   const [comments, setComments] = useState<(SocialPlanComment & { author: { name: string } | null })[]>([]);
+  const [reactions, setReactions] = useState<ReactionMap>(new Map());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
   const [text, setText] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
   const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(null);
@@ -526,8 +530,25 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
       .select('*, author:profiles(name)')
       .eq('item_id', item.id)
       .order('created_at');
-    setComments((data as (SocialPlanComment & { author: { name: string } | null })[]) ?? []);
-  }, [item.id]);
+    const list = (data as (SocialPlanComment & { author: { name: string } | null })[]) ?? [];
+    setComments(list);
+    setReactions(await fetchReactions('social_plan', list.map((c) => c.id), me?.id));
+  }, [item.id, me?.id]);
+
+  const like = async (cid: string) => {
+    if (!me) return;
+    const cur = reactions.get(cid) ?? { count: 0, mine: false };
+    // otimista
+    setReactions((prev) => { const m = new Map(prev); m.set(cid, { count: cur.count + (cur.mine ? -1 : 1), mine: !cur.mine }); return m; });
+    await toggleReaction('social_plan', cid, me.id, cur.mine);
+  };
+
+  const saveCommentEdit = async (cid: string) => {
+    const body = editText.trim();
+    if (!body) return;
+    await supabase.from('social_plan_comments').update({ body, edited_at: new Date().toISOString() }).eq('id', cid);
+    setEditingId(null); setEditText(''); await loadComments();
+  };
 
   useEffect(() => { loadComments(); }, [loadComments]);
   useEffect(() => { setForm(pick(item)); }, [item]);
@@ -630,6 +651,39 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
   const threads = comments.filter((c) => !c.parent_id);
   const repliesOf = (pid: string) => comments.filter((c) => c.parent_id === pid);
 
+  const renderCmt = (c: SocialPlanComment & { author: { name: string } | null }, isReply: boolean) => {
+    const r = reactions.get(c.id) ?? { count: 0, mine: false };
+    const mine = c.author_id === me?.id;
+    const isEd = editingId === c.id;
+    return (
+      <div key={c.id} className={`sp-cmt ${isReply ? 'reply' : c.kind}`}>
+        <div className="sp-cmt-head">
+          <b>{c.author?.name ?? 'Alguém'}</b>
+          {!isReply && c.kind === 'adjust' && <span className="sp-cmt-tag aj">ajuste</span>}
+          {!isReply && c.kind === 'approve' && <span className="sp-cmt-tag ok">aprovou</span>}
+          <span className="sp-cmt-when">{timeAgo(c.created_at)}{c.edited_at ? ' · editado' : ''}</span>
+        </div>
+        {isEd ? (
+          <div className="sp-cmt-edit">
+            <textarea value={editText} onChange={(e) => setEditText(e.target.value)} autoFocus />
+            <div className="sp-composer-actions">
+              <button className="sp-abtn" onClick={() => saveCommentEdit(c.id)} disabled={!editText.trim()}>Salvar</button>
+              <button className="sp-reply" onClick={() => { setEditingId(null); setEditText(''); }}>cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <div className="sp-cmt-body">{c.body}</div>
+        )}
+        <div className="sp-cmt-actions">
+          <button className={`sp-like ${r.mine ? 'on' : ''}`} onClick={() => like(c.id)} title="Curtir / li">👍{r.count > 0 ? ` ${r.count}` : ''}</button>
+          {!isReply && <button className="sp-reply" onClick={() => setReplyTo({ id: c.id, author: c.author?.name ?? 'Alguém' })}>responder</button>}
+          {mine && !isEd && <button className="sp-reply" onClick={() => { setEditingId(c.id); setEditText(c.body); }}>editar</button>}
+        </div>
+        {!isReply && repliesOf(c.id).map((rp) => renderCmt(rp, true))}
+      </div>
+    );
+  };
+
   return (
     <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sp-panel">
@@ -727,24 +781,7 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
         <div className="sp-comments" ref={commentsRef}>
           <h4>Comentários e correções</h4>
           {threads.length === 0 && <p className="sp-nocmt">Sem comentários ainda. Aprove, peça ajuste ou marque alguém abaixo.</p>}
-          {threads.map((c) => (
-            <div key={c.id} className={`sp-cmt ${c.kind}`}>
-              <div className="sp-cmt-head">
-                <b>{c.author?.name ?? 'Alguém'}</b>
-                {c.kind === 'adjust' && <span className="sp-cmt-tag aj">ajuste</span>}
-                {c.kind === 'approve' && <span className="sp-cmt-tag ok">aprovou</span>}
-                <span className="sp-cmt-when">{timeAgo(c.created_at)}</span>
-              </div>
-              <div className="sp-cmt-body">{c.body}</div>
-              <button className="sp-reply" onClick={() => setReplyTo({ id: c.id, author: c.author?.name ?? 'Alguém' })}>responder</button>
-              {repliesOf(c.id).map((r) => (
-                <div key={r.id} className="sp-cmt reply">
-                  <div className="sp-cmt-head"><b>{r.author?.name ?? 'Alguém'}</b><span className="sp-cmt-when">{timeAgo(r.created_at)}</span></div>
-                  <div className="sp-cmt-body">{r.body}</div>
-                </div>
-              ))}
-            </div>
-          ))}
+          {threads.map((c) => renderCmt(c, false))}
 
           <div className="sp-composer">
             {replyTo && (

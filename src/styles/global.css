@@ -2756,3 +2756,11 @@ table.simple tr:hover td {
 .sp-reviewrow.wait{background:var(--amber-bg);border:1px solid #EBD9AE;border-radius:10px;padding:8px 12px;color:var(--amber)}
 :root[data-theme="dark"] .sp-reviewrow.wait{color:#f0c980}
 .sp-reviewhint{font-size:11.5px;color:var(--muted)}
+
+/* curtir + editar comentário (Social) */
+.sp-cmt-actions{display:flex;align-items:center;gap:12px;margin-top:5px}
+.sp-like{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:11.5px;
+  padding:2px 9px;border-radius:999px;cursor:pointer;transition:.14s;line-height:1.6}
+.sp-like:hover{border-color:var(--accent);color:var(--accent)}
+.sp-like.on{background:rgba(0,92,169,.12);border-color:var(--accent);color:var(--accent);font-weight:600}
+.sp-cmt-edit textarea{min-height:60px;margin:2px 0 6px}
