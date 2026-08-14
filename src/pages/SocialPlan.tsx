@@ -17,6 +17,16 @@ const NOME_MES: Record<string, string> = {
 };
 const MESES = ['Ago/26', 'Set/26', 'Out/26', 'Nov/26', 'Dez/26', 'Jan/27', 'Fev/27', 'Mar/27'];
 const DOW = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+type StageKey = SocialPlanItem['stage'];
+const STAGES: { key: StageKey; label: string; color: string }[] = [
+  { key: 'planejamento', label: 'Planejamento', color: '#8B8579' },
+  { key: 'producao', label: 'Em produção', color: '#2163C4' },
+  { key: 'aprovacao', label: 'Em aprovação', color: '#E0A02B' },
+  { key: 'agendado', label: 'Agendado', color: '#00B2C7' },
+  { key: 'publicado', label: 'Publicado', color: '#2E9E6B' },
+];
+const stageLabel = (k: string) => STAGES.find((s) => s.key === k)?.label ?? k;
 const slug = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -54,7 +64,7 @@ const timeAgo = (iso: string) => {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type View = 'cal' | 'feed' | 'lista' | 'prazos';
+type View = 'cal' | 'feed' | 'lista' | 'kanban' | 'prazos';
 type Filters = {
   marca: Set<string>; rede: Set<string>; tipo: Set<string>; origem: Set<string>;
   mes: Set<string>; status: Set<string>; q: string;
@@ -74,6 +84,7 @@ export default function SocialPlan() {
   const [view, setView] = useState<View>('cal');
   const [f, setF] = useState<Filters>(emptyFilters);
   const [selId, setSelId] = useState<string | null>(null);
+  const [creating, setCreating] = useState<StageKey | null>(null);
 
   const load = useCallback(async () => {
     const [it, dl, pf, cm] = await Promise.all([
@@ -119,6 +130,12 @@ export default function SocialPlan() {
     p.delete('item');
     p.delete('focus');
     setParams(p, { replace: true });
+  };
+
+  // move de etapa (Kanban) — otimista + persiste
+  const moveStage = async (id: string, stage: StageKey) => {
+    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, stage } : x)));
+    await supabase.from('social_plan_items').update({ stage, updated_by: profile?.id ?? null }).eq('id', id);
   };
 
   const toggle = (key: keyof Filters, v: string) => {
@@ -168,7 +185,10 @@ export default function SocialPlan() {
     <div className="sp">
       {/* ---------- cabeçalho ---------- */}
       <header className="sp-header">
-        <p className="sp-eyebrow">Planejamento de mídias digitais</p>
+        <div className="sp-headtop">
+          <p className="sp-eyebrow">Planejamento de mídias digitais</p>
+          <button className="sp-new" onClick={() => setCreating('planejamento')}>+ Nova peça</button>
+        </div>
         <h1 className="sp-h1">Oito meses de conteúdo<br />para <em>Cardoso</em>, <em>Playmi</em> e <em>Tópi</em></h1>
         <p className="sp-sub">
           De 17 de agosto de 2026 a 31 de março de 2027. Cada semana rende três criativos de feed por marca de consumo —
@@ -189,7 +209,7 @@ export default function SocialPlan() {
           <div className="sp-kpi" style={{ borderColor: '#F0E0BC' }}><b style={{ color: '#B07C2B' }}>{kpi.aj}</b><span>com ajuste</span></div>
         </div>
         <nav className="sp-views" role="tablist">
-          {([['cal', 'Calendário'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
+          {([['cal', 'Calendário'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['kanban', 'Kanban'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}</button>
           ))}
         </nav>
@@ -206,8 +226,11 @@ export default function SocialPlan() {
             <FGroup label="Mês"><Chips vals={MESES} sel={f.mes} onClick={(v) => toggle('mes', v)} /></FGroup>
             <FGroup label="Aprovação"><Chips vals={['Pendente', 'Aprovada', 'Com ajuste', 'Com comentário']} sel={f.status} onClick={(v) => toggle('status', v)} /></FGroup>
             <FGroup label="Buscar">
-              <input type="search" placeholder="produto, SKU, pauta…" value={f.q}
-                onChange={(e) => setF((p) => ({ ...p, q: e.target.value.toLowerCase().trim() }))} />
+              <div className="sp-searchwrap">
+                <span aria-hidden>🔍</span>
+                <input type="search" placeholder="produto, SKU, pauta…" value={f.q}
+                  onChange={(e) => setF((p) => ({ ...p, q: e.target.value.toLowerCase().trim() }))} />
+              </div>
             </FGroup>
             <div className="sp-fmeta">
               <span className="sp-count"><b>{rows.length}</b> de {items.length}</span>
@@ -221,9 +244,10 @@ export default function SocialPlan() {
         {view === 'cal' && <CalView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'feed' && <FeedView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'lista' && <ListView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
+        {view === 'kanban' && <KanbanView rows={rows} onOpen={openItem} onMove={moveStage} onAdd={(st) => setCreating(st)} />}
         {view === 'prazos' && <PrazosView deadlines={deadlines} />}
 
-        {view !== 'prazos' && (
+        {view !== 'prazos' && view !== 'kanban' && (
           <div className="sp-legend">
             <span><i style={{ background: '#fff', border: '1px solid var(--line)' }} />Criativo novo — precisa ser produzido</span>
             <span><i style={{ background: 'var(--amber-bg)', border: '1px solid #F0E3C6' }} />Stories de apoio — usa sobra de gravação</span>
@@ -245,6 +269,70 @@ export default function SocialPlan() {
           onChanged={load}
         />
       )}
+
+      {creating && (
+        <CreateSheet
+          me={profile}
+          initialStage={creating}
+          onClose={() => setCreating(null)}
+          onCreated={async (id) => { setCreating(null); await load(); openItem(id); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- kanban ---------------- */
+function KanbanView({ rows, onOpen, onMove, onAdd }: {
+  rows: SocialPlanItem[]; onOpen: (id: string) => void;
+  onMove: (id: string, stage: StageKey) => void; onAdd: (stage: StageKey) => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<StageKey | null>(null);
+  return (
+    <div className="sp-kanban">
+      {STAGES.map((col) => {
+        const its = rows.filter((x) => x.stage === col.key);
+        return (
+          <div
+            key={col.key}
+            className={`sp-kcol ${over === col.key ? 'drop' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); if (over !== col.key) setOver(col.key); }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver((o) => (o === col.key ? null : o)); }}
+            onDrop={(e) => { e.preventDefault(); if (dragId) onMove(dragId, col.key); setDragId(null); setOver(null); }}
+          >
+            <div className="sp-kcol-head">
+              <span className="sp-kcol-dot" style={{ background: col.color }} />
+              <b>{col.label}</b>
+              <span className="cnt">{its.length}</span>
+            </div>
+            {its.map((x) => {
+              const s = stMark(x.status);
+              return (
+                <div
+                  key={x.id}
+                  className={`sp-kcard b-${slug(x.brand)} ${dragId === x.id ? 'dragging' : ''}`}
+                  draggable
+                  onDragStart={(e) => { setDragId(x.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragEnd={() => { setDragId(null); setOver(null); }}
+                  onClick={() => onOpen(x.id)}
+                >
+                  <div className="kc-top">
+                    <span className={`sp-badge b-${slug(x.brand)}`}>{x.brand}</span>
+                    <span className={`sp-badge t-${slug(x.piece_type)}`}>{x.piece_type}</span>
+                  </div>
+                  <div className="kc-nm">{x.product || x.pauta || 'Sem título'}</div>
+                  <div className="kc-meta">
+                    {x.pub_date.slice(8, 10)}/{x.pub_date.slice(5, 7)} · {x.network}
+                    {s && <span className="dot" style={{ background: s === 'ok' ? '#2E9E6B' : '#E0A02B' }} />}
+                  </div>
+                </div>
+              );
+            })}
+            <button className="sp-kadd" onClick={() => onAdd(col.key)}>+ Adicionar peça</button>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -491,6 +579,11 @@ function DetailSheet({ item, me, profiles, focusComments, onClose, onChanged }: 
     setSaving(false); setEditing(false); showFlash('peça atualizada'); onChanged();
   };
 
+  const setStage = async (stage: StageKey) => {
+    await supabase.from('social_plan_items').update({ stage, updated_by: me?.id ?? null }).eq('id', item.id);
+    showFlash(`etapa: ${stageLabel(stage)}`); onChanged();
+  };
+
   const toggleMention = (id: string) =>
     setMentionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -529,6 +622,16 @@ function DetailSheet({ item, me, profiles, focusComments, onClose, onChanged }: 
         ) : (
           <EditPanel form={form} setForm={setForm} onSave={saveEdit} onCancel={() => { setEditing(false); setForm(pick(item)); }} saving={saving} />
         )}
+
+        {/* ---------- etapa (fluxo) ---------- */}
+        <div className="sp-stagebar">
+          <h4 style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', margin: '0 0 2px', fontWeight: 500 }}>Etapa no fluxo</h4>
+          <div className="sp-seg">
+            {STAGES.map((s) => (
+              <button key={s.key} className={`sp-segbtn ${item.stage === s.key ? 'on' : ''}`} onClick={() => setStage(s.key)}>{s.label}</button>
+            ))}
+          </div>
+        </div>
 
         {/* ---------- aprovação ---------- */}
         <div className="sp-aprov">
@@ -593,8 +696,8 @@ function Field({ dt, dd, mono }: { dt: string; dd: string; mono?: boolean }) {
   return <div className="sp-field"><dt>{dt}</dt><dd className={mono ? 'mono' : ''}>{dd || '—'}</dd></div>;
 }
 
-function EditPanel({ form, setForm, onSave, onCancel, saving }: {
-  form: EditForm; setForm: React.Dispatch<React.SetStateAction<EditForm>>; onSave: () => void; onCancel: () => void; saving: boolean;
+function EditPanel({ form, setForm, onSave, onCancel, saving, createMode }: {
+  form: EditForm; setForm: React.Dispatch<React.SetStateAction<EditForm>>; onSave: () => void; onCancel: () => void; saving: boolean; createMode?: boolean;
 }) {
   const upd = (k: keyof EditForm, v: string) => setForm((p) => ({ ...p, [k]: v }));
   const sel = (k: keyof EditForm, opts: string[]) => (
@@ -604,7 +707,7 @@ function EditPanel({ form, setForm, onSave, onCancel, saving }: {
   );
   return (
     <div className="sp-edit">
-      <h3 className="sp-panel-h3">Editar peça</h3>
+      <h3 className="sp-panel-h3">{createMode ? 'Nova peça' : 'Editar peça'}</h3>
       <ERow label="Pauta (título)"><textarea rows={2} value={form.pauta} onChange={(e) => upd('pauta', e.target.value)} /></ERow>
       <div className="sp-egrid">
         <ERow label="Data"><input type="date" value={form.pub_date} onChange={(e) => upd('pub_date', e.target.value)} /></ERow>
@@ -622,7 +725,7 @@ function EditPanel({ form, setForm, onSave, onCancel, saving }: {
       <ERow label="Chamada (CTA)"><input value={form.cta} onChange={(e) => upd('cta', e.target.value)} /></ERow>
       <ERow label="Uso de mídia"><input value={form.media_use} onChange={(e) => upd('media_use', e.target.value)} /></ERow>
       <div className="sp-edit-actions">
-        <button className="sp-ebtn prim" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : 'Salvar alterações'}</button>
+        <button className="sp-ebtn prim" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : createMode ? 'Criar peça' : 'Salvar alterações'}</button>
         <button className="sp-ebtn" onClick={onCancel}>Cancelar</button>
       </div>
     </div>
@@ -635,4 +738,51 @@ function ERow({ label, children }: { label: string; children: React.ReactNode })
 function pick(x: SocialPlanItem): EditForm {
   const { pub_date, brand, network, piece_type, format, origin, pauta, product, sku, week_theme, objective, cta, media_use, channel } = x;
   return { pub_date, brand, network, piece_type, format, origin, pauta, product, sku, week_theme, objective, cta, media_use, channel };
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function derive(iso: string) {
+  const [Y, M, D] = iso.split('-').map(Number);
+  const weekday = DOW[(new Date(Y, M - 1, D).getDay() + 6) % 7];
+  const ym = `${Y}-${String(M).padStart(2, '0')}`;
+  const month_label = MESES[Object.keys(NOME_MES).indexOf(ym)] ?? '';
+  return { weekday, month_label };
+}
+function blankForm(): EditForm {
+  return {
+    pub_date: todayISO(), brand: 'Playmi', network: 'Instagram', piece_type: 'Feed', format: '',
+    origin: 'Original', pauta: '', product: '', sku: '', week_theme: '', objective: '', cta: '', media_use: '', channel: '',
+  };
+}
+
+/* ---------------- criar peça nova ---------------- */
+function CreateSheet({ me, initialStage, onClose, onCreated }: {
+  me: Profile | null; initialStage: StageKey; onClose: () => void; onCreated: (id: string) => void;
+}) {
+  const [form, setForm] = useState<EditForm>(blankForm);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!form.pauta.trim() && !form.product.trim()) return;
+    setSaving(true);
+    const { weekday, month_label } = derive(form.pub_date);
+    const { data, error } = await supabase.from('social_plan_items')
+      .insert({ ...form, weekday, month_label, stage: initialStage, status: 'pendente', updated_by: me?.id ?? null })
+      .select('id').single();
+    setSaving(false);
+    if (!error && data) onCreated((data as { id: string }).id);
+  };
+
+  return (
+    <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sp-panel">
+        <button className="close" aria-label="Fechar" onClick={onClose}>×</button>
+        <div className="sp-tags"><span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>Nova peça · {stageLabel(initialStage)}</span></div>
+        <EditPanel form={form} setForm={setForm} onSave={save} onCancel={onClose} saving={saving} createMode />
+      </div>
+    </div>
+  );
 }

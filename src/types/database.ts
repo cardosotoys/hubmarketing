@@ -831,6 +831,7 @@ export interface SocialPlanItem {
   cta: string;
   media_use: string;
   product_id: string | null;
+  stage: 'planejamento' | 'producao' | 'aprovacao' | 'agendado' | 'publicado';
   status: 'pendente' | 'aprovada' | 'ajuste';
   status_by: string | null;
   status_at: string | null;
