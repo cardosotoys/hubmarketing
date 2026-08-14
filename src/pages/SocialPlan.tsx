@@ -17,6 +17,16 @@ const NOME_MES: Record<string, string> = {
 };
 const MESES = ['Ago/26', 'Set/26', 'Out/26', 'Nov/26', 'Dez/26', 'Jan/27', 'Fev/27', 'Mar/27'];
 const DOW = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+// mapa de reaproveitamento: rede → tipo/formato da peça reaproveitada
+const REUSE: Record<string, { type: string; format: string }> = {
+  'TikTok': { type: 'Reels', format: 'Reels / Short' },
+  'YouTube Shorts': { type: 'Reels', format: 'Reels / Short' },
+  'Pinterest': { type: 'Pin', format: 'Pin' },
+};
+const REUSE_NETS = ['TikTok', 'YouTube Shorts', 'Pinterest'];
+// campos de conteúdo que a peça-mãe propaga para os reaproveitamentos ao ser editada
+const SHARED_FIELDS = ['pub_date', 'weekday', 'month_label', 'brand', 'product', 'sku', 'pauta', 'week_theme', 'objective', 'cta', 'media_use'] as const;
 const slug = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -245,10 +255,12 @@ export default function SocialPlan() {
         <DetailSheet
           key={selected.id}
           item={selected}
+          items={items}
           me={profile}
           profiles={profiles}
           focusComments={params.get('focus') === 'comments'}
           onClose={closeSheet}
+          onOpen={openItem}
           onChanged={load}
         />
       )}
@@ -436,12 +448,14 @@ function Vazio({ msg }: { msg?: string }) {
 /* ================= painel de detalhe (aprovação + comentários + edição) ================= */
 type EditForm = Pick<SocialPlanItem, 'pub_date' | 'brand' | 'network' | 'piece_type' | 'format' | 'origin' | 'pauta' | 'product' | 'sku' | 'week_theme' | 'objective' | 'cta' | 'media_use' | 'channel'>;
 
-function DetailSheet({ item, me, profiles, focusComments, onClose, onChanged }: {
+function DetailSheet({ item, items, me, profiles, focusComments, onClose, onOpen, onChanged }: {
   item: SocialPlanItem;
+  items: SocialPlanItem[];
   me: Profile | null;
   profiles: Profile[];
   focusComments: boolean;
   onClose: () => void;
+  onOpen: (id: string) => void;
   onChanged: () => void;
 }) {
   const [comments, setComments] = useState<(SocialPlanComment & { author: { name: string } | null })[]>([]);
@@ -454,6 +468,17 @@ function DetailSheet({ item, me, profiles, focusComments, onClose, onChanged }: 
   const [flash, setFlash] = useState('');
   const commentsRef = useRef<HTMLDivElement>(null);
   const active = profiles.filter((p) => !p.disabled);
+
+  const children = items.filter((x) => x.parent_item_id === item.id);
+  const parent = item.parent_item_id ? items.find((x) => x.id === item.parent_item_id) ?? null : null;
+  const reuseTaken = new Set(children.map((c) => c.network));
+  const reuseAvail = item.network === 'Instagram' && item.origin !== 'Reaproveitamento'
+    ? REUSE_NETS.filter((n) => !reuseTaken.has(n)) : [];
+  const [reuseSel, setReuseSel] = useState<Set<string>>(() => {
+    if (item.network !== 'Instagram' || item.origin === 'Reaproveitamento') return new Set();
+    const base = item.piece_type === 'Reels' ? ['TikTok', 'YouTube Shorts'] : item.piece_type === 'Feed' ? ['Pinterest'] : [];
+    return new Set(base.filter((n) => !reuseTaken.has(n)));
+  });
 
   const loadComments = useCallback(async () => {
     const { data } = await supabase
@@ -502,8 +527,45 @@ function DetailSheet({ item, me, profiles, focusComments, onClose, onChanged }: 
 
   const saveEdit = async () => {
     setSaving(true);
-    await supabase.from('social_plan_items').update({ ...form, updated_by: me?.id ?? null }).eq('id', item.id);
-    setSaving(false); setEditing(false); showFlash('peça atualizada'); onChanged();
+    const { weekday, month_label } = derive(form.pub_date);
+    await supabase.from('social_plan_items').update({ ...form, weekday, month_label, updated_by: me?.id ?? null }).eq('id', item.id);
+    // propaga os campos compartilhados para os reaproveitamentos vinculados
+    if (children.length) {
+      const shared: Record<string, unknown> = { weekday, month_label };
+      for (const k of SHARED_FIELDS) shared[k] = (form as Record<string, unknown>)[k] ?? (k === 'weekday' ? weekday : k === 'month_label' ? month_label : undefined);
+      await supabase.from('social_plan_items').update(shared).in('id', children.map((c) => c.id));
+    }
+    setSaving(false); setEditing(false); showFlash(children.length ? 'peça e reaproveitamentos atualizados' : 'peça atualizada'); onChanged();
+  };
+
+  const duplicate = async () => {
+    const clone = { ...pick(item), pauta: item.pauta ? `${item.pauta} (cópia)` : '' };
+    const { weekday, month_label } = derive(clone.pub_date);
+    const { data } = await supabase.from('social_plan_items')
+      .insert({ ...clone, weekday, month_label, status: 'pendente', updated_by: me?.id ?? null }).select('id').single();
+    onChanged();
+    if (data) onOpen((data as { id: string }).id);
+  };
+
+  const remove = async () => {
+    if (!window.confirm('Excluir esta peça? Esta ação não pode ser desfeita.')) return;
+    if (children.length && window.confirm(`Esta peça tem ${children.length} reaproveitamento(s) vinculado(s). Excluir também?`)) {
+      await supabase.from('social_plan_items').delete().in('id', children.map((c) => c.id));
+    }
+    await supabase.from('social_plan_items').delete().eq('id', item.id);
+    onClose(); onChanged();
+  };
+
+  const generateReuse = async (nets: string[]) => {
+    if (!nets.length) return;
+    const { weekday, month_label } = derive(item.pub_date);
+    const base = { ...pick(item), weekday, month_label, status: 'pendente' as const, updated_by: me?.id ?? null };
+    const extras = nets.map((net) => ({
+      ...base, origin: 'Reaproveitamento', network: net, channel: net,
+      piece_type: REUSE[net].type, format: REUSE[net].format, parent_item_id: item.id,
+    }));
+    await supabase.from('social_plan_items').insert(extras);
+    showFlash(`+${nets.length} reaproveitamento(s)`); onChanged();
   };
 
 
@@ -540,7 +602,43 @@ function DetailSheet({ item, me, profiles, focusComments, onClose, onChanged }: 
               <Field dt="Chamada" dd={item.cta} />
               <Field dt="Uso de mídia" dd={item.media_use} />
             </dl>
-            <button className="sp-ebtn" onClick={() => setEditing(true)}>✎ Editar esta peça</button>
+            {parent && (
+              <p className="sp-relnote">↳ Reaproveitamento de <button className="sp-linkbtn" onClick={() => onOpen(parent.id)}>{parent.product || parent.pauta || 'peça-mãe'}</button> ({parent.network})</p>
+            )}
+            {children.length > 0 && (
+              <div className="sp-childbox">
+                <span className="sp-flabel">Reaproveitamentos desta peça</span>
+                <div className="sp-childlist">
+                  {children.map((c) => (
+                    <button key={c.id} className="sp-childchip" onClick={() => onOpen(c.id)}>
+                      {c.network}{stMark(c.status) === 'ok' ? ' ✓' : stMark(c.status) === 'aj' ? ' !' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {reuseAvail.length > 0 && (
+              <div className="sp-reusebox" style={{ marginTop: 12 }}>
+                <span className="sp-flabel">Gerar reaproveitamento em</span>
+                <div className="sp-mchips" style={{ marginTop: 6 }}>
+                  {reuseAvail.map((net) => (
+                    <button key={net} type="button" className={`sp-mchip ${reuseSel.has(net) ? 'on' : ''}`}
+                      onClick={() => setReuseSel((prev) => { const s = new Set(prev); s.has(net) ? s.delete(net) : s.add(net); return s; })}>
+                      {reuseSel.has(net) ? '✓ ' : '+ '}{net}
+                    </button>
+                  ))}
+                </div>
+                <button className="sp-ebtn prim" style={{ marginTop: 8 }} disabled={!reuseSel.size}
+                  onClick={() => { generateReuse([...reuseSel]); setReuseSel(new Set()); }}>
+                  Gerar {reuseSel.size || ''} peça(s)
+                </button>
+              </div>
+            )}
+            <div className="sp-detail-actions">
+              <button className="sp-ebtn" onClick={() => setEditing(true)}>✎ Editar</button>
+              <button className="sp-ebtn" onClick={duplicate}>⧉ Duplicar</button>
+              <button className="sp-ebtn danger" onClick={remove}>🗑 Excluir</button>
+            </div>
           </>
         ) : (
           <EditPanel form={form} setForm={setForm} onSave={saveEdit} onCancel={() => { setEditing(false); setForm(pick(item)); }} saving={saving} />
@@ -673,14 +771,6 @@ function blankForm(): EditForm {
 }
 
 /* ---------------- criar peça nova ---------------- */
-// mapa de reaproveitamento: rede → tipo/formato da peça reaproveitada
-const REUSE: Record<string, { type: string; format: string }> = {
-  'TikTok': { type: 'Reels', format: 'Reels / Short' },
-  'YouTube Shorts': { type: 'Reels', format: 'Reels / Short' },
-  'Pinterest': { type: 'Pin', format: 'Pin' },
-};
-const REUSE_NETS = ['TikTok', 'YouTube Shorts', 'Pinterest'];
-
 function CreateSheet({ me, onClose, onCreated }: {
   me: Profile | null; onClose: () => void; onCreated: (id: string) => void;
 }) {
@@ -705,16 +795,17 @@ function CreateSheet({ me, onClose, onCreated }: {
     const { weekday, month_label } = derive(form.pub_date);
     const base = { ...form, weekday, month_label, status: 'pendente' as const, updated_by: me?.id ?? null };
     const { data, error } = await supabase.from('social_plan_items').insert(base).select('id').single();
-    // gera as peças de reaproveitamento escolhidas (mesmo produto/pauta/data, origem Reaproveitamento)
-    if (!error && reuse.size) {
+    const newId = (data as { id: string } | null)?.id;
+    // gera as peças de reaproveitamento escolhidas, vinculadas à mãe (parent_item_id)
+    if (!error && newId && reuse.size) {
       const extras = [...reuse].map((net) => ({
         ...base, origin: 'Reaproveitamento', network: net, channel: net,
-        piece_type: REUSE[net].type, format: REUSE[net].format,
+        piece_type: REUSE[net].type, format: REUSE[net].format, parent_item_id: newId,
       }));
       await supabase.from('social_plan_items').insert(extras);
     }
     setSaving(false);
-    if (!error && data) onCreated((data as { id: string }).id);
+    if (!error && newId) onCreated(newId);
   };
 
   const showReuse = form.network === 'Instagram';
