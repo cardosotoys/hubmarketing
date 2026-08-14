@@ -19,7 +19,7 @@ import Configuracoes from './pages/Configuracoes';
 import Produtos from './pages/Produtos';
 import MonitorPrecos from './pages/MonitorPrecos';
 import TradeMarketing from './pages/TradeMarketing';
-import SocialContent from './pages/SocialContent';
+import SocialPlaceholder from './pages/SocialPlaceholder';
 import Biblioteca from './pages/Biblioteca';
 import Campaigns from './pages/Campaigns';
 import Calendario from './pages/Calendario';
@@ -106,7 +106,7 @@ export default function App() {
               }
             />
             <Route path="calendario" element={<ModuleGate moduleKey="calendario"><Calendario /></ModuleGate>} />
-            <Route path="redes-sociais" element={<ModuleGate moduleKey="redes-sociais"><SocialContent /></ModuleGate>} />
+            <Route path="redes-sociais" element={<ModuleGate moduleKey="redes-sociais"><SocialPlaceholder /></ModuleGate>} />
             <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
             <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
             <Route path="trade" element={<ModuleGate moduleKey="trade-marketing"><TradeMarketing /></ModuleGate>} />
