@@ -609,8 +609,8 @@ function Field({ dt, dd, mono }: { dt: string; dd: string; mono?: boolean }) {
   return <div className="sp-field"><dt>{dt}</dt><dd className={mono ? 'mono' : ''}>{dd || '—'}</dd></div>;
 }
 
-function EditPanel({ form, setForm, onSave, onCancel, saving, createMode }: {
-  form: EditForm; setForm: React.Dispatch<React.SetStateAction<EditForm>>; onSave: () => void; onCancel: () => void; saving: boolean; createMode?: boolean;
+function EditPanel({ form, setForm, onSave, onCancel, saving, createMode, extra }: {
+  form: EditForm; setForm: React.Dispatch<React.SetStateAction<EditForm>>; onSave: () => void; onCancel: () => void; saving: boolean; createMode?: boolean; extra?: React.ReactNode;
 }) {
   const upd = (k: keyof EditForm, v: string) => setForm((p) => ({ ...p, [k]: v }));
   const sel = (k: keyof EditForm, opts: string[]) => (
@@ -637,6 +637,7 @@ function EditPanel({ form, setForm, onSave, onCancel, saving, createMode }: {
       <ERow label="Objetivo"><textarea rows={2} value={form.objective} onChange={(e) => upd('objective', e.target.value)} /></ERow>
       <ERow label="Chamada (CTA)"><input value={form.cta} onChange={(e) => upd('cta', e.target.value)} /></ERow>
       <ERow label="Uso de mídia"><input value={form.media_use} onChange={(e) => upd('media_use', e.target.value)} /></ERow>
+      {extra}
       <div className="sp-edit-actions">
         <button className="sp-ebtn prim" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : createMode ? 'Criar peça' : 'Salvar alterações'}</button>
         <button className="sp-ebtn" onClick={onCancel}>Cancelar</button>
@@ -672,29 +673,71 @@ function blankForm(): EditForm {
 }
 
 /* ---------------- criar peça nova ---------------- */
+// mapa de reaproveitamento: rede → tipo/formato da peça reaproveitada
+const REUSE: Record<string, { type: string; format: string }> = {
+  'TikTok': { type: 'Reels', format: 'Reels / Short' },
+  'YouTube Shorts': { type: 'Reels', format: 'Reels / Short' },
+  'Pinterest': { type: 'Pin', format: 'Pin' },
+};
+const REUSE_NETS = ['TikTok', 'YouTube Shorts', 'Pinterest'];
+
 function CreateSheet({ me, onClose, onCreated }: {
   me: Profile | null; onClose: () => void; onCreated: (id: string) => void;
 }) {
   const [form, setForm] = useState<EditForm>(blankForm);
+  const [reuse, setReuse] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+
+  // sugere redes de reaproveitamento conforme rede/tipo da peça-mãe (Instagram)
+  useEffect(() => {
+    if (form.network !== 'Instagram') { setReuse(new Set()); return; }
+    if (form.piece_type === 'Reels') setReuse(new Set(['TikTok', 'YouTube Shorts']));
+    else if (form.piece_type === 'Feed') setReuse(new Set(['Pinterest']));
+    else setReuse(new Set());
+  }, [form.network, form.piece_type]);
+
+  const toggleReuse = (net: string) =>
+    setReuse((prev) => { const s = new Set(prev); s.has(net) ? s.delete(net) : s.add(net); return s; });
 
   const save = async () => {
     if (!form.pauta.trim() && !form.product.trim()) return;
     setSaving(true);
     const { weekday, month_label } = derive(form.pub_date);
-    const { data, error } = await supabase.from('social_plan_items')
-      .insert({ ...form, weekday, month_label, status: 'pendente', updated_by: me?.id ?? null })
-      .select('id').single();
+    const base = { ...form, weekday, month_label, status: 'pendente' as const, updated_by: me?.id ?? null };
+    const { data, error } = await supabase.from('social_plan_items').insert(base).select('id').single();
+    // gera as peças de reaproveitamento escolhidas (mesmo produto/pauta/data, origem Reaproveitamento)
+    if (!error && reuse.size) {
+      const extras = [...reuse].map((net) => ({
+        ...base, origin: 'Reaproveitamento', network: net, channel: net,
+        piece_type: REUSE[net].type, format: REUSE[net].format,
+      }));
+      await supabase.from('social_plan_items').insert(extras);
+    }
     setSaving(false);
     if (!error && data) onCreated((data as { id: string }).id);
   };
+
+  const showReuse = form.network === 'Instagram';
+  const reuseBox = showReuse ? (
+    <div className="sp-reusebox">
+      <span className="sp-flabel">Gerar reaproveitamento em</span>
+      <div className="sp-mchips" style={{ marginTop: 6 }}>
+        {REUSE_NETS.map((net) => (
+          <button key={net} type="button" className={`sp-mchip ${reuse.has(net) ? 'on' : ''}`} onClick={() => toggleReuse(net)}>
+            {reuse.has(net) ? '✓ ' : '+ '}{net}
+          </button>
+        ))}
+      </div>
+      <p className="sp-reusehint">{reuse.size ? `Cria +${reuse.size} peça(s) “Reaproveitamento” com o mesmo produto e data.` : 'Nenhuma peça extra será criada.'}</p>
+    </div>
+  ) : null;
 
   return (
     <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sp-panel">
         <button className="close" aria-label="Fechar" onClick={onClose}>×</button>
         <div className="sp-tags"><span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>Nova peça</span></div>
-        <EditPanel form={form} setForm={setForm} onSave={save} onCancel={onClose} saving={saving} createMode />
+        <EditPanel form={form} setForm={setForm} onSave={save} onCancel={onClose} saving={saving} createMode extra={reuseBox} />
       </div>
     </div>
   );

@@ -2724,3 +2724,7 @@ table.simple tr:hover td {
   .sp-tlrow .lim,.sp-tlrow .resp{text-align:left}
   .sp-fmeta{margin-left:0}
 }
+
+/* caixinha de reaproveitamento na criação de peça */
+.sp-reusebox{margin:4px 0 12px;padding:12px;background:var(--surf2);border:1px solid var(--line);border-radius:10px}
+.sp-reusehint{font-size:11.5px;color:var(--muted);margin:8px 0 0}
