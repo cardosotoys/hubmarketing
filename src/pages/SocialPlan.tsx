@@ -85,18 +85,22 @@ export default function SocialPlan() {
   const [f, setF] = useState<Filters>(emptyFilters);
   const [selId, setSelId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [approverId, setApproverId] = useState<string | null>(null);
+  const [reviewOnly, setReviewOnly] = useState(false);
 
   const load = useCallback(async () => {
-    const [it, dl, pf, cm] = await Promise.all([
+    const [it, dl, pf, cm, st] = await Promise.all([
       supabase.from('social_plan_items').select('*').order('pub_date'),
       supabase.from('social_plan_deadlines').select('*').order('ord'),
       supabase.from('profiles').select('*').order('name'),
       supabase.from('social_plan_comments').select('item_id'),
+      supabase.from('social_plan_settings').select('approver_id').eq('id', 1).single(),
     ]);
     setItems((it.data as SocialPlanItem[]) ?? []);
     setDeadlines((dl.data as SocialPlanDeadline[]) ?? []);
     setProfiles((pf.data as Profile[]) ?? []);
     setCommentItemIds(new Set(((cm.data as { item_id: string }[]) ?? []).map((c) => c.item_id)));
+    setApproverId((st.data as { approver_id: string | null } | null)?.approver_id ?? null);
     setLoading(false);
   }, []);
 
@@ -142,6 +146,7 @@ export default function SocialPlan() {
   const clearFilters = () => setF(emptyFilters());
 
   const pass = useCallback((x: SocialPlanItem) => {
+    if (reviewOnly && !(x.awaiting_review && x.approver_id === profile?.id)) return false;
     if (f.marca.size && !f.marca.has(x.brand)) return false;
     if (f.rede.size && !f.rede.has(x.network)) return false;
     if (f.tipo.size && !f.tipo.has(x.piece_type)) return false;
@@ -158,9 +163,21 @@ export default function SocialPlan() {
       if (!blob.includes(f.q)) return false;
     }
     return true;
-  }, [f, commentItemIds]);
+  }, [f, commentItemIds, reviewOnly, profile?.id]);
 
   const rows = useMemo(() => items.filter(pass), [items, pass]);
+
+  const myReviews = useMemo(
+    () => (profile?.id ? items.filter((x) => x.awaiting_review && x.approver_id === profile.id) : []),
+    [items, profile?.id],
+  );
+  const isPriv = profile?.role === 'diretoria' || profile?.role === 'administrador';
+  const approverName = profiles.find((p) => p.id === approverId)?.name ?? null;
+
+  const setApprover = async (id: string) => {
+    setApproverId(id || null);
+    await supabase.from('social_plan_settings').update({ approver_id: id || null, updated_at: new Date().toISOString() }).eq('id', 1);
+  };
 
   const kpi = useMemo(() => ({
     total: items.length,
@@ -181,7 +198,18 @@ export default function SocialPlan() {
       <header className="sp-header">
         <div className="sp-headtop">
           <p className="sp-eyebrow">Planejamento de mídias digitais</p>
-          <button className="sp-new" onClick={() => setCreating(true)}>+ Nova peça</button>
+          <div className="sp-headactions">
+            {isPriv && (
+              <label className="sp-approversel" title="Quem aprova as peças do Social">
+                <span>Aprovação →</span>
+                <select value={approverId ?? ''} onChange={(e) => setApprover(e.target.value)}>
+                  <option value="">ninguém definido</option>
+                  {profiles.filter((p) => !p.disabled).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+            )}
+            <button className="sp-new" onClick={() => setCreating(true)}>+ Nova peça</button>
+          </div>
         </div>
         <h1 className="sp-h1">Oito meses de conteúdo<br />para <em>Cardoso</em>, <em>Playmi</em> e <em>Tópi</em></h1>
         <p className="sp-sub">
@@ -202,6 +230,14 @@ export default function SocialPlan() {
           <div className="sp-kpi" style={{ borderColor: '#CFE6DA' }}><b style={{ color: '#2E9E6B' }}>{kpi.ok}</b><span>aprovadas</span></div>
           <div className="sp-kpi" style={{ borderColor: '#F0E0BC' }}><b style={{ color: '#B07C2B' }}>{kpi.aj}</b><span>com ajuste</span></div>
         </div>
+        {myReviews.length > 0 && (
+          <div className="sp-reviewbanner">
+            <span>🔔 <b>{myReviews.length}</b> peça(s) esperando a sua aprovação</span>
+            <button className={reviewOnly ? 'on' : ''} onClick={() => setReviewOnly((v) => !v)}>
+              {reviewOnly ? 'Mostrar todas' : 'Ver só as minhas'}
+            </button>
+          </div>
+        )}
         <nav className="sp-views" role="tablist">
           {([['cal', 'Calendário'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}</button>
@@ -258,6 +294,8 @@ export default function SocialPlan() {
           items={items}
           me={profile}
           profiles={profiles}
+          approverId={approverId}
+          approverName={approverName}
           focusComments={params.get('focus') === 'comments'}
           onClose={closeSheet}
           onOpen={openItem}
@@ -448,11 +486,13 @@ function Vazio({ msg }: { msg?: string }) {
 /* ================= painel de detalhe (aprovação + comentários + edição) ================= */
 type EditForm = Pick<SocialPlanItem, 'pub_date' | 'brand' | 'network' | 'piece_type' | 'format' | 'origin' | 'pauta' | 'product' | 'sku' | 'week_theme' | 'objective' | 'cta' | 'media_use' | 'channel'>;
 
-function DetailSheet({ item, items, me, profiles, focusComments, onClose, onOpen, onChanged }: {
+function DetailSheet({ item, items, me, profiles, approverId, approverName, focusComments, onClose, onOpen, onChanged }: {
   item: SocialPlanItem;
   items: SocialPlanItem[];
   me: Profile | null;
   profiles: Profile[];
+  approverId: string | null;
+  approverName: string | null;
   focusComments: boolean;
   onClose: () => void;
   onOpen: (id: string) => void;
@@ -497,15 +537,29 @@ function DetailSheet({ item, items, me, profiles, focusComments, onClose, onOpen
 
   const showFlash = (m: string) => { setFlash(m); setTimeout(() => setFlash((c) => (c === m ? '' : c)), 2200); };
 
-  // aprovar / pedir ajuste / voltar a pendente
+  // aprovar / pedir ajuste / voltar a pendente — decisão do aprovador encerra a espera
   const setStatus = async (target: SocialPlanItem['status']) => {
     const next = item.status === target ? 'pendente' : target;
-    await supabase.from('social_plan_items').update({
-      status: next, status_by: me?.id ?? null, status_at: new Date().toISOString(),
-    }).eq('id', item.id);
+    const patch: Record<string, unknown> = { status: next, status_by: me?.id ?? null, status_at: new Date().toISOString() };
+    if (next === 'aprovada' || next === 'ajuste') patch.awaiting_review = false;
+    await supabase.from('social_plan_items').update(patch).eq('id', item.id);
     showFlash(next === 'aprovada' ? 'aprovada' : next === 'ajuste' ? 'ajuste pedido' : 'voltou para pendente');
     onChanged();
   };
+
+  // enviar para aprovação: atribui ao aprovador oficial e o notifica (via trigger)
+  const sendForReview = async () => {
+    if (!approverId) return;
+    await supabase.from('social_plan_items').update({
+      awaiting_review: true, approver_id: approverId, review_by: me?.id ?? null, review_at: new Date().toISOString(),
+    }).eq('id', item.id);
+    showFlash(`enviado para ${approverName ?? 'aprovação'}`); onChanged();
+  };
+  const cancelReview = async () => {
+    await supabase.from('social_plan_items').update({ awaiting_review: false }).eq('id', item.id);
+    showFlash('aprovação cancelada'); onChanged();
+  };
+  const iAmApprover = me?.id === item.approver_id;
 
   const postComment = async (kind: SocialPlanComment['kind']) => {
     const raw = text.trim();
@@ -647,7 +701,21 @@ function DetailSheet({ item, items, me, profiles, focusComments, onClose, onOpen
         {/* ---------- aprovação ---------- */}
         <div className="sp-aprov">
           <h4>Aprovação</h4>
-          <div className="sp-abtns">
+
+          {/* linha de "enviar para aprovação" / estado de espera */}
+          {item.awaiting_review ? (
+            <div className="sp-reviewrow wait">
+              <span>⏳ Aguardando aprovação{item.approver_id ? ` de ${profiles.find((p) => p.id === item.approver_id)?.name ?? 'aprovador'}` : ''}{iAmApprover ? ' — é você!' : ''}</span>
+              <button className="sp-ebtn" onClick={cancelReview}>Cancelar</button>
+            </div>
+          ) : (
+            <div className="sp-reviewrow">
+              <button className="sp-ebtn prim" onClick={sendForReview} disabled={!approverId}>➦ Enviar para aprovação{approverName ? ` (${approverName})` : ''}</button>
+              {!approverId && <span className="sp-reviewhint">Defina o aprovador no topo da página.</span>}
+            </div>
+          )}
+
+          <div className="sp-abtns" style={{ marginTop: 10 }}>
             <button className="sp-abtn ok" aria-pressed={item.status === 'aprovada'} onClick={() => setStatus('aprovada')}>Aprovar</button>
             <button className="sp-abtn aj" aria-pressed={item.status === 'ajuste'} onClick={() => setStatus('ajuste')}>Pedir ajuste</button>
             {item.status !== 'pendente' && <button className="sp-abtn zero" onClick={() => setStatus('pendente')}>voltar para pendente</button>}

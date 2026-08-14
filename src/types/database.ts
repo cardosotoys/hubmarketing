@@ -833,6 +833,10 @@ export interface SocialPlanItem {
   product_id: string | null;
   parent_item_id: string | null;
   stage: 'planejamento' | 'producao' | 'aprovacao' | 'agendado' | 'publicado';
+  awaiting_review: boolean;
+  approver_id: string | null;
+  review_by: string | null;
+  review_at: string | null;
   status: 'pendente' | 'aprovada' | 'ajuste';
   status_by: string | null;
   status_at: string | null;

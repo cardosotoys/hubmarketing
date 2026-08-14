@@ -2740,3 +2740,19 @@ table.simple tr:hover td {
 .sp-ebtn.danger{color:#C0392B;border-color:#E7C3BE}
 .sp-ebtn.danger:hover{background:rgba(192,57,43,.08);border-color:#C0392B;color:#C0392B}
 :root[data-theme="dark"] .sp-ebtn.danger{color:#f0897c;border-color:rgba(240,137,124,.35)}
+
+/* aprovador oficial + fila de aprovação */
+.sp-headactions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sp-approversel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.sp-approversel span{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.sp-approversel select{font-family:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.sp-reviewbanner{position:relative;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 16px;padding:11px 16px;
+  background:rgba(0,92,169,.08);border:1px solid var(--accent);border-radius:12px;font-size:13.5px;color:var(--ink)}
+.sp-reviewbanner b{color:var(--accent)}
+.sp-reviewbanner button{margin-left:auto;appearance:none;border:1px solid var(--accent);background:var(--card);color:var(--accent);
+  font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer;transition:.14s}
+.sp-reviewbanner button.on{background:var(--accent);color:#fff}
+.sp-reviewrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
+.sp-reviewrow.wait{background:var(--amber-bg);border:1px solid #EBD9AE;border-radius:10px;padding:8px 12px;color:var(--amber)}
+:root[data-theme="dark"] .sp-reviewrow.wait{color:#f0c980}
+.sp-reviewhint{font-size:11.5px;color:var(--muted)}
