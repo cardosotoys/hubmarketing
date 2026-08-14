@@ -71,7 +71,8 @@ export default function Notificacoes() {
   }
   function open(n: Row) {
     if (!n.read) markRead(n.id);
-    if (n.task_id) navigate(`/demandas?task=${n.task_id}&focus=comments`);
+    if (n.link) navigate(n.link);
+    else if (n.task_id) navigate(`/demandas?task=${n.task_id}&focus=comments`);
     else if (n.project_id) navigate(`/projetos/${n.project_id}`);
   }
   function openActivity(a: MyActivityRow) {

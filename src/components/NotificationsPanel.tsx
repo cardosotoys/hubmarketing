@@ -61,7 +61,7 @@ export default function NotificationsPanel({
               <Link
                 className="item"
                 key={n.id}
-                to={n.task_id ? `/demandas?task=${n.task_id}&focus=comments` : '/demandas'}
+                to={n.link ? n.link : n.task_id ? `/demandas?task=${n.task_id}&focus=comments` : '/demandas'}
                 onClick={() => {
                   onMarkRead(n.id);
                   onClose();

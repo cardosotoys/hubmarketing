@@ -805,8 +805,60 @@ export interface Notification {
   body: string;
   task_id: string | null;
   project_id: string | null;
+  link: string | null;
   read: boolean;
   created_at: string;
+}
+
+// ---- Social · Planejamento de mídias digitais (0076/0077) ----
+export interface SocialPlanItem {
+  id: string;
+  ext_id: string | null;
+  pub_date: string; // YYYY-MM-DD
+  weekday: string;
+  month_label: string;
+  week_theme: string;
+  brand: string;
+  network: string;
+  channel: string;
+  piece_type: string;
+  format: string;
+  origin: string;
+  pauta: string;
+  product: string;
+  sku: string;
+  objective: string;
+  cta: string;
+  media_use: string;
+  product_id: string | null;
+  status: 'pendente' | 'aprovada' | 'ajuste';
+  status_by: string | null;
+  status_at: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface SocialPlanComment {
+  id: string;
+  item_id: string;
+  author_id: string;
+  body: string;
+  kind: 'comment' | 'approve' | 'adjust';
+  mentioned_ids: string[];
+  parent_id: string | null;
+  created_at: string;
+}
+
+export interface SocialPlanDeadline {
+  id: string;
+  ext_key: string | null;
+  marco: string;
+  dm: string;
+  limite: string | null;
+  acao: string;
+  resp: string;
+  ord: number;
 }
 
 export interface AccessPreset {
