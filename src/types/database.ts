@@ -65,6 +65,7 @@ export const MODULE_KEYS = [
   'configuracoes',
   'perfil',
   'trade-marketing',
+  'reunioes',
   // módulos novos (estrutura vazia — implementação futura)
   'aprovacoes',
   'pesquisa-mercado',
@@ -101,6 +102,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   configuracoes: 'Configurações',
   perfil: 'Perfil',
   'trade-marketing': 'Trade Marketing',
+  reunioes: 'Reuniões',
   aprovacoes: 'Aprovações',
   'pesquisa-mercado': 'Pesquisa de Mercado',
   concorrentes: 'Concorrentes',
@@ -856,6 +858,38 @@ export interface SocialPlanComment {
   parent_id: string | null;
   created_at: string;
   edited_at: string | null;
+}
+
+// ---- Reuniões (0084) ----
+export interface Meeting {
+  id: string;
+  type: 'licenciamento' | 'geral';
+  title: string;
+  agency: string;
+  brand: string;
+  meeting_date: string | null;
+  participants: string;
+  topics: string;
+  notes: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface MeetingItem {
+  id: string;
+  meeting_id: string;
+  kind: 'demanda' | 'decisao';
+  description: string;
+  owner: string;
+  owner_id: string | null;
+  due_date: string | null;
+  status: 'aberto' | 'concluido';
+  decision: string;
+  created_at: string;
+  created_by: string | null;
+  position: number;
 }
 
 export interface SocialPlanDeadline {

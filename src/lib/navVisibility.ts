@@ -12,6 +12,9 @@ export interface NavItem {
   // opt-in: some pra todo mundo por padrão; só aparece pra quem for "Liberado" em Perfis &
   // Permissões (Diretoria/Administrador continuam vendo, pois é quem configura/gerencia).
   hiddenByDefault?: boolean;
+  // restrito: aparece SOMENTE para quem tem o módulo liberado em extra_modules — ignora papel
+  // (nem Diretoria/Administrador veem sem liberação). Para módulos de acesso a pessoas específicas.
+  grantOnly?: boolean;
 }
 
 // Um "módulo" agrupa páginas relacionadas dentro de um grupo do menu (colapsável na sidebar).
@@ -87,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/campanhas', label: 'Campanhas', icon: 'campanhas', moduleKey: 'campanhas' },
           { to: '/marcas', label: 'Marcas', icon: 'brand', moduleKey: 'marcas' },
           { to: '/brand', label: 'Brand Center', icon: 'design', moduleKey: 'brand' },
+          { to: '/reunioes', label: 'Reuniões', icon: 'calendar', moduleKey: 'reunioes', grantOnly: true },
         ],
       },
       {
@@ -157,6 +161,8 @@ export interface NavVisibilityContext {
 export function isNavItemVisible(item: NavItem, ctx: NavVisibilityContext): boolean {
   if (ctx.hiddenModules.includes(item.moduleKey)) return false;
   if (ctx.extraModules.includes(item.moduleKey)) return true;
+  // restrito a pessoas específicas: sem liberação, ninguém vê (nem diretoria/adm)
+  if (item.grantOnly) return false;
   // opt-in: oculto por padrão, exceto Diretoria/Administrador (que gerenciam quem libera)
   if (item.hiddenByDefault && ctx.role !== 'diretoria' && ctx.role !== 'administrador') return false;
   if (item.defaultRoles && !item.defaultRoles.includes(ctx.role)) return false;
@@ -167,9 +173,12 @@ export function isNavItemVisible(item: NavItem, ctx: NavVisibilityContext): bool
 // ModuleGate usa isto pra bloquear por URL um módulo opt-in que a pessoa não tem liberado
 // (sem afetar os demais módulos, que seguem só com a checagem de hidden_modules).
 export function isModuleOptInLocked(moduleKey: string, ctx: NavVisibilityContext): boolean {
-  const optIn = NAV_GROUPS.flatMap((g) => g.modules)
-    .flatMap((m) => m.items)
-    .some((i) => i.moduleKey === moduleKey && i.hiddenByDefault);
+  const allItems = NAV_GROUPS.flatMap((g) => g.modules).flatMap((m) => m.items);
+  // módulo restrito (grantOnly): bloqueado por URL a não ser que esteja liberado em extra_modules
+  if (allItems.some((i) => i.moduleKey === moduleKey && i.grantOnly)) {
+    return !ctx.extraModules.includes(moduleKey);
+  }
+  const optIn = allItems.some((i) => i.moduleKey === moduleKey && i.hiddenByDefault);
   if (!optIn) return false;
   if (ctx.extraModules.includes(moduleKey)) return false;
   if (ctx.role === 'diretoria' || ctx.role === 'administrador') return false;

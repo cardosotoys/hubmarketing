@@ -21,6 +21,7 @@ import MonitorPrecos from './pages/MonitorPrecos';
 import TradeMarketing from './pages/TradeMarketing';
 import SocialPlan from './pages/SocialPlan';
 import Campo from './pages/Campo';
+import Reunioes from './pages/Reunioes';
 import Biblioteca from './pages/Biblioteca';
 import Campaigns from './pages/Campaigns';
 import Calendario from './pages/Calendario';
@@ -110,6 +111,7 @@ export default function App() {
             />
             <Route path="calendario" element={<ModuleGate moduleKey="calendario"><Calendario /></ModuleGate>} />
             <Route path="redes-sociais" element={<ModuleGate moduleKey="redes-sociais"><SocialPlan /></ModuleGate>} />
+            <Route path="reunioes" element={<ModuleGate moduleKey="reunioes"><Reunioes /></ModuleGate>} />
             <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
             <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
             <Route path="trade" element={<ModuleGate moduleKey="trade-marketing"><TradeMarketing /></ModuleGate>} />
