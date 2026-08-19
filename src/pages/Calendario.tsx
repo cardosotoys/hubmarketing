@@ -62,7 +62,7 @@ export default function Calendario() {
   const load = useCallback(async () => {
     setLoading(true);
     const myId = profile?.id;
-    const [projectsRes, tasksRes, pkgRes, campaignsRes, campTasksRes, milestonesRes, postsRes, ownEventsRes, brandsRes, membersRes, mentionsRes] = await Promise.all([
+    const [projectsRes, tasksRes, pkgRes, campaignsRes, campTasksRes, milestonesRes, postsRes, ownEventsRes, brandsRes, membersRes, mentionsRes, meetingsRes] = await Promise.all([
       supabase.from('projects').select('*, brand:brands(color)'),
       supabase.from('tasks').select('id, title, due_date, priority, project_id, assignee_id').not('due_date', 'is', null).is('packaging_track', null),
       supabase.from('tasks').select('id, title, due_date, target_date, completed_at, priority, assignee_id').not('packaging_track', 'is', null),
@@ -74,6 +74,7 @@ export default function Calendario() {
       supabase.from('brands').select('*'),
       myId ? supabase.from('project_members').select('project_id').eq('user_id', myId) : Promise.resolve({ data: [] }),
       myId ? supabase.from('task_comments').select('task_id').contains('mentioned_ids', [myId]) : Promise.resolve({ data: [] }),
+      supabase.from('meetings').select('id, agency, brand, meeting_date, meeting_time, participant_ids, created_by').not('meeting_date', 'is', null),
     ]);
 
     const evts: CalEvent[] = [];
@@ -195,6 +196,17 @@ export default function Calendario() {
         createdBy: e.created_by,
         mine: e.created_by === myId,
       });
+    });
+
+    // Reuniões — só para participantes/criador (o módulo é restrito), com horário no rótulo
+    type MeetRow = { id: string; agency: string; brand: string; meeting_date: string | null; meeting_time: string | null; participant_ids: string[] | null; created_by: string | null };
+    ((meetingsRes.data as MeetRow[]) ?? []).forEach((m) => {
+      if (!m.meeting_date) return;
+      const mine = m.created_by === myId || (m.participant_ids ?? []).includes(myId ?? '');
+      if (!mine) return; // não vaza reunião pra quem não participa
+      const hora = m.meeting_time ? `${m.meeting_time.slice(0, 5)} ` : '';
+      const nome = m.agency || m.brand || 'Reunião';
+      evts.push({ id: `meet-${m.id}`, date: m.meeting_date, label: `🤝 ${hora}${nome}`, color: 'var(--violet)', type: 'evento', href: `/reunioes?meeting=${m.id}`, mine: true });
     });
 
     setEvents(evts);

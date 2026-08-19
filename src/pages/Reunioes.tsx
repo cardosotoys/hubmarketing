@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
@@ -25,6 +26,7 @@ export default function Reunioes() {
   const [typeF, setTypeF] = useState<'all' | 'licenciamento' | 'geral'>('all');
   const [q, setQ] = useState('');
   const [selId, setSelId] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
 
   const load = useCallback(async () => {
     const [mt, it, pf] = await Promise.all([
@@ -39,6 +41,11 @@ export default function Reunioes() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  // deep-link ?meeting=ID (vindo da notificação) → abre a reunião direto
+  useEffect(() => {
+    const id = params.get('meeting');
+    if (id && meetings.some((m) => m.id === id)) setSelId(id);
+  }, [params, meetings]);
   useEffect(() => {
     const ch = supabase.channel('meetings')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => load())
@@ -125,12 +132,12 @@ export default function Reunioes() {
               <button key={m.id} className="rm-card" onClick={() => setSelId(m.id)}>
                 <div className="rm-card-top">
                   <span className={`rm-type ${m.type}`}>{m.type === 'licenciamento' ? 'Licenciamento' : 'Geral'}</span>
-                  <span className="rm-card-date">{brDate(m.meeting_date)}</span>
+                  <span className="rm-card-date">{brDate(m.meeting_date)}{m.meeting_time ? ` · ${m.meeting_time.slice(0, 5)}` : ''}</span>
                 </div>
                 <div className="rm-card-title">{m.agency || m.title || 'Reunião'}{m.brand ? <span className="rm-card-brand"> · {m.brand}</span> : null}</div>
                 {m.topics && <div className="rm-card-topics">{m.topics}</div>}
                 <div className="rm-card-meta">
-                  {m.participants && <span>👥 {m.participants.split(/[,;\n]/).filter(Boolean).length} particip.</span>}
+                  {(m.participant_ids?.length ?? 0) > 0 && <span>👥 {m.participant_ids.length} particip.</span>}
                   {dem > 0 && <span className="rm-tag">📋 {dem} demanda(s)</span>}
                   {dec > 0 && <span className="rm-tag warn">⚖️ {dec} decisão(ões)</span>}
                 </div>
@@ -148,7 +155,7 @@ export default function Reunioes() {
           profiles={profiles}
           me={profile}
           canDelete={profile?.role === 'diretoria' || profile?.role === 'administrador'}
-          onClose={() => setSelId(null)}
+          onClose={() => { setSelId(null); if (params.get('meeting')) { const p = new URLSearchParams(params); p.delete('meeting'); setParams(p, { replace: true }); } }}
           onChanged={load}
         />
       )}
@@ -157,7 +164,7 @@ export default function Reunioes() {
 }
 
 /* ------------------------- detalhe / edição da reunião ------------------------- */
-type Header = Pick<Meeting, 'type' | 'agency' | 'brand' | 'meeting_date' | 'participants' | 'topics' | 'notes' | 'title'>;
+type Header = Pick<Meeting, 'type' | 'agency' | 'brand' | 'meeting_date' | 'meeting_time' | 'participant_ids' | 'topics' | 'notes' | 'title'>;
 
 function MeetingModal({ meeting, items, profiles, me, canDelete, onClose, onChanged }: {
   meeting: Meeting;
@@ -175,9 +182,11 @@ function MeetingModal({ meeting, items, profiles, me, canDelete, onClose, onChan
   const upd = (k: keyof Header, v: string) => setH((p) => ({ ...p, [k]: v }));
 
   const saveHeader = async () => {
-    await supabase.from('meetings').update({ ...h, updated_by: me?.id ?? null }).eq('id', meeting.id);
+    await supabase.from('meetings').update({ ...h, meeting_time: h.meeting_time || null, updated_by: me?.id ?? null }).eq('id', meeting.id);
     flash('reunião salva'); onChanged();
   };
+  const toggleParticipant = (id: string) =>
+    setH((p) => ({ ...p, participant_ids: p.participant_ids.includes(id) ? p.participant_ids.filter((x) => x !== id) : [...p.participant_ids, id] }));
 
   const addItem = async (kind: 'demanda' | 'decisao') => {
     const pos = items.length;
@@ -214,6 +223,9 @@ function MeetingModal({ meeting, items, profiles, me, canDelete, onClose, onChan
           <label className="rm-f">Data
             <input type="date" value={h.meeting_date ?? ''} onChange={(e) => upd('meeting_date', e.target.value)} />
           </label>
+          <label className="rm-f">Horário
+            <input type="time" value={h.meeting_time ?? ''} onChange={(e) => upd('meeting_time', e.target.value)} />
+          </label>
         </div>
         <div className="rm-frow">
           <label className="rm-f">Agência
@@ -223,9 +235,16 @@ function MeetingModal({ meeting, items, profiles, me, canDelete, onClose, onChan
             <input value={h.brand} onChange={(e) => upd('brand', e.target.value)} placeholder="Marca / propriedade" />
           </label>
         </div>
-        <label className="rm-f">Participantes
-          <input value={h.participants} onChange={(e) => upd('participants', e.target.value)} placeholder="Separe por vírgula" />
-        </label>
+        <div className="rm-f">Participantes
+          <div className="rm-partchips">
+            {profiles.filter((p) => !p.disabled).map((p) => (
+              <button key={p.id} type="button" className={`rm-partchip ${h.participant_ids.includes(p.id) ? 'on' : ''}`} onClick={() => toggleParticipant(p.id)}>
+                {h.participant_ids.includes(p.id) ? '✓ ' : ''}{p.name}
+              </button>
+            ))}
+          </div>
+          <p className="rm-parthint">Quem for marcado recebe notificação e vê a reunião no próprio Calendário.</p>
+        </div>
         <label className="rm-f">Principais assuntos
           <textarea rows={3} value={h.topics} onChange={(e) => upd('topics', e.target.value)} placeholder="Do que se tratou a reunião…" />
         </label>
@@ -301,6 +320,6 @@ function DecisaoRow({ it, onSave, onDelete }: {
 }
 
 function pickHeader(m: Meeting): Header {
-  const { type, agency, brand, meeting_date, participants, topics, notes, title } = m;
-  return { type, agency, brand, meeting_date, participants, topics, notes, title };
+  const { type, agency, brand, meeting_date, meeting_time, participant_ids, topics, notes, title } = m;
+  return { type, agency, brand, meeting_date, meeting_time, participant_ids: participant_ids ?? [], topics, notes, title };
 }

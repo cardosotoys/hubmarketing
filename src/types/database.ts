@@ -868,6 +868,8 @@ export interface Meeting {
   agency: string;
   brand: string;
   meeting_date: string | null;
+  meeting_time: string | null;
+  participant_ids: string[];
   participants: string;
   topics: string;
   notes: string;
