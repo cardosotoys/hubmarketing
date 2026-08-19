@@ -2764,3 +2764,101 @@ table.simple tr:hover td {
 .sp-like:hover{border-color:var(--accent);color:var(--accent)}
 .sp-like.on{background:rgba(0,92,169,.12);border-color:var(--accent);color:var(--accent);font-weight:600}
 .sp-cmt-edit textarea{min-height:60px;margin:2px 0 6px}
+
+/* ---- aba Campo (admin, dentro do Trade) ---- */
+.tm-panel-title{font-size:16px;font-weight:800;margin:0 0 4px;color:var(--tm-ink,inherit)}
+.tm-note{font-size:12.5px;color:var(--tm-ink2,#667);margin:0 0 12px}
+.tm-btn{appearance:none;border:1px solid var(--tm-line,#dcdfe4);background:var(--tm-soft,#fff);color:var(--tm-ink,inherit);
+  font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:.14s}
+.tm-btn:hover{border-color:var(--tm-accent,#4338ca);color:var(--tm-accent,#4338ca)}
+.campo-links{display:flex;flex-direction:column;gap:8px}
+.campo-linkrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--tm-line,#e5e7eb);border-radius:10px;background:var(--tm-soft,#fff)}
+.campo-linkinfo{min-width:0;flex:1}
+.campo-linkinfo b{display:block;font-size:13.5px}
+.campo-linkinfo span{display:block;font-size:11.5px;color:var(--tm-ink2,#889);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ============================================================================
+ * Página de CAMPO (.campo) — pública, celular, letras grandes. Tema próprio claro.
+ * ========================================================================== */
+.campo{
+  --c-bg:#EEF1F5; --c-card:#FFFFFF; --c-line:#DDE2E8; --c-ink:#1D2A32; --c-ink2:#5B6B76;
+  --c-accent:#0E5AA7; --c-green:#1E9E62; --c-red:#D8433A; --c-amber:#B5791F;
+  position:fixed; inset:0; overflow:auto; background:var(--c-bg); color:var(--c-ink);
+  font-family:system-ui,-apple-system,sans-serif; -webkit-text-size-adjust:100%;
+  z-index:1; padding-bottom:80px;
+}
+.campo *{box-sizing:border-box}
+.campo-center{max-width:520px;margin:0 auto;padding:60px 24px;text-align:center}
+.campo-erro{font-size:56px}
+.campo-center h1{font-size:26px;margin:10px 0 8px}
+.campo-center p{color:var(--c-ink2);font-size:16px;line-height:1.5}
+
+.campo-head{background:var(--c-card);border-bottom:1px solid var(--c-line);padding:22px 20px 18px;max-width:640px;margin:0 auto}
+.campo-logo{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--c-accent);font-weight:700}
+.campo-head h1{font-size:26px;margin:6px 0 2px;letter-spacing:-.01em}
+.campo-sub{color:var(--c-ink2);font-size:14px;margin:0}
+
+.campo-promoters,.campo-body,.campo-modes{max-width:640px;margin:0 auto}
+.campo-promoters{padding:14px 20px 0}
+.campo-lbl{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink2)}
+.campo-promchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.campo-promchip{appearance:none;border:2px solid var(--c-line);background:var(--c-card);color:var(--c-ink);font-size:16px;font-weight:600;
+  padding:10px 16px;border-radius:12px;cursor:pointer;transition:.12s}
+.campo-promchip.on{background:var(--c-accent);border-color:var(--c-accent);color:#fff}
+
+.campo-modes{display:flex;gap:8px;padding:16px 20px 4px}
+.campo-modes button{flex:1;appearance:none;border:2px solid var(--c-line);background:var(--c-card);color:var(--c-ink2);
+  font-size:16px;font-weight:700;padding:14px 10px;border-radius:14px;cursor:pointer;transition:.12s}
+.campo-modes button.on{background:var(--c-ink);border-color:var(--c-ink);color:#fff}
+
+.campo-body{padding:10px 20px 20px}
+.campo-h2{font-size:19px;margin:12px 0 12px}
+.campo-empty{color:var(--c-ink2);font-size:15px;line-height:1.5;background:var(--c-card);border:1px dashed var(--c-line);border-radius:12px;padding:16px}
+
+/* cartão de report */
+.campo-card{background:var(--c-card);border:2px solid var(--c-line);border-radius:16px;padding:14px;margin-bottom:12px;transition:.12s}
+.campo-card.ok{border-color:var(--c-green);background:#F0FAF4}
+.campo-card.no{border-color:var(--c-red);background:#FDF2F1}
+.campo-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+.campo-card-top b{font-size:17px;display:block;line-height:1.25}
+.campo-card-sub{font-size:13px;color:var(--c-ink2);display:block;margin-top:2px}
+.campo-tagextra{font-family:ui-monospace,monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;background:#EDE7DA;color:var(--c-amber);padding:3px 8px;border-radius:999px;flex:0 0 auto}
+.campo-btns{display:flex;gap:10px}
+.campo-yes,.campo-no{flex:1;appearance:none;border:2px solid var(--c-line);background:var(--c-card);font-size:17px;font-weight:700;
+  padding:14px;border-radius:12px;cursor:pointer;transition:.12s;color:var(--c-ink)}
+.campo-yes.on{background:var(--c-green);border-color:var(--c-green);color:#fff}
+.campo-no.on{background:var(--c-red);border-color:var(--c-red);color:#fff}
+.campo-motivos{margin-top:12px;border-top:1px solid var(--c-line);padding-top:10px}
+.campo-motchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.campo-motchip{appearance:none;border:2px solid var(--c-line);background:var(--c-card);color:var(--c-ink);font-size:15px;
+  padding:10px 14px;border-radius:12px;cursor:pointer;transition:.12s}
+.campo-motchip.on{background:var(--c-amber);border-color:var(--c-amber);color:#fff}
+.campo-add{width:100%;appearance:none;border:2px dashed var(--c-accent);background:var(--c-card);color:var(--c-accent);
+  font-size:16px;font-weight:700;padding:15px;border-radius:14px;cursor:pointer;margin-top:4px}
+
+/* planejar semana */
+.campo-day{background:var(--c-card);border:2px solid var(--c-line);border-radius:16px;padding:12px 14px;margin-bottom:12px}
+.campo-day-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.campo-day-head b{font-size:17px}
+.campo-day-head span{font-size:12.5px;color:var(--c-ink2)}
+.campo-day-stores{display:flex;flex-wrap:wrap;gap:8px}
+.campo-storechip{display:inline-flex;align-items:center;gap:8px;background:#EAF1F8;border:1px solid #CBDDEF;color:var(--c-ink);
+  font-size:14.5px;padding:8px 10px 8px 12px;border-radius:12px}
+.campo-storechip button{appearance:none;border:0;background:rgba(0,0,0,.08);color:var(--c-ink2);width:24px;height:24px;border-radius:50%;font-size:14px;cursor:pointer;line-height:1}
+.campo-addstore{appearance:none;border:2px dashed var(--c-accent);background:var(--c-card);color:var(--c-accent);font-size:14.5px;font-weight:700;padding:9px 14px;border-radius:12px;cursor:pointer}
+
+.campo-flash{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--c-ink);color:#fff;
+  font-size:15px;font-weight:600;padding:12px 22px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.24);z-index:20}
+
+/* seletor de loja (overlay) */
+.campo-picker{position:fixed;inset:0;background:rgba(20,30,38,.45);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+.campo-picker-sheet{background:var(--c-card);width:100%;max-width:640px;height:82vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.campo-picker-head{display:flex;gap:8px;padding:14px;border-bottom:1px solid var(--c-line)}
+.campo-picker-head input{flex:1;font-size:17px;padding:12px 14px;border:2px solid var(--c-line);border-radius:12px;color:var(--c-ink)}
+.campo-picker-head button{appearance:none;border:0;background:none;color:var(--c-accent);font-size:15px;font-weight:700;padding:0 8px;cursor:pointer}
+.campo-picker-list{overflow:auto;padding:8px}
+.campo-picker-item{display:block;width:100%;text-align:left;appearance:none;border:0;border-bottom:1px solid var(--c-line);background:none;padding:14px 10px;cursor:pointer}
+.campo-picker-item:disabled{opacity:.4}
+.campo-picker-item b{display:block;font-size:16px;color:var(--c-ink)}
+.campo-picker-item span{display:block;font-size:13px;color:var(--c-ink2);margin-top:2px}
+.campo-picker-empty{padding:30px;text-align:center;color:var(--c-ink2)}

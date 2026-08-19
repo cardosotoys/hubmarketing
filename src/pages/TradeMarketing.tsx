@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
+import CampoAdmin from '../components/CampoAdmin';
 import Modal from '../components/Modal';
 
 type Visit = { id: string; promoter_id: string | null; store_id: string | null; visit_date: string; weekday: string | null; raw_store_name: string | null };
@@ -16,7 +17,7 @@ type PlanRoute = { storeId: string; name: string; network: string; zona: string;
 type PlanVisit = { date: string; storeId: string; name: string; network: string; zona: string; owner: string | null; ownerName: string; weekday: number };
 const WEEK_CAP = 16; // teto/alvo de visitas por promotor por semana (preenche até aqui)
 
-type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas' | 'cadastro';
+type Tab = 'planejamento' | 'promotores' | 'lojas' | 'frequencia' | 'visitas' | 'cadastro' | 'campo';
 type StoreDraft = { name: string; network_id: string; city: string; region: string; address: string; priority: string; planned_frequency_days: string; default_promoter_id: string; status: string };
 const TABS: [Tab, string][] = [
   ['planejamento', 'Planejamento'],
@@ -25,6 +26,7 @@ const TABS: [Tab, string][] = [
   ['frequencia', 'Frequência'],
   ['visitas', 'Visitas'],
   ['cadastro', 'Cadastro'],
+  ['campo', 'Campo'],
 ];
 const CATS = ['var(--tm-accent)', 'var(--tm-purple)', 'var(--tm-cyan)', 'var(--tm-pink)', 'var(--tm-good)', 'var(--tm-warn)', 'var(--tm-accent2)', '#64748b'];
 const WD = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -464,6 +466,8 @@ export default function TradeMarketing() {
               </>
             );
           })()}
+
+          {tab === 'campo' && <CampoAdmin />}
         </div>
       </div>
 

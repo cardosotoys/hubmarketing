@@ -20,6 +20,7 @@ import Produtos from './pages/Produtos';
 import MonitorPrecos from './pages/MonitorPrecos';
 import TradeMarketing from './pages/TradeMarketing';
 import SocialPlan from './pages/SocialPlan';
+import Campo from './pages/Campo';
 import Biblioteca from './pages/Biblioteca';
 import Campaigns from './pages/Campaigns';
 import Calendario from './pages/Calendario';
@@ -78,6 +79,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* Página de CAMPO — pública (sem login), acessada por link mágico com token */}
+          <Route path="/campo" element={<Campo />} />
           <Route element={<AppLayout />}>
             <Route index element={<ModuleGate moduleKey="dashboard"><Dashboard /></ModuleGate>} />
             {/* Módulos novos (estrutura vazia — implementação futura) */}
