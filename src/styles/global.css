@@ -2862,3 +2862,20 @@ table.simple tr:hover td {
 .campo-picker-item b{display:block;font-size:16px;color:var(--c-ink)}
 .campo-picker-item span{display:block;font-size:13px;color:var(--c-ink2);margin-top:2px}
 .campo-picker-empty{padding:30px;text-align:center;color:var(--c-ink2)}
+
+/* Campo — modo Lojas (cadastro) */
+.campo-searchinput{width:100%;font-size:16px;padding:12px 14px;border:2px solid var(--c-line);border-radius:12px;color:var(--c-ink);background:var(--c-card)}
+.campo-storelist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.campo-storeitem{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;
+  appearance:none;border:2px solid var(--c-line);background:var(--c-card);border-radius:14px;padding:12px 14px;cursor:pointer}
+.campo-storeitem b{display:block;font-size:16px;color:var(--c-ink)}
+.campo-storeitem span{display:block;font-size:13px;color:var(--c-ink2);margin-top:2px}
+.campo-resp{flex:0 0 auto;font-size:13px;font-weight:700;color:var(--c-accent);white-space:nowrap}
+.campo-resp.none{color:var(--c-red);font-weight:600}
+.campo-form{padding:14px;overflow:auto}
+.campo-flabel{display:block;font-size:14px;font-weight:700;color:var(--c-ink2);margin-bottom:12px}
+.campo-flabel input{display:block;width:100%;margin-top:6px;font-size:16px;font-weight:400;padding:12px 14px;border:2px solid var(--c-line);border-radius:12px;color:var(--c-ink);background:var(--c-card)}
+.campo-frow{display:flex;gap:10px}
+.campo-frow .campo-flabel{flex:1}
+.campo-save{width:100%;appearance:none;border:0;background:var(--c-green);color:#fff;font-size:18px;font-weight:800;padding:16px;border-radius:14px;cursor:pointer;margin-top:6px}
+.campo-save:disabled{opacity:.5}

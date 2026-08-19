@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
  * Mobile-first, letras grandes, poucos toques.
  * ------------------------------------------------------------------ */
 
-type Store = { id: string; name: string; network: string | null; city: string | null; region: string | null; default_promoter_id: string | null };
+type Store = { id: string; name: string; network: string | null; network_id: string | null; city: string | null; region: string | null; address: string | null; default_promoter_id: string | null };
 type Ctx = {
   ok: boolean;
   kind?: 'lider' | 'promotor';
@@ -18,6 +18,7 @@ type Ctx = {
   today?: string;
   today_weekday?: number;
   promoters?: { id: string; name: string }[];
+  networks?: { id: string; name: string }[];
   stores?: Store[];
   plan?: { promoter_id: string; weekday: number; store_id: string }[];
   reports?: { promoter_id: string; report_date: string; store_id: string; status: 'foi' | 'nao_foi'; reason: string; note: string }[];
@@ -36,9 +37,10 @@ export default function Campo() {
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [loading, setLoading] = useState(true);
   const [promoter, setPromoter] = useState<string>('');
-  const [mode, setMode] = useState<'report' | 'plan'>('report');
+  const [mode, setMode] = useState<'report' | 'plan' | 'stores'>('report');
   const [flash, setFlash] = useState('');
   const [picker, setPicker] = useState<null | { forWeekday?: number; onPick: (storeId: string) => void; taken: Set<string> }>(null);
+  const [storeEdit, setStoreEdit] = useState<null | 'new' | Store>(null);
 
   const load = useCallback(async () => {
     if (!token) { setLoading(false); return; }
@@ -88,6 +90,14 @@ export default function Campo() {
     await supabase.rpc('tm_field_report_clear', { p_token: token, p_promoter: promoter, p_date: ctx?.today, p_store: storeId });
     showFlash('desmarcado'); await load();
   };
+  const saveStore = async (s: { id?: string; name: string; network: string; city: string; region: string; address: string; promoter: string }) => {
+    const { data } = await supabase.rpc('tm_field_store_upsert', {
+      p_token: token, p_store_id: s.id ?? null, p_name: s.name, p_network: s.network,
+      p_city: s.city, p_region: s.region, p_address: s.address, p_promoter: s.promoter || null,
+    });
+    if ((data as { ok?: boolean })?.ok) { setStoreEdit(null); showFlash('loja salva'); await load(); }
+    else showFlash('preencha o nome');
+  };
 
   if (loading) return <div className="campo"><div className="campo-center">Carregando…</div></div>;
   if (!token || !ctx?.ok) {
@@ -130,8 +140,9 @@ export default function Campo() {
       )}
 
       <div className="campo-modes">
-        <button className={mode === 'report' ? 'on' : ''} onClick={() => setMode('report')}>✅ Report de hoje</button>
-        <button className={mode === 'plan' ? 'on' : ''} onClick={() => setMode('plan')}>📅 Planejar a semana</button>
+        <button className={mode === 'report' ? 'on' : ''} onClick={() => setMode('report')}>✅ Hoje</button>
+        <button className={mode === 'plan' ? 'on' : ''} onClick={() => setMode('plan')}>📅 Semana</button>
+        <button className={mode === 'stores' ? 'on' : ''} onClick={() => setMode('stores')}>🏪 Lojas</button>
       </div>
 
       {mode === 'report' && (
@@ -201,7 +212,26 @@ export default function Campo() {
         </div>
       )}
 
+      {mode === 'stores' && (
+        <div className="campo-body">
+          <h2 className="campo-h2">Cadastro de lojas</h2>
+          <p className="campo-empty" style={{ marginTop: -4 }}>Cadastre as lojas visitadas e diga qual promotor é responsável. Isso abastece o hub automaticamente.</p>
+          <button className="campo-add" onClick={() => setStoreEdit('new')} style={{ marginTop: 10 }}>+ Cadastrar nova loja</button>
+          <StoreList stores={ctx.stores ?? []} promoters={ctx.promoters ?? []} onEdit={(s) => setStoreEdit(s)} />
+        </div>
+      )}
+
       {flash && <div className="campo-flash">{flash} ✓</div>}
+
+      {storeEdit && (
+        <StoreForm
+          store={storeEdit === 'new' ? null : storeEdit}
+          promoters={ctx.promoters ?? []}
+          networks={ctx.networks ?? []}
+          onSave={saveStore}
+          onClose={() => setStoreEdit(null)}
+        />
+      )}
 
       {picker && (
         <StorePicker
@@ -211,6 +241,87 @@ export default function Campo() {
           onClose={() => setPicker(null)}
         />
       )}
+    </div>
+  );
+}
+
+function StoreList({ stores, promoters, onEdit }: {
+  stores: Store[]; promoters: { id: string; name: string }[]; onEdit: (s: Store) => void;
+}) {
+  const [q, setQ] = useState('');
+  const nameOf = (id: string | null) => promoters.find((p) => p.id === id)?.name ?? null;
+  const list = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return stores.filter((x) => !s || `${x.name} ${x.network ?? ''} ${x.city ?? ''}`.toLowerCase().includes(s));
+  }, [stores, q]);
+  return (
+    <div style={{ marginTop: 14 }}>
+      <input className="campo-searchinput" placeholder="🔍 Buscar loja cadastrada…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="campo-storelist">
+        {list.map((s) => {
+          const resp = nameOf(s.default_promoter_id);
+          return (
+            <button key={s.id} className="campo-storeitem" onClick={() => onEdit(s)}>
+              <div>
+                <b>{s.name}</b>
+                <span>{[s.network, s.city].filter(Boolean).join(' · ') || 'sem rede/cidade'}</span>
+              </div>
+              <span className={`campo-resp ${resp ? '' : 'none'}`}>{resp ? `👤 ${resp.split(' ')[0]}` : 'sem responsável'}</span>
+            </button>
+          );
+        })}
+        {list.length === 0 && <div className="campo-picker-empty">Nenhuma loja. Toque em “+ Cadastrar nova loja”.</div>}
+      </div>
+    </div>
+  );
+}
+
+function StoreForm({ store, promoters, networks, onSave, onClose }: {
+  store: Store | null;
+  promoters: { id: string; name: string }[];
+  networks: { id: string; name: string }[];
+  onSave: (s: { id?: string; name: string; network: string; city: string; region: string; address: string; promoter: string }) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(store?.name ?? '');
+  const [network, setNetwork] = useState(store?.network ?? '');
+  const [city, setCity] = useState(store?.city ?? '');
+  const [region, setRegion] = useState(store?.region ?? '');
+  const [address, setAddress] = useState(store?.address ?? '');
+  const [promoter, setPromoter] = useState(store?.default_promoter_id ?? '');
+  return (
+    <div className="campo-picker" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="campo-picker-sheet">
+        <div className="campo-picker-head">
+          <b style={{ flex: 1, fontSize: 18 }}>{store ? 'Editar loja' : 'Nova loja'}</b>
+          <button onClick={onClose}>Fechar</button>
+        </div>
+        <div className="campo-form">
+          <label className="campo-flabel">Nome da loja *
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Ri Happy Shopping Aricanduva" />
+          </label>
+          <label className="campo-flabel">Rede
+            <input list="campo-nets" value={network} onChange={(e) => setNetwork(e.target.value)} placeholder="Ri Happy, Armarinhos Fernando…" />
+            <datalist id="campo-nets">{networks.map((n) => <option key={n.id} value={n.name} />)}</datalist>
+          </label>
+          <div className="campo-frow">
+            <label className="campo-flabel">Cidade<input value={city} onChange={(e) => setCity(e.target.value)} /></label>
+            <label className="campo-flabel">Zona / Região<input value={region} onChange={(e) => setRegion(e.target.value)} /></label>
+          </div>
+          <label className="campo-flabel">Endereço (opcional)
+            <input value={address} onChange={(e) => setAddress(e.target.value)} />
+          </label>
+          <div className="campo-flabel" style={{ marginTop: 4 }}>Responsável (promotor)</div>
+          <div className="campo-promchips">
+            {promoters.map((p) => (
+              <button key={p.id} type="button" className={`campo-promchip ${promoter === p.id ? 'on' : ''}`} onClick={() => setPromoter(promoter === p.id ? '' : p.id)}>{p.name}</button>
+            ))}
+          </div>
+          <button className="campo-save" disabled={!name.trim()} onClick={() => onSave({ id: store?.id, name, network, city, region, address, promoter })}>
+            {store ? 'Salvar alterações' : 'Cadastrar loja'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
