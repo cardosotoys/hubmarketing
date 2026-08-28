@@ -64,6 +64,7 @@ export default function TradeMarketing() {
   const [editStore, setEditStore] = useState<Store | 'new' | null>(null);
   const [sdraft, setSdraft] = useState<StoreDraft>({ name: '', network_id: '', city: '', region: '', address: '', priority: '', planned_frequency_days: '', default_promoter_id: '', status: 'ativa' });
   const [cadSearch, setCadSearch] = useState('');
+  const [cadProm, setCadProm] = useState<string>(''); // filtro por responsável no Cadastro ('' = todos, 'none' = sem responsável)
   const [savingStore, setSavingStore] = useState(false);
 
   useEffect(() => {
@@ -441,13 +442,29 @@ export default function TradeMarketing() {
           {tab === 'cadastro' && (() => {
             const q = cadSearch.trim().toLowerCase();
             const ativas = stores.filter((s) => s.status !== 'arquivada'); // cadastro = só lojas ativas (as arquivadas mantêm histórico)
-            const list = [...ativas].filter((s) => !q || s.name.toLowerCase().includes(q) || (s.city ?? '').toLowerCase().includes(q) || (s.region ?? '').toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+            // contagem de lojas por responsável (default_promoter_id)
+            const porResp = new Map<string, number>();
+            let semResp = 0;
+            ativas.forEach((s) => { if (s.default_promoter_id) porResp.set(s.default_promoter_id, (porResp.get(s.default_promoter_id) ?? 0) + 1); else semResp += 1; });
+            const respRank = [...porResp.entries()].map(([id, n]) => ({ id, name: promotersById.get(id)?.name ?? '—', n })).sort((a, b) => b.n - a.n);
+            const list = [...ativas]
+              .filter((s) => cadProm === '' || (cadProm === 'none' ? !s.default_promoter_id : s.default_promoter_id === cadProm))
+              .filter((s) => !q || s.name.toLowerCase().includes(q) || (s.city ?? '').toLowerCase().includes(q) || (s.region ?? '').toLowerCase().includes(q))
+              .sort((a, b) => a.name.localeCompare(b.name));
             const semZona = ativas.filter((s) => !s.region).length;
             return (
               <>
+                {/* filtro por responsável, com a contagem de lojas de cada promotor */}
+                <div className="tm-chips" style={{ marginBottom: 10 }}>
+                  <div className={`tm-chip${cadProm === '' ? ' active' : ''}`} onClick={() => setCadProm('')}>Todos · {ativas.length}</div>
+                  {respRank.map((r) => (
+                    <div key={r.id} className={`tm-chip${cadProm === r.id ? ' active' : ''}`} onClick={() => setCadProm(cadProm === r.id ? '' : r.id)}>{r.name} · {r.n}</div>
+                  ))}
+                  {semResp > 0 && <div className={`tm-chip${cadProm === 'none' ? ' active' : ''}`} onClick={() => setCadProm(cadProm === 'none' ? '' : 'none')}>Sem responsável · {semResp}</div>}
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
                   <input className="chip-input" placeholder="⌕ Loja, cidade ou zona…" value={cadSearch} onChange={(e) => setCadSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-                  <span style={{ fontSize: 12.5, color: 'var(--tm-ink2)' }}>{ativas.length} lojas{semZona ? ` · ${semZona} sem zona` : ''}</span>
+                  <span style={{ fontSize: 12.5, color: 'var(--tm-ink2)' }}>{list.length} de {ativas.length} lojas{semZona ? ` · ${semZona} sem zona` : ''}</span>
                   {isPrivileged && <button className="btn sm" onClick={startNewStore}>+ Nova loja</button>}
                 </div>
                 <Table
