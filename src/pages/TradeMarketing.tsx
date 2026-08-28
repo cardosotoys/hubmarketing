@@ -313,7 +313,7 @@ export default function TradeMarketing() {
 
           <div className="tm-kpis">
             <div className="tm-kpi feat"><div className="k-l">Visitas realizadas</div><div className="k-v">{agg.total.toLocaleString('pt-BR')}</div><div className="k-s">{agg.perDay.toFixed(1)}/dia · {agg.timeline.length} semanas</div><Spark values={agg.timeline.map((t) => t.value)} /></div>
-            <Kpi icon="🏬" tint="var(--tm-cyan)" label="Lojas visitadas" value={agg.uniqueStores} sub={`de ${stores.length} na base`} />
+            <Kpi icon="🏬" tint="var(--tm-cyan)" label="Lojas visitadas" value={agg.uniqueStores} sub={`de ${stores.filter((s) => s.status !== 'arquivada').length} na base`} />
             <Kpi icon="👤" tint="var(--tm-purple)" label="Promotores ativos" value={agg.activePromoters} />
             <Kpi icon="📍" tint="var(--tm-good)" label="Cobertura" value={`${agg.coverage.toFixed(0)}%`} />
             <Kpi icon="🔁" tint="var(--tm-warn)" label="Frequência média" value={agg.avgFrequency != null ? `${agg.avgFrequency.toFixed(0)}d` : '—'} />
@@ -440,13 +440,14 @@ export default function TradeMarketing() {
 
           {tab === 'cadastro' && (() => {
             const q = cadSearch.trim().toLowerCase();
-            const list = [...stores].filter((s) => !q || s.name.toLowerCase().includes(q) || (s.city ?? '').toLowerCase().includes(q) || (s.region ?? '').toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
-            const semZona = stores.filter((s) => !s.region).length;
+            const ativas = stores.filter((s) => s.status !== 'arquivada'); // cadastro = só lojas ativas (as arquivadas mantêm histórico)
+            const list = [...ativas].filter((s) => !q || s.name.toLowerCase().includes(q) || (s.city ?? '').toLowerCase().includes(q) || (s.region ?? '').toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+            const semZona = ativas.filter((s) => !s.region).length;
             return (
               <>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
                   <input className="chip-input" placeholder="⌕ Loja, cidade ou zona…" value={cadSearch} onChange={(e) => setCadSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-                  <span style={{ fontSize: 12.5, color: 'var(--tm-ink2)' }}>{stores.length} lojas{semZona ? ` · ${semZona} sem zona` : ''}</span>
+                  <span style={{ fontSize: 12.5, color: 'var(--tm-ink2)' }}>{ativas.length} lojas{semZona ? ` · ${semZona} sem zona` : ''}</span>
                   {isPrivileged && <button className="btn sm" onClick={startNewStore}>+ Nova loja</button>}
                 </div>
                 <Table
