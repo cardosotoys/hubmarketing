@@ -324,17 +324,17 @@ export default function Calendario() {
       </>
     );
     const evtClass = `evt${e.highlight ? ' highlight' : ''}`;
+    const evtStyle = {
+      background: `color-mix(in srgb, ${e.color} 13%, var(--surface))`,
+      borderLeft: `3px solid ${e.color}`,
+      color: 'var(--text)',
+    } as const;
     return e.href ? (
-      <Link
-        key={e.id ?? idx}
-        to={e.href}
-        className={evtClass}
-        style={{ background: 'var(--surface-3)', color: e.color, display: 'block', textDecoration: 'none' }}
-      >
+      <Link key={e.id ?? idx} to={e.href} className={evtClass} style={{ ...evtStyle, display: 'block', textDecoration: 'none' }}>
         {content}
       </Link>
     ) : (
-      <div key={e.id ?? idx} className={evtClass} style={{ background: 'var(--surface-3)', color: e.color }}>
+      <div key={e.id ?? idx} className={evtClass} style={evtStyle}>
         {content}
       </div>
     );
@@ -473,7 +473,8 @@ export default function Calendario() {
                 return (
                   <div className={`cal-cell${isToday ? ' today' : ''}`} key={key}>
                     <div className="d">{day}</div>
-                    {dayEvents.map((e, idx) => renderEvent(e, idx))}
+                    {dayEvents.slice(0, 4).map((e, idx) => renderEvent(e, idx))}
+                    {dayEvents.length > 4 && <div className="evt-more">+{dayEvents.length - 4} mais</div>}
                   </div>
                 );
               })}
