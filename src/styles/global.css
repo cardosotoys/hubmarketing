@@ -42,6 +42,7 @@
   --radius-lg: 20px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.22);
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 14px 34px rgba(0, 0, 0, 0.32);
+  --page-gray: #08090b;
 }
 :root[data-theme='light'] {
   --bg: #f3efea;
@@ -72,6 +73,7 @@
   --blue-dim: #e6eaec;
   --shadow-sm: 0 1px 2px rgba(10, 37, 48, 0.05), 0 6px 16px rgba(10, 37, 48, 0.06);
   --shadow: 0 2px 4px rgba(10, 37, 48, 0.04), 0 14px 34px rgba(10, 37, 48, 0.09);
+  --page-gray: #E5E4E0;
 }
 * {
   box-sizing: border-box;
@@ -3013,51 +3015,35 @@ table.simple tr:hover td {
 }
 
 /* ============================================================
-   Rail lateral escuro (Azul Universo) — cara de ERP moderno
+   Shell flutuante sobre cinza + rail claro — linha das referências
    ============================================================ */
+body { background: var(--page-gray); }
+.app {
+  background: var(--page-gray);
+  padding: 14px;
+  gap: 14px;
+}
 .sidebar {
-  background: #0a2530;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 2px 0 30px rgba(10, 37, 48, 0.14);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
+  padding: 16px 12px;
+  height: auto;
 }
-.sidebar .brand-name { color: #fff; }
-.sidebar .brand-sub { color: rgba(255, 255, 255, 0.45); }
-.sidebar .nav-label,
-.sidebar .nav-group-title { color: rgba(255, 255, 255, 0.4); }
-.sidebar .nav-item,
-.sidebar .nav-module-head { color: rgba(255, 255, 255, 0.74); font-weight: 500; }
-.sidebar .nav-item .ic,
-.sidebar .nav-module-head .ic,
-.sidebar .nav-chevron { color: rgba(255, 255, 255, 0.62); opacity: 1; }
-.sidebar .nav-item:hover,
-.sidebar .nav-module-head:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
-.sidebar .nav-item.active {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 8px 18px -6px rgba(218, 58, 47, 0.55);
+.main {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  overflow: hidden;
 }
-.sidebar .nav-item.active .ic { color: #fff; }
-.sidebar .nav-item .badge { background: rgba(255, 255, 255, 0.15); color: #fff; }
-.sidebar .nav-item.active .badge { background: rgba(255, 255, 255, 0.24); color: #fff; }
-.sidebar .nav-locked { color: rgba(255, 255, 255, 0.3); }
-.sidebar .sidebar-footer { border-top-color: rgba(255, 255, 255, 0.08); }
-.sidebar .user-footer .name { color: #fff; }
-.sidebar .user-footer .meta,
-.sidebar .user-footer .meta * { color: rgba(255, 255, 255, 0.5); }
-.sidebar .collapse-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.7);
+.topbar { background: transparent; border-bottom: 1px solid var(--border); }
+.nav-item.active { box-shadow: 0 8px 16px -6px rgba(218, 58, 47, 0.45); }
+.nav-item.active .badge { background: rgba(255, 255, 255, 0.25); color: #fff; }
+@media (max-width: 880px) {
+  .app { padding: 0; gap: 0; }
+  .sidebar, .main { border-radius: 0; border: none; box-shadow: none; }
 }
-.sidebar .collapse-btn:hover { color: #fff; }
-.sidebar input,
-.sidebar select,
-.sidebar .sidebar-view-toggle {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.85);
-}
-.sidebar input::placeholder { color: rgba(255, 255, 255, 0.4); }
 
 /* ============================================================
    Card-herói do dashboard — gradiente Vermelho Cardoso + telhado
@@ -3141,3 +3127,25 @@ table.simple tr:hover td {
 .btn.ghost:hover { color: var(--text); border-color: var(--accent); transform: none; }
 .btn.sm { box-shadow: none; padding: 6px 12px; }
 .topbar { background: var(--surface); }
+
+/* card KPI preenchido (destaque) — como o cartão VISA/Owes das referências */
+.stat-card.accent {
+  background: linear-gradient(150deg, #e5443a 0%, #c2261c 100%);
+  border-color: transparent;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 30px -14px rgba(218, 58, 47, 0.6);
+}
+.stat-card.accent::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  background: repeating-linear-gradient(135deg, #fff 0 3px, transparent 3px 16px);
+  pointer-events: none;
+}
+.stat-card.accent .stat-num { color: #fff; position: relative; }
+.stat-card.accent .stat-label { color: rgba(255, 255, 255, 0.85); position: relative; }
+.stat-card.accent .stat-trend { color: rgba(255, 255, 255, 0.9); position: relative; }
+.stat-card.accent:hover { box-shadow: 0 18px 36px -14px rgba(218, 58, 47, 0.72); }

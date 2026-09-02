@@ -117,21 +117,12 @@ export default function Dashboard() {
 
   return (
     <div className="page">
-      <div className="dash-hero">
-        <div className="dash-hero-in">
-          <h1>
-            {greeting}, {firstName} 👋
-          </h1>
-          <p>
-            {seesEverything ? 'Visão consolidada de Cardoso, Playmi e Tópi.' : 'Seus projetos e demandas — só o que você participa.'}
-            {workspace !== 'todos' && ` · Workspace: ${WS_LABELS[workspace] ?? workspace}`}
-          </p>
-          <div className="dash-hero-chips">
-            <span><b>{activeProjects}</b> projetos ativos</span>
-            <span><b>{openTasksAll}</b> demandas abertas</span>
-            {overdueTasksAll > 0 && <span className="warn"><b>{overdueTasksAll}</b> atrasadas</span>}
-          </div>
-        </div>
+      <h1 className="page-title">
+        {greeting}, {firstName} 👋
+      </h1>
+      <div className="page-sub">
+        {seesEverything ? 'Visão consolidada de Cardoso, Playmi e Tópi.' : 'Seus projetos e demandas — só o que você participa.'}
+        {workspace !== 'todos' && ` · Workspace: ${WS_LABELS[workspace] ?? workspace}`}
       </div>
 
       {error && (
@@ -148,7 +139,7 @@ export default function Dashboard() {
           <div className="stat-label">Projetos ativos</div>
           <div className="stat-trend">de {projects.length} no total</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card accent">
           <div className="stat-num">{openTasksAll}</div>
           <div className="stat-label">Demandas abertas</div>
           {myOpenTasksAll > 0 && <div className="stat-trend">{myOpenTasksAll} atribuídas a você</div>}
