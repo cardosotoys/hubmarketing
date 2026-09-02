@@ -1,49 +1,77 @@
+/* Redesign UX premium — tokens ancorados no Mini Guia de Marca Cardoso.
+   Vermelho Cardoso #da3a2f · Azul Universo #0a2530 · Azul Céu #4cbdc7 · Vermelho Cometa #6a151f.
+   Tema ESCURO abaixo (premium); tema CLARO (padrão, quente) logo em seguida. */
 :root {
-  --bg: #0e1013;
-  --surface: #15181c;
-  --surface-2: #1b1f24;
-  --surface-3: #21262c;
-  --border: #23272d;
-  --text: #e8e6e1;
-  --text-dim: #8b9097;
-  --text-faint: #5b6066;
-  /* Accent = Cardoso institutional red, per brand guidelines */
-  --accent: #e15241;
-  --accent-dim: #341a16;
+  --bg: #101418;
+  --surface: #171b20;
+  --surface-2: #1d2229;
+  --surface-3: #242a31;
+  --border: #2a3038;
+  --text: #eceae4;
+  --text-dim: #98a0a8;
+  --text-faint: #626a72;
+  /* Accent = Vermelho Cardoso (guia de marca) */
+  --accent: #ef4a3d;
+  --accent-dim: #3a1512;
+  /* cores de marca (uso semântico) */
+  --navy: #7fb4c4;
+  --navy-dim: #16242b;
+  --cyan: #4cbdc7;
+  --cyan-dim: #12292c;
+  --cometa: #e06a5f;
+  --cometa-dim: #2b1613;
+  /* funcionais (mantidos p/ compatibilidade dos componentes) */
   --violet: #6e56cf;
   --violet-dim: #241f33;
   --green: #3fb68b;
   --green-dim: #15271f;
   --yellow: #e0b341;
   --yellow-dim: #2b2516;
-  --red: #e0566b;
+  --red: #ef4a3d;
   --red-dim: #2b1a1f;
-  --blue: #5b9fe0;
+  --blue: #7fb4c4;
   --blue-dim: #19222e;
-  /* Brand identity colors, from the official brand guidelines */
-  --cardoso: #e15241;
+  /* identidade de marca */
+  --cardoso: #da3a2f;
   --playmi: #00b3c6;
   --playmi-2: #ed6199;
   --topi: #ea5c18;
   --topi-2: #2ebada;
   --topi-3: #f3d22a;
-  --radius: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.22);
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 14px 34px rgba(0, 0, 0, 0.32);
 }
 :root[data-theme='light'] {
-  --bg: #f4f5f7;
+  --bg: #f3efea;
   --surface: #ffffff;
-  --surface-2: #f1f2f5;
-  --surface-3: #e8eaee;
-  --border: #dde1e6;
-  --text: #1b1e23;
-  --text-dim: #565c66;
-  --text-faint: #8a919c;
-  --accent-dim: #fbe4e0;
+  --surface-2: #f6f3ee;
+  --surface-3: #eee9e1;
+  --border: #ece7df;
+  --text: #0a2530;
+  --text-dim: #66707a;
+  --text-faint: #9aa2a6;
+  --accent: #da3a2f;
+  --accent-dim: #fbe7e4;
+  --navy: #0a2530;
+  --navy-dim: #e6eaec;
+  --cyan: #4cbdc7;
+  --cyan-dim: #e1f4f5;
+  --cometa: #6a151f;
+  --cometa-dim: #f3e4e2;
+  --violet: #6e56cf;
   --violet-dim: #ece8fb;
-  --green-dim: #e1f5ec;
-  --yellow-dim: #fbf1dd;
-  --red-dim: #fbe3e7;
-  --blue-dim: #e6f0fc;
+  --green: #2e7d51;
+  --green-dim: #e1f4ec;
+  --yellow: #b0791f;
+  --yellow-dim: #f7edd6;
+  --red: #da3a2f;
+  --red-dim: #fbe7e4;
+  --blue: #0a2530;
+  --blue-dim: #e6eaec;
+  --shadow-sm: 0 1px 2px rgba(10, 37, 48, 0.05), 0 6px 16px rgba(10, 37, 48, 0.06);
+  --shadow: 0 2px 4px rgba(10, 37, 48, 0.04), 0 14px 34px rgba(10, 37, 48, 0.09);
 }
 * {
   box-sizing: border-box;
@@ -56,11 +84,11 @@ select,
 textarea {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 9px;
   color: var(--text);
   padding: 7px 10px;
   font-size: 12.5px;
-  font-family: 'Inter';
+  font-family: 'Figtree';
 }
 input:not([type='checkbox']):not([type='radio']):focus,
 select:focus,
@@ -78,7 +106,7 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Figtree', sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
@@ -90,7 +118,7 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 .display {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Figtree', sans-serif;
 }
 .app {
   display: flex;
@@ -169,13 +197,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-weight: 700;
   font-size: 13px;
   color: #1a0f08;
 }
 .brand-name {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-weight: 600;
   font-size: 14px;
 }
@@ -499,7 +527,7 @@ body {
   }
 }
 h1.page-title {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 22px;
   font-weight: 600;
   margin: 0 0 4px 0;
@@ -557,7 +585,7 @@ h1.page-title {
   padding: 16px;
 }
 .stat-num {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 24px;
   font-weight: 700;
 }
@@ -588,7 +616,7 @@ h1.page-title {
   gap: 12px;
 }
 .section-head h2 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 15px;
   font-weight: 600;
   margin: 0;
@@ -597,12 +625,12 @@ h1.page-title {
   background: var(--accent);
   color: #1a0f08;
   border: none;
-  border-radius: 8px;
+  border-radius: 11px;
   padding: 7px 13px;
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Inter';
+  font-family: 'Figtree';
   transition: filter 0.12s;
 }
 .btn:hover {
@@ -751,7 +779,7 @@ h1.page-title {
   border-radius: var(--radius) var(--radius) 0 0;
 }
 .project-card h3 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 14.5px;
   font-weight: 600;
   margin: 10px 0 6px 0;
@@ -836,7 +864,7 @@ h1.page-title {
   border-top: none;
   border-left: none;
   border-right: none;
-  font-family: 'Inter';
+  font-family: 'Figtree';
 }
 .dtab.active {
   color: var(--text);
@@ -960,7 +988,7 @@ h1.page-title {
   margin-bottom: 8px;
 }
 .agenda-day-head .num {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 18px;
   font-weight: 700;
   color: var(--text);
@@ -1072,7 +1100,7 @@ h1.page-title {
   text-transform: uppercase;
   border: none;
   cursor: pointer;
-  font-family: 'Inter';
+  font-family: 'Figtree';
 }
 .prio.urgent {
   background: var(--red-dim);
@@ -1111,7 +1139,7 @@ h1.page-title {
   border-radius: 5px;
   font-size: 10px;
   padding: 2px 4px;
-  font-family: 'Inter';
+  font-family: 'Figtree';
 }
 
 .info-grid {
@@ -1122,12 +1150,13 @@ h1.page-title {
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: 18px;
   margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
 }
 .panel h4 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 12.5px;
   font-weight: 600;
   margin: 0 0 10px 0;
@@ -1268,11 +1297,12 @@ table.simple tr:hover td {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 15px;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
 }
 .card h4 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 13.5px;
   margin: 0 0 6px 0;
   font-weight: 600;
@@ -1407,7 +1437,7 @@ table.simple tr:hover td {
   background: none;
   border: none;
   text-align: left;
-  font-family: 'Inter';
+  font-family: 'Figtree';
 }
 .stab.active {
   background: var(--surface-2);
@@ -1442,7 +1472,7 @@ table.simple tr:hover td {
   color: var(--text);
   padding: 8px;
   font-size: 12.5px;
-  font-family: 'Inter';
+  font-family: 'Figtree';
 }
 .form-field textarea {
   resize: vertical;
@@ -1497,7 +1527,7 @@ table.simple tr:hover td {
   background: var(--surface-2);
 }
 .modal h3 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 15px;
   margin: 0 0 14px 0;
 }
@@ -1528,7 +1558,7 @@ table.simple tr:hover td {
   padding: 0 0 20px 0;
 }
 .login-card h1 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 18px;
   margin: 0 0 4px 0;
 }
@@ -1680,7 +1710,7 @@ table.simple tr:hover td {
   padding: 22px;
 }
 .drawer h3 {
-  font-family: 'Space Grotesk';
+  font-family: 'Figtree';
   font-size: 16px;
   margin: 0 0 16px 0;
 }

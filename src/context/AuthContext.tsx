@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    document.documentElement.dataset.theme = profile?.theme ?? 'dark';
+    document.documentElement.dataset.theme = profile?.theme ?? 'light';
   }, [profile?.theme]);
 
   useEffect(() => {
