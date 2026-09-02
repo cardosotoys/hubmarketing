@@ -3125,3 +3125,19 @@ table.simple tr:hover td {
   background: radial-gradient(125% 120% at 82% -25%, #ef5647 0%, #d33124 46%, #a81f16 100%);
 }
 .dash-hero::after { opacity: 0.06; }
+
+/* ---- Primitivos premium (botões, topbar) — herdados por todos os módulos ---- */
+.btn {
+  color: #fff;
+  border-radius: 12px;
+  padding: 8px 15px;
+  font-weight: 700;
+  box-shadow: 0 6px 14px -6px rgba(218, 58, 47, 0.5);
+  transition: filter 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+.btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.btn:active { transform: translateY(0); }
+.btn.ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); box-shadow: none; }
+.btn.ghost:hover { color: var(--text); border-color: var(--accent); transform: none; }
+.btn.sm { box-shadow: none; padding: 6px 12px; }
+.topbar { background: var(--surface); }
