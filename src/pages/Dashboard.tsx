@@ -179,12 +179,16 @@ export default function Dashboard() {
       </div>
 
       {/* Bento: atividade + panorama à esquerda, financeiro à direita */}
+      <div className="card dash-activity">
+        <div className="dash-activity-head">
+          <h4 style={{ margin: 0 }}>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h4>
+          <span className="dash-activity-sub">últimas 18 semanas</span>
+        </div>
+        <ActivityHeatmap actorId={seesEverything ? undefined : profile?.id} />
+      </div>
+
       <div className="dash-bento">
         <div className="dash-col">
-          <div className="card">
-            <h4 style={{ marginTop: 0 }}>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h4>
-            <ActivityHeatmap actorId={seesEverything ? undefined : profile?.id} />
-          </div>
           <div className="dash-panorama">
             <div className="card">
               <h4 style={{ marginTop: 0 }}>Projetos por status</h4>

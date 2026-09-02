@@ -3104,3 +3104,24 @@ table.simple tr:hover td {
 }
 .dash-hero-chips span b { font-family: 'Figtree'; font-weight: 800; font-size: 15px; }
 .dash-hero-chips span.warn { background: rgba(255, 255, 255, 0.24); }
+
+/* ---- Atividade da equipe (heatmap redesenhado, largura total) ---- */
+.dash-activity { margin: 0 0 4px; }
+.dash-activity-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.dash-activity-sub { font-size: 12px; color: var(--text-faint); }
+.activity-heatmap { display: flex; gap: 28px; align-items: stretch; flex-wrap: wrap; justify-content: space-between; }
+.activity-heatmap-grid { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.activity-heatmap-legend { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-faint); }
+.activity-heatmap-legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.activity-heatmap-stats { display: flex; flex-direction: column; gap: 18px; justify-content: center; padding-left: 28px; border-left: 1px solid var(--border); min-width: 180px; }
+.ahm-num { font-family: 'Figtree'; font-weight: 800; font-size: 30px; letter-spacing: -0.02em; line-height: 1; color: var(--text); }
+.ahm-lbl { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; font-weight: 600; }
+@media (max-width: 720px) {
+  .activity-heatmap-stats { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 18px; flex-direction: row; gap: 26px; min-width: 0; }
+}
+
+/* refino do herói — gradiente mais rico e menos "bloco chapado" */
+.dash-hero {
+  background: radial-gradient(125% 120% at 82% -25%, #ef5647 0%, #d33124 46%, #a81f16 100%);
+}
+.dash-hero::after { opacity: 0.06; }
