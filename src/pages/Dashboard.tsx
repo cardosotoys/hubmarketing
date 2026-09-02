@@ -132,10 +132,12 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* KPIs principais */}
       <div className="stat-grid">
         <div className="stat-card">
           <div className="stat-num">{activeProjects}</div>
           <div className="stat-label">Projetos ativos</div>
+          <div className="stat-trend">de {projects.length} no total</div>
         </div>
         <div className="stat-card">
           <div className="stat-num">{openTasksAll}</div>
@@ -143,103 +145,106 @@ export default function Dashboard() {
           {myOpenTasksAll > 0 && <div className="stat-trend">{myOpenTasksAll} atribuídas a você</div>}
         </div>
         <div className="stat-card">
-          <div className="stat-num">{projects.length}</div>
-          <div className="stat-label">Projetos no total</div>
-        </div>
-        <div className="stat-card">
           <div className="stat-num" style={{ color: overdueTasksAll > 0 ? 'var(--red)' : undefined }}>
             {overdueTasksAll}
           </div>
           <div className="stat-label">Demandas atrasadas</div>
-          {myOverdueTasksAll > 0 && <div className="stat-trend warn">{myOverdueTasksAll} suas</div>}
-          <Link to="/demandas" style={{ fontSize: 11, color: 'var(--violet)' }}>
-            Ver demandas →
-          </Link>
+          {myOverdueTasksAll > 0 ? (
+            <div className="stat-trend warn">{myOverdueTasksAll} suas</div>
+          ) : (
+            <Link to="/demandas" style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>Ver demandas →</Link>
+          )}
         </div>
+        {seesFinancial ? (
+          <div className="stat-card" style={{ color: overdue > 0 ? undefined : undefined }}>
+            <div className="stat-num" style={{ color: overdue > 0 ? 'var(--yellow)' : undefined }}>{overdue}</div>
+            <div className="stat-label">Projetos atrasados</div>
+            {overdue > 0 && <div className="stat-trend warn">Verificar prazos</div>}
+          </div>
+        ) : (
+          <div className="stat-card">
+            <div className="stat-num">{myOpenTasksAll}</div>
+            <div className="stat-label">Suas demandas</div>
+          </div>
+        )}
       </div>
 
-      {seesFinancial ? (
-        <>
-          <div className="stat-grid" style={{ marginTop: 12 }}>
-            <div className="stat-card">
-              <div className="stat-num">{overdue}</div>
-              <div className="stat-label">Projetos atrasados</div>
-              {overdue > 0 && <div className="stat-trend warn">Verificar prazos</div>}
-            </div>
-            <div className="stat-card">
-              <div className="stat-num">{budget ? formatBRL(budget.spent) : '—'}</div>
-              <div className="stat-label">Verba executada (campanhas)</div>
-              {budget && budget.planned > 0 && (
-                <div className={`stat-trend ${budget.spent > budget.planned ? 'warn' : 'up'}`}>
-                  {Math.round((budget.spent / budget.planned) * 100)}% de {formatBRL(budget.planned)}
-                </div>
-              )}
-            </div>
+      {/* Bento: atividade + panorama à esquerda, financeiro à direita */}
+      <div className="dash-bento">
+        <div className="dash-col">
+          <div className="card">
+            <h4 style={{ marginTop: 0 }}>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h4>
+            <ActivityHeatmap actorId={seesEverything ? undefined : profile?.id} />
           </div>
-          {budget && budget.planned > 0 && (
-            <div className="card" style={{ marginTop: 12 }}>
-              <h4 style={{ marginTop: 0 }}>Verba de campanhas</h4>
+          <div className="dash-panorama">
+            <div className="card">
+              <h4 style={{ marginTop: 0 }}>Projetos por status</h4>
               <DonutChart
-                centerLabel={`${Math.round((budget.spent / budget.planned) * 100)}%`}
-                centerSub="executado"
+                centerLabel={String(projects.length)}
+                centerSub="projetos"
+                segments={STATUS_CHART.map((s) => ({
+                  label: s.label,
+                  value: projects.filter((p) => p.status === s.status).length,
+                  color: s.color,
+                }))}
+              />
+            </div>
+            <div className="card">
+              <h4 style={{ marginTop: 0 }}>Situação das demandas</h4>
+              <DonutChart
+                centerLabel={String(tasks.length)}
+                centerSub="demandas"
                 segments={[
-                  { label: 'Executado', value: Math.round(budget.spent), color: 'var(--green)' },
-                  { label: 'Disponível', value: Math.max(0, Math.round(budget.planned - budget.spent)), color: 'var(--surface-3)' },
+                  { label: 'Concluídas', value: tasks.filter((t) => isTaskDone(t)).length, color: 'var(--cyan)' },
+                  { label: 'Em aberto (no prazo)', value: Math.max(0, openTasks - overdueTasks), color: 'var(--navy)' },
+                  { label: 'Atrasadas', value: overdueTasks, color: 'var(--red)' },
                 ]}
               />
             </div>
-          )}
-          <div className="banner" style={{ marginTop: 14 }}>
-            <span className="ic">◆</span>
-            <span>
-              Dashboard executivo — visível apenas para Diretoria.{' '}
-              <Link to="/relatorios" style={{ color: 'var(--violet)' }}>
-                Ver relatório completo →
-              </Link>
-            </span>
           </div>
-        </>
-      ) : (
-        <div className="banner soon" style={{ marginTop: 0 }}>
-          <span className="ic">🔒</span>
-          <span>Indicadores financeiros e dashboard executivo visíveis apenas para Diretoria.</span>
         </div>
-      )}
 
-      <div className="section-head">
-        <h2>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h2>
-      </div>
-      <div className="card">
-        <ActivityHeatmap actorId={seesEverything ? undefined : profile?.id} />
-      </div>
-
-      <div className="section-head">
-        <h2>Panorama</h2>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
-        <div className="card">
-          <h4 style={{ marginTop: 0 }}>Projetos por status</h4>
-          <DonutChart
-            centerLabel={String(projects.length)}
-            centerSub="projetos"
-            segments={STATUS_CHART.map((s) => ({
-              label: s.label,
-              value: projects.filter((p) => p.status === s.status).length,
-              color: s.color,
-            }))}
-          />
-        </div>
-        <div className="card">
-          <h4 style={{ marginTop: 0 }}>Situação das demandas</h4>
-          <DonutChart
-            centerLabel={String(tasks.length)}
-            centerSub="demandas"
-            segments={[
-              { label: 'Concluídas', value: tasks.filter((t) => isTaskDone(t)).length, color: 'var(--green)' },
-              { label: 'Em aberto (no prazo)', value: Math.max(0, openTasks - overdueTasks), color: 'var(--violet)' },
-              { label: 'Atrasadas', value: overdueTasks, color: 'var(--red)' },
-            ]}
-          />
+        <div className="dash-col">
+          {seesFinancial ? (
+            <>
+              {budget && budget.planned > 0 ? (
+                <div className="card dash-verba">
+                  <h4 style={{ marginTop: 0 }}>Verba de campanhas</h4>
+                  <DonutChart
+                    size={132}
+                    centerLabel={`${Math.round((budget.spent / budget.planned) * 100)}%`}
+                    centerSub="executado"
+                    formatValue={formatBRL}
+                    segments={[
+                      { label: 'Executado', value: Math.round(budget.spent), color: 'var(--accent)' },
+                      { label: 'Disponível', value: Math.max(0, Math.round(budget.planned - budget.spent)), color: 'var(--surface-3)' },
+                    ]}
+                  />
+                  <div className="dash-verba-foot">
+                    <span>Planejado</span>
+                    <strong>{formatBRL(budget.planned)}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div className="stat-card">
+                  <div className="stat-num">{budget ? formatBRL(budget.spent) : '—'}</div>
+                  <div className="stat-label">Verba executada</div>
+                </div>
+              )}
+              <Link to="/relatorios" className="card dash-cta">
+                <div>
+                  <div style={{ fontWeight: 700 }}>Dashboard executivo</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>Relatório completo de Diretoria</div>
+                </div>
+                <span aria-hidden style={{ color: 'var(--accent)', fontWeight: 700 }}>→</span>
+              </Link>
+            </>
+          ) : (
+            <div className="banner soon" style={{ marginTop: 0 }}>
+              <span className="ic">🔒</span>
+              <span>Indicadores financeiros e dashboard executivo visíveis apenas para Diretoria.</span>
+            </div>
+          )}
         </div>
       </div>
 

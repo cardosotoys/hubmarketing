@@ -12,12 +12,14 @@ export default function DonutChart({
   thickness = 20,
   centerLabel,
   centerSub,
+  formatValue,
 }: {
   segments: DonutSegment[];
   size?: number;
   thickness?: number;
   centerLabel?: string;
   centerSub?: string;
+  formatValue?: (v: number) => string;
 }) {
   const total = segments.reduce((s, x) => s + x.value, 0);
   const r = (size - thickness) / 2;
@@ -68,7 +70,7 @@ export default function DonutChart({
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
               <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
               <span style={{ flex: 1, color: 'var(--text-dim)' }}>{s.label}</span>
-              <strong>{s.value}</strong>
+              <strong>{formatValue ? formatValue(s.value) : s.value}</strong>
               <span style={{ color: 'var(--text-faint)', minWidth: 40, textAlign: 'right' }}>{pct}%</span>
             </div>
           );
