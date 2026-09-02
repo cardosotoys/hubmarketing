@@ -19,6 +19,17 @@ const TYPE_LABELS: Record<EventType, string> = {
   evento: 'Eventos avulsos',
 };
 
+// cor por categoria (paleta da marca) — usada nas pills de filtro
+const TYPE_COLORS: Record<EventType, string> = {
+  projeto: '#0a2530',
+  demanda: '#da3a2f',
+  embalagem: '#8a3b2a',
+  campanha: '#4cbdc7',
+  marco: '#6a151f',
+  post: '#0e7d8a',
+  evento: '#7c7c7c',
+};
+
 interface CalEvent {
   id?: string;
   date: string;
@@ -289,6 +300,8 @@ export default function Calendario() {
     e.deletable && profile && (e.createdBy === profile.id || profile.role === 'diretoria' || profile.role === 'administrador');
 
   const totalEvents = events.length;
+  const nextEvent = [...filteredEvents].filter((e) => e.date >= todayKey).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+  const miniCells: (number | null)[] = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   // Compartilhado pela grade (desktop) e pela agenda (celular) — mesmo evento, dois lugares.
   function renderEvent(e: CalEvent, idx: number) {
@@ -327,14 +340,32 @@ export default function Calendario() {
     );
   }
 
-  return (
-    <div className="page">
-      <h1 className="page-title">Calendário</h1>
-      <div className="page-sub">
-        Prazos de projetos, campanhas, embalagens (🎯 meta e 🏁 prazo), posts e eventos avulsos. Por padrão mostra
-        <strong> só o que é seu</strong> — onde você é responsável, foi mencionado, ou está na sua jornada.
+  const scopeTypeFilters = (
+    <>
+      <div className="cal-pills" style={{ marginBottom: 12 }}>
+        <button className={`cal-scope${scope === 'meu' ? ' on' : ''}`} onClick={() => setScope('meu')}>👤 Meu</button>
+        <button className={`cal-scope${scope === 'todos' ? ' on' : ''}`} onClick={() => setScope('todos')}>🌐 Todos</button>
       </div>
+      <div className="cal-pills">
+        {ALL_TYPES.map((t) => {
+          const on = typeFilter.includes(t);
+          return (
+            <button
+              key={t}
+              className={`cal-typepill${on ? ' on' : ''}`}
+              style={on ? { background: TYPE_COLORS[t], borderColor: TYPE_COLORS[t], color: '#fff' } : { color: TYPE_COLORS[t] }}
+              onClick={() => toggleType(t)}
+            >
+              {TYPE_LABELS[t]}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
 
+  return (
+    <div className="page cal-page">
       {!loading && totalEvents === 0 && (
         <div className="banner soon">
           <span className="ic">◐</span>
@@ -342,91 +373,116 @@ export default function Calendario() {
         </div>
       )}
 
-      <div className="filters-row" style={{ justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn ghost sm" onClick={() => goMonth(-1)}>
-            ←
-          </button>
-          <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 15, margin: 0, minWidth: 160, textAlign: 'center' }}>
-            {MONTH_NAMES[month]} {year}
-          </h2>
-          <button className="btn ghost sm" onClick={() => goMonth(1)}>
-            →
-          </button>
-        </div>
-        <button className="btn" onClick={() => setShowNew(true)}>
-          + Novo evento
-        </button>
-      </div>
-
-      <div className="group-toggle" style={{ marginBottom: 8 }}>
-        <div className={`filter-chip${scope === 'meu' ? ' active' : ''}`} onClick={() => setScope('meu')}>
-          👤 Meu calendário
-        </div>
-        <div className={`filter-chip${scope === 'todos' ? ' active' : ''}`} onClick={() => setScope('todos')}>
-          🌐 Todos
-        </div>
-      </div>
-
-      <div className="group-toggle" style={{ marginBottom: 14 }}>
-        {ALL_TYPES.map((t) => (
-          <div key={t} className={`filter-chip${typeFilter.includes(t) ? ' active' : ''}`} onClick={() => toggleType(t)}>
-            {TYPE_LABELS[t]}
-          </div>
-        ))}
-      </div>
-
       {isMobile ? (
-        <div className="agenda-list">
-          {agendaDays.length === 0 && (
-            <div className="locked-banner">
-              <span className="ic">◐</span>Nenhum evento neste mês pra esse filtro.
-            </div>
-          )}
-          {agendaDays.map(({ day, dateKey, isToday, events: dayEvents }) => (
-            <div className={`agenda-day${isToday ? ' today' : ''}`} key={dateKey}>
-              <div className="agenda-day-head">
-                <span className="num">{day}</span>
-                <span className="dow">{DAYS[new Date(year, month, day).getDay()]}</span>
-                {isToday && <span className="pill" style={{ marginLeft: 'auto' }}>hoje</span>}
-              </div>
-              {dayEvents.length === 0 ? (
-                <div className="agenda-empty">Nenhum evento.</div>
-              ) : (
-                dayEvents.map((e, idx) => renderEvent(e, idx))
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
         <>
-          <div className="cal-grid">
-            {DAYS.map((d) => (
-              <div className="cal-head" key={d}>
-                {d}
+          <h1 className="page-title">Calendário</h1>
+          <div className="cal-main-head" style={{ marginTop: 8 }}>
+            <div className="cal-main-nav">
+              <button onClick={() => goMonth(-1)}>‹</button>
+              <button onClick={() => goMonth(1)}>›</button>
+              <h2>{MONTH_NAMES[month]} {year}</h2>
+            </div>
+            <button className="btn sm" onClick={() => setShowNew(true)}>+ Novo</button>
+          </div>
+          {scopeTypeFilters}
+          <div className="agenda-list" style={{ marginTop: 14 }}>
+            {agendaDays.length === 0 && (
+              <div className="locked-banner"><span className="ic">◐</span>Nenhum evento neste mês pra esse filtro.</div>
+            )}
+            {agendaDays.map(({ day, dateKey, isToday, events: dayEvents }) => (
+              <div className={`agenda-day${isToday ? ' today' : ''}`} key={dateKey}>
+                <div className="agenda-day-head">
+                  <span className="num">{day}</span>
+                  <span className="dow">{DAYS[new Date(year, month, day).getDay()]}</span>
+                  {isToday && <span className="pill" style={{ marginLeft: 'auto' }}>hoje</span>}
+                </div>
+                {dayEvents.length === 0 ? <div className="agenda-empty">Nenhum evento.</div> : dayEvents.map((e, idx) => renderEvent(e, idx))}
               </div>
             ))}
           </div>
-          <div className="cal-grid" style={{ marginTop: 6 }}>
-            {cells.map((day, i) => {
-              if (day === null) return <div key={`blank-${i}`} className="cal-cell" style={{ opacity: 0.3 }} />;
-              const key = `${year}-${pad(month + 1)}-${pad(day)}`;
-              const dayEvents = eventsByDay[key] ?? [];
-              const isToday = key === todayKey;
-              return (
-                <div className={`cal-cell${isToday ? ' today' : ''}`} key={key}>
-                  <div className="d">{day}</div>
-                  {dayEvents.map((e, idx) => renderEvent(e, idx))}
-                </div>
-              );
-            })}
-          </div>
         </>
+      ) : (
+        <div className="cal-layout">
+          {/* coluna de contexto */}
+          <aside className="cal-aside">
+            <div className="cal-aside-head">
+              <div className="cal-kicker">Operação</div>
+              <h1>Calendário</h1>
+            </div>
+
+            <div className="cal-card cal-mini">
+              <div className="cal-mini-head">
+                <b>{MONTH_NAMES[month]} {year}</b>
+                <div className="cal-mini-nav">
+                  <button onClick={() => goMonth(-1)}>‹</button>
+                  <button onClick={() => goMonth(1)}>›</button>
+                </div>
+              </div>
+              <div className="cal-mini-grid">
+                {DAYS.map((d) => <span key={d} className="cal-mini-dow">{d[0]}</span>)}
+                {miniCells.map((day, i) => {
+                  if (day === null) return <span key={`mb-${i}`} />;
+                  const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+                  const has = (eventsByDay[key]?.length ?? 0) > 0;
+                  const isToday = key === todayKey;
+                  return (
+                    <span key={key} className={`cal-mini-day${isToday ? ' today' : ''}`}>
+                      {day}
+                      {has && !isToday && <i className="cal-mini-dot" />}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {nextEvent && (
+              <div className="cal-card cal-next" style={{ borderLeftColor: nextEvent.color }}>
+                <div className="cal-kicker">Próximo na agenda</div>
+                <div className="cal-next-title">{nextEvent.label}</div>
+                <div className="cal-next-date">
+                  {new Date(nextEvent.date + 'T00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })}
+                </div>
+              </div>
+            )}
+
+            <div className="cal-card">
+              <div className="cal-kicker" style={{ marginBottom: 12 }}>Filtros</div>
+              {scopeTypeFilters}
+            </div>
+          </aside>
+
+          {/* calendário principal */}
+          <div className="cal-main">
+            <div className="cal-main-head">
+              <div className="cal-main-nav">
+                <button onClick={() => goMonth(-1)}>‹</button>
+                <button onClick={() => goMonth(1)}>›</button>
+                <h2>{MONTH_NAMES[month]} {year}</h2>
+              </div>
+              <button className="btn" onClick={() => setShowNew(true)}>+ Novo evento</button>
+            </div>
+            <div className="cal-grid cal-head-row">
+              {DAYS.map((d) => <div className="cal-head" key={d}>{d}</div>)}
+            </div>
+            <div className="cal-grid cal-body">
+              {cells.map((day, i) => {
+                if (day === null) return <div key={`blank-${i}`} className="cal-cell empty" />;
+                const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+                const dayEvents = eventsByDay[key] ?? [];
+                const isToday = key === todayKey;
+                return (
+                  <div className={`cal-cell${isToday ? ' today' : ''}`} key={key}>
+                    <div className="d">{day}</div>
+                    {dayEvents.map((e, idx) => renderEvent(e, idx))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
-      {showNew && (
-        <NewEventModal brands={brands} onClose={() => setShowNew(false)} onCreate={createEvent} />
-      )}
+      {showNew && <NewEventModal brands={brands} onClose={() => setShowNew(false)} onCreate={createEvent} />}
     </div>
   );
 }
