@@ -361,7 +361,7 @@ export default function Demandas() {
   }
 
   return (
-    <div className="page">
+    <div className="page dmd-page">
       <h1 className="page-title">Demandas</h1>
       <div className="page-sub">
         Visão única de todas as demandas — de projetos, de embalagem e de campanhas — pra filtrar rápido sem abrir cada
@@ -369,9 +369,10 @@ export default function Demandas() {
         {isEquipe && ' Aqui aparecem só as demandas atribuídas a você.'}
       </div>
 
-      <div className="section-head">
-        <h2>{filteredRows.length} demandas</h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="dmd-controls">
+      <div className="section-head dmd-controls-top">
+        <h2 className="dmd-count"><strong>{filteredRows.length}</strong> demandas</h2>
+        <div className="dmd-controls-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="group-toggle">
             {(
               [
@@ -390,14 +391,14 @@ export default function Demandas() {
               </div>
             ))}
           </div>
-          <button className="btn" onClick={() => setShowNew(true)}>
+          <button className="btn dmd-new" onClick={() => setShowNew(true)}>
             + Nova demanda
           </button>
         </div>
       </div>
 
       {/* Filtros no estilo Embalagens */}
-      <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div className="filters-row dmd-filters" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         <input
           placeholder="Buscar por título, SKU, código…"
           value={search}
@@ -459,6 +460,7 @@ export default function Demandas() {
           Ocultar finalizadas
         </label>
       </div>
+      </div>
 
       {loading ? (
         <Loading />
@@ -518,7 +520,7 @@ export default function Demandas() {
                     <td data-label="Tarefa">
                       {r.title}
                       {r.source === 'campaign' && (
-                        <span className="pill" style={{ marginLeft: 6, background: 'var(--yellow-dim)', color: 'var(--yellow)' }}>
+                        <span className="pill dmd-tag-camp" style={{ marginLeft: 6 }}>
                           campanha
                         </span>
                       )}
@@ -530,8 +532,8 @@ export default function Demandas() {
                           <Link
                             to={r.projectLink.to}
                             onClick={(e) => e.stopPropagation()}
-                            className="pill"
-                            style={{ background: 'var(--violet-dim)', color: 'var(--violet)', textDecoration: 'none' }}
+                            className="pill dmd-tag-proj"
+                            style={{ textDecoration: 'none' }}
                           >
                             {r.projectLink.name}
                           </Link>
@@ -554,7 +556,7 @@ export default function Demandas() {
                     <td data-label="Prazo" style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                       {cronogramaLabel(r.startDate, r.dueDate)}
                     </td>
-                    <td>{isRowOverdue(r) && <span style={{ color: 'var(--red)', fontSize: 11 }}>🔴 atrasada</span>}</td>
+                    <td>{isRowOverdue(r) && <span className="dmd-overdue">atrasada</span>}</td>
                   </tr>
                 ))}
               </tbody>

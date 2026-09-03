@@ -3294,3 +3294,174 @@ body { background: var(--page-gray); }
 .evt-more { font-size: 10.5px; font-weight: 700; color: var(--text-faint); padding: 1px 7px; cursor: default; }
 /* aquece o entorno da grade */
 .cal-grid.cal-body { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+
+/* ============================================================
+   DEMANDAS — redesign premium (só apresentação, escopado)
+   ============================================================ */
+.dmd-page .page-sub { max-width: 760px; }
+
+/* Card de controle flutuante: contadores + agrupar + nova + filtros */
+.dmd-controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 18px;
+  margin: 6px 0 18px;
+}
+.dmd-controls-top {
+  border: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+.dmd-count {
+  font-family: 'Figtree', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.dmd-count strong {
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.dmd-new { box-shadow: var(--shadow-sm); }
+
+/* Segmentado "agrupar por" */
+.dmd-controls .group-toggle {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 3px;
+  gap: 2px;
+}
+.dmd-controls .group-toggle .filter-chip {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+}
+.dmd-controls .group-toggle .filter-chip.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Linha de filtros — divisor sutil acima */
+.dmd-filters {
+  margin: 0 !important;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+.dmd-filters input,
+.dmd-filters .chip-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 12px;
+  color: var(--text);
+}
+.dmd-filters input::placeholder { color: var(--text-faint); }
+.dmd-filters .chip-select { color: var(--text-dim); cursor: pointer; }
+.dmd-filters .filter-chip {
+  background: var(--surface-2);
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 12px;
+}
+
+/* Grupos como cards flutuantes */
+.dmd-page .demand-group {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 6px 18px 10px;
+  margin-bottom: 16px;
+}
+.dmd-page .demand-group-head {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 2px 12px;
+  margin-bottom: 4px;
+  font-family: 'Figtree', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.dmd-page .demand-group-head .pill {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Tabela premium */
+.dmd-page table.simple { font-size: 13px; }
+.dmd-page table.simple th {
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.dmd-page table.simple td {
+  padding: 13px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  vertical-align: middle;
+}
+.dmd-page table.simple tbody tr {
+  transition: background 0.12s ease;
+  border-radius: 10px;
+}
+.dmd-page table.simple tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+.dmd-page table.simple tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.dmd-page table.simple td[data-label='Tarefa'] { font-weight: 600; color: var(--text); }
+
+/* Prioridade — cor tem função (vermelho = urgência) */
+.dmd-page .prio {
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.dmd-page .prio.urgent { background: var(--accent); color: #fff; border: none; }
+.dmd-page .prio.high { background: var(--red-dim); color: var(--accent); border: none; }
+.dmd-page .prio.medium { background: var(--cyan-dim); color: var(--navy); border: none; }
+.dmd-page .prio.low { background: var(--surface-3); color: var(--text-faint); border: none; }
+
+/* Tags de origem */
+.dmd-tag-camp {
+  background: var(--cyan-dim) !important;
+  color: var(--cyan) !important;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.dmd-tag-proj {
+  background: var(--navy-dim) !important;
+  color: var(--navy) !important;
+  border-radius: 999px;
+  font-weight: 600;
+  padding: 3px 10px;
+}
+
+/* Badge atrasada */
+.dmd-overdue {
+  display: inline-block;
+  background: var(--red-dim);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
