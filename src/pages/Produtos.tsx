@@ -471,6 +471,15 @@ function ProductFormModal({
   const [needsReview, setNeedsReview] = useState(product?.needs_review ?? false);
 
   const [technicalName, setTechnicalName] = useState(product?.technical_name ?? '');
+  const [previousName, setPreviousName] = useState(product?.previous_name ?? '');
+  const [packagingName, setPackagingName] = useState(product?.packaging_name ?? '');
+  const [subCategory, setSubCategory] = useState(product?.sub_category ?? '');
+  /* Conteúdo comercial: é daqui que a vitrine do CRM tira a frase de venda e os
+   * destaques. Antes viviam dentro do CRM; agora nascem no cadastro, como todo
+   * o resto do produto. */
+  const [description, setDescription] = useState(product?.description ?? '');
+  const [differentials, setDifferentials] = useState((product?.differentials ?? []).join('\n'));
+  const [active, setActive] = useState(product?.active ?? true);
   const [gender, setGender] = useState(product?.gender ?? '');
   const [material, setMaterial] = useState(product?.material ?? '');
   const [color, setColor] = useState(product?.color ?? '');
@@ -551,6 +560,12 @@ function ProductFormModal({
       packaging_image_url: packagingImageUrl ? normalizeUrl(packagingImageUrl) : '',
       needs_review: needsReview,
       technical_name: technicalName,
+      previous_name: previousName,
+      packaging_name: packagingName,
+      sub_category: subCategory,
+      description,
+      differentials: differentials.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 4),
+      active,
       gender,
       material,
       color,
@@ -655,6 +670,42 @@ function ProductFormModal({
         <div className="form-field">
           <label htmlFor="np-technical-name">Nome técnico (nota fiscal)</label>
           <input id="np-technical-name" value={technicalName} onChange={(e) => setTechnicalName(e.target.value)} />
+        </div>
+        <div className="responsive-row">
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-previous-name">Nome anterior</label>
+            <input id="np-previous-name" value={previousName} onChange={(e) => setPreviousName(e.target.value)} placeholder="Como o produto se chamava antes" />
+          </div>
+          <div className="form-field" style={{ flex: 1 }}>
+            <label htmlFor="np-packaging-name">Nome na embalagem</label>
+            <input id="np-packaging-name" value={packagingName} onChange={(e) => setPackagingName(e.target.value)} placeholder="O nome curto, de marketing" />
+          </div>
+        </div>
+        <div className="form-field">
+          <label htmlFor="np-sub-category">Sub-categoria</label>
+          <input id="np-sub-category" value={subCategory} onChange={(e) => setSubCategory(e.target.value)} placeholder="Didáticos, Pelúcia, Blocos…" />
+        </div>
+
+        {/* O que o lojista lê na vitrine do CRM. Escrito aqui, aparece lá na hora. */}
+        <div className="form-field">
+          <label htmlFor="np-description">Descrição de venda</label>
+          <textarea
+            id="np-description"
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="A frase que o lojista lê embaixo do nome, na vitrine"
+          />
+        </div>
+        <div className="form-field">
+          <label htmlFor="np-differentials">Diferenciais — um por linha, até 4</label>
+          <textarea
+            id="np-differentials"
+            rows={4}
+            value={differentials}
+            onChange={(e) => setDifferentials(e.target.value)}
+            placeholder={'Porta abre e fecha\nPrato giratório'}
+          />
         </div>
         <div className="responsive-row">
           <div className="form-field" style={{ flex: 1 }}>
@@ -788,6 +839,19 @@ function ProductFormModal({
             </div>
           </div>
         </details>
+
+        <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <input
+            id="np-active"
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <label htmlFor="np-active" style={{ margin: 0 }}>
+            No catálogo vigente — desmarcado, o produto sai das novas seleções do CRM e o histórico fica
+          </label>
+        </div>
 
         {isEdit && (
           <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

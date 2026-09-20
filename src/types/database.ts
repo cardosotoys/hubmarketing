@@ -428,7 +428,17 @@ export interface Product {
   material: string;
   color: string;
   toy_category: string;
+  sub_category: string;
   technical_name: string;
+  previous_name: string;   // FICHA TÉCNICA 2026, coluna NOME ANTIGO
+  packaging_name: string;  // FICHA TÉCNICA 2026, coluna NOME PARA EMBALAGEM (MARKETING)
+  /* Conteúdo comercial do produto. Mora aqui porque o produto é do Hub: o CRM
+   * lê estes dois campos e mostra na vitrine do lojista, sem cópia nem sync. */
+  description: string;
+  differentials: string[];
+  /* false = fora do catálogo vigente. Some das novas seleções no CRM, mas o
+   * histórico comercial de quem já se interessou continua. */
+  active: boolean;
   has_mechanism: boolean;
   has_sound: boolean;
   has_light: boolean;
