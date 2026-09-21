@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de Cadastro Cardoso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+/* Calculadora de Cadastro — linguagem visual do Portal Comercial Cardoso:
+   Poppins, fundo #EFEDEC, cards de raio 16 com faixa semântica, pills de status
+   e vermelho Cardoso reservado para ação e urgência. Tema claro por identidade. */
+:root{
+  --vermelho:#ee3124; --vermelho-escuro:#c8231a; --vermelho-tint:#fdecea;
+  --verde:#1f6b42; --verde-tint:#e8f4ec;
+  --ambar:#9a6b16; --ambar-tint:#fef4e4;
+  --azul:#25507e; --azul-tint:#e8eef5;
+  --roxo:#5b4680; --roxo-tint:#efeaf6;
+  --fundo:#efedec; --branco:#ffffff; --neutro:#f7f5f4; --neutro-2:#f2efee;
+  --tinta:#2e2b2c; --tinta-2:#4a4547; --tinta-3:#6e6769; --tinta-4:#8a8486; --tinta-5:#a29b9d;
+  --linha:#e2dedd; --linha-2:#e7e3e2; --linha-3:#f4f1f0;
+  --raio:16px; --raio-sm:11px; --sombra:0 1px 2px rgba(46,43,44,.04);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
+  font-family:'Poppins','Segoe UI',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased; padding-inline:16px; padding-block:0;}
+.pagina{max-width:1140px; margin:0 auto; padding-block:30px 72px;}
+
+.topo{display:flex; align-items:center; justify-content:space-between; gap:18px;
+  flex-wrap:wrap; margin-bottom:26px;}
+.marca{display:flex; align-items:center; gap:14px;}
+.marca .sigla{width:46px; height:46px; border-radius:13px; background:var(--vermelho); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; flex:none;}
+.marca h1{margin:0; font-size:22px; font-weight:600; color:var(--tinta); letter-spacing:-.015em;}
+.marca .sub{font-size:13px; color:var(--tinta-4); margin-top:3px;}
+
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:26px;}
+.kpi{background:var(--branco); border-radius:var(--raio); box-shadow:var(--sombra); padding:19px 22px;}
+.kpi .rot{font-size:12px; color:var(--tinta-4); font-weight:500; margin-bottom:6px;}
+.kpi .valor{font-size:27px; font-weight:600; color:var(--tinta); line-height:1.05; letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;}
+.kpi .un{font-size:13px; color:var(--tinta-4); font-weight:500; margin-left:4px;}
+.kpi.destaque .valor{color:var(--vermelho)}
+
+.grade{display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:18px; align-items:stretch;}
+.card{background:var(--branco); border-radius:var(--raio); box-shadow:var(--sombra); overflow:hidden;
+  display:flex; flex-direction:column;}
+.card.faixa-vermelha{border-top:3px solid var(--vermelho)}
+.card.faixa-ambar{border-top:3px solid var(--ambar)}
+.card.faixa-verde{border-top:3px solid var(--verde)}
+.card.faixa-azul{border-top:3px solid var(--azul)}
+.card.faixa-roxa{border-top:3px solid var(--roxo)}
+.card-head{padding:20px 26px 16px; border-bottom:1px solid var(--fundo);}
+.card-head h2{font-size:17.5px; font-weight:600; color:var(--tinta); margin:0; letter-spacing:-.01em;}
+.card-head .sub{font-size:12.5px; color:var(--tinta-4); margin-top:4px;}
+.card-corpo{padding:21px 26px 24px; display:flex; flex-direction:column; gap:18px; flex:1;}
+.largo{grid-column:1/-1}
+
+.campos{display:grid; grid-template-columns:repeat(auto-fit,minmax(142px,1fr)); gap:15px;}
+.campo{display:flex; flex-direction:column; gap:6px; min-width:0;}
+.campo label{font-size:12px; color:var(--tinta-3); font-weight:500; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;}
+.campo input,.campo select{border:1.4px solid var(--linha); background:var(--branco); border-radius:10px;
+  padding:10px 13px; font-size:14.5px; color:var(--tinta); width:100%; font-family:inherit;
+  font-variant-numeric:tabular-nums; min-width:0;}
+.campo input:focus,.campo select:focus{outline:none; border-color:var(--vermelho);}
+.campo input::placeholder{color:var(--tinta-5)}
+.campo .dica{font-size:11px; color:var(--tinta-5); line-height:1.4;}
+
+/* bloco do que a calculadora devolve — nunca se digita aqui */
+.derivados{background:var(--neutro); border-radius:var(--raio-sm); padding:15px 18px 17px; margin-top:auto;}
+.derivados .selo-bloco{display:flex; align-items:center; gap:9px; margin-bottom:13px;}
+.derivados .selo-bloco span{font-size:10.5px; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--tinta-4); font-weight:600; flex:none;}
+.derivados .selo-bloco::after{content:""; flex:1; height:1px; background:var(--linha);}
+.saidas{display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:15px;}
+.saida{display:flex; flex-direction:column; gap:3px; min-width:0;}
+.saida label{font-size:11.5px; color:var(--tinta-4); font-weight:500; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;}
+.saida input{border:0; background:none; padding:0; font-family:inherit; font-size:17px; font-weight:600;
+  color:var(--azul); width:100%; font-variant-numeric:tabular-nums; min-width:0; letter-spacing:-.01em;}
+.saida input:focus{outline:none}
+.saida input::placeholder{color:var(--tinta-5); font-weight:400;}
+/* códigos de barras são longos: coluna mais larga e corpo menor, para não truncar */
+.saidas.codigos{grid-template-columns:repeat(auto-fit,minmax(176px,1fr))}
+.saidas.codigos input{font-size:15px; letter-spacing:0;}
+
+.conferencias{display:flex; flex-direction:column; gap:10px;}
+.conf{display:flex; gap:12px; align-items:flex-start; border-radius:var(--raio-sm); padding:12px 16px;
+  font-size:13.5px; line-height:1.55;}
+.conf .marca-st{font-weight:700; flex:none; width:16px; text-align:center;}
+.conf span{min-width:0; overflow-wrap:anywhere;}
+.conf.ok{background:var(--verde-tint); color:var(--verde)}
+.conf.bad{background:var(--vermelho-tint); color:var(--vermelho-escuro)}
+.conf.warn{background:var(--ambar-tint); color:var(--ambar)}
+.conf.idle{background:var(--neutro-2); color:var(--tinta-4)}
+.conf b{font-weight:600}
+
+.pill{display:inline-flex; align-items:center; border-radius:999px; font-size:12.5px; font-weight:600;
+  padding:6px 14px; white-space:nowrap;}
+.pill.quente{background:var(--vermelho-tint); color:var(--vermelho-escuro)}
+.pill.morno{background:var(--ambar-tint); color:var(--ambar)}
+.pill.frio{background:var(--verde-tint); color:var(--verde)}
+
+.resumo{background:var(--neutro); border-radius:var(--raio-sm); padding:17px 20px;}
+.resumo pre{margin:0; font-family:'SFMono-Regular',Menlo,Consolas,monospace; font-size:12.5px;
+  line-height:1.75; color:var(--tinta-2); white-space:pre-wrap; overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;}
+.acoes{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+.btn{border-radius:999px; padding:11px 20px; font-size:13.5px; font-weight:600; font-family:inherit;
+  border:1.4px solid var(--vermelho); background:var(--vermelho); color:#fff; cursor:pointer;
+  transition:filter .14s;}
+.btn:hover{filter:brightness(.94)}
+.btn:focus-visible{outline:2px solid var(--tinta); outline-offset:2px;}
+.btn.ghost{background:var(--branco); color:var(--tinta-3); border-color:var(--linha);}
+.btn.ghost:hover{color:var(--tinta); filter:none;}
+.aviso{font-size:13px; color:var(--verde); font-weight:600;}
+.nota{font-size:12.5px; color:var(--tinta-4); margin:0; line-height:1.65;}
+@media (max-width:560px){ .card-head,.card-corpo{padding-left:20px; padding-right:20px;} }
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="pagina">
+<div class="topo"><div class="marca"><div class="sigla">CD</div><div><h1>Calculadora de Cadastro</h1><div class="sub">Banco de Produtos · informe só o que foi medido, o resto é calculado e conferido</div></div></div><span class="pill frio" id="selo">Pronta para conferir</span></div>
+<div class="kpis"><div class="kpi"><div class="rot">Cubagem da caixa master</div><div class="valor" id="k-cub">—</div></div><div class="kpi"><div class="rot">Caixas no pallet</div><div class="valor" id="k-cx">—</div></div><div class="kpi destaque"><div class="rot">Unidades no pallet</div><div class="valor" id="k-un">—</div></div><div class="kpi"><div class="rot">Cubagem do pallet</div><div class="valor" id="k-cubpal">—</div></div></div>
+<div class="grade">
+<div class="card faixa-vermelha"><div class="card-head"><h2>Identificação</h2><div class="sub">O EAN e o DUN saem do código, já com dígito verificador</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="cod">Código do produto</label><input id="cod" inputmode="numeric" placeholder="7231"><div class="dica">4 dígitos</div></div><div class="campo"><label for="ind">Indicador do DUN</label><select id="ind"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="8">8</option><option value="9">9</option></select><div class="dica">2 é o mais usado</div></div></div><div class="derivados"><div class="selo-bloco"><span>Calculado</span></div><div class="saidas codigos"><div class="saida"><label for="ean">EAN-13</label><input id="ean" readonly placeholder="—"></div><div class="saida"><label for="dun">DUN-14</label><input id="dun" readonly placeholder="—"></div></div></div></div></div>
+<div class="card faixa-azul"><div class="card-head"><h2>Produto nu</h2><div class="sub">O brinquedo fora da embalagem</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="pc">Comprimento</label><input id="pc" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="pl">Largura</label><input id="pl" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="pa">Altura</label><input id="pa" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="pp">Peso</label><input id="pp" inputmode="decimal" placeholder="kg"></div></div><div class="derivados"><div class="selo-bloco"><span>Calculado</span></div><div class="saidas"><div class="saida"><label for="pv">Volume</label><input id="pv" readonly placeholder="—"></div></div></div></div></div>
+<div class="card faixa-azul"><div class="card-head"><h2>Embalagem individual</h2><div class="sub">A caixinha que o consumidor leva</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="ec">Comprimento</label><input id="ec" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="el">Largura</label><input id="el" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="ea">Altura</label><input id="ea" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="ep">Peso</label><input id="ep" inputmode="decimal" placeholder="kg"></div></div><div class="derivados"><div class="selo-bloco"><span>Calculado</span></div><div class="saidas"><div class="saida"><label for="ev">Volume</label><input id="ev" readonly placeholder="—"></div></div></div></div></div>
+<div class="card faixa-ambar largo"><div class="card-head"><h2>Caixa master</h2><div class="sub">É daqui que sai a cotação de frete</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="cc">Comprimento</label><input id="cc" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="cl">Largura</label><input id="cl" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="ca">Altura</label><input id="ca" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="cq">Unidades por caixa</label><input id="cq" inputmode="numeric" placeholder="6"></div><div class="campo"><label for="cgb">Peso bruto</label><input id="cgb" inputmode="decimal" placeholder="kg"></div><div class="campo"><label for="ctara">Tara da caixa</label><input id="ctara" inputmode="decimal" placeholder="kg"></div></div><div class="derivados"><div class="selo-bloco"><span>Calculado</span></div><div class="saidas"><div class="saida"><label for="cv">Volume</label><input id="cv" readonly placeholder="—"></div><div class="saida"><label for="cnl">Peso líquido</label><input id="cnl" readonly placeholder="—"></div></div></div></div></div>
+<div class="card faixa-verde largo"><div class="card-head"><h2>Paletização</h2><div class="sub">O lastro é gravado como A×B — caixas por camada × camadas</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="pt">Palete</label><select id="pt"><option value="1200x1000">PBR 1200×1000</option><option value="1200x800">Euro 1200×800</option><option value="1100x1100">1100×1100</option></select></div><div class="campo"><label for="ph">Altura do palete</label><input id="ph" inputmode="decimal" value="145"><div class="dica">mm · confirmar com a Logística</div></div><div class="campo"><label for="la">Caixas por camada</label><input id="la" inputmode="numeric" placeholder="4"></div><div class="campo"><label for="lb">Camadas</label><input id="lb" inputmode="numeric" placeholder="3"></div></div><div class="derivados"><div class="selo-bloco"><span>Calculado</span></div><div class="saidas"><div class="saida"><label for="lastro">Lastro</label><input id="lastro" readonly placeholder="—"></div><div class="saida"><label for="cxtot">Caixas</label><input id="cxtot" readonly placeholder="—"></div><div class="saida"><label for="untot">Unidades</label><input id="untot" readonly placeholder="—"></div><div class="saida"><label for="alt">Altura</label><input id="alt" readonly placeholder="—"></div><div class="saida"><label for="pesopal">Peso</label><input id="pesopal" readonly placeholder="—"></div><div class="saida"><label for="cubpal">Cubagem</label><input id="cubpal" readonly placeholder="—"></div></div></div></div></div>
+<div class="card faixa-roxa largo"><div class="card-head"><h2>Conferências</h2><div class="sub">Rodam a cada tecla, antes de o cadastro ser salvo</div></div><div class="card-corpo"><div class="conferencias" id="checks"></div></div></div>
+<div class="card largo"><div class="card-head"><h2>Resumo para cotação</h2><div class="sub">Texto pronto para colar no e-mail</div></div><div class="card-corpo"><div class="resumo"><pre id="saida">Preencha os campos acima.</pre></div><div class="acoes"><button class="btn" id="copiar">Copiar resumo</button><button class="btn ghost" id="limpar">Limpar</button><span class="aviso" id="said"></span></div><p class="nota">A estimativa de container é por cubagem (20′ = 33 m³ · 40′ = 67 m³ · 40′HQ = 76 m³, com 85% de aproveitamento). Serve para dimensionar conversa, não para fechar frete: o arranjo real depende da porta e do empilhamento permitido.</p></div></div>
+</div></div>
+<script id="existentes" type="application/json">{"eans": ["7896484100717", "7896484100724", "7896484100786", "7896484101240", "7896484101257", "7896484101332", "7896484102056", "7896484102094", "7896484102636", "7896484102667", "7896484102728", "7896484102759", "7896484102803", "7896484102810", "7896484102827", "7896484103008", "7896484103015", "7896484110075", "7896484110174", "7896484110181", "7896484110365", "7896484110402", "7896484110419", "7896484110426", "7896484110440", "7896484110457", "7896484110464", "7896484110495", "7896484110518", "7896484110525", "7896484110532", "7896484110587", "7896484110594", "7896484110600", "7896484110617", "7896484110624", "7896484110631", "7896484120012", "7896484120036", "7896484120043", "7896484120050", "7896484120067", "7896484120098", "7896484120104", "7896484120111", "7896484120128", "7896484120135", "7896484120142", "7896484120159", "7896484120166", "7896484120173", "7896484120180", "7896484120197", "7896484120203", "7896484120210", "7896484120227", "7896484120234", "7896484120241", "7896484130073", "7896484130080", "7896484130110", "7896484130127", "7896484130134", "7896484130219", "7896484130271", "7896484130288", "7896484130295", "7896484130332", "7896484130349", "7896484130387", "7896484130455", "7896484130462", "7896484130486", "7896484130493", "7896484130509", "7896484130516", "7896484130530", "7896484130547", "7896484130554", "7896484130561", "7896484130578", "7896484130585", "7896484130592", "7896484130639", "7896484130646", "7896484130653", "7896484130660", "7896484130677", "7896484130684", "7896484130783", "7896484130790", "7896484130806", "7896484130813", "7896484130820", "7896484130837", "7896484130844", "7896484130851", "7896484130868", "7896484130875", "7896484130882", "7896484130899", "7896484130905", "7896484130912", "7896484130929", "7896484130936", "7896484130943", "7896484130950", "7896484130967", "7896484130974", "7896484130981", "7896484130998", "7896484131001", "7896484131018", "7896484131025", "7896484131032", "7896484131049", "7896484131056", "7896484131063", "7896484131070", "7896484131087", "7896484131124", "7896484131131", "7896484131155", "7896484131162", "7896484131179", "7896484131186", "7896484131193", "7896484131209", "7896484131216", "7896484131223", "7896484131230", "7896484131247", "7896484140096", "7896484140102", "7896484140126", "7896484140133", "7896484140140", "7896484140157", "7896484140164", "7896484140188", "7896484140195", "7896484140201", "7896484140218", "7896484140225", "7896484140232", "7896484140249", "7896484140256", "7896484140263", "7896484140287", "7896484140294", "7896484140300", "7896484140317", "7896484140324", "7896484160056", "7896484160063", "7896484160070", "7896484160087", "7896484160094", "7896484160100", "7896484160117", "7896484160124", "7896484160131", "7896484160179", "7896484160186", "7896484160193", "7896484160209", "7896484160216", "7896484170017", "7896484171014", "7896484171021", "7896484171038", "7896484171045", "7896484171052", "7896484171069", "7896484171076", "7896484171083", "7896484171090", "7896484171106", "7896484171113", "7896484171120", "7896484171137", "7896484171144", "7896484171151", "7896484171168", "7896484171175", "7896484171182", "7896484171199", "7896484171205", "7896484171212", "7896484171229", "7896484171236", "7896484171243", "7896484171250", "7896484171267", "7896484171274", "7896484171281", "7896484171298", "7896484171304", "7896484171311", "7896484171328", "7896484171335", "7896484171342", "7896484171359", "7896484171366", "7896484171373", "7896484171380", "7896484171397", "7896484171403", "7896484171410", "7896484171427", "7896484171434", "7896484171441", "7896484171489", "7896484171496", "7896484171502", "7896484171533", "7896484171540", "7896484171557", "7896484171564", "7896484171571", "7896484171588", "7896484171595", "7896484171601", "7896484171618", "7896484171625", "7896484171632", "7896484171649", "7896484171656", "7896484171717", "7896484171755", "7896484171762", "7896484171779", "7896484171786", "7896484171793", "7896484171809", "7896484171816", "7896484171823", "7896484171830", "7896484171847", "7896484171854", "7896484171861", "7896484171892", "7896484171908", "7896484171915", "7896484171922", "7896484171939", "7896484171946", "7896484171953", "7896484171960", "7896484171977", "7896484171984", "7896484171991", "7896484172004", "7896484172011", "7896484172028", "7896484172035", "7896484172042", "7896484172059", "7896484172066", "7896484172073", "7896484172080", "7896484172097", "7896484172103", "7896484172110", "7896484172127", "7896484172134", "7896484172141", "7896484172158", "7896484172165", "7896484172172", "7896484172189", "7896484172196", "7896484172202", "7896484172219", "7896484172226", "7896484172233", "7896484172240", "7896484172257", "7896484172264", "7896484172271", "7896484172288", "7896484172295", "7896484174519", "7896484174526", "7896484180016", "7896484180023", "7896484180030", "7896484180054", "7896484180092", "7896484180115", "7896484180122", "7896484180146", "7896484180153", "7896484180160", "7896484180177", "7896484180184", "7896484180221", "7896484180238", "7896484180245", "7896484180252", "7896484180269", "7896484180276", "7896484180283", "7896484180290", "7896484180306", "7896484181020", "7896484184014", "7896484190473", "7896484190558", "7896484195058", "7896484195065", "7986484130523"], "duns": ["17896484100714", "17896484101254", "17896484110171", "17896484110188", "17896484110492", "17896484110591", "17896484110607", "17896484110614", "17896484110621", "17896484110638", "17896484120019", "17896484130506", "17896484130513", "17896484130520", "17896484130551", "17896484130568", "17896484130650", "17896484130797", "17896484130803", "17896484130810", "17896484130834", "17896484130858", "17896484130872", "17896484130896", "17896484140284", "17896484180051", "27896484100728", "27896484100780", "27896484101244", "27896484101336", "27896484102630", "27896484102661", "27896484102722", "27896484102753", "27896484102807", "27896484102814", "27896484102821", "27896484110079", "27896484110406", "27896484110413", "27896484110512", "27896484110581", "27896484120047", "27896484120054", "27896484120061", "27896484120207", "27896484120214", "27896484120221", "27896484120238", "27896484120245", "27896484130077", "27896484130084", "27896484130114", "27896484130121", "27896484130138", "27896484130213", "27896484130275", "27896484130282", "27896484130299", "27896484130480", "27896484130497", "27896484130572", "27896484130589", "27896484130596", "27896484130640", "27896484130787", "27896484130824", "27896484130848", "27896484130862", "27896484130886", "27896484130909", "27896484130916", "27896484130923", "27896484130930", "27896484130947", "27896484130954", "27896484130978", "27896484130992", "27896484131005", "27896484131012", "27896484131029", "27896484131036", "27896484131043", "27896484131050", "27896484131067", "27896484131074", "27896484131081", "27896484131159", "27896484131166", "27896484131173", "27896484131180", "27896484131197", "27896484131203", "27896484131210", "27896484140090", "27896484140106", "27896484140137", "27896484140144", "27896484140151", "27896484140168", "27896484140212", "27896484140229", "27896484140236", "27896484140243", "27896484140298", "27896484140311", "27896484170011", "27896484171018", "27896484171025", "27896484171032", "27896484171049", "27896484171056", "27896484171063", "27896484171070", "27896484171087", "27896484171094", "27896484171100", "27896484171117", "27896484171124", "27896484171131", "27896484171148", "27896484171155", "27896484171162", "27896484171179", "27896484171186", "27896484171193", "27896484171209", "27896484171216", "27896484171223", "27896484171230", "27896484171247", "27896484171254", "27896484171261", "27896484171278", "27896484171285", "27896484171292", "27896484171308", "27896484171315", "27896484171322", "27896484171339", "27896484171346", "27896484171353", "27896484171360", "27896484171377", "27896484171384", "27896484171391", "27896484171407", "27896484171414", "27896484171421", "27896484171438", "27896484171445", "27896484171483", "27896484171490", "27896484171506", "27896484171513", "27896484171520", "27896484171537", "27896484171544", "27896484171551", "27896484171568", "27896484171575", "27896484171582", "27896484171599", "27896484171605", "27896484171612", "27896484171629", "27896484171636", "27896484171643", "27896484171711", "27896484171766", "27896484171810", "27896484171827", "27896484171834", "27896484171841", "27896484171858", "27896484171865", "27896484171919", "27896484171926", "27896484171933", "27896484171940", "27896484171957", "27896484171964", "27896484171971", "27896484171988", "27896484171995", "27896484172008", "27896484172022", "27896484172053", "27896484172060", "27896484172077", "27896484172084", "27896484172091", "27896484172107", "27896484172114", "27896484172121", "27896484172138", "27896484172145", "27896484172152", "27896484172169", "27896484172176", "27896484172183", "27896484172190", "27896484172206", "27896484172213", "27896484172220", "27896484172237", "27896484172244", "27896484180096", "27896484180157", "27896484180270", "27896484180287", "27896484184018", "27896484190477", "27896484190552", "37896484102057", "37896484171657", "47896484102092", "47896484110363", "47896484110424", "47896484110448", "47896484110455", "47896484110462", "47896484110523", "47896484110530", "47896484120034", "47896484120096", "47896484140186", "47896484140193", "47896484140209", "47896484140254", "47896484181028", "57896484130443", "87896484171720", "87896484171737", "87896484171744", "87896484171751", "87896484171775", "87896484171782", "87896484171799", "87896484171805", "97896484120121", "97896484120138", "97896484120145", "97896484120183", "97896484130335", "97896484130342", "97896484130458", "97896484130465", "97896484130632", "97896484130663", "97896484130670", "97896484130687", "97896484130960", "97896484130984", "97896484131127", "97896484180019", "97896484180026", "97896484180033", "97896484180118", "97896484180125", "97896484180163", "97896484180231", "97896484180248", "97896484180255", "97896484180262"], "codigos": ["0071", "0072", "0078", "0124", "0125", "0133", "0205", "0209", "0263", "0266", "0272", "0275", "0280", "0281", "0282", "0300", "0301", "1007", "1017", "1018", "1036", "1040", "1041", "1042", "1044", "1045", "1046", "1049", "1051", "1052", "1053", "1058", "1059", "1060", "1061", "1062", "1063", "2001", "2003", "2004", "2005", "2006", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "3007", "3008", "3011", "3012", "3013", "3021", "3027", "3028", "3029", "3033", "3034", "3038", "3045", "3046", "3048", "3049", "3050", "3051", "3052", "3053", "3054", "3055", "3056", "3057", "3058", "3059", "3063", "3064", "3065", "3066", "3067", "3068", "3078", "3079", "3080", "3081", "3082", "3083", "3084", "3085", "3086", "3087", "3088", "3089", "3090", "3091", "3092", "3093", "3094", "3095", "3096", "3097", "3098", "3099", "3100", "3101", "3102", "3103", "3104", "3105", "3106", "3107", "3108", "3112", "3113", "3115", "3116", "3117", "3118", "3119", "3120", "3121", "3122", "3123", "3124", "4009", "4010", "4012", "4013", "4014", "4015", "4016", "4018", "4019", "4020", "4021", "4022", "4023", "4024", "4025", "4026", "4028", "4029", "4030", "4031", "4032", "6005", "6006", "6007", "6008", "6009", "6010", "6011", "6012", "6013", "6017", "6018", "6019", "6020", "6021", "7001", "7101", "7102", "7103", "7104", "7105", "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7113", "7114", "7115", "7116", "7117", "7118", "7119", "7120", "7121", "7122", "7123", "7124", "7125", "7126", "7127", "7128", "7129", "7130", "7131", "7132", "7133", "7134", "7135", "7136", "7137", "7138", "7139", "7140", "7141", "7142", "7143", "7144", "7148", "7149", "7150", "7151", "7152", "7153", "7154", "7155", "7156", "7157", "7158", "7159", "7160", "7161", "7162", "7163", "7164", "7165", "7171", "7172", "7173", "7174", "7175", "7176", "7177", "7178", "7179", "7180", "7181", "7182", "7183", "7184", "7185", "7186", "7189", "7190", "7191", "7192", "7193", "7194", "7195", "7196", "7197", "7198", "7199", "7200", "7201", "7202", "7203", "7204", "7205", "7206", "7207", "7208", "7209", "7210", "7211", "7212", "7213", "7214", "7215", "7216", "7217", "7218", "7219", "7220", "7221", "7222", "7223", "7224", "7225", "7226", "7227", "7228", "7229", "8001", "8002", "8003", "8005", "8009", "8011", "8012", "8014", "8015", "8016", "8017", "8018", "8022", "8023", "8024", "8025", "8026", "8027", "8028", "8029", "8030", "8102", "8401", "9047", "9055", "9505", "9506"]}</script>
+<script>
+(function(){
+  var EX = JSON.parse(document.getElementById('existentes').textContent);
+  var EANS = new Set(EX.eans), DUNS = new Set(EX.duns), CODS = new Set(EX.codigos);
+  var $ = function(id){ return document.getElementById(id); };
+  function num(id){ var v = parseFloat(String($(id).value).replace(',', '.')); return isFinite(v) ? v : null; }
+  function gtinDV(corpo){
+    var t = 0, s = corpo.split('').reverse();
+    for (var i = 0; i < s.length; i++) t += parseInt(s[i], 10) * (i % 2 === 0 ? 3 : 1);
+    return (10 - t % 10) % 10;
+  }
+  function fmt(v, casas, un){ return v === null ? '' : v.toFixed(casas).replace('.', ',') + (un ? ' ' + un : ''); }
+
+  var marcas = [];
+  function diz(estado, texto){ marcas.push({e: estado, t: texto}); }
+
+  function calcula(){
+    marcas = [];
+    // --- codigo de barras
+    var cod = ($('cod').value || '').replace(/\D/g, '');
+    var ean = '', dun = '';
+    if (cod.length === 4){
+      var base = '78964841' + cod;
+      ean = base + gtinDV(base);
+      var ind = $('ind').value;
+      var dbase = ind + base;
+      dun = dbase + gtinDV(dbase);
+      $('ean').value = ean.slice(0,12) + '-' + ean.slice(12);
+      $('dun').value = dun.slice(0,13) + '-' + dun.slice(13);
+      if (CODS.has(cod)) diz('bad', 'O código ' + cod + ' já existe no catálogo — este não é um produto novo.');
+      else if (EANS.has(ean)) diz('bad', 'O EAN ' + ean + ' já está em uso por outro produto.');
+      else if (DUNS.has(dun)) diz('warn', 'O DUN ' + dun + ' já está em uso. Troque o indicador.');
+      else diz('ok', 'EAN e DUN gerados com dígito verificador válido e sem duplicar nada no catálogo.');
+    } else {
+      $('ean').value = ''; $('dun').value = '';
+      diz('idle', 'Informe o código de 4 dígitos para gerar EAN e DUN.');
+    }
+
+    // --- volumes
+    var vols = {};
+    [['p','Produto nu'], ['e','Embalagem individual']].forEach(function(par){
+      var k = par[0];
+      var c = num(k+'c'), l = num(k+'l'), a = num(k+'a');
+      if (c && l && a){ vols[k] = c*l*a/1e9; $(k+'v').value = vols[k].toFixed(5).replace('.', ',') + ' m³'; }
+      else { vols[k] = null; $(k+'v').value = ''; }
+    });
+    var cc = num('cc'), cl = num('cl'), ca = num('ca');
+    var vc = (cc && cl && ca) ? cc*cl*ca/1e9 : null;
+    $('cv').value = vc === null ? '' : vc.toFixed(5).replace('.', ',') + ' m³';
+
+    // --- peso liquido
+    var gb = num('cgb'), tara = num('ctara');
+    var liq = (gb !== null && tara !== null) ? gb - tara : null;
+    $('cnl').value = liq === null ? '' : fmt(liq, 3, 'kg');
+    if (liq !== null && liq <= 0) diz('bad', 'A tara ficou maior que o peso bruto — um dos dois está errado.');
+
+    // --- caixa comporta?
+    var q = num('cq');
+    if (vols.e && vc && q){
+      var need = vols.e * q;
+      if (need > vc * 1.02){
+        diz('bad', q + ' unidades de ' + vols.e.toFixed(5) + ' m³ somam ' + need.toFixed(5) +
+          ' m³ e não cabem numa caixa de ' + vc.toFixed(5) + ' m³. Confira a medida da caixa ou a quantidade.');
+      } else {
+        diz('ok', 'A caixa comporta as ' + q + ' unidades, com ' + ((1 - need/vc)*100).toFixed(0) + '% de folga.');
+      }
+    }
+    // --- peso bate?
+    var pe = num('ep');
+    if (pe && q && gb){
+      var soma = pe * q;
+      if (gb < soma * 0.98) diz('bad', q + ' × ' + fmt(pe,3,'kg') + ' = ' + fmt(soma,3,'kg') + ', mas o bruto da caixa é ' + fmt(gb,3,'kg') + '. A caixa não pode pesar menos que o conteúdo.');
+      else diz('ok', 'O peso bruto cobre o conteúdo (' + fmt(soma,3,'kg') + ') mais ' + fmt(gb-soma,3,'kg') + ' de embalagem.');
+    }
+
+    // --- paletizacao: A = caixas por camada, B = camadas. O lastro grava "AXB".
+    var pal = $('pt').value.split('x').map(Number);
+    var pC = pal[0], pL = pal[1], pH = num('ph') === null ? 145 : num('ph');
+    var la = num('la'), lb = num('lb');
+    var cxTot = (la && lb) ? la*lb : null;
+    var unTot = (cxTot && q) ? cxTot*q : null;
+    var altura = (lb && ca) ? (pH + lb*ca)/1000 : null;
+    var pesoPal = (cxTot && gb) ? cxTot*gb : null;
+    var cubPal = (cxTot && vc) ? cxTot*vc : null;
+    $('lastro').value = (la && lb) ? (la + 'X' + lb) : '';
+    $('cxtot').value = cxTot || '';
+    $('untot').value = unTot || '';
+    $('alt').value = altura === null ? '' : fmt(altura, 2, 'm');
+    $('pesopal').value = pesoPal === null ? '' : fmt(pesoPal, 1, 'kg');
+    $('cubpal').value = cubPal === null ? '' : cubPal.toFixed(3).replace('.', ',') + ' m³';
+
+    if (la && cc && cl){
+      var areaCam = la*cc*cl/1e6, areaPal = pC*pL/1e6;
+      if (areaCam > areaPal*1.05){
+        diz('bad', la + ' caixas de ' + cc + '×' + cl + ' mm ocupam ' + areaCam.toFixed(2) +
+          ' m², e a base do palete tem ' + areaPal.toFixed(2) + ' m². Não cabem nessa camada.');
+      } else {
+        diz('ok', 'A camada de ' + la + ' caixas ocupa ' + areaCam.toFixed(2) + ' m² dos ' +
+          areaPal.toFixed(2) + ' m² do palete (' + (areaCam/areaPal*100).toFixed(0) + '% de aproveitamento).');
+      }
+    }
+    if (altura !== null){
+      if (altura > 2.20) diz('bad', 'Pallet com ' + fmt(altura,2,'m') + ' passa da altura útil de um baú comum (2,20 m).');
+      else if (altura > 1.80) diz('warn', 'Pallet com ' + fmt(altura,2,'m') + ' — confirme se a transportadora aceita dupla estiva nessa altura.');
+      else diz('ok', 'Altura do pallet em ' + fmt(altura,2,'m') + ', dentro do usual.');
+    }
+
+    $('k-cub').innerHTML = vc === null ? '—' : vc.toFixed(5).replace('.', ',') + '<span class="un">m³</span>';
+    $('k-cx').innerHTML = cxTot ? cxTot : '—';
+    $('k-un').innerHTML = unTot ? unTot : '—';
+    $('k-cubpal').innerHTML = cubPal === null ? '—' : cubPal.toFixed(3).replace('.', ',') + '<span class="un">m³</span>';
+
+    render();
+    resumo({cod: cod, ean: ean, dun: dun, vc: vc, ve: vols.e, vp: vols.p, q: q, gb: gb, liq: liq,
+            lastro: $('lastro').value, cxTot: cxTot, unTot: unTot, altura: altura, pesoPal: pesoPal,
+            cc: cc, cl: cl, ca: ca});
+  }
+
+  function render(){
+    var box = $('checks');
+    if (!marcas.length){ box.innerHTML = ''; return; }
+    var mk = {ok: '✓', bad: '✕', warn: '!', idle: '•'};
+    box.innerHTML = marcas.map(function(m){
+      return '<div class="conf ' + m.e + '"><span class="marca-st">' + mk[m.e] + '</span><span>' + m.t + '</span></div>';
+    }).join('');
+    var ruins = marcas.filter(function(m){ return m.e === 'bad'; }).length;
+    var avisos = marcas.filter(function(m){ return m.e === 'warn'; }).length;
+    var selo = document.getElementById('selo');
+    if (ruins){ selo.className = 'pill quente'; selo.textContent = ruins + (ruins > 1 ? ' conferências reprovadas' : ' conferência reprovada'); }
+    else if (avisos){ selo.className = 'pill morno'; selo.textContent = avisos + (avisos > 1 ? ' pontos a confirmar' : ' ponto a confirmar'); }
+    else { selo.className = 'pill frio'; selo.textContent = 'Tudo confere'; }
+  }
+
+  function resumo(d){
+    if (!d.vc || !d.q){ $('saida').textContent = 'Preencha os campos acima.'; return; }
+    var L = [];
+    L.push('PRODUTO ' + (d.cod || '—'));
+    if (d.ean) L.push('EAN-13  ' + d.ean + '        DUN-14  ' + d.dun);
+    L.push('');
+    L.push('CAIXA MASTER');
+    L.push('  medidas .......... ' + d.cc + ' × ' + d.cl + ' × ' + d.ca + ' mm');
+    L.push('  cubagem .......... ' + d.vc.toFixed(5).replace('.', ',') + ' m³');
+    L.push('  unidades ......... ' + d.q);
+    if (d.gb !== null) L.push('  peso bruto ....... ' + d.gb.toFixed(3).replace('.', ',') + ' kg');
+    if (d.liq !== null) L.push('  peso líquido ..... ' + d.liq.toFixed(3).replace('.', ',') + ' kg');
+    if (d.cxTot){
+      L.push('');
+      L.push('PALLET');
+      L.push('  lastro ........... ' + d.lastro + '  (caixas por camada × camadas)');
+      L.push('  caixas no pallet . ' + d.cxTot);
+      L.push('  unidades ......... ' + d.unTot);
+      if (d.altura) L.push('  altura ........... ' + d.altura.toFixed(2).replace('.', ',') + ' m');
+      if (d.pesoPal) L.push('  peso ............. ' + d.pesoPal.toFixed(1).replace('.', ',') + ' kg');
+      L.push('  cubagem .......... ' + (d.cxTot * d.vc).toFixed(3).replace('.', ',') + ' m³');
+    }
+    L.push('');
+    L.push('CONTAINER (estimativa por cubagem, 85% de aproveitamento)');
+    [['20′', 33], ['40′', 67], ['40′HQ', 76]].forEach(function(c){
+      var cx = Math.floor(c[1] * 0.85 / d.vc);
+      L.push('  ' + c[0] + ' '.repeat(6 - c[0].length) + '........... ' + cx + ' caixas · ' + (cx * d.q) + ' unidades');
+    });
+    var ruins = marcas.filter(function(m){ return m.e === 'bad'; }).length;
+    if (ruins){ L.push(''); L.push('✕ ' + ruins + ' conferência(s) reprovada(s) — não envie assim.'); }
+    $('saida').textContent = L.join('\n');
+  }
+
+  var campos = ['cod','ind','pc','pl','pa','pp','ec','el','ea','ep','cc','cl','ca','cq','cgb','ctara','pt','ph','la','lb'];
+  campos.forEach(function(id){
+    var el = $(id);
+    if (el) el.addEventListener('input', calcula);
+    if (el && el.tagName === 'SELECT') el.addEventListener('change', calcula);
+  });
+  $('limpar').addEventListener('click', function(){
+    campos.forEach(function(id){ var el = $(id); if (el && el.tagName === 'INPUT') el.value = ''; });
+    $('ph').value = '145';
+    $('said').textContent = '';
+    calcula();
+  });
+  $('copiar').addEventListener('click', function(){
+    var t = $('saida').textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){ $('said').textContent = 'Resumo copiado.'; },
+        function(){ $('said').textContent = 'Não consegui copiar — selecione o texto acima.'; });
+    } else { $('said').textContent = 'Selecione o texto acima para copiar.'; }
+  });
+
+  // estado inicial realista: um produto plausivel ja preenchido
+  var demo = {cod:'7231', pc:'370', pl:'210', pa:'235', pp:'0.642', ec:'380', el:'215', ea:'240',
+              ep:'0.720', cc:'647', cl:'385', ca:'496', cq:'6', cgb:'5.124', ctara:'0.804',
+              la:'4', lb:'3'};
+  Object.keys(demo).forEach(function(k){ if ($(k)) $(k).value = demo[k]; });
+  calcula();
+})();
+</script>
+</body>
+</html>
