@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orçamento de Embalagem Cardoso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+/* Orçamento de Embalagem — linguagem visual do Portal Comercial Cardoso.
+   Feito para QUEM COMPRA embalagem, não para quem a produz. */
+:root{
+  --vermelho:#ee3124; --vermelho-escuro:#c8231a; --vermelho-tint:#fdecea;
+  --verde:#1f6b42; --verde-tint:#e8f4ec; --ambar:#9a6b16; --ambar-tint:#fef4e4;
+  --azul:#25507e; --azul-tint:#e8eef5; --roxo:#5b4680; --roxo-tint:#efeaf6;
+  --fundo:#efedec; --branco:#ffffff; --neutro:#f7f5f4; --neutro-2:#f2efee;
+  --tinta:#2e2b2c; --tinta-2:#4a4547; --tinta-3:#6e6769; --tinta-4:#8a8486; --tinta-5:#a29b9d;
+  --linha:#e2dedd; --linha-2:#e7e3e2; --raio:16px; --raio-sm:11px;
+  --sombra:0 1px 2px rgba(46,43,44,.04);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
+  font-family:'Poppins','Segoe UI',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased; padding-inline:16px; padding-block:0;}
+.pagina{max-width:1140px; margin:0 auto; padding-block:30px 72px;}
+.topo{display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:8px;}
+.marca{display:flex; align-items:center; gap:14px;}
+.marca .sigla{width:46px; height:46px; border-radius:13px; background:var(--vermelho); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; flex:none;}
+.marca h1{margin:0; font-size:22px; font-weight:600; color:var(--tinta); letter-spacing:-.015em;}
+.marca .sub{font-size:13px; color:var(--tinta-4); margin-top:3px;}
+.passos{display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 24px;}
+.passo{display:flex; align-items:center; gap:9px; background:var(--branco); border-radius:999px;
+  padding:9px 17px 9px 11px; box-shadow:var(--sombra); font-size:13px; color:var(--tinta-3); font-weight:500;}
+.passo b{width:22px; height:22px; border-radius:50%; background:var(--neutro-2); color:var(--tinta-4);
+  display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; flex:none;}
+.passo.on{color:var(--tinta)} .passo.on b{background:var(--vermelho); color:#fff;}
+.grade{display:grid; grid-template-columns:repeat(auto-fit,minmax(470px,1fr)); gap:18px; align-items:stretch;}
+.card{background:var(--branco); border-radius:var(--raio); box-shadow:var(--sombra); overflow:hidden;
+  display:flex; flex-direction:column;}
+.card.faixa-vermelha{border-top:3px solid var(--vermelho)}
+.card.faixa-ambar{border-top:3px solid var(--ambar)}
+.card.faixa-verde{border-top:3px solid var(--verde)}
+.card.faixa-azul{border-top:3px solid var(--azul)}
+.card.faixa-roxa{border-top:3px solid var(--roxo)}
+.card-head{padding:20px 26px 16px; border-bottom:1px solid var(--fundo); display:flex;
+  align-items:baseline; gap:12px; flex-wrap:wrap;}
+.card-head h2{font-size:17.5px; font-weight:600; color:var(--tinta); margin:0; letter-spacing:-.01em;}
+.card-head .sub{font-size:12.5px; color:var(--tinta-4); margin-top:4px; width:100%;}
+.card-head .etapa{font-size:11px; font-weight:700; color:var(--tinta-5); letter-spacing:.1em; text-transform:uppercase;}
+.card-corpo{padding:21px 26px 24px; display:flex; flex-direction:column; gap:18px; flex:1;}
+.largo{grid-column:1/-1}
+.campos{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px;}
+.campo{display:flex; flex-direction:column; gap:6px; min-width:0;}
+.campo label{font-size:12.5px; color:var(--tinta-2); font-weight:500;}
+.campo input,.campo select{border:1.4px solid var(--linha); background:var(--branco); border-radius:10px;
+  padding:10px 13px; font-size:14.5px; color:var(--tinta); width:100%; font-family:inherit;
+  font-variant-numeric:tabular-nums; min-width:0;}
+.campo input:focus,.campo select:focus{outline:none; border-color:var(--vermelho);}
+.campo input::placeholder{color:var(--tinta-5)}
+.campo .dica{font-size:11.5px; color:var(--tinta-5); line-height:1.45;}
+.trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;}
+.marcar{display:flex; flex-direction:column; gap:12px;}
+.marcar label{display:flex; gap:11px; align-items:flex-start; font-size:13.5px; color:var(--tinta-2);
+  cursor:pointer; line-height:1.5;}
+.marcar input{width:17px; height:17px; accent-color:var(--vermelho); flex:none; margin-top:1px; cursor:pointer;}
+.marcar .q{font-size:11.5px; color:var(--tinta-4); display:block; margin-top:2px;}
+.conferencias{display:flex; flex-direction:column; gap:10px;}
+.conf{display:flex; gap:12px; align-items:flex-start; border-radius:var(--raio-sm); padding:12px 16px;
+  font-size:13.5px; line-height:1.55;}
+.conf .marca-st{font-weight:700; flex:none; width:16px; text-align:center;}
+.conf span{min-width:0; overflow-wrap:anywhere;}
+.conf.ok{background:var(--verde-tint); color:var(--verde)}
+.conf.bad{background:var(--vermelho-tint); color:var(--vermelho-escuro)}
+.conf.warn{background:var(--ambar-tint); color:var(--ambar)}
+.conf.idle{background:var(--neutro-2); color:var(--tinta-4)}
+.pill{display:inline-flex; align-items:center; border-radius:999px; font-size:12.5px; font-weight:600;
+  padding:6px 14px; white-space:nowrap;}
+.pill.quente{background:var(--vermelho-tint); color:var(--vermelho-escuro)}
+.pill.morno{background:var(--ambar-tint); color:var(--ambar)}
+.pill.frio{background:var(--verde-tint); color:var(--verde)}
+/* propostas */
+.props{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px;}
+.prop{border:1.4px solid var(--linha); border-radius:var(--raio-sm); padding:16px 18px;
+  display:flex; flex-direction:column; gap:12px;}
+.prop.vence{border-color:var(--verde); background:var(--verde-tint);}
+.prop .cab{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.prop .cab h3{margin:0; font-size:14px; font-weight:600; color:var(--tinta);}
+.prop .selo{font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--verde); background:var(--branco); padding:3px 9px; border-radius:999px;}
+.prop .linha-res{display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:5px 0;
+  border-bottom:1px solid var(--linha);}
+.prop .linha-res:last-child{border-bottom:0}
+.prop .linha-res b{font-variant-numeric:tabular-nums; color:var(--tinta); font-weight:600;}
+.prop .destaque{font-size:19px; font-weight:600; color:var(--azul); font-variant-numeric:tabular-nums;}
+.prop.vence .destaque{color:var(--verde)}
+.veredito{background:var(--verde-tint); border-left:3px solid var(--verde); border-radius:var(--raio-sm);
+  padding:15px 18px; font-size:14px; color:var(--verde); line-height:1.6;}
+.veredito b{font-weight:700}
+.veredito.vazio{background:var(--neutro-2); border-left-color:var(--linha-2); color:var(--tinta-4);}
+/* relatorio */
+.resumo{background:var(--neutro); border-radius:var(--raio-sm); padding:17px 20px;}
+.resumo pre{margin:0; font-family:'SFMono-Regular',Menlo,Consolas,monospace; font-size:12.5px;
+  line-height:1.75; color:var(--tinta-2); white-space:pre-wrap; overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;}
+.acoes{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+.btn{border-radius:999px; padding:11px 20px; font-size:13.5px; font-weight:600; font-family:inherit;
+  border:1.4px solid var(--vermelho); background:var(--vermelho); color:#fff; cursor:pointer; transition:filter .14s;}
+.btn:hover{filter:brightness(.94)}
+.btn:focus-visible{outline:2px solid var(--tinta); outline-offset:2px;}
+.btn.ghost{background:var(--branco); color:var(--tinta-3); border-color:var(--linha);}
+.btn.ghost:hover{color:var(--tinta); filter:none;}
+.aviso{font-size:13px; color:var(--verde); font-weight:600;}
+.nota{font-size:12.5px; color:var(--tinta-4); margin:0; line-height:1.65;}
+details{border-top:1px solid var(--fundo); padding-top:14px;}
+summary{cursor:pointer; font-size:13px; color:var(--tinta-3); font-weight:500; list-style:none;}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ "; color:var(--tinta-4)}
+details[open] summary::before{content:"▾ "}
+.tecnico{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:14px; margin-top:14px;}
+.tecnico .t{display:flex; flex-direction:column; gap:2px;}
+.tecnico .t span{font-size:11.5px; color:var(--tinta-4)}
+.tecnico .t b{font-size:15px; color:var(--azul); font-weight:600; font-variant-numeric:tabular-nums;}
+@media (max-width:560px){ .card-head,.card-corpo{padding-left:20px; padding-right:20px;} .trio{grid-template-columns:1fr} }
+@media print{
+  @page{ size:A4; margin:16mm 14mm; }
+  *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ background:#fff; font-size:10.5pt; padding:0; }
+  .pagina{ max-width:none; padding:0; }
+  .passos, .acoes, .card.naoimprime, details{ display:none !important; }
+  .card{ box-shadow:none; border:1px solid var(--linha); break-inside:avoid; }
+  .grade{ display:block } .card{ margin-bottom:12px }
+  .resumo pre{ font-size:9pt }
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* --- acabamento detalhado --- */
+.fam{margin-bottom:22px}
+.fam:last-child{margin-bottom:0}
+.fam-tit{display:flex; align-items:baseline; gap:10px; margin:0 0 4px;}
+.fam-tit h3{margin:0; font-size:14.5px; font-weight:600; color:var(--tinta);}
+.fam-tit .sub{font-size:12px; color:var(--tinta-4);}
+.fam-tit::after{content:""; flex:1; height:1px; background:var(--linha); align-self:center;}
+.ops{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:4px; margin-top:10px;}
+.op{display:block; padding:9px 11px; border-radius:10px; cursor:pointer; transition:background .12s;}
+.op:hover{background:var(--neutro)}
+.op.marcada{background:var(--vermelho-tint)}
+.op .topo-op{display:flex; gap:10px; align-items:flex-start;}
+.op input{width:16px; height:16px; accent-color:var(--vermelho); flex:none; margin-top:2px; cursor:pointer;}
+.op .nome{font-size:13.5px; color:var(--tinta); font-weight:500; flex:1; min-width:0;}
+.op .expl{display:block; font-size:11.5px; color:var(--tinta-4); line-height:1.45; margin-left:26px; margin-top:2px;}
+.op .marcas{display:flex; gap:6px; align-items:center; flex:none;}
+.op .rs{font-size:11px; font-weight:700; color:var(--tinta-5); letter-spacing:.5px;}
+.op .rs.c1{color:var(--verde)} .op .rs.c2{color:var(--ambar)} .op .rs.c3{color:var(--vermelho)}
+.op .fer{font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  background:var(--ambar-tint); color:var(--ambar); padding:2px 6px; border-radius:999px; white-space:nowrap;}
+.op .det{display:block; margin:8px 0 0 26px;}
+.op .det input{border:1.4px solid var(--linha); border-radius:9px; padding:7px 11px; font-size:13px;
+  width:100%; font-family:inherit; color:var(--tinta); background:var(--branco);}
+.op .det input:focus{outline:none; border-color:var(--vermelho)}
+.legenda{font-size:11.5px; color:var(--tinta-4); margin-top:4px; display:flex; gap:16px; flex-wrap:wrap;}
+.legenda b{font-weight:700; color:var(--tinta-5)}
+.condicional{border-top:1px solid var(--fundo); padding-top:18px; margin-top:4px;}
+.condicional .avisinho{font-size:12px; color:var(--tinta-4); margin:0 0 12px;}
+
+.nota-tipo{background:var(--azul-tint); border-left:3px solid var(--azul); border-radius:var(--raio-sm);
+  padding:12px 15px; font-size:13px; color:var(--azul); line-height:1.55; margin-top:2px;}
+.filtro-aviso{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  background:var(--neutro); border-radius:var(--raio-sm); padding:11px 15px; font-size:12.5px;
+  color:var(--tinta-3); margin-bottom:16px;}
+.filtro-aviso label{display:flex; gap:9px; align-items:center; cursor:pointer; font-weight:500; color:var(--tinta-2);}
+.filtro-aviso input{width:16px; height:16px; accent-color:var(--vermelho); cursor:pointer;}
+.fam[hidden]{display:none}
+.tec-bloco{border-top:1px solid var(--fundo); padding-top:18px; margin-top:4px;}
+.tec-bloco .avisinho{font-size:12px; color:var(--tinta-4); margin:0 0 13px;}
+</style>
+</head>
+<body>
+<div class="pagina">
+<div class="topo"><div class="marca"><div class="sigla">CD</div><div><h1>Orçamento de Embalagem</h1><div class="sub">Pede a cotação do jeito certo e compara as propostas que voltarem</div></div></div><span class="pill frio" id="selo">Vamos começar</span></div>
+<div class="passos"><div class="passo on" id="p1"><b>1</b>Descreva o que precisa</div><div class="passo" id="p2"><b>2</b>Envie o pedido às gráficas</div><div class="passo" id="p3"><b>3</b>Lance as propostas</div><div class="passo" id="p4"><b>4</b>Veja o relatório e decida</div></div><div class="grade">
+<div class="card faixa-vermelha largo"><div class="card-head"><span class="etapa">Etapa 1</span><h2>O que você precisa embalar</h2><div class="sub">O tipo de embalagem define tudo o que vem abaixo — materiais, acabamentos e perguntas próprias.</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="o-prod">Produto</label><input id="o-prod" inputmode="text" placeholder="ex.: 1044 — Invictus Graneleiro" value="1044 — Tópi Invictus Graneleiro"></div><div class="campo"><label for="o-peca">Tipo de embalagem</label><select id="o-peca"><option value="individual" selected>Caixa do produto (a que vai na loja)</option><option value="master">Caixa master (a de transporte)</option><option value="display">Display de loja</option><option value="solapa">Solapa (cartão com o produto preso)</option><option value="blister">Blister / cartela</option><option value="rede">Rede (malha com cabeçote)</option><option value="cinta">Cinta ou luva</option><option value="sacola">Sacola</option><option value="berco">Berço interno</option></select></div><div class="campo"><label for="o-sit">É a primeira vez?</label><select id="o-sit"><option value="nova" selected>Sim — embalagem nova</option><option value="repeticao">Não — já produzimos esta</option><option value="revisao">Já produzimos, mas a arte mudou</option></select></div></div><div class="nota-tipo" id="nota-tipo" hidden></div><div class="campos"><div class="campo"><label for="o-temmedida">As medidas já estão definidas?</label><select id="o-temmedida"><option value="sim" selected>Sim, sei as medidas</option><option value="nao">Não — tenho só o produto, a gráfica que dimensione</option></select></div></div><div class="campos"><div class="campo" style="grid-column:1/-1"><label id="o-rotmed">Medidas, em milímetros</label><div class="trio"><input id="o-c" inputmode="decimal" placeholder="comprimento" value="230"><input id="o-l" inputmode="decimal" placeholder="largura" value="90"><input id="o-a" inputmode="decimal" placeholder="altura" value="170"></div><div class="dica" id="o-dicamed"></div></div></div><div class="condicional" id="bloco-solapa" hidden><p class="avisinho"><b>Solapa</b> — o cartão que segura o produto e vai pendurado no gancho.</p><div class="campos"><div class="campo"><label for="sol-furo">Furo de pendurar</label><select id="sol-furo"><option value="euro" selected>Euro-hole (formato de sino)</option><option value="redondo">Furo redondo</option><option value="nenhum">Sem furo</option></select></div><div class="campo"><label for="sol-fix">Como o produto é preso</label><select id="sol-fix"><option value="lacre" selected>Lacre plástico</option><option value="arame">Arame encapado</option><option value="elastico">Elástico</option><option value="solda">Solda / blister</option><option value="cola">Cola pontual</option></select></div><div class="campo"><label for="sol-imp">Impressão</label><select id="sol-imp"><option value="frente" selected>Só na frente</option><option value="frenteverso">Frente e verso</option></select></div></div></div><div class="condicional" id="bloco-rede" hidden><p class="avisinho"><b>Rede</b> — a malha com cabeçote de cartão impresso.</p><div class="campos"><div class="campo"><label for="red-cor">Cor da rede</label><select id="red-cor"><option value="vermelha" selected>Vermelha</option><option value="amarela">Amarela</option><option value="azul">Azul</option><option value="verde">Verde</option><option value="branca">Branca</option><option value="outra">Outra — dizemos depois</option></select></div><div class="campo"><label for="red-cab">Cabeçote</label><select id="red-cab"><option value="cartao_grampo" selected>Cartão dobrado e grampeado</option><option value="cartao_solda">Cartão com solda</option><option value="etiqueta">Só etiqueta</option></select></div><div class="campo"><label for="red-fecho">Fechamento inferior</label><select id="red-fecho"><option value="grampo" selected>Grampo</option><option value="solda">Solda</option><option value="no">Nó / amarração</option></select></div></div></div></div></div>
+<div class="card faixa-verde"><div class="card-head"><span class="etapa">Etapa 1</span><h2>Quantas e para quando</h2><div class="sub">A quantidade é o que mais mexe no preço</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="o-qtd">Quantidade</label><input id="o-qtd" inputmode="numeric" placeholder="ex.: 10000" value="10000"></div><div class="campo"><label for="o-qtd2">Cotar também</label><input id="o-qtd2" inputmode="numeric" placeholder="ex.: 20000" value="20000"><div class="dica">ver o preço numa faixa maior</div></div><div class="campo"><label for="o-prazo">Precisa em</label><input id="o-prazo" inputmode="numeric" placeholder="dias" value="30"></div><div class="campo"><label for="o-entrega">Entregar em</label><input id="o-entrega" inputmode="text" placeholder="cidade / UF"></div></div></div></div>
+<div class="card faixa-azul"><div class="card-head"><span class="etapa">Etapa 1</span><h2>Material e impressão</h2><div class="sub">As opções mudam conforme o tipo escolhido acima</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="o-mat">Material</label><select id="o-mat"><option value="cartao" selected>—</option></select></div><div class="campo"><label for="o-cores">Impressão</label><select id="o-cores"><option value="4x0" selected>4x0 — colorida só por fora</option><option value="4x1">4x1 — colorida por fora, preto por dentro</option><option value="4x4">4x4 — colorida dos dois lados</option><option value="1x0">1x0 — uma cor</option><option value="2x0">2x0 — duas cores</option><option value="0">Sem impressão</option></select></div><div class="campo"><label for="o-pantone">Pantones de referência</label><input id="o-pantone" inputmode="text" placeholder="ex.: 021 C, 116 C"><div class="dica">as cores fechadas da marca</div></div></div></div></div>
+<div class="card faixa-roxa largo"><div class="card-head"><span class="etapa">Etapa 1</span><h2>Especificação técnica</h2><div class="sub">Sem ela, cada gráfica cota um material diferente e as propostas não se comparam.</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="o-temtec">Já temos a especificação técnica?</label><select id="o-temtec"><option value="nao" selected>Não — a gráfica que recomende</option><option value="sim">Sim — vou informar abaixo</option></select></div></div><div class="nota-tipo" id="nota-tec" hidden></div><div class="tec-bloco" id="tec-cartao" hidden><p class="avisinho">Especificação de <b>Cartão impresso (duplex, triplex ou kraft)</b></p><div class="campos"><div class="campo"><label for="tec-cartao-tipo">Tipo de cartão</label><select id="tec-cartao-tipo"><option value="duplex" selected>Duplex — verso pardo</option><option value="triplex">Triplex — verso branco</option><option value="kraft">Kraft</option><option value="revestido">Cartão revestido</option></select><div class="dica">o verso branco custa mais e aparece na parte interna</div></div><div class="campo"><label for="tec-cartao-gram">Gramatura</label><input id="tec-cartao-gram" inputmode="decimal" placeholder="g/m²"><div class="dica">o usual em caixa de brinquedo fica entre 250 e 400</div></div><div class="campo"><label for="tec-cartao-esp">Espessura</label><input id="tec-cartao-esp" inputmode="decimal" placeholder="micras"><div class="dica">opcional — só se a ficha anterior trouxer</div></div></div></div><div class="tec-bloco" id="tec-micro" hidden><p class="avisinho">Especificação de <b>Microondulado — resistente e impresso</b></p><div class="campos"><div class="campo"><label for="tec-micro-onda">Onda</label><select id="tec-micro-onda"><option value="E" selected>Onda E — 1,5 mm</option><option value="F">Onda F — 0,8 mm</option><option value="N">Onda N — 0,5 mm</option></select><div class="dica">quanto menor a onda, mais fina e mais lisa para imprimir</div></div><div class="campo"><label for="tec-micro-gram">Gramatura da capa impressa</label><input id="tec-micro-gram" inputmode="decimal" placeholder="g/m²"></div><div class="campo"><label for="tec-micro-ect">Resistência (ECT)</label><input id="tec-micro-ect" inputmode="decimal" placeholder="kN/m"><div class="dica">opcional — peça se a caixa for empilhada</div></div></div></div><div class="tec-bloco" id="tec-ondulado" hidden><p class="avisinho">Especificação de <b>Papelão ondulado — transporte</b></p><div class="campos"><div class="campo"><label for="tec-ond-onda">Onda</label><select id="tec-ond-onda"><option value="B" selected>Onda B — 3 mm</option><option value="C">Onda C — 4 mm</option><option value="BC">Onda BC dupla — 7 mm</option><option value="E">Onda E — 1,5 mm</option></select><div class="dica">BC é para carga pesada ou empilhamento alto</div></div><div class="campo"><label for="tec-ond-papel">Papel</label><select id="tec-ond-papel"><option value="kraft" selected>Kraft — pardo</option><option value="branco">Capa branca — para imprimir melhor</option></select></div><div class="campo"><label for="tec-ond-ect">Resistência (ECT)</label><input id="tec-ond-ect" inputmode="decimal" placeholder="kN/m"><div class="dica">o número que garante o empilhamento no pallet</div></div><div class="campo"><label for="tec-ond-col">Resistência de coluna</label><input id="tec-ond-col" inputmode="decimal" placeholder="kgf"><div class="dica">alternativa ao ECT, se a gráfica trabalhar assim</div></div></div></div><div class="tec-bloco" id="tec-plastico" hidden><p class="avisinho">Especificação de <b>Plástico (PET, PVC ou PP)</b></p><div class="campos"><div class="campo"><label for="tec-pl-mat">Material</label><select id="tec-pl-mat"><option value="pet" selected>PET — mais transparente e reciclável</option><option value="pvc">PVC — mais barato</option><option value="pp">PP — mais flexível</option></select></div><div class="campo"><label for="tec-pl-esp">Espessura</label><input id="tec-pl-esp" inputmode="decimal" placeholder="micras"><div class="dica">plástico se mede em micras, não em gramatura</div></div><div class="campo"><label for="tec-pl-tipo">Formato</label><select id="tec-pl-tipo"><option value="blister" selected>Blister colado no cartão</option><option value="skin">Skin — filme a vácuo</option><option value="clamshell">Clamshell — concha fechada</option></select></div></div></div><div class="tec-bloco" id="tec-malha" hidden><p class="avisinho">Especificação de <b>Malha / rede</b></p><div class="campos"><div class="campo"><label for="tec-ma-tipo">Tipo de malha</label><select id="tec-ma-tipo"><option value="pe" selected>Polietileno</option><option value="nylon">Nylon</option><option value="algodao">Algodão</option></select></div><div class="campo"><label for="tec-ma-abert">Abertura da malha</label><input id="tec-ma-abert" inputmode="decimal" placeholder="mm"><div class="dica">o vão entre os fios — define se peça pequena escapa</div></div><div class="campo"><label for="tec-ma-fio">Espessura do fio</label><input id="tec-ma-fio" inputmode="decimal" placeholder="mm"></div><div class="campo"><label for="tec-ma-cab">Gramatura do cabeçote</label><input id="tec-ma-cab" inputmode="decimal" placeholder="g/m²"><div class="dica">o cartão impresso que fecha a rede</div></div></div></div><div class="tec-bloco" id="tec-papel" hidden><p class="avisinho">Especificação de <b>Papel (sacola)</b></p><div class="campos"><div class="campo"><label for="tec-pa-tipo">Tipo de papel</label><select id="tec-pa-tipo"><option value="kraft" selected>Kraft</option><option value="couche">Couché</option><option value="offset">Offset</option></select></div><div class="campo"><label for="tec-pa-gram">Gramatura</label><input id="tec-pa-gram" inputmode="decimal" placeholder="g/m²"></div></div></div></div></div>
+<div class="card faixa-ambar largo"><div class="card-head"><span class="etapa">Etapa 1</span><h2>Acabamento e efeitos</h2><div class="sub">Só o que existe para o tipo escolhido. Cada efeito é uma passagem a mais na máquina.</div></div><div class="card-corpo"><div class="filtro-aviso"><span id="filtro-txt">—</span><label><input type="checkbox" id="o-vertudo">Ver todos os acabamentos</label></div><div class="legenda"><span><b>$</b> pouco impacto no preço</span><span><b>$$</b> impacto médio</span><span><b>$$$</b> impacto alto</span><span><b>ferramental</b> custo único de clichê, matriz ou faca</span></div>
+<div class="fam" id="fam-revest"><div class="fam-tit"><h3>Revestimento</h3><span class="sub">a proteção de toda a peça — escolha uma</span></div><div class="campos" style="margin-top:10px"><div class="campo"><label for="o-revest"></label><select id="o-revest"><option value="nenhum">Sem revestimento</option><option value="verniz_maquina" selected>Verniz máquina</option><option value="verniz_uv_brilho">Verniz UV brilho total</option><option value="verniz_uv_fosco">Verniz UV fosco total</option><option value="lam_brilho">Laminação BOPP brilho</option><option value="lam_fosco">Laminação BOPP fosco</option><option value="soft_touch">Laminação soft touch</option><option value="naosei">Quero o preço de cada opção</option></select></div><div class="campo" style="grid-column:span 2"><label>O que isso significa</label><div class="dica" id="o-revest-expl" style="font-size:12.5px; padding-top:9px"></div></div></div></div>
+<div class="fam" id="fam-destaques"><div class="fam-tit"><h3>Destaques localizados</h3><span class="sub">aplicados só em partes da arte</span></div><div class="ops"><label class="op" id="op-uv_local"><span class="topo-op"><input type="checkbox" id="ac-uv_local"><span class="nome">Verniz UV localizado</span><span class="marcas"><span class="rs c2">$$</span><span class="fer">ferramental</span></span></span><span class="expl">Brilho só em partes da arte — logo, produto, detalhes. Contrasta com fundo fosco.</span><span class="det" id="det-wrap-uv_local" hidden><input id="det-uv_local" placeholder="onde aplicar"></span></label><label class="op" id="op-uv_3d"><span class="topo-op"><input type="checkbox" id="ac-uv_3d"><span class="nome">Verniz 3D (relevo americano)</span><span class="marcas"><span class="rs c3">$$$</span><span class="fer">ferramental</span></span></span><span class="expl">Verniz espesso que se sente com o dedo. Efeito de relevo sem gastar matriz de relevo.</span><span class="det" id="det-wrap-uv_3d" hidden><input id="det-uv_3d" placeholder="onde aplicar"></span></label><label class="op" id="op-textura"><span class="topo-op"><input type="checkbox" id="ac-textura"><span class="nome">Verniz texturizado ou com glitter</span><span class="marcas"><span class="rs c3">$$$</span><span class="fer">ferramental</span></span></span><span class="expl">Superfície granulada, brilho cintilante. Chama atenção na gôndola infantil.</span><span class="det" id="det-wrap-textura" hidden><input id="det-textura" placeholder="onde e qual textura"></span></label><label class="op" id="op-hot"><span class="topo-op"><input type="checkbox" id="ac-hot"><span class="nome">Hot stamping (folha metálica a quente)</span><span class="marcas"><span class="rs c3">$$$</span><span class="fer">ferramental</span></span></span><span class="expl">Dourado, prateado ou holográfico com brilho de metal de verdade. Pede clichê.</span><span class="det" id="det-wrap-hot" hidden><input id="det-hot" placeholder="onde e qual cor de folha"></span></label><label class="op" id="op-cold"><span class="topo-op"><input type="checkbox" id="ac-cold"><span class="nome">Cold stamping (folha a frio)</span><span class="marcas"><span class="rs c2">$$</span></span></span><span class="expl">Efeito metálico aplicado na impressão. Mais barato que hot em tiragem alta.</span><span class="det" id="det-wrap-cold" hidden><input id="det-cold" placeholder="onde e qual cor"></span></label><label class="op" id="op-relevo"><span class="topo-op"><input type="checkbox" id="ac-relevo"><span class="nome">Relevo seco (alto ou baixo)</span><span class="marcas"><span class="rs c2">$$</span><span class="fer">ferramental</span></span></span><span class="expl">A forma é marcada no papel, sem tinta. Elegante, muito usado em logo.</span><span class="det" id="det-wrap-relevo" hidden><input id="det-relevo" placeholder="onde aplicar"></span></label><label class="op" id="op-tinta_metal"><span class="topo-op"><input type="checkbox" id="ac-tinta_metal"><span class="nome">Tinta metálica ou perolizada</span><span class="marcas"><span class="rs c2">$$</span></span></span><span class="expl">Cor com partícula metálica na própria tinta.</span><span class="det" id="det-wrap-tinta_metal" hidden><input id="det-tinta_metal" placeholder="qual cor"></span></label><label class="op" id="op-tinta_fluor"><span class="topo-op"><input type="checkbox" id="ac-tinta_fluor"><span class="nome">Tinta fluorescente</span><span class="marcas"><span class="rs c2">$$</span></span></span><span class="expl">Cor que salta, quase neon. Comum em linha infantil.</span><span class="det" id="det-wrap-tinta_fluor" hidden><input id="det-tinta_fluor" placeholder="qual cor"></span></label></div></div>
+<div class="fam" id="fam-estrutura"><div class="fam-tit"><h3>Corte e estrutura</h3><span class="sub">o formato e o que a peça tem de recorte</span></div><div class="ops"><label class="op" id="op-faca_especial"><span class="topo-op"><input type="checkbox" id="ac-faca_especial"><span class="nome">Formato recortado (faca especial)</span><span class="marcas"><span class="rs c3">$$$</span><span class="fer">ferramental</span></span></span><span class="expl">A peça sai num contorno próprio, não retangular. Pede faca nova.</span><span class="det" id="det-wrap-faca_especial" hidden><input id="det-faca_especial" placeholder="descreva o formato"></span></label><label class="op" id="op-janela"><span class="topo-op"><input type="checkbox" id="ac-janela"><span class="nome">Janela transparente</span><span class="marcas"><span class="rs c2">$$</span><span class="fer">ferramental</span></span></span><span class="expl">Recorte para ver o produto, com filme colado por trás.</span><span class="det" id="det-wrap-janela" hidden><input id="det-janela" placeholder="tamanho e onde"></span></label><label class="op" id="op-janela_sem_filme"><span class="topo-op"><input type="checkbox" id="ac-janela_sem_filme"><span class="nome">Janela vazada, sem filme</span><span class="marcas"><span class="rs c1">$</span><span class="fer">ferramental</span></span></span><span class="expl">Recorte aberto. Mais barato, mas o produto fica exposto.</span><span class="det" id="det-wrap-janela_sem_filme" hidden><input id="det-janela_sem_filme" placeholder="tamanho e onde"></span></label><label class="op" id="op-furo_euro"><span class="topo-op"><input type="checkbox" id="ac-furo_euro"><span class="nome">Furo para pendurar (euro-hole)</span><span class="marcas"><span class="rs c1">$</span><span class="fer">ferramental</span></span></span><span class="expl">O furo em formato de sino, padrão de gancho de gôndola.</span></label><label class="op" id="op-furo_redondo"><span class="topo-op"><input type="checkbox" id="ac-furo_redondo"><span class="nome">Furo redondo para pendurar</span><span class="marcas"><span class="rs c1">$</span><span class="fer">ferramental</span></span></span><span class="expl">Furo simples.</span></label><label class="op" id="op-serrilha"><span class="topo-op"><input type="checkbox" id="ac-serrilha"><span class="nome">Serrilha ou abertura fácil</span><span class="marcas"><span class="rs c1">$</span><span class="fer">ferramental</span></span></span><span class="expl">Picote para abrir sem rasgar tudo.</span><span class="det" id="det-wrap-serrilha" hidden><input id="det-serrilha" placeholder="onde"></span></label><label class="op" id="op-alca"><span class="topo-op"><input type="checkbox" id="ac-alca"><span class="nome">Alça</span><span class="marcas"><span class="rs c2">$$</span><span class="fer">ferramental</span></span></span><span class="expl">Recortada no próprio cartão ou com cordão aplicado.</span><span class="det" id="det-wrap-alca" hidden><input id="det-alca" placeholder="tipo de alça"></span></label><label class="op" id="op-berco_int"><span class="topo-op"><input type="checkbox" id="ac-berco_int"><span class="nome">Berço ou divisória interna</span><span class="marcas"><span class="rs c2">$$</span><span class="fer">ferramental</span></span></span><span class="expl">Estrutura que segura o produto dentro da caixa.</span></label></div></div>
+<div class="fam" id="fam-mont"><div class="fam-tit"><h3>Entrega e montagem</h3><span class="sub">como a peça chega até a linha</span></div><div class="campos" style="margin-top:10px"><div class="campo"><label for="o-montagem"></label><select id="o-montagem"><option value="plana">Entregue plana — montamos aqui</option><option value="colada" selected>Colada de um ponto</option><option value="fundo_auto">Fundo automático</option><option value="montada">Entregue montada</option></select></div><div class="campo" style="grid-column:span 2"><label>O que isso significa</label><div class="dica" id="o-mont-expl" style="font-size:12.5px; padding-top:9px"></div></div></div></div>
+<div class="fam" id="fam-especiais"><div class="fam-tit"><h3>Tratamentos e sustentabilidade</h3><span class="sub">exigências de durabilidade ou de cliente</span></div><div class="ops"><label class="op" id="op-antiuv"><span class="topo-op"><input type="checkbox" id="ac-antiuv"><span class="nome">Proteção anti-UV</span><span class="marcas"><span class="rs c2">$$</span></span></span><span class="expl">Evita a cor desbotar em vitrine ou loja com muita luz.</span></label><label class="op" id="op-impermeavel"><span class="topo-op"><input type="checkbox" id="ac-impermeavel"><span class="nome">Resistente à umidade</span><span class="marcas"><span class="rs c2">$$</span></span></span><span class="expl">Verniz ou laminação que suporta manuseio úmido e estoque.</span></label><label class="op" id="op-aroma"><span class="topo-op"><input type="checkbox" id="ac-aroma"><span class="nome">Verniz aromatizado</span><span class="marcas"><span class="rs c3">$$$</span></span></span><span class="expl">Cheiro aplicado na peça. Usado em linha infantil.</span></label><label class="op" id="op-antirrisco"><span class="topo-op"><input type="checkbox" id="ac-antirrisco"><span class="nome">Antirrisco</span><span class="marcas"><span class="rs c2">$$</span></span></span><span class="expl">Superfície que resiste melhor ao atrito do transporte.</span></label><label class="op" id="op-fsc"><span class="topo-op"><input type="checkbox" id="ac-fsc"><span class="nome">Papel com certificação FSC</span><span class="marcas"><span class="rs c1">$</span></span></span><span class="expl">Origem responsável. Alguns clientes de varejo exigem.</span></label><label class="op" id="op-reciclado"><span class="topo-op"><input type="checkbox" id="ac-reciclado"><span class="nome">Papel reciclado</span><span class="marcas"><span class="rs c1">$</span></span></span><span class="expl">Percentual de fibra reciclada.</span></label><label class="op" id="op-sem_plastico"><span class="topo-op"><input type="checkbox" id="ac-sem_plastico"><span class="nome">Sem laminação plástica</span></span><span class="expl">Mantém a peça reciclável. Conflita com laminação BOPP.</span></label></div></div>
+</div></div>
+<div class="card faixa-roxa largo"><div class="card-head"><span class="etapa">Etapa 1</span><h2>Arquivo aprovado</h2><div class="sub">Identifica qual versão da arte vai para produção — evita a gráfica imprimir um layout velho</div></div><div class="card-corpo"><div class="campos"><div class="campo"><label for="o-arqversao">Versão do arquivo</label><input id="o-arqversao" inputmode="text" placeholder="ex.: Layout criativo final"></div><div class="campo"><label for="o-designer">Designer</label><input id="o-designer" inputmode="text" placeholder="quem criou a arte"></div><div class="campo"><label for="o-revfinal">Revisão final</label><input id="o-revfinal" inputmode="text" placeholder="quem aprovou o conteúdo"></div><div class="campo"><label for="o-revtec">Revisão técnica</label><input id="o-revtec" inputmode="text" placeholder="quem conferiu faca e medidas"></div><div class="campo"><label for="o-dataaprov">Aprovado em</label><input id="o-dataaprov" inputmode="text" placeholder="dd/mm/aaaa"></div></div></div></div>
+<div class="card faixa-ambar largo naoimprime"><div class="card-head"><span class="etapa">Etapa 1</span><h2>Antes de enviar</h2><div class="sub">Se faltar, a gráfica devolve o pedido ou cota no escuro</div></div><div class="card-corpo"><div class="marcar"><label><input type="checkbox" id="o-arte"><span>A arte final está pronta<span class="q">PDF fechado, em curvas, com sangria e marcas de corte.</span></span></label><label><input type="checkbox" id="o-rotul"><span>A rotulagem obrigatória foi conferida<span class="q">ATENÇÃO de faixa etária, INMETRO compulsório, SAC, CNPJ e dados do fabricante.</span></span></label><label><input type="checkbox" id="o-ean"><span>O código de barras está correto na arte<span class="q">Confira na Calculadora de Cadastro: quatro produtos do catálogo hoje dividem o mesmo EAN.</span></span></label><label><input type="checkbox" id="o-boneco"><span>Queremos um boneco físico antes de produzir<span class="q">Atrasa alguns dias e tem custo, mas evita reimprimir a tiragem inteira.</span></span></label></div><div class="conferencias" id="checks" style="margin-top:6px"></div></div></div>
+<div class="card largo"><div class="card-head"><span class="etapa">Etapa 2</span><h2>Pedido de cotação</h2><div class="sub">Copie e envie para cada gráfica — todas recebem exatamente a mesma coisa</div></div><div class="card-corpo"><div class="resumo"><pre id="pedido">Preencha a etapa 1.</pre></div><div class="acoes"><button class="btn" id="b-copiar">Copiar pedido</button><span class="aviso" id="s-copiar"></span></div><details><summary>Conferência técnica — só se você quiser saber</summary><p class="nota" style="margin-top:10px">Nada disto precisa ser informado à gráfica: é ela que calcula. Serve para você saber se a proposta que voltar faz sentido.</p><div class="tecnico"><div class="t"><span>Chapa aberta estimada</span><b id="t-chapa">—</b></div><div class="t"><span>Peças por folha</span><b id="t-pc">—</b></div><div class="t"><span>Aproveitamento</span><b id="t-aprov">—</b></div><div class="t"><span>Folhas na tiragem</span><b id="t-folhas">—</b></div><div class="t"><span>Material comprado</span><b id="t-peso">—</b></div></div></details></div></div>
+<div class="card faixa-roxa largo naoimprime"><div class="card-head"><span class="etapa">Etapa 3</span><h2>As propostas que voltaram</h2><div class="sub">Lance o que cada gráfica respondeu. A faca entra separada porque é cobrada uma vez só.</div></div><div class="card-corpo"><div class="props">
+<div class="prop" id="prop1"><div class="cab"><h3>Gráfica 1</h3><span class="selo" id="selo1" hidden>melhor preço</span></div><div class="campo"><label for="f1-nome">Nome</label><input id="f1-nome" inputmode="text" placeholder="nome da gráfica"></div><div class="campo"><label for="f1-preco">Preço por peça (R$)</label><input id="f1-preco" inputmode="decimal" placeholder="0,00"></div><div class="campo"><label for="f1-faca">Ferramental — faca, clichê, matriz (R$)</label><input id="f1-faca" inputmode="decimal" placeholder="0,00"><div class="dica">Tudo que é cobrado uma vez só</div></div><div class="campo"><label for="f1-prazo">Prazo (dias)</label><input id="f1-prazo" inputmode="numeric" placeholder="0"></div><div id="res1"></div></div>
+<div class="prop" id="prop2"><div class="cab"><h3>Gráfica 2</h3><span class="selo" id="selo2" hidden>melhor preço</span></div><div class="campo"><label for="f2-nome">Nome</label><input id="f2-nome" inputmode="text" placeholder="nome da gráfica"></div><div class="campo"><label for="f2-preco">Preço por peça (R$)</label><input id="f2-preco" inputmode="decimal" placeholder="0,00"></div><div class="campo"><label for="f2-faca">Ferramental — faca, clichê, matriz (R$)</label><input id="f2-faca" inputmode="decimal" placeholder="0,00"><div class="dica">Tudo que é cobrado uma vez só</div></div><div class="campo"><label for="f2-prazo">Prazo (dias)</label><input id="f2-prazo" inputmode="numeric" placeholder="0"></div><div id="res2"></div></div>
+<div class="prop" id="prop3"><div class="cab"><h3>Gráfica 3</h3><span class="selo" id="selo3" hidden>melhor preço</span></div><div class="campo"><label for="f3-nome">Nome</label><input id="f3-nome" inputmode="text" placeholder="nome da gráfica"></div><div class="campo"><label for="f3-preco">Preço por peça (R$)</label><input id="f3-preco" inputmode="decimal" placeholder="0,00"></div><div class="campo"><label for="f3-faca">Ferramental — faca, clichê, matriz (R$)</label><input id="f3-faca" inputmode="decimal" placeholder="0,00"><div class="dica">Tudo que é cobrado uma vez só</div></div><div class="campo"><label for="f3-prazo">Prazo (dias)</label><input id="f3-prazo" inputmode="numeric" placeholder="0"></div><div id="res3"></div></div>
+</div></div></div>
+<div class="card faixa-verde largo"><div class="card-head"><span class="etapa">Etapa 4</span><h2>Relatório da decisão</h2><div class="sub">O comparativo pronto para anexar ao pedido de compra</div></div><div class="card-corpo"><div class="veredito vazio" id="veredito">Lance ao menos duas propostas na etapa 3 para comparar.</div><div class="resumo"><pre id="relatorio">—</pre></div><div class="acoes"><button class="btn" id="b-rel">Copiar relatório</button><button class="btn ghost" id="b-print">Salvar em PDF</button><button class="btn ghost" id="b-limpar">Limpar tudo</button><span class="aviso" id="s-rel"></span></div><p class="nota">Ao salvar em PDF, a página imprime só o pedido e o relatório — os formulários ficam de fora.</p></div></div>
+</div></div>
+<script id="cat" type="application/json">{"revestimento": {"nenhum": {"n": "Sem revestimento", "e": "O papel fica cru. Risca e suja com facilidade no transporte.", "c": 0}, "verniz_maquina": {"n": "Verniz máquina", "e": "Proteção básica contra atrito, brilho discreto. O mais barato que existe.", "c": 1}, "verniz_uv_brilho": {"n": "Verniz UV brilho total", "e": "Brilho alto na peça inteira. Realça cor, mas marca digital.", "c": 2}, "verniz_uv_fosco": {"n": "Verniz UV fosco total", "e": "Aspecto fosco uniforme, sem reflexo.", "c": 2}, "lam_brilho": {"n": "Laminação BOPP brilho", "e": "Filme plástico sobre o papel. Protege muito mais que verniz e resiste a umidade.", "c": 2}, "lam_fosco": {"n": "Laminação BOPP fosco", "e": "Filme fosco, toque aveludado. Visual mais sóbrio e caro.", "c": 2}, "soft_touch": {"n": "Laminação soft touch", "e": "Toque aveludado de pêssego. Percepção premium, custa bem mais.", "c": 3}, "naosei": {"n": "Quero o preço de cada opção", "e": "A gráfica cota as alternativas e vocês decidem.", "c": 0}}, "montagem": {"plana": {"n": "Entregue plana — montamos aqui", "e": "Ocupa menos no transporte e no estoque. Exige mão de obra na linha.", "c": 0}, "colada": {"n": "Colada de um ponto", "e": "Chega vincada e colada na lateral; basta abrir.", "c": 1}, "fundo_auto": {"n": "Fundo automático", "e": "Abre e o fundo se forma sozinho. Monta muito mais rápido na linha.", "c": 2}, "montada": {"n": "Entregue montada", "e": "Pronta para usar. Ocupa muito espaço no frete.", "c": 2}}, "destaques": [{"id": "uv_local", "n": "Verniz UV localizado", "c": 2, "f": true}, {"id": "uv_3d", "n": "Verniz 3D (relevo americano)", "c": 3, "f": true}, {"id": "textura", "n": "Verniz texturizado ou com glitter", "c": 3, "f": true}, {"id": "hot", "n": "Hot stamping (folha metálica a quente)", "c": 3, "f": true}, {"id": "cold", "n": "Cold stamping (folha a frio)", "c": 2, "f": false}, {"id": "relevo", "n": "Relevo seco (alto ou baixo)", "c": 2, "f": true}, {"id": "tinta_metal", "n": "Tinta metálica ou perolizada", "c": 2, "f": false}, {"id": "tinta_fluor", "n": "Tinta fluorescente", "c": 2, "f": false}], "estrutura": [{"id": "faca_especial", "n": "Formato recortado (faca especial)", "c": 3, "f": true}, {"id": "janela", "n": "Janela transparente", "c": 2, "f": true}, {"id": "janela_sem_filme", "n": "Janela vazada, sem filme", "c": 1, "f": true}, {"id": "furo_euro", "n": "Furo para pendurar (euro-hole)", "c": 1, "f": true}, {"id": "furo_redondo", "n": "Furo redondo para pendurar", "c": 1, "f": true}, {"id": "serrilha", "n": "Serrilha ou abertura fácil", "c": 1, "f": true}, {"id": "alca", "n": "Alça", "c": 2, "f": true}, {"id": "berco_int", "n": "Berço ou divisória interna", "c": 2, "f": true}], "especiais": [{"id": "antiuv", "n": "Proteção anti-UV", "c": 2, "f": false}, {"id": "impermeavel", "n": "Resistente à umidade", "c": 2, "f": false}, {"id": "aroma", "n": "Verniz aromatizado", "c": 3, "f": false}, {"id": "antirrisco", "n": "Antirrisco", "c": 2, "f": false}, {"id": "fsc", "n": "Papel com certificação FSC", "c": 1, "f": false}, {"id": "reciclado", "n": "Papel reciclado", "c": 1, "f": false}, {"id": "sem_plastico", "n": "Sem laminação plástica", "c": 0, "f": false}], "tipos": {"individual": {"nome": "Caixa do produto (a que vai na loja)", "mats": ["cartao", "micro"], "medida": "Medidas da caixa fechada, em milímetros", "ac": ["uv_local", "uv_3d", "textura", "hot", "cold", "relevo", "tinta_metal", "tinta_fluor", "faca_especial", "janela", "janela_sem_filme", "furo_euro", "furo_redondo", "serrilha", "alca", "berco_int", "antiuv", "impermeavel", "aroma", "antirrisco", "fsc", "reciclado", "sem_plastico"], "mont": ["plana", "colada", "fundo_auto", "montada"]}, "master": {"nome": "Caixa master (a de transporte)", "mats": ["ondulado", "micro"], "medida": "Medidas internas da caixa master, em milímetros", "ac": ["serrilha", "alca", "berco_int", "impermeavel", "antirrisco", "fsc", "reciclado", "sem_plastico"], "mont": ["plana", "colada", "montada"], "nota": "Caixa de transporte não leva efeito decorativo: a impressão costuma ser de 1 a 2 cores em flexografia."}, "display": {"nome": "Display de loja", "mats": ["ondulado", "micro", "cartao"], "medida": "Medidas do display montado, em milímetros", "ac": ["uv_local", "textura", "faca_especial", "janela", "janela_sem_filme", "serrilha", "berco_int", "antiuv", "impermeavel", "antirrisco", "fsc", "reciclado"], "mont": ["plana", "colada", "montada"], "nota": "Display precisa se sustentar cheio: peça à gráfica o teste de coluna com o peso real dos produtos."}, "solapa": {"nome": "Solapa (cartão com o produto preso)", "mats": ["cartao", "micro"], "medida": "Medidas do cartão da solapa, em milímetros", "ac": ["uv_local", "uv_3d", "textura", "hot", "cold", "relevo", "tinta_metal", "tinta_fluor", "faca_especial", "furo_euro", "furo_redondo", "antiuv", "antirrisco", "fsc", "reciclado", "sem_plastico"], "mont": ["plana"], "nota": "A solapa vai pendurada: o furo e a resistência do cartão no ponto de pendura são o que mais falha."}, "blister": {"nome": "Blister / cartela", "mats": ["plastico", "cartao"], "medida": "Medidas da cartela, em milímetros", "ac": ["uv_local", "hot", "cold", "tinta_metal", "faca_especial", "furo_euro", "furo_redondo", "antiuv", "antirrisco", "fsc", "reciclado"], "mont": ["plana"], "nota": "No blister há duas especificações: a do plástico (espessura) e a do cartão de fundo (gramatura)."}, "rede": {"nome": "Rede (malha com cabeçote)", "mats": ["malha"], "medida": "Medidas da rede fechada, em milímetros", "ac": ["furo_euro", "furo_redondo", "fsc", "reciclado"], "mont": ["montada"], "nota": "Na rede, só o cabeçote de cartão recebe impressão e acabamento — a malha não."}, "cinta": {"nome": "Cinta ou luva", "mats": ["cartao"], "medida": "Medidas da cinta, em milímetros", "ac": ["uv_local", "textura", "hot", "cold", "relevo", "tinta_metal", "tinta_fluor", "faca_especial", "antiuv", "fsc", "reciclado", "sem_plastico"], "mont": ["plana", "colada"]}, "sacola": {"nome": "Sacola", "mats": ["papel", "plastico"], "medida": "Medidas da sacola, em milímetros", "ac": ["uv_local", "hot", "cold", "tinta_metal", "alca", "fsc", "reciclado", "sem_plastico", "impermeavel"], "mont": ["plana", "montada"]}, "berco": {"nome": "Berço interno", "mats": ["cartao", "micro", "plastico"], "medida": "Medidas do berço, em milímetros", "ac": ["faca_especial", "serrilha", "fsc", "reciclado"], "mont": ["plana", "montada"], "nota": "Berço é estrutura, não comunicação: quase nunca leva impressão."}}, "materiais": {"cartao": "Cartão impresso (duplex, triplex ou kraft)", "micro": "Microondulado — resistente e impresso", "ondulado": "Papelão ondulado — transporte", "plastico": "Plástico (PET, PVC ou PP)", "malha": "Malha / rede", "papel": "Papel (sacola)"}, "tecnico": {"cartao": ["tec-cartao-tipo", "tec-cartao-gram", "tec-cartao-esp"], "micro": ["tec-micro-onda", "tec-micro-gram", "tec-micro-ect"], "ondulado": ["tec-ond-onda", "tec-ond-papel", "tec-ond-ect", "tec-ond-col"], "plastico": ["tec-pl-mat", "tec-pl-esp", "tec-pl-tipo"], "malha": ["tec-ma-tipo", "tec-ma-abert", "tec-ma-fio", "tec-ma-cab"], "papel": ["tec-pa-tipo", "tec-pa-gram"]}, "tecrot": {"tec-cartao-tipo": "Tipo de cartão", "tec-cartao-gram": "Gramatura", "tec-cartao-esp": "Espessura", "tec-micro-onda": "Onda", "tec-micro-gram": "Gramatura da capa impressa", "tec-micro-ect": "Resistência (ECT)", "tec-ond-onda": "Onda", "tec-ond-papel": "Papel", "tec-ond-ect": "Resistência (ECT)", "tec-ond-col": "Resistência de coluna", "tec-pl-mat": "Material", "tec-pl-esp": "Espessura", "tec-pl-tipo": "Formato", "tec-ma-tipo": "Tipo de malha", "tec-ma-abert": "Abertura da malha", "tec-ma-fio": "Espessura do fio", "tec-ma-cab": "Gramatura do cabeçote", "tec-pa-tipo": "Tipo de papel", "tec-pa-gram": "Gramatura"}}</script>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  function num(i){var e=$(i); if(!e)return null; var v=parseFloat(String(e.value).replace(/\./g,'').replace(',','.')); return isFinite(v)?v:null;}
+  function numSimples(i){var e=$(i); if(!e)return null; var v=parseFloat(String(e.value).replace(',','.')); return isFinite(v)?v:null;}
+  function txt(i){var e=$(i); return e?String(e.value).trim():'';}
+  function mil(v){return Math.round(v).toLocaleString('pt-BR');}
+  function rs(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function rs4(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4});}
+  var marcas=[]; function diz(e,t){marcas.push({e:e,t:t});}
+
+
+  var SIT={nova:'Embalagem nova — faca a criar',repeticao:'Repetição — já produzida antes',
+    revisao:'Repetição com arte nova'};
+  var CORES={'4x0':'4x0 — colorida só na face externa','4x1':'4x1 — colorida por fora, preto por dentro',
+    '4x4':'4x4 — colorida dos dois lados','1x0':'1x0 — uma cor','2x0':'2x0 — duas cores','0':'sem impressão'};
+  var ACAB={verniz:'verniz',fosco:'laminação fosca',brilho:'laminação brilhante',
+    uv:'verniz localizado (UV)',nenhum:'sem acabamento',naosei:'cotar com e sem acabamento'};
+
+  var CAT=JSON.parse(document.getElementById('cat').textContent);
+  var TODOS=CAT.destaques.concat(CAT.estrutura, CAT.especiais);
+  var FAM={destaques:CAT.destaques, estrutura:CAT.estrutura, especiais:CAT.especiais};
+
+  function marcados(lista){
+    return lista.filter(function(o){ var e=$('ac-'+o.id); return e&&e.checked&&!$('op-'+o.id).hidden; })
+      .map(function(o){ var d=$('det-'+o.id); return {n:o.n,c:o.c,f:o.f,det:d?d.value.trim():''}; });
+  }
+  function opcoesDe(el){ return Array.prototype.map.call(el.options,function(o){return o.value;}); }
+  function repovoar(el, pares, manter){
+    var antes=el.value;
+    el.innerHTML=pares.map(function(p){return '<option value="'+p[0]+'">'+p[1]+'</option>';}).join('');
+    var vals=pares.map(function(p){return p[0];});
+    el.value = (manter&&vals.indexOf(antes)>=0) ? antes : vals[0];
+  }
+
+  function aplicaTipo(){
+    var t=CAT.tipos[txt('o-peca')];
+    if(!t) return;
+    // materiais possiveis para este tipo
+    repovoar($('o-mat'), t.mats.map(function(m){return [m, CAT.materiais[m]];}), true);
+    // montagem possivel
+    repovoar($('o-montagem'), t.mont.map(function(m){return [m, CAT.montagem[m].n];}), true);
+    // rotulo das medidas
+    var temMedida=txt('o-temmedida')==='sim';
+    $('o-rotmed').textContent = temMedida ? t.medida : 'Medidas do produto, em milímetros';
+    $('o-dicamed').textContent = temMedida
+      ? 'A peça fechada, como ela deve ficar.'
+      : 'A gráfica vai dimensionar a partir disto — informe o produto sem folga.';
+    // nota propria do tipo
+    var nt=$('nota-tipo');
+    if(t.nota){ nt.hidden=false; nt.textContent=t.nota; } else { nt.hidden=true; }
+    // blocos proprios
+    $('bloco-solapa').hidden = (txt('o-peca')!=='solapa');
+    $('bloco-rede').hidden   = (txt('o-peca')!=='rede');
+
+    // filtro de acabamentos
+    var tudo=$('o-vertudo').checked, permitidos=t.ac, ocultos=0;
+    Object.keys(FAM).forEach(function(fid){
+      var visiveis=0;
+      FAM[fid].forEach(function(o){
+        var mostra = tudo || permitidos.indexOf(o.id)>=0;
+        var el=$('op-'+o.id);
+        el.hidden=!mostra;
+        if(mostra) visiveis++; else { ocultos++; if($('ac-'+o.id).checked) $('ac-'+o.id).checked=false; }
+      });
+      $('fam-'+fid).hidden = (visiveis===0);
+    });
+    $('filtro-txt').textContent = tudo
+      ? 'Mostrando todos os acabamentos, inclusive os que não são usuais neste tipo.'
+      : (ocultos ? ocultos+' acabamento(s) ocultos por não se aplicarem a '+t.nome.toLowerCase()+'.'
+                 : 'Todos os acabamentos desta lista se aplicam a '+t.nome.toLowerCase()+'.');
+  }
+
+  function aplicaTecnico(){
+    var mat=txt('o-mat'), quer=txt('o-temtec')==='sim';
+    Object.keys(CAT.tecnico).forEach(function(m){
+      var b=$('tec-'+m); if(b) b.hidden = !(quer && m===mat);
+    });
+    var nt=$('nota-tec');
+    if(!quer){
+      nt.hidden=false;
+      nt.textContent='O pedido vai pedir que a gráfica recomende material e gramatura, com o preço de cada opção. '
+        +'Quando as propostas voltarem, anote aqui a especificação escolhida: na próxima compra ela garante que a tiragem saia igual.';
+    } else { nt.hidden=true; }
+  }
+
+  function tecnicoInformado(){
+    if(txt('o-temtec')!=='sim') return [];
+    var mat=txt('o-mat'), ids=CAT.tecnico[mat]||[], out=[];
+    ids.forEach(function(id){
+      var e=$(id); if(!e) return;
+      var v = e.tagName==='SELECT' ? (e.selectedOptions[0]?e.selectedOptions[0].text:'') : e.value.trim();
+      if(v) out.push({r:CAT.tecrot[id], v:v});
+    });
+    return out;
+  }
+
+  function calcula(){
+    marcas=[];
+    aplicaTipo();
+    aplicaTecnico();
+
+    TODOS.forEach(function(o){
+      var cx=$('ac-'+o.id), wrap=$('det-wrap-'+o.id), rot=$('op-'+o.id);
+      if(!cx) return;
+      if(rot) rot.classList.toggle('marcada', cx.checked);
+      if(wrap) wrap.hidden = !cx.checked;
+    });
+    var rev=CAT.revestimento[txt('o-revest')]; $('o-revest-expl').textContent = rev?rev.e:'';
+    var mont=CAT.montagem[txt('o-montagem')]; $('o-mont-expl').textContent = mont?mont.e:'';
+
+    var C=numSimples('o-c'), L=numSimples('o-l'), A=numSimples('o-a');
+    var qtd=num('o-qtd'), qtd2=num('o-qtd2'), mat=txt('o-mat'), peca=txt('o-peca');
+    var tec=tecnicoInformado();
+
+    if(!qtd) diz('bad','Sem quantidade não existe cotação: é o primeiro número que a gráfica pergunta.');
+    if(!(C&&L&&A)) diz('bad','Faltam as medidas. Sem elas ninguém consegue calcular material.');
+
+    // especificacao tecnica: o ponto central desta versao
+    if(txt('o-sit')!=='nova' && txt('o-temtec')!=='sim')
+      diz('bad','É uma repetição e a especificação técnica não foi informada. Sem ela, cada gráfica cota um material diferente — e a tiragem nova pode sair diferente da anterior.');
+    else if(txt('o-temtec')==='sim'){
+      var faltam=(CAT.tecnico[mat]||[]).length-tec.length;
+      if(faltam>0) diz('warn',faltam+' campo(s) da especificação técnica em branco. O que ficar vazio, cada gráfica preenche do seu jeito.');
+      else diz('ok','Especificação técnica completa: as propostas vão poder ser comparadas na mesma base.');
+    } else {
+      diz('idle','Sem especificação técnica: o pedido pede a recomendação da gráfica. Anote a escolhida para a próxima compra.');
+    }
+
+    var sel=marcados(TODOS);
+    var comFer=sel.filter(function(x){return x.f;});
+    var caros=sel.filter(function(x){return x.c===3;});
+    var semDet=sel.filter(function(x){return x.det==='';});
+    if(comFer.length) diz('warn','Ferramental em '+comFer.length+' item(ns): '+comFer.map(function(x){return x.n;}).join(', ')+'. O pedido já exige esse custo separado do preço por peça.');
+    if(sel.length>=4) diz('idle',sel.length+' acabamentos marcados. Cada um é uma passagem a mais na máquina — peça o preço de cada um isolado.');
+    if(caros.length>=2) diz('warn','Dois ou mais acabamentos de alto impacto ('+caros.map(function(x){return x.n;}).join(', ')+'). Vale cotar com e sem.');
+    if($('ac-sem_plastico')&&$('ac-sem_plastico').checked&&txt('o-revest').indexOf('lam_')===0)
+      diz('bad','Conflito: laminação BOPP é filme plástico e anula o pedido de peça sem plástico.');
+    if($('ac-janela')&&$('ac-janela').checked&&$('ac-janela_sem_filme')&&$('ac-janela_sem_filme').checked)
+      diz('bad','Janela com filme e janela vazada estão as duas marcadas. Escolha uma.');
+    if(semDet.length&&semDet.length!==sel.length)
+      diz('idle','Sem detalhe informado em: '+semDet.map(function(x){return x.n;}).join(', ')+'. A gráfica vai perguntar onde aplicar.');
+    if(txt('o-sit')==='nova') diz('warn','Embalagem nova: o pedido já pede o ferramental separado do preço por peça.');
+    if(!txt('o-arqversao')||!txt('o-dataaprov'))
+      diz('warn','Arquivo sem versão ou data de aprovação. É o que impede a gráfica de produzir um layout antigo.');
+    [['o-arte','a arte final'],['o-rotul','a rotulagem obrigatória'],['o-ean','o código de barras']]
+      .forEach(function(p){ if(!$(p[0]).checked) diz('warn','Ainda não confirmado: '+p[1]+'.'); });
+    if(qtd&&C&&L&&A&&$('o-arte').checked&&$('o-rotul').checked&&$('o-ean').checked)
+      diz('ok','Pedido completo. Pode enviar para as gráficas.');
+
+    tecnico(C,L,A,qtd,mat);
+    montaPedido({C:C,L:L,A:A,qtd:qtd,qtd2:qtd2,mat:mat,peca:peca,sel:sel,tec:tec,
+      temMedida:txt('o-temmedida')==='sim'});
+    propostas(qtd);
+    render();
+  }
+
+  function montaPedido(d){
+    if(!d.qtd||!(d.C&&d.L&&d.A)){ $('pedido').textContent='Preencha a etapa 1.'; return; }
+    var t=CAT.tipos[d.peca], L=[];
+    L.push('PEDIDO DE COTAÇÃO — EMBALAGEM');
+    L.push('Cardoso Toys');
+    L.push('');
+    L.push('Produto ............. '+(txt('o-prod')||'—'));
+    L.push('Tipo ................ '+t.nome);
+    L.push('Situação ............ '+SIT[txt('o-sit')]);
+    L.push('');
+    L.push('ESPECIFICAÇÃO');
+    L.push('  material .......... '+CAT.materiais[d.mat]);
+    L.push('  '+(d.temMedida?'medida da peça ....':'medida do produto .')+' '+d.C+' × '+d.L+' × '+d.A+' mm');
+    if(!d.temMedida) L.push('                      (pedimos que a gráfica dimensione a embalagem)');
+    L.push('  impressão ......... '+CORES[txt('o-cores')]);
+    if(txt('o-pantone')) L.push('  pantones .......... '+txt('o-pantone'));
+    var rev=CAT.revestimento[txt('o-revest')]; L.push('  revestimento ...... '+(rev?rev.n:'—'));
+    var mo=CAT.montagem[txt('o-montagem')];    L.push('  entrega ........... '+(mo?mo.n:'—'));
+
+    if(d.tec.length){
+      L.push('');
+      L.push('ESPECIFICAÇÃO TÉCNICA  (produzir exatamente assim)');
+      d.tec.forEach(function(x){ L.push('  '+(x.r+' ....................').slice(0,20)+' '+x.v); });
+    } else {
+      L.push('');
+      L.push('ESPECIFICAÇÃO TÉCNICA');
+      L.push('  Ainda não definida. Pedimos que vocês recomendem material, gramatura');
+      L.push('  e resistência adequados, informando o preço de cada opção.');
+    }
+
+    if(d.peca==='solapa'){
+      L.push(''); L.push('SOLAPA');
+      L.push('  furo .............. '+$('sol-furo').selectedOptions[0].text);
+      L.push('  fixação do produto  '+$('sol-fix').selectedOptions[0].text);
+      L.push('  impressão ......... '+$('sol-imp').selectedOptions[0].text);
+    }
+    if(d.peca==='rede'){
+      L.push(''); L.push('REDE');
+      L.push('  cor da malha ...... '+$('red-cor').selectedOptions[0].text);
+      L.push('  cabeçote .......... '+$('red-cab').selectedOptions[0].text);
+      L.push('  fechamento ........ '+$('red-fecho').selectedOptions[0].text);
+    }
+    if(d.sel.length){
+      L.push(''); L.push('ACABAMENTO E EFEITOS');
+      d.sel.forEach(function(x){ L.push('  · '+x.n+(x.det?'  —  '+x.det:'')+(x.f?'   [tem ferramental]':'')); });
+    }
+    L.push('');
+    L.push('QUANTIDADE E PRAZO');
+    L.push('  quantidade ........ '+mil(d.qtd)+' peças');
+    if(d.qtd2&&d.qtd2!==d.qtd) L.push('  cotar também ...... '+mil(d.qtd2)+' peças');
+    if(num('o-prazo')) L.push('  prazo ............. '+num('o-prazo')+' dias');
+    if(txt('o-entrega')) L.push('  entrega em ........ '+txt('o-entrega'));
+
+    if(txt('o-arqversao')||txt('o-designer')||txt('o-revtec')||txt('o-dataaprov')){
+      L.push(''); L.push('ARQUIVO APROVADO');
+      if(txt('o-arqversao')) L.push('  versão ............ '+txt('o-arqversao'));
+      if(txt('o-designer'))  L.push('  designer .......... '+txt('o-designer'));
+      if(txt('o-revfinal'))  L.push('  revisão final ..... '+txt('o-revfinal'));
+      if(txt('o-revtec'))    L.push('  revisão técnica ... '+txt('o-revtec'));
+      if(txt('o-dataaprov')) L.push('  aprovado em ....... '+txt('o-dataaprov'));
+      L.push('  Produzir somente a partir desta versão.');
+    }
+    L.push('');
+    L.push('PEDIMOS QUE A PROPOSTA TRAGA');
+    var n=1;
+    L.push('  '+(n++)+'. preço por peça em cada quantidade acima');
+    if(txt('o-sit')==='nova'||d.sel.some(function(x){return x.f;}))
+      L.push('  '+(n++)+'. ferramental (faca, clichê, matriz) separado do preço por peça');
+    L.push('  '+(n++)+'. prazo de entrega e validade da proposta');
+    if(d.sel.length>=2) L.push('  '+(n++)+'. preço de cada acabamento isolado, para avaliarmos o que manter');
+    if(!d.tec.length) L.push('  '+(n++)+'. recomendação de material, gramatura e resistência, com preço de cada opção');
+    if(txt('o-revest')==='naosei') L.push('  '+(n++)+'. preço de cada opção de revestimento');
+    if($('o-boneco').checked) L.push('  '+(n++)+'. boneco físico para aprovação antes da produção');
+    L.push('  '+(n++)+'. a especificação técnica que vocês adotarem, por escrito');
+    var falta=[['o-arte','arte final'],['o-rotul','rotulagem conferida'],['o-ean','código de barras conferido']]
+      .filter(function(p){return !$(p[0]).checked;}).map(function(p){return p[1];});
+    if(falta.length){ L.push(''); L.push('OBSERVAÇÃO: ainda estamos fechando '+falta.join(', ')+'.'); }
+    $('pedido').textContent=L.join('\n');
+  }
+
+  // conferencia opcional — nao entra no pedido
+  function tecnico(C,L,A,qtd,mat){
+    var vazio=function(){ ['t-chapa','t-pc','t-aprov','t-folhas','t-peso'].forEach(function(i){$(i).textContent='—';}); };
+    if(!(C&&L&&A)) return vazio();
+    var ondulado=(mat==='ondulado'||mat==='micro');
+    var aba=ondulado?35:18;
+    var cc=2*(C+L)+aba, cl=ondulado?(A+L):(A+2*L);
+    var fc=760-10, fl=1120-10;
+    var pc=Math.max(Math.floor(fc/cc)*Math.floor(fl/cl), Math.floor(fc/cl)*Math.floor(fl/cc));
+    var area=cc*cl/1e6, areaFolha=760*1120/1e6, gram=ondulado?450:350;
+    $('t-chapa').textContent=mil(cc)+'×'+mil(cl)+' mm';
+    $('t-pc').textContent=pc?pc+' pç':'não cabe';
+    $('t-aprov').textContent=pc?Math.round(pc*area/areaFolha*100)+'%':'—';
+    if(pc&&qtd){
+      var folhas=Math.ceil(qtd/pc);
+      $('t-folhas').textContent=mil(folhas);
+      $('t-peso').textContent=(folhas*areaFolha*gram/1000).toFixed(0).replace('.',',')+' kg';
+    } else { $('t-folhas').textContent='—'; $('t-peso').textContent='—'; }
+    if(pc&&pc*area/areaFolha<0.55)
+      diz('idle','Conferência técnica: o aproveitamento estimado fica abaixo de 55%. Vale perguntar à gráfica se um ajuste de poucos milímetros na caixa rende mais peças por folha.');
+  }
+
+  function montaPedido(d){
+    if(!d.qtd||!(d.C&&d.L&&d.A)){ $('pedido').textContent='Preencha a etapa 1.'; return; }
+    var m=MAT[d.mat], L=[];
+    L.push('PEDIDO DE COTAÇÃO — EMBALAGEM');
+    L.push('Cardoso Toys');
+    L.push('');
+    L.push('Produto ............. '+(txt('o-prod')||'—'));
+    L.push('Peça ................ '+PECA[txt('o-peca')]);
+    L.push('Situação ............ '+SIT[txt('o-sit')]);
+    L.push('');
+    L.push('ESPECIFICAÇÃO');
+    L.push('  tipo .............. '+m[0]);
+    L.push('  observação ........ '+m[1]);
+    L.push('  '+(d.temMedida?'medida da caixa ...':'medida do produto .')+' '+d.C+' × '+d.L+' × '+d.A+' mm');
+    if(!d.temMedida) L.push('                      (pedimos que a gráfica dimensione a embalagem)');
+    L.push('  impressão ......... '+CORES[txt('o-cores')]);
+    L.push('  acabamento ........ '+ACAB[txt('o-acab')]);
+    if(txt('o-janela')==='sim') L.push('  janela ............ com janela transparente');
+    L.push('');
+    L.push('QUANTIDADE E PRAZO');
+    L.push('  quantidade ........ '+mil(d.qtd)+' peças');
+    if(d.qtd2&&d.qtd2!==d.qtd) L.push('  cotar também ...... '+mil(d.qtd2)+' peças');
+    if(num('o-prazo')) L.push('  prazo ............. '+num('o-prazo')+' dias');
+    if(txt('o-entrega')) L.push('  entrega em ........ '+txt('o-entrega'));
+    L.push('');
+    L.push('PEDIMOS QUE A PROPOSTA TRAGA');
+    L.push('  1. preço por peça em cada quantidade acima');
+    if(txt('o-sit')==='nova') L.push('  2. custo da faca separado do preço por peça');
+    L.push('  '+(txt('o-sit')==='nova'?'3':'2')+'. prazo de entrega e validade da proposta');
+    var n=(txt('o-sit')==='nova'?4:3);
+    if(txt('o-acab')==='naosei'){ L.push('  '+n+'. preço com e sem acabamento'); n++; }
+    if(txt('o-janela')==='sim'){ L.push('  '+n+'. preço com e sem a janela transparente'); n++; }
+    if(d.mat==='naosei'){ L.push('  '+n+'. recomendação de material, com preço de cada opção'); n++; }
+    if($('o-boneco').checked){ L.push('  '+n+'. boneco físico para aprovação antes da produção'); n++; }
+    L.push('  '+n+'. especificação técnica que vocês adotarem (material, gramatura e planificada)');
+    var falta=[['o-arte','arte final'],['o-rotul','rotulagem conferida'],['o-ean','código de barras conferido']]
+      .filter(function(p){return !$(p[0]).checked;}).map(function(p){return p[1];});
+    if(falta.length){ L.push(''); L.push('OBSERVAÇÃO: ainda estamos fechando '+falta.join(', ')+'.'); }
+    $('pedido').textContent=L.join('\n');
+  }
+
+  function propostas(qtd){
+    var dados=[];
+    for(var i=1;i<=3;i++){
+      var nome=txt('f'+i+'-nome'), preco=numSimples('f'+i+'-preco');
+      var faca=numSimples('f'+i+'-faca')||0, prazo=num('f'+i+'-prazo');
+      $('res'+i).innerHTML=''; $('prop'+i).classList.remove('vence'); $('selo'+i).hidden=true;
+      if(!preco||!qtd) continue;
+      var total=preco*qtd+faca, real=total/qtd;
+      dados.push({i:i,nome:nome||('Gráfica '+i),preco:preco,faca:faca,prazo:prazo,total:total,real:real});
+    }
+    dados.forEach(function(p){
+      $('res'+p.i).innerHTML=
+        '<div class="linha-res"><span>Peças</span><b>'+rs(p.preco*qtd)+'</b></div>'+
+        (p.faca?'<div class="linha-res"><span>Faca</span><b>'+rs(p.faca)+'</b></div>':'')+
+        '<div class="linha-res"><span>Total</span><b>'+rs(p.total)+'</b></div>'+
+        '<div class="linha-res"><span>Custo real por peça</span><b class="destaque">'+rs4(p.real)+'</b></div>';
+    });
+    if(dados.length<2){
+      $('veredito').className='veredito vazio';
+      $('veredito').textContent='Lance ao menos duas propostas na etapa 3 para comparar.';
+      $('relatorio').textContent='—';
+      marcaPasso(dados.length?3:1);
+      return;
+    }
+    dados.sort(function(a,b){return a.total-b.total;});
+    var g=dados[0], s=dados[1];
+    $('prop'+g.i).classList.add('vence'); $('selo'+g.i).hidden=false;
+    var dif=s.total-g.total, pct=dif/s.total*100;
+    var v=$('veredito'); v.className='veredito';
+    v.innerHTML='<b>'+g.nome+'</b> é a proposta mais barata para '+mil(qtd)+' peças: '+rs(g.total)+
+      ' no total, ou '+rs4(g.real)+' por peça. Economia de <b>'+rs(dif)+'</b> ('+pct.toFixed(1).replace('.',',')+
+      '%) sobre a segunda colocada.'+
+      (g.prazo&&s.prazo&&g.prazo>s.prazo ? ' Atenção: ela entrega em '+g.prazo+' dias, contra '+s.prazo+' da segunda.' : '');
+
+    var R=[];
+    R.push('RELATÓRIO DE COTAÇÃO — EMBALAGEM');
+    R.push('Cardoso Toys   ·   '+new Date().toLocaleDateString('pt-BR'));
+    R.push('');
+    R.push('Produto ....... '+(txt('o-prod')||'—'));
+    R.push('Peça .......... '+PECA[txt('o-peca')]);
+    R.push('Quantidade .... '+mil(qtd)+' peças');
+    R.push('');
+    R.push('PROPOSTAS RECEBIDAS');
+    R.push('');
+    R.push('  FORNECEDOR            POR PEÇA        FACA          TOTAL       REAL/PEÇA   PRAZO');
+    dados.forEach(function(p,idx){
+      var n=(p.nome+'                    ').slice(0,20);
+      R.push('  '+(idx===0?'> ':'  ')+n+
+        (rs(p.preco)+'          ').slice(0,14)+
+        ((p.faca?rs(p.faca):'—')+'            ').slice(0,12)+
+        (rs(p.total)+'            ').slice(0,14)+
+        (rs4(p.real)+'          ').slice(0,12)+
+        (p.prazo?p.prazo+' dias':'—'));
+    });
+    R.push('');
+    R.push('DECISÃO');
+    R.push('  Melhor proposta: '+g.nome);
+    R.push('  Total: '+rs(g.total)+'   ·   custo real por peça: '+rs4(g.real));
+    R.push('  Economia sobre a 2ª ('+s.nome+'): '+rs(dif)+' ('+pct.toFixed(1).replace('.',',')+'%)');
+    if(g.faca) R.push('  Inclui '+rs(g.faca)+' de faca, cobrada uma única vez.');
+    if(g.prazo) R.push('  Prazo: '+g.prazo+' dias.');
+    if(g.faca&&s.faca===0){
+      R.push('');
+      R.push('  Atenção: '+s.nome+' não cobra faca. Em uma recompra, sem o custo de ferramental,');
+      R.push('  ela sairia a '+rs(s.preco*qtd)+' contra '+rs(g.preco*qtd)+' — reveja na próxima compra.');
+    }
+    R.push('');
+    R.push('CRITÉRIO');
+    R.push('  Comparação pelo custo total, com a faca somada à primeira compra e');
+    R.push('  diluída na quantidade. Propostas pedidas com a mesma especificação.');
+    $('relatorio').textContent=R.join('\n');
+    marcaPasso(4);
+  }
+
+  function marcaPasso(n){
+    for(var i=1;i<=4;i++) $('p'+i).classList.toggle('on', i<=n);
+  }
+
+  function render(){
+    var box=$('checks'), mk={ok:'✓',bad:'✕',warn:'!',idle:'•'};
+    box.innerHTML=marcas.map(function(m){
+      return '<div class="conf '+m.e+'"><span class="marca-st">'+mk[m.e]+'</span><span>'+m.t+'</span></div>';
+    }).join('');
+    var ruins=marcas.filter(function(m){return m.e==='bad';}).length;
+    var avisos=marcas.filter(function(m){return m.e==='warn';}).length;
+    var selo=$('selo');
+    if(ruins){ selo.className='pill quente'; selo.textContent='Falta preencher'; }
+    else if(avisos){ selo.className='pill morno'; selo.textContent=avisos+(avisos>1?' pendências':' pendência'); }
+    else { selo.className='pill frio'; selo.textContent='Pronto para enviar'; }
+  }
+
+  var campos=['o-prod','o-peca','o-sit','o-temmedida','o-c','o-l','o-a','o-qtd','o-qtd2','o-prazo','o-entrega',
+    'o-mat','o-cores','o-pantone','o-revest','o-montagem','o-temtec','o-vertudo',
+    'o-arte','o-rotul','o-ean','o-boneco','o-arqversao','o-designer','o-revfinal','o-revtec','o-dataaprov',
+    'sol-furo','sol-fix','sol-imp','red-cor','red-cab','red-fecho'];
+  TODOS.forEach(function(o){ campos.push('ac-'+o.id,'det-'+o.id); });
+  Object.keys(CAT.tecnico).forEach(function(m){ CAT.tecnico[m].forEach(function(id){ campos.push(id); }); });
+  for(var i=1;i<=3;i++) campos.push('f'+i+'-nome','f'+i+'-preco','f'+i+'-faca','f'+i+'-prazo');
+  campos.forEach(function(id){var e=$(id); if(!e)return;
+    e.addEventListener('input',calcula);
+    if(e.tagName==='SELECT'||e.type==='checkbox') e.addEventListener('change',calcula);});
+
+  function copiar(alvo,aviso,rotulo){
+    var t=$(alvo).textContent;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){ $(aviso).textContent=rotulo+' copiado.'; },
+        function(){ $(aviso).textContent='Não consegui copiar — selecione o texto.'; });
+    } else { $(aviso).textContent='Selecione o texto para copiar.'; }
+  }
+  $('b-copiar').addEventListener('click',function(){copiar('pedido','s-copiar','Pedido');});
+  $('b-rel').addEventListener('click',function(){copiar('relatorio','s-rel','Relatório');});
+  $('b-print').addEventListener('click',function(){window.print();});
+  $('b-limpar').addEventListener('click',function(){
+    campos.forEach(function(id){var e=$(id); if(!e)return;
+      if(e.type==='checkbox') e.checked=false; else if(e.tagName==='INPUT') e.value='';});
+    $('s-copiar').textContent=''; $('s-rel').textContent=''; calcula();
+  });
+  calcula();
+})();
+</script>
+
+</body>
+</html>
