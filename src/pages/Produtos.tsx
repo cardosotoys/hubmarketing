@@ -155,7 +155,12 @@ export default function Produtos() {
   const sorted = products; // já vem paginado/filtrado/ordenado do servidor
   // Edita produtos: todos, menos assistentes — a não ser que o assistente tenha sido
   // liberado individualmente (toggle "pode editar produtos" em Configurações → Usuários).
-  const canEdit = profile?.department !== 'assistente' || profile?.can_edit_products === true;
+  /* Espelha a regra do banco (can_edit_products no RLS de products): o cargo
+   * libera diretoria e administrador; todo o resto depende da liberação
+   * nominal em Configurações. A trava que vale é a do banco — isto aqui só
+   * evita mostrar um botão que ia dar erro. */
+  const canEdit =
+    profile?.role === 'diretoria' || profile?.role === 'administrador' || profile?.can_edit_products === true;
 
   return (
     <div className="page">
@@ -507,6 +512,10 @@ function ProductFormModal({
   const [cartonHeightMm, setCartonHeightMm] = useState(product?.carton_height_mm?.toString() ?? '');
   const [cartonQuantity, setCartonQuantity] = useState(product?.carton_quantity?.toString() ?? '');
   const [cartonGrossWeightKg, setCartonGrossWeightKg] = useState(product?.carton_gross_weight_kg?.toString() ?? '');
+  /* Observação da caixa, quando a quantidade sozinha não conta a história —
+   * ex.: caixa de 6 que vem "4 unissex e 2 rosas". A vitrine do CRM mostra
+   * isto entre parênteses depois da quantidade. */
+  const [cartonNote, setCartonNote] = useState(product?.carton_note ?? '');
   const [palletLayerPattern, setPalletLayerPattern] = useState(product?.pallet_layer_pattern ?? '');
   const [palletHeightM, setPalletHeightM] = useState(product?.pallet_height_m?.toString() ?? '');
   const [palletTotalUnits, setPalletTotalUnits] = useState(product?.pallet_total_units?.toString() ?? '');
@@ -591,6 +600,7 @@ function ProductFormModal({
       carton_height_mm: num(cartonHeightMm),
       carton_quantity: int(cartonQuantity),
       carton_gross_weight_kg: num(cartonGrossWeightKg),
+      carton_note: cartonNote,
       pallet_layer_pattern: palletLayerPattern,
       pallet_height_m: num(palletHeightM),
       pallet_total_units: int(palletTotalUnits),
@@ -828,6 +838,12 @@ function ProductFormModal({
                 <input placeholder="Qtd. por caixa" value={cartonQuantity} onChange={(e) => setCartonQuantity(e.target.value)} style={{ flex: 1 }} />
                 <input placeholder="Peso bruto (kg)" value={cartonGrossWeightKg} onChange={(e) => setCartonGrossWeightKg(e.target.value)} style={{ flex: 1 }} />
               </div>
+              <input
+                placeholder='Observação da caixa — ex.: "4 unissex e 2 rosas"'
+                value={cartonNote}
+                onChange={(e) => setCartonNote(e.target.value)}
+                style={{ marginTop: 8 }}
+              />
             </div>
             <div className="form-field">
               <label>Paletização</label>

@@ -463,6 +463,7 @@ export interface Product {
   carton_height_mm: number | null;
   carton_volume_m3: number | null;
   carton_quantity: number | null;
+  carton_note: string;   // observação da caixa master, ex.: "4 unissex e 2 rosas"
   carton_gross_weight_kg: number | null;
   pallet_layer_pattern: string;
   pallet_height_m: number | null;

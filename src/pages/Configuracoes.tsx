@@ -243,7 +243,14 @@ export default function Configuracoes() {
 
                         <div className="ucf">
                           <span className="ucf-label">Editar produtos</span>
-                          {u.department === 'assistente' ? (
+                          {/* Quem edita o catálogo central: pelo cargo (diretoria e
+                            * administrador) ou por liberação nominal. Antes o
+                            * departamento liberava sozinho — quem não fosse assistente
+                            * editava e não havia como tirar. Agora este botão é o
+                            * controle de verdade para todo mundo que não é do cargo. */}
+                          {u.role === 'diretoria' || u.role === 'administrador' ? (
+                            <span className="umuted">Pelo cargo · sempre edita</span>
+                          ) : (
                             <button
                               type="button"
                               className={`toggle-pill${u.can_edit_products ? ' on' : ''}`}
@@ -252,8 +259,6 @@ export default function Configuracoes() {
                             >
                               {u.can_edit_products ? '✓ Liberado' : 'Bloqueado'}
                             </button>
-                          ) : (
-                            <span className="umuted">Padrão · já edita</span>
                           )}
                         </div>
                       </div>
