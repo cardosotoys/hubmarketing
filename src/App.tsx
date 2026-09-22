@@ -17,6 +17,7 @@ import Auditoria from './pages/Auditoria';
 import Perfil from './pages/Perfil';
 import Configuracoes from './pages/Configuracoes';
 import Produtos from './pages/Produtos';
+import TabelaPrecos from './pages/TabelaPrecos';
 import MonitorPrecos from './pages/MonitorPrecos';
 import TradeMarketing from './pages/TradeMarketing';
 import SocialPlan from './pages/SocialPlan';
@@ -114,6 +115,7 @@ export default function App() {
             <Route path="reunioes" element={<ModuleGate moduleKey="reunioes"><Reunioes /></ModuleGate>} />
             <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
             <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
+            <Route path="tabela-precos" element={<ModuleGate moduleKey="tabela-precos"><TabelaPrecos /></ModuleGate>} />
             <Route path="trade" element={<ModuleGate moduleKey="trade-marketing"><TradeMarketing /></ModuleGate>} />
             <Route
               path="monitor-precos"

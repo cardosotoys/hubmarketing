@@ -102,6 +102,9 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/design-produto', label: 'Design', icon: 'design', hideFor: ['assistente'], moduleKey: 'design-produto' },
           { to: '/design-produto/embalagens', label: 'Embalagens', icon: 'embalagens', hideFor: ['assistente'], moduleKey: 'embalagens', hiddenByDefault: true },
           { to: '/certificacoes', label: 'Certificações', icon: 'certificacoes', moduleKey: 'certificacoes' },
+          // Restrito de proposito: preco de atacado nao e informacao de time inteiro.
+          // grantOnly faz nem diretoria ver sem liberacao nominal em Configuracoes.
+          { to: '/tabela-precos', label: 'Tabela de Preços', icon: 'monitor-precos', moduleKey: 'tabela-precos', grantOnly: true },
         ],
       },
     ],

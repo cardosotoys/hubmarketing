@@ -52,6 +52,7 @@ export const MODULE_KEYS = [
   'biblioteca',
   'produtos',
   'monitor-precos',
+  'tabela-precos',
   'brand',
   'campanhas',
   'design-produto',
@@ -89,6 +90,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   biblioteca: 'Drive',
   produtos: 'Produtos',
   'monitor-precos': 'Monitor de Preços',
+  'tabela-precos': 'Tabela de Preços',
   brand: 'Brand',
   campanhas: 'Campanhas',
   'design-produto': 'Design de Produto',
@@ -1554,4 +1556,44 @@ export interface MondayActivity {
   action_text: string;
   actor_name: string;
   monday_created_at: string | null;
+}
+
+
+/* Tabela de preço de atacado. O mesmo produto custa diferente por região e por
+ * regime tributário, então são quatro tabelas vigentes ao mesmo tempo. Preço
+ * nunca vai para a vitrine do lojista: quem vê é só quem tem o módulo
+ * tabela-precos liberado. */
+export interface PriceTable {
+  id: string;
+  codigo: string;
+  nome: string;
+  ufs: string[];
+  simples: boolean | null;   // true = só optante, false = só não optante, null = tanto faz
+  vigente_desde: string;
+  vigente_ate: string | null; // null = é a que vale hoje
+  origem: string;
+  observacao: string;
+  criado_por: string | null;
+  criado_em: string;
+}
+
+export interface PriceTableItem {
+  price_table_id: string;
+  codigo: string;
+  descricao: string;
+  preco: number;
+  qtd_caixa: number | null;  // null = a fonte não informou
+}
+
+/* Produto fora de venda por um período. Sem price_table_id vale para todas as
+ * tabelas. Não apaga preço: vencida a pausa, o produto volta sozinho. */
+export interface ProductSalePause {
+  id: string;
+  codigo: string;
+  price_table_id: string | null;
+  desde: string;
+  ate: string | null;
+  motivo: string;
+  criado_por: string | null;
+  criado_em: string;
 }
