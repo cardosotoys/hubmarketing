@@ -25,6 +25,12 @@ export default function Perfil() {
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // troca de senha (a própria pessoa) — via supabase.auth.updateUser
+  const [pw1, setPw1] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
   const [pushState, setPushState] = useState<'unsupported' | 'subscribed' | 'not-subscribed' | 'loading'>('loading');
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -83,6 +89,29 @@ export default function Perfil() {
     setSaving(false);
     setEditing(false);
     refreshProfile();
+  }
+
+  async function changePassword(e: FormEvent) {
+    e.preventDefault();
+    setPwMsg(null);
+    if (pw1.length < 6) {
+      setPwMsg({ type: 'err', text: 'A senha precisa ter pelo menos 6 caracteres.' });
+      return;
+    }
+    if (pw1 !== pw2) {
+      setPwMsg({ type: 'err', text: 'As senhas não conferem.' });
+      return;
+    }
+    setPwBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw1 });
+    setPwBusy(false);
+    if (error) {
+      setPwMsg({ type: 'err', text: error.message });
+      return;
+    }
+    setPw1('');
+    setPw2('');
+    setPwMsg({ type: 'ok', text: 'Senha alterada com sucesso!' });
   }
 
   async function uploadAvatar(file: File) {
@@ -256,6 +285,43 @@ export default function Perfil() {
               <span>{pushError}</span>
             </div>
           )}
+        </div>
+        <div className="panel">
+          <h4>Segurança</h4>
+          <form onSubmit={changePassword}>
+            <div className="form-field">
+              <label htmlFor="pf-pw1">Nova senha</label>
+              <input
+                id="pf-pw1"
+                type="password"
+                autoComplete="new-password"
+                placeholder="mínimo 6 caracteres"
+                value={pw1}
+                onChange={(e) => setPw1(e.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="pf-pw2">Confirmar nova senha</label>
+              <input
+                id="pf-pw2"
+                type="password"
+                autoComplete="new-password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+              />
+            </div>
+            {pwMsg && (
+              <div className={pwMsg.type === 'err' ? 'banner error' : 'banner soon'} style={{ marginBottom: 10 }}>
+                <span className="ic">{pwMsg.type === 'err' ? '✕' : '✓'}</span>
+                <span>{pwMsg.text}</span>
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="submit" className="btn" disabled={pwBusy || !pw1 || !pw2}>
+                {pwBusy ? 'Salvando…' : 'Alterar senha'}
+              </button>
+            </div>
+          </form>
         </div>
         <div className="panel">
           <button
