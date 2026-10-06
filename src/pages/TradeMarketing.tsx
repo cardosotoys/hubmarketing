@@ -55,6 +55,7 @@ export default function TradeMarketing() {
   const [promoterId, setPromoterId] = useState('all');
   const [networkId, setNetworkId] = useState('all');
   const [search, setSearch] = useState('');
+  const [visitsSort, setVisitsSort] = useState<'desc' | 'asc'>('desc'); // tabela de visitas: mais recentes primeiro
   const [saving, setSaving] = useState('');
   const [planMonth, setPlanMonth] = useState('2026-08'); // YYYY-MM alvo do plano
   const [planView, setPlanView] = useState<'mes' | 'semana' | 'dia'>('mes');
@@ -437,7 +438,30 @@ export default function TradeMarketing() {
           {tab === 'promotores' && <Table head={['Promotor', 'Visitas', 'Lojas únicas', 'Média/dia', 'Cobertura']} onRow={(i) => toggleProm(agg.promoterRank[i].name)} rows={agg.promoterRank.map((p) => [<b>{p.name}</b>, <MiniBar v={p.visits} max={agg.promoterRank[0]?.visits || 1} />, p.stores, p.perDay.toFixed(1), `${p.coverage.toFixed(0)}%`])} />}
           {tab === 'lojas' && <Table head={['Loja', 'Rede', 'Visitas', 'Última', 'Dias s/ visita']} onRow={(i) => setSearch(agg.storeRank[i].name)} rows={agg.storeRank.map((s) => [<b>{s.name}</b>, s.network, s.visits, fmt(s.last), <span style={{ color: s.daysSince > 14 ? 'var(--tm-bad)' : undefined, fontWeight: 600 }}>{s.daysSince}</span>])} />}
           {tab === 'frequencia' && <Table head={['Loja', 'Visitas', 'Última', 'Dias s/ visita', 'Interv. médio', 'Mín', 'Máx']} rows={[...agg.storeRank].sort((a, b) => b.daysSince - a.daysSince).map((s) => [<b>{s.name}</b>, s.visits, fmt(s.last), <span className="tm-badge" style={freqBadge(s.daysSince)}>{s.daysSince}d</span>, s.avgGap != null ? `${s.avgGap.toFixed(0)}d` : '—', s.minGap != null ? `${s.minGap}d` : '—', s.maxGap != null ? `${s.maxGap}d` : '—'])} />}
-          {tab === 'visitas' && <Table head={['Data', 'Promotor', 'Loja', 'Rede']} rows={visits.slice(0, 500).map((v) => [fmt(v.visit_date), promoterName(v.promoter_id), storeName(v.store_id), networkOfStore(v.store_id) ?? '—'])} note={visits.length > 500 ? `Mostrando 500 de ${visits.length}.` : undefined} />}
+          {tab === 'visitas' && (() => {
+            const CAP = 500;
+            const sorted = [...visits].sort((a, b) =>
+              visitsSort === 'desc'
+                ? b.visit_date.localeCompare(a.visit_date) || promoterName(a.promoter_id).localeCompare(promoterName(b.promoter_id))
+                : a.visit_date.localeCompare(b.visit_date) || promoterName(a.promoter_id).localeCompare(promoterName(b.promoter_id)),
+            );
+            return (
+              <>
+                <div className="tm-visits-bar">
+                  <span className="tm-visits-count">{visits.length.toLocaleString('pt-BR')} visitas</span>
+                  <div className="tm-sort">
+                    <button type="button" className={`tm-sort-b${visitsSort === 'desc' ? ' on' : ''}`} onClick={() => setVisitsSort('desc')}>Mais recentes</button>
+                    <button type="button" className={`tm-sort-b${visitsSort === 'asc' ? ' on' : ''}`} onClick={() => setVisitsSort('asc')}>Mais antigas</button>
+                  </div>
+                </div>
+                <Table
+                  head={['Data', 'Promotor', 'Loja', 'Rede']}
+                  rows={sorted.slice(0, CAP).map((v) => [fmt(v.visit_date), promoterName(v.promoter_id), storeName(v.store_id), networkOfStore(v.store_id) ?? '—'])}
+                  note={sorted.length > CAP ? `Mostrando as ${CAP} ${visitsSort === 'desc' ? 'mais recentes' : 'mais antigas'} de ${sorted.length.toLocaleString('pt-BR')} — refine com os filtros ao lado.` : undefined}
+                />
+              </>
+            );
+          })()}
 
           {tab === 'cadastro' && (() => {
             const q = cadSearch.trim().toLowerCase();

@@ -2474,6 +2474,12 @@ table.simple tr:hover td {
 .tm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .tm-tab{padding:8px 15px;cursor:pointer;font-weight:600;font-size:13px;color:var(--tm-ink2);border-radius:10px;transition:.15s}
 .tm-tab:hover{background:var(--tm-chip)}.tm-tab.active{color:#fff;background:var(--tm-accent)}
+.tm-visits-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.tm-visits-count{font-weight:700;font-size:13px;color:var(--tm-ink2)}
+.tm-sort{display:inline-flex;background:var(--tm-panel2);border:1px solid var(--tm-line);border-radius:10px;padding:3px;gap:2px}
+.tm-sort-b{border:none;background:transparent;cursor:pointer;font-weight:600;font-size:12px;color:var(--tm-ink2);padding:6px 12px;border-radius:8px;transition:.15s}
+.tm-sort-b:hover{color:var(--tm-accent-ink)}
+.tm-sort-b.on{background:var(--tm-accent);color:#fff}
 .tm-tblwrap{overflow:auto;border:1px solid var(--tm-line);border-radius:12px;max-height:600px}
 .tm-tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tm-tbl thead th{position:sticky;top:0;background:var(--tm-panel2);text-align:left;padding:10px 13px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--tm-ink2);border-bottom:1px solid var(--tm-line);white-space:nowrap;z-index:1}
