@@ -20,6 +20,7 @@
   --sombra:0 1px 2px rgba(46,43,44,.04);
 }
 *{box-sizing:border-box}
+html{overflow-x:hidden}
 body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
   font-family:'Poppins','Segoe UI',system-ui,-apple-system,sans-serif;
   -webkit-font-smoothing:antialiased; padding-inline:16px; padding-block:0;}
@@ -36,7 +37,7 @@ body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
 .passo b{width:22px; height:22px; border-radius:50%; background:var(--neutro-2); color:var(--tinta-4);
   display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; flex:none;}
 .passo.on{color:var(--tinta)} .passo.on b{background:var(--vermelho); color:#fff;}
-.grade{display:grid; grid-template-columns:repeat(auto-fit,minmax(470px,1fr)); gap:18px; align-items:stretch;}
+.grade{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(470px, 100%), 1fr)); gap:18px; align-items:stretch;}
 .card{background:var(--branco); border-radius:var(--raio); box-shadow:var(--sombra); overflow:hidden;
   display:flex; flex-direction:column;}
 .card.faixa-vermelha{border-top:3px solid var(--vermelho)}
@@ -51,7 +52,7 @@ body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
 .card-head .etapa{font-size:11px; font-weight:700; color:var(--tinta-5); letter-spacing:.1em; text-transform:uppercase;}
 .card-corpo{padding:21px 26px 24px; display:flex; flex-direction:column; gap:18px; flex:1;}
 .largo{grid-column:1/-1}
-.campos{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px;}
+.campos{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px, 100%), 1fr)); gap:15px;}
 .campo{display:flex; flex-direction:column; gap:6px; min-width:0;}
 .campo label{font-size:12.5px; color:var(--tinta-2); font-weight:500;}
 .campo input,.campo select{border:1.4px solid var(--linha); background:var(--branco); border-radius:10px;
@@ -60,7 +61,7 @@ body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
 .campo input:focus,.campo select:focus{outline:none; border-color:var(--vermelho);}
 .campo input::placeholder{color:var(--tinta-5)}
 .campo .dica{font-size:11.5px; color:var(--tinta-5); line-height:1.45;}
-.trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;}
+.trio{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:9px;}
 .marcar{display:flex; flex-direction:column; gap:12px;}
 .marcar label{display:flex; gap:11px; align-items:flex-start; font-size:13.5px; color:var(--tinta-2);
   cursor:pointer; line-height:1.5;}
@@ -81,7 +82,7 @@ body{margin:0; background:var(--fundo); color:var(--tinta-2); font-size:14.5px;
 .pill.morno{background:var(--ambar-tint); color:var(--ambar)}
 .pill.frio{background:var(--verde-tint); color:var(--verde)}
 /* propostas */
-.props{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px;}
+.props{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(250px, 100%), 1fr)); gap:16px;}
 .prop{border:1.4px solid var(--linha); border-radius:var(--raio-sm); padding:16px 18px;
   display:flex; flex-direction:column; gap:12px;}
 .prop.vence{border-color:var(--verde); background:var(--verde-tint);}
@@ -118,11 +119,49 @@ summary{cursor:pointer; font-size:13px; color:var(--tinta-3); font-weight:500; l
 summary::-webkit-details-marker{display:none}
 summary::before{content:"▸ "; color:var(--tinta-4)}
 details[open] summary::before{content:"▾ "}
-.tecnico{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:14px; margin-top:14px;}
+.tecnico{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(120px, 100%), 1fr)); gap:14px; margin-top:14px;}
 .tecnico .t{display:flex; flex-direction:column; gap:2px;}
 .tecnico .t span{font-size:11.5px; color:var(--tinta-4)}
 .tecnico .t b{font-size:15px; color:var(--azul); font-weight:600; font-variant-numeric:tabular-nums;}
-@media (max-width:560px){ .card-head,.card-corpo{padding-left:20px; padding-right:20px;} .trio{grid-template-columns:1fr} }
+@media (max-width:640px){
+  body{font-size:14px}
+  .pagina{padding-block:20px 56px}
+  .card-head{padding:16px 18px 13px}
+  .card-corpo{padding:17px 18px 20px; gap:15px}
+  .card-head h2{font-size:16px}
+  .card-head .sub{font-size:12px}
+  .marca h1{font-size:19px}
+  .marca .sub{font-size:12px}
+  .marca .sigla{width:40px; height:40px; border-radius:11px; font-size:14px}
+  .topo{gap:12px; margin-bottom:18px}
+  /* a trilha de etapas rola de lado em vez de estourar a tela */
+  .passos{flex-wrap:nowrap; overflow-x:auto; margin:16px -16px 20px; padding:0 16px 4px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch}
+  .passos::-webkit-scrollbar{display:none}
+  .passo{flex:0 0 auto; font-size:12.5px; padding:8px 14px 8px 10px}
+  .campos{gap:12px}
+  .campo input,.campo select{font-size:16px}
+  .derivados{padding:13px 15px 15px}
+  .saidas{gap:12px}
+  .saida input{font-size:16px}
+  .ops{grid-template-columns:1fr}
+  .op{padding:10px 8px}
+  .legenda{gap:10px 14px; font-size:11px}
+  .conf{font-size:13px; padding:11px 13px}
+  .resumo{padding:14px 15px}
+  /* a tabela do relatório é alinhada por colunas: em vez de quebrar e embaralhar,
+     ela mantém a forma e rola de lado dentro da caixa */
+  .resumo pre{font-size:11px; line-height:1.65; white-space:pre; overflow-x:auto;
+    -webkit-overflow-scrolling:touch}
+  .prop{padding:14px 15px}
+  .acoes{gap:8px}
+  .btn{padding:11px 18px; flex:1 1 auto; text-align:center}
+  .veredito{font-size:13.5px; padding:13px 15px}
+  .tec-bloco .campos,.condicional .campos{gap:12px}
+}
+@media (max-width:400px){
+  .trio{grid-template-columns:1fr}
+}
 @media print{
   @page{ size:A4; margin:16mm 14mm; }
   *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -142,7 +181,7 @@ details[open] summary::before{content:"▾ "}
 .fam-tit h3{margin:0; font-size:14.5px; font-weight:600; color:var(--tinta);}
 .fam-tit .sub{font-size:12px; color:var(--tinta-4);}
 .fam-tit::after{content:""; flex:1; height:1px; background:var(--linha); align-self:center;}
-.ops{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:4px; margin-top:10px;}
+.ops{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(300px, 100%), 1fr)); gap:4px; margin-top:10px;}
 .op{display:block; padding:9px 11px; border-radius:10px; cursor:pointer; transition:background .12s;}
 .op:hover{background:var(--neutro)}
 .op.marcada{background:var(--vermelho-tint)}
@@ -461,47 +500,6 @@ details[open] summary::before{content:"▾ "}
       diz('idle','Conferência técnica: o aproveitamento estimado fica abaixo de 55%. Vale perguntar à gráfica se um ajuste de poucos milímetros na caixa rende mais peças por folha.');
   }
 
-  function montaPedido(d){
-    if(!d.qtd||!(d.C&&d.L&&d.A)){ $('pedido').textContent='Preencha a etapa 1.'; return; }
-    var m=MAT[d.mat], L=[];
-    L.push('PEDIDO DE COTAÇÃO — EMBALAGEM');
-    L.push('Cardoso Toys');
-    L.push('');
-    L.push('Produto ............. '+(txt('o-prod')||'—'));
-    L.push('Peça ................ '+PECA[txt('o-peca')]);
-    L.push('Situação ............ '+SIT[txt('o-sit')]);
-    L.push('');
-    L.push('ESPECIFICAÇÃO');
-    L.push('  tipo .............. '+m[0]);
-    L.push('  observação ........ '+m[1]);
-    L.push('  '+(d.temMedida?'medida da caixa ...':'medida do produto .')+' '+d.C+' × '+d.L+' × '+d.A+' mm');
-    if(!d.temMedida) L.push('                      (pedimos que a gráfica dimensione a embalagem)');
-    L.push('  impressão ......... '+CORES[txt('o-cores')]);
-    L.push('  acabamento ........ '+ACAB[txt('o-acab')]);
-    if(txt('o-janela')==='sim') L.push('  janela ............ com janela transparente');
-    L.push('');
-    L.push('QUANTIDADE E PRAZO');
-    L.push('  quantidade ........ '+mil(d.qtd)+' peças');
-    if(d.qtd2&&d.qtd2!==d.qtd) L.push('  cotar também ...... '+mil(d.qtd2)+' peças');
-    if(num('o-prazo')) L.push('  prazo ............. '+num('o-prazo')+' dias');
-    if(txt('o-entrega')) L.push('  entrega em ........ '+txt('o-entrega'));
-    L.push('');
-    L.push('PEDIMOS QUE A PROPOSTA TRAGA');
-    L.push('  1. preço por peça em cada quantidade acima');
-    if(txt('o-sit')==='nova') L.push('  2. custo da faca separado do preço por peça');
-    L.push('  '+(txt('o-sit')==='nova'?'3':'2')+'. prazo de entrega e validade da proposta');
-    var n=(txt('o-sit')==='nova'?4:3);
-    if(txt('o-acab')==='naosei'){ L.push('  '+n+'. preço com e sem acabamento'); n++; }
-    if(txt('o-janela')==='sim'){ L.push('  '+n+'. preço com e sem a janela transparente'); n++; }
-    if(d.mat==='naosei'){ L.push('  '+n+'. recomendação de material, com preço de cada opção'); n++; }
-    if($('o-boneco').checked){ L.push('  '+n+'. boneco físico para aprovação antes da produção'); n++; }
-    L.push('  '+n+'. especificação técnica que vocês adotarem (material, gramatura e planificada)');
-    var falta=[['o-arte','arte final'],['o-rotul','rotulagem conferida'],['o-ean','código de barras conferido']]
-      .filter(function(p){return !$(p[0]).checked;}).map(function(p){return p[1];});
-    if(falta.length){ L.push(''); L.push('OBSERVAÇÃO: ainda estamos fechando '+falta.join(', ')+'.'); }
-    $('pedido').textContent=L.join('\n');
-  }
-
   function propostas(qtd){
     var dados=[];
     for(var i=1;i<=3;i++){
@@ -541,7 +539,7 @@ details[open] summary::before{content:"▾ "}
     R.push('Cardoso Toys   ·   '+new Date().toLocaleDateString('pt-BR'));
     R.push('');
     R.push('Produto ....... '+(txt('o-prod')||'—'));
-    R.push('Peça .......... '+PECA[txt('o-peca')]);
+    R.push('Peça .......... '+(CAT.tipos[txt('o-peca')] || {}).nome);
     R.push('Quantidade .... '+mil(qtd)+' peças');
     R.push('');
     R.push('PROPOSTAS RECEBIDAS');
