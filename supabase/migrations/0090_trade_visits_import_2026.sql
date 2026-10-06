@@ -19,43 +19,43 @@ insert into public.tm_stores (name,network_id) select 'Americanas Tamboré', n.i
 insert into public.tm_stores (name,network_id) select 'Barracão Santo Antônio', n.id from public.tm_networks n where n.name='Barracão' and not exists (select 1 from public.tm_stores s where s.name='Barracão Santo Antônio');
 
 -- 2) aliases novos -> loja (por nome). on conflict ignora raw_name ja existente.
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ame Shop.Jardim Sul' from public.tm_stores s where s.name='Americanas Jardim Sul' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ame Shopp Jardim Sul' from public.tm_stores s where s.name='Americanas Jardim Sul' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ame Tamboré' from public.tm_stores s where s.name='Americanas Tamboré' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Amer shop.jardim sul' from public.tm_stores s where s.name='Americanas Jardim Sul' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Centro de Gua' from public.tm_stores s where s.name='Atacadão Centro Gua' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Dutra' from public.tm_stores s where s.name='Atacadão Dutra' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata j Ramalho' from public.tm_stores s where s.name='Atacadão J Ramalho' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Taípas' from public.tm_stores s where s.name='Atacadão Taípas' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barr Santo Amaro' from public.tm_stores s where s.name='Barracão Sto Amaro' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barra Capão Redondo' from public.tm_stores s where s.name='Barracão Capão Redondo' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barra Sto Antonio' from public.tm_stores s where s.name='Barracão Santo Antônio' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracao Grimalde' from public.tm_stores s where s.name='Barracão Grimalde' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão Gua' from public.tm_stores s where s.name='Barracão Guarulhos' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão Sto Amero' from public.tm_stores s where s.name='Barracão Sto Amaro' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão são Mateus' from public.tm_stores s where s.name='Barracão São Mateus' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão São Miguel' from public.tm_stores s where s.name='Barracão S Miguel' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'BarracãoSão Miguel' from public.tm_stores s where s.name='Barracão S Miguel' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Carrefour Limão' from public.tm_stores s where s.name='Carrefour Limão' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Carrefour Osasco' from public.tm_stores s where s.name='Carrefour Osasco' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando Sto André' from public.tm_stores s where s.name='Armarinhos Fernando Sto Andre' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'H Tucuruvi' from public.tm_stores s where s.name='Ri Happy Tucuruvi' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkds Jardim Sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Shop. Jadim sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids shop.Jardim Sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks Barueri' from public.tm_stores s where s.name='PB Kids Barueri' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks S. Caetano' from public.tm_stores s where s.name='PB Kids São Caetano' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks Tambpré' from public.tm_stores s where s.name='PB Kids Tambore' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pirueta Central Plaza' from public.tm_stores s where s.name='Pirueta Centralplaza' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RG SPMarket' from public.tm_stores s where s.name='Ri Happy Sp Market' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Cidade  São Paulo' from public.tm_stores s where s.name='Ri Happy Cid De Sao Paulo' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Cidade de São Paulo' from public.tm_stores s where s.name='Ri Happy Cidade De S Paulo' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RHappy Augusta' from public.tm_stores s where s.name='Ri Happy Augusta' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Riappy Otto' from public.tm_stores s where s.name='Ri Happy Otto' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RiHappy  Aricanduva' from public.tm_stores s where s.name='Ri Happy Aricanduva' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Rihappy Otto' from public.tm_stores s where s.name='Ri Happy Otto' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Rihappy Tucuruvi' from public.tm_stores s where s.name='Ri Happy Tucuruvi' on conflict (raw_name) do nothing;
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RiHappy Tucuruvi' from public.tm_stores s where s.name='Ri Happy Tucuruvi' on conflict (raw_name) do nothing;
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ame Shop.Jardim Sul' from public.tm_stores s where s.name='Americanas Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ame Shop.Jardim Sul');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ame Shopp Jardim Sul' from public.tm_stores s where s.name='Americanas Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ame Shopp Jardim Sul');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ame Tamboré' from public.tm_stores s where s.name='Americanas Tamboré' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ame Tamboré');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Amer shop.jardim sul' from public.tm_stores s where s.name='Americanas Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Amer shop.jardim sul');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Centro de Gua' from public.tm_stores s where s.name='Atacadão Centro Gua' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ata Centro de Gua');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Dutra' from public.tm_stores s where s.name='Atacadão Dutra' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ata Dutra');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata j Ramalho' from public.tm_stores s where s.name='Atacadão J Ramalho' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ata j Ramalho');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Taípas' from public.tm_stores s where s.name='Atacadão Taípas' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Ata Taípas');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barr Santo Amaro' from public.tm_stores s where s.name='Barracão Sto Amaro' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barr Santo Amaro');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barra Capão Redondo' from public.tm_stores s where s.name='Barracão Capão Redondo' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barra Capão Redondo');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barra Sto Antonio' from public.tm_stores s where s.name='Barracão Santo Antônio' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barra Sto Antonio');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracao Grimalde' from public.tm_stores s where s.name='Barracão Grimalde' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barracao Grimalde');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão Gua' from public.tm_stores s where s.name='Barracão Guarulhos' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barracão Gua');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão Sto Amero' from public.tm_stores s where s.name='Barracão Sto Amaro' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barracão Sto Amero');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão são Mateus' from public.tm_stores s where s.name='Barracão São Mateus' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barracão são Mateus');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barracão São Miguel' from public.tm_stores s where s.name='Barracão S Miguel' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barracão São Miguel');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'BarracãoSão Miguel' from public.tm_stores s where s.name='Barracão S Miguel' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='BarracãoSão Miguel');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Carrefour Limão' from public.tm_stores s where s.name='Carrefour Limão' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Carrefour Limão');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Carrefour Osasco' from public.tm_stores s where s.name='Carrefour Osasco' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Carrefour Osasco');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando Sto André' from public.tm_stores s where s.name='Armarinhos Fernando Sto Andre' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fernando Sto André');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'H Tucuruvi' from public.tm_stores s where s.name='Ri Happy Tucuruvi' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='H Tucuruvi');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkds Jardim Sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkds Jardim Sul');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Shop. Jadim sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids Shop. Jadim sul');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids shop.Jardim Sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids shop.Jardim Sul');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks Barueri' from public.tm_stores s where s.name='PB Kids Barueri' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='PBks Barueri');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks S. Caetano' from public.tm_stores s where s.name='PB Kids São Caetano' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='PBks S. Caetano');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks Tambpré' from public.tm_stores s where s.name='PB Kids Tambore' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='PBks Tambpré');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pirueta Central Plaza' from public.tm_stores s where s.name='Pirueta Centralplaza' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pirueta Central Plaza');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RG SPMarket' from public.tm_stores s where s.name='Ri Happy Sp Market' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RG SPMarket');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Cidade  São Paulo' from public.tm_stores s where s.name='Ri Happy Cid De Sao Paulo' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RH Cidade  São Paulo');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Cidade de São Paulo' from public.tm_stores s where s.name='Ri Happy Cidade De S Paulo' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RH Cidade de São Paulo');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RHappy Augusta' from public.tm_stores s where s.name='Ri Happy Augusta' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RHappy Augusta');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Riappy Otto' from public.tm_stores s where s.name='Ri Happy Otto' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Riappy Otto');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RiHappy  Aricanduva' from public.tm_stores s where s.name='Ri Happy Aricanduva' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RiHappy  Aricanduva');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Rihappy Otto' from public.tm_stores s where s.name='Ri Happy Otto' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Rihappy Otto');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RiHappy Tucuruvi' from public.tm_stores s where s.name='Ri Happy Tucuruvi' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RiHappy Tucuruvi');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Rihappy Tucuruvi' from public.tm_stores s where s.name='Ri Happy Tucuruvi' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Rihappy Tucuruvi');
 
 -- 3) apaga visitas antigas desses arquivos e reinsere (resolvendo por nome)
 delete from public.tm_visits where source_file in ('Visita dos Promotores -07.09 a 12.09.26.xlsx','Visita dos Promotores -10.08 a 17.08.26.xlsx','Visita dos Promotores -14.09 a 19.09.26.xlsx','Visita dos Promotores -17.08 a 22.08.26.xlsx','Visita dos Promotores -21.09 a 26.09.26.xlsx','Visita dos Promotores -24.08 a 29.08.26.xlsx','Visita dos Promotores -31.08 a 05.09.26.xlsx');
@@ -230,7 +230,6 @@ with v(prom,canon,d,wd,raw,src) as (values
   ('Eurípedes','Atacadão Suzano','2026-08-25','Terça','Ata Suzano','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
   ('Gabriela','Ri Happy Sp Market','2026-08-25','Terça','RH SPMarket','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
   ('Gabriela','Americanas Interlagos','2026-08-25','Terça','Ame  Interlagos','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
-  ('Gabriela','Ri Happy Sp Market','2026-08-25','Terça','RH SPMarket','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
   ('Theska','Armarinhos Fernando Guarulhos','2026-08-26','Quarta','Fernando Guarulhos','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
   ('Theska','PB Kids Maia','2026-08-26','Quarta','Pbkds Maia*','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
   ('Marcelo','Ri Happy Tatuape','2026-08-26','Quarta','RH Tatuapé','Visita dos Promotores -24.08 a 29.08.26.xlsx'),
@@ -434,3 +433,7 @@ from v join public.tm_promoters p on p.name = v.prom
 left join public.tm_stores s on s.name = v.canon;
 
 commit;
+
+-- conferencia automatica (deve listar as 7 semanas novas + as 6 antigas = 13 linhas)
+select source_file, count(*) visitas, count(*) filter (where store_id is null) sem_loja
+from public.tm_visits where source_file like 'Visita dos Promotores -%' group by 1 order by 1;
