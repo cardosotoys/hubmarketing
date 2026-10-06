@@ -3,15 +3,12 @@
 begin;
 
 -- 1) lojas novas (verifique/renomeie depois)
-insert into public.tm_stores (name,network_id) select 'Armarinhos Fernando São Miguel', n.id from public.tm_networks n where n.name='Armarinhos Fernando' and not exists (select 1 from public.tm_stores s where s.name='Armarinhos Fernando São Miguel');
 insert into public.tm_stores (name,network_id) select 'Atacadão Ipapecerica', n.id from public.tm_networks n where n.name='Atacadão' and not exists (select 1 from public.tm_stores s where s.name='Atacadão Ipapecerica');
 insert into public.tm_stores (name,network_id) select 'Barracão Cocaia', n.id from public.tm_networks n where n.name='Barracão' and not exists (select 1 from public.tm_stores s where s.name='Barracão Cocaia');
 insert into public.tm_stores (name,network_id) select 'Barracão Otávio Braga', n.id from public.tm_networks n where n.name='Barracão' and not exists (select 1 from public.tm_stores s where s.name='Barracão Otávio Braga');
 insert into public.tm_stores (name,network_id) select 'Barracão Parelheiros', n.id from public.tm_networks n where n.name='Barracão' and not exists (select 1 from public.tm_stores s where s.name='Barracão Parelheiros');
-insert into public.tm_stores (name,network_id) select 'PB Kids Analia Franco', n.id from public.tm_networks n where n.name='PB Kids' and not exists (select 1 from public.tm_stores s where s.name='PB Kids Analia Franco');
 insert into public.tm_stores (name,network_id) select 'PB Kids Ibirapuera', n.id from public.tm_networks n where n.name='PB Kids' and not exists (select 1 from public.tm_stores s where s.name='PB Kids Ibirapuera');
 insert into public.tm_stores (name,network_id) select 'PB Kids Mooca', n.id from public.tm_networks n where n.name='PB Kids' and not exists (select 1 from public.tm_stores s where s.name='PB Kids Mooca');
-insert into public.tm_stores (name,network_id) select 'Pirueta Central', n.id from public.tm_networks n where n.name='Pirueta' and not exists (select 1 from public.tm_stores s where s.name='Pirueta Central');
 insert into public.tm_stores (name,network_id) select 'Pirueta Tateno', n.id from public.tm_networks n where n.name='Pirueta' and not exists (select 1 from public.tm_stores s where s.name='Pirueta Tateno');
 insert into public.tm_stores (name,network_id) select 'Renascer Lapa', n.id from public.tm_networks n where n.name='Renascer' and not exists (select 1 from public.tm_stores s where s.name='Renascer Lapa');
 insert into public.tm_stores (name,network_id) select 'Ri Happy Center Norte', n.id from public.tm_networks n where n.name='Ri Happy' and not exists (select 1 from public.tm_stores s where s.name='Ri Happy Center Norte');
@@ -36,7 +33,7 @@ insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Ata Vila Ma
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Barra Parelheiros' from public.tm_stores s where s.name='Barracão Parelheiros' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Barra Parelheiros');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fer Gua' from public.tm_stores s where s.name='Armarinhos Fernando Guarulhos' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fer Gua');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fer Suzano' from public.tm_stores s where s.name='Armarinhos Fernando Suzano' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fer Suzano');
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fer São Miguel' from public.tm_stores s where s.name='Armarinhos Fernando São Miguel' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fer São Miguel');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fer São Miguel' from public.tm_stores s where s.name='Armarinhos Fernando S Miguel' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fer São Miguel');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fer tatuapé' from public.tm_stores s where s.name='Armarinhos Fernando Tatuape' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fer tatuapé');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando' from public.tm_stores s where s.name='Armarinhos Fernando' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fernando');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando Brás' from public.tm_stores s where s.name='Armarinhos Fernando Bras' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fernando Brás');
@@ -44,7 +41,7 @@ insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando Gu
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando Mooca' from public.tm_stores s where s.name='Armarinhos Fernando Mooca' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fernando Mooca');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Fernando Osasco' from public.tm_stores s where s.name='Armarinhos Fernando Osasco' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Fernando Osasco');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Mini Preço' from public.tm_stores s where s.name='MiniPreço' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Mini Preço');
-insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Analia Franco' from public.tm_stores s where s.name='PB Kids Analia Franco' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids Analia Franco');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Analia Franco' from public.tm_stores s where s.name='PB Kids Analia' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids Analia Franco');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Eldorado' from public.tm_stores s where s.name='PB Kids Eldorado' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids Eldorado');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Ibirapuera' from public.tm_stores s where s.name='PB Kids Ibirapuera' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids Ibirapuera');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Jardim Sul' from public.tm_stores s where s.name='PB Kids Jardim Sul' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pbkids Jardim Sul');
@@ -53,6 +50,7 @@ insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pbkids Moru
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBKs Eldorado' from public.tm_stores s where s.name='PB Kids Eldorado' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='PBKs Eldorado');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBks G. Vianna' from public.tm_stores s where s.name='PB Kids G Vianna' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='PBks G. Vianna');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'PBKs Tamboré' from public.tm_stores s where s.name='PB Kids Tambore' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='PBKs Tamboré');
+insert into public.tm_store_aliases (store_id,raw_name) select s.id,'Pirueta Central' from public.tm_stores s where s.name='Pirueta Centralplaza' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='Pirueta Central');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Aricanduva' from public.tm_stores s where s.name='Ri Happy Aricanduva' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RH Aricanduva');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Cid. São Paulo' from public.tm_stores s where s.name='Ri Happy Shop Cid Sao Paulo' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RH Cid. São Paulo');
 insert into public.tm_store_aliases (store_id,raw_name) select s.id,'RH Cidade São Paulo' from public.tm_stores s where s.name='Ri Happy Cid De Sao Paulo' and not exists (select 1 from public.tm_store_aliases a where a.raw_name='RH Cidade São Paulo');
@@ -82,7 +80,7 @@ with v(prom,canon,d,wd,raw,src) as (values
   ('Aroldo','PB Kids Ibirapuera','2026-09-28','Segunda','Pbkids Ibirapuera','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Aroldo','Ri Happy Vila Mariana','2026-09-28','Segunda','RH Vila Mariana','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Aroldo','Armarinhos Fernando Mooca','2026-09-28','Segunda','Fernando Mooca','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
-  ('Aroldo','PB Kids Analia Franco','2026-09-28','Segunda','Pbkids Analia Franco','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
+  ('Aroldo','PB Kids Analia','2026-09-28','Segunda','Pbkids Analia Franco','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Aroldo','PB Kids Mooca','2026-09-28','Segunda','Pbkids Mooca','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Marcelo','Armarinhos Fernando Ipiranga','2026-09-28','Segunda','Af Ipiranga*','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Marcelo','Armarinhos Fernando Tatuape','2026-09-28','Segunda','Af Tatuapé','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
@@ -136,7 +134,7 @@ with v(prom,canon,d,wd,raw,src) as (values
   ('Gabriela','Renascer','2026-10-02','Sexta','Renascer','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Gabriela','Barracão Sto Amaro','2026-10-02','Sexta','Barracão Sto Amaro','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Theska','Barracão S Miguel','2026-09-30','Quarta','Barracão S. Miguel','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
-  ('Theska','Armarinhos Fernando São Miguel','2026-09-30','Quarta','Fer São Miguel','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
+  ('Theska','Armarinhos Fernando S Miguel','2026-09-30','Quarta','Fer São Miguel','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Theska','Barracão Pimentas','2026-09-30','Quarta','Barracão Pimentas','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Aroldo','Armarinhos Fernando Mooca','2026-09-30','Quarta','Fernando Mooca','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Aroldo','Ri Happy Cid De Sao Paulo','2026-09-30','Quarta','RH Cidade São Paulo','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
@@ -149,7 +147,7 @@ with v(prom,canon,d,wd,raw,src) as (values
   ('Marcelo','Americanas Aricanduva','2026-09-30','Quarta','Ame Aricanduva','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Jecilda','PB Kids Tambore','2026-09-30','Quarta','PBKs Tamboré','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Jecilda','Pirueta','2026-09-30','Quarta','Pirueta*','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
-  ('Eurípedes','Pirueta Central','2026-09-30','Quarta','Pirueta Central','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
+  ('Eurípedes','Pirueta Centralplaza','2026-09-30','Quarta','Pirueta Central','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Gabriela','Armarinhos Fernando','2026-09-30','Quarta','Fernando','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Gabriela','Renascer','2026-09-30','Quarta','Renascer','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
   ('Gabriela','Ri Happy Interlagos','2026-09-30','Quarta','RH Interlagos','Visita dos Promotores -28.09 a 04.10.26.xlsx'),
