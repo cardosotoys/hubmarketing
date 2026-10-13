@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import type { SocialPlanDeadline, SocialPlanItem, SocialTopic } from '../../types/database';
+import type { SocialPlanDeadline, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
+import { BrandGuide } from './Brief';
 import { MES_ABREV, addDays, addMonths, brShort, monthName, parseYmd, pieceState, slug, todayISO, ymOf } from './shared';
 
 /* Estratégia e cronograma: o andamento de cada frente (das próprias peças) e os marcos comerciais
@@ -20,11 +21,12 @@ function bucketOf(label: string): Bucket {
 }
 const area = (resp: string) => (resp.includes('+') ? 'mix' : /^Digital/i.test(resp) ? 'dig' : 'com');
 
-export default function StrategyView({ live, byTopic, topicById, deadlines, canMark, isPriv, meId, onChanged }: {
+export default function StrategyView({ live, byTopic, topicById, deadlines, notes, canMark, isPriv, meId, onChanged }: {
   live: SocialPlanItem[];
   byTopic: Map<string, SocialPlanItem[]>;
   topicById: Map<string, SocialTopic>;
   deadlines: SocialPlanDeadline[];
+  notes: SocialStrategyNote[];
   canMark: boolean;
   isPriv: boolean;
   meId: string | null;
@@ -78,8 +80,45 @@ export default function StrategyView({ live, byTopic, topicById, deadlines, canM
     if (error) flash(error.message); else { flash('Marco adicionado.'); setNm((x) => ({ ...x, acao: '', dm: '' })); await onChanged(); }
   };
 
+  const estrategia = notes.filter((n) => n.section === 'estrategia').sort((a, b) => a.ord - b.ord);
+  const pendencias = notes.filter((n) => n.section === 'pendencia').sort((a, b) => a.ord - b.ord);
+  const togglePend = async (n: SocialStrategyNote) => {
+    const { error } = await supabase.from('social_strategy_notes').update({ done: !n.done, updated_by: meId, updated_at: new Date().toISOString() }).eq('ext_key', n.ext_key);
+    if (error) flash(error.message); else await onChanged();
+  };
+
   return (
     <div className="sp-strat">
+      {estrategia.length > 0 && (
+        <div className="sp-central-grid" style={{ marginBottom: 14 }}>
+          <section className="sp-box">
+            <h3>Estratégia do período</h3>
+            <dl className="sp-kv coc-strat-kv">{estrategia.map((n) => <div key={n.ext_key} style={{ display: 'contents' }}><dt>{n.item}</dt><dd>{n.value}</dd></div>)}</dl>
+          </section>
+          <section className="sp-box">
+            <h3>Pendências <small>{pendencias.filter((n) => !n.done).length} em aberto</small></h3>
+            {pendencias.map((n) => (
+              <label key={n.ext_key} className={`coc-pend ${n.done ? 'done' : ''}`}>
+                <input type="checkbox" checked={n.done} disabled={!canMark} onChange={() => togglePend(n)} />
+                <span><b>{n.item}.</b> {n.value}</span>
+              </label>
+            ))}
+            {!canMark && <p className="sp-calhint">O gerente ou a diretoria marcam o que foi resolvido.</p>}
+          </section>
+        </div>
+      )}
+      {notes.some((n) => n.section === 'guia') && (
+        <div className="coc-guides">
+          {['Playmi', 'Tópi', 'Cardoso'].map((b) => <div key={b} className="sp-box"><BrandGuide brand={b} notes={notes.filter((n) => n.section === 'guia')} defaultOpen /></div>)}
+        </div>
+      )}
+      {notes.some((n) => n.section === 'formato') && (
+        <section className="sp-box" style={{ marginBottom: 14 }}>
+          <h3>Formatos e medidas</h3>
+          <table className="coc-ftable"><thead><tr><th>Formato</th><th>Medida</th><th>Observação</th></tr></thead>
+            <tbody>{notes.filter((n) => n.section === 'formato').sort((a, b) => a.ord - b.ord).map((n) => <tr key={n.ext_key}><td>{n.item}</td><td>{n.value}</td><td>{n.note}</td></tr>)}</tbody></table>
+        </section>
+      )}
       <div className="sp-central-grid">
         <section className="sp-box">
           <h3>

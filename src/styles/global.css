@@ -3931,3 +3931,27 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .np-gmn-btn{margin:0 14px;align-self:flex-start;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:600;color:#1A73E8}
 .sp .np-bubble .np-flag,.sp .np-gmn-item .np-flag{position:static;align-self:flex-start;margin:2px 6px 0}
 .sp .np-bubble .np-art img[alt]{color:transparent}
+
+/* Briefing de arte e guia das marcas (0115) */
+.sp .coc-brief{border:1px solid var(--line);border-radius:14px;padding:4px 14px 10px;margin:14px 0 0;background:var(--card)}
+.sp .coc-fold{appearance:none;border:0;background:none;width:100%;display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 0 6px;cursor:pointer;font:inherit;color:var(--ink);text-align:left;flex-wrap:wrap}
+.sp .coc-fold b{font-size:14.5px;font-weight:800}.sp .coc-fold span{font-size:12px;color:var(--muted)}
+.sp .coc-brief-group h5{margin:10px 0 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sp .coc-brief-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.sp .coc-brief-grid .wide{grid-column:1/-1}
+@media (max-width:640px){.sp .coc-brief-grid{grid-template-columns:1fr}}
+.sp .coc-pre{white-space:pre-wrap}
+.sp .coc-details{margin:10px 0;background:var(--card);border-radius:12px;padding:8px 12px;box-shadow:var(--sh)}
+.sp .coc-details summary{cursor:pointer;font-weight:700;color:var(--ink)}
+.sp .coc-ftable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.sp .coc-ftable th{text-align:left;font-size:11px;letter-spacing:.04em;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
+.sp .coc-ftable td{padding:6px 8px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.sp .coc-guides{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.sp .coc-guides .coc-brief{border:0;padding:0;margin:0}
+.sp .coc-guides .coc-ftable{display:none}
+@media (max-width:1100px){.sp .coc-guides{grid-template-columns:1fr}}
+.sp .coc-strat-kv{grid-template-columns:140px minmax(0,1fr)}
+.sp .coc-pend{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line-2);font-size:13px;cursor:pointer}
+.sp .coc-pend:first-of-type{border-top:0}
+.sp .coc-pend input{margin-top:3px}
+.sp .coc-pend.done span{color:var(--muted);text-decoration:line-through}

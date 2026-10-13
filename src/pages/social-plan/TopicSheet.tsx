@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { normalizeUrl } from '../../lib/url';
-import type { Profile, SocialChannel, SocialPlanItem, SocialTopic } from '../../types/database';
+import type { Profile, SocialChannel, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
+import { BrandGuide, BriefEditor } from './Brief';
 import { KIND_LABEL, addDays, defaultPieceType, derive, todayISO, type ChannelMap, type Kind } from './shared';
 
 /* ================= Assunto + destinos =================
@@ -33,7 +34,7 @@ function toDraft(x: SocialPlanItem): Draft {
   };
 }
 
-export default function TopicSheet({ topic, items, channels, chans, me, isPriv, fronts, onClose, onSaved, onOpenItem, inline }: {
+export default function TopicSheet({ topic, items, channels, chans, me, isPriv, fronts, onClose, onSaved, onOpenItem, inline, notes = [] }: {
   topic: SocialTopic | null;
   items: SocialPlanItem[];          // todos os destinos deste assunto (inclui canal futuro)
   channels: SocialChannel[];
@@ -45,7 +46,9 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
   onSaved: (topicId: string) => void;
   onOpenItem: (id: string) => void;
   inline?: boolean;               // dentro da aba Assuntos, sem sobrepor a tela
+  notes?: SocialStrategyNote[];   // guia das marcas e formatos
 }) {
+  const [brief, setBrief] = useState<Record<string, string>>(() => ({ ...(topic?.brief ?? {}) }));
   const [form, setForm] = useState<TopicForm>(() => (topic ? {
     title: topic.title, brand: topic.brand, product: topic.product, sku: topic.sku, front: topic.front,
     objective: topic.objective, strategy: topic.strategy, cta: topic.cta, media_use: topic.media_use,
@@ -126,7 +129,8 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
     const semCanal = drafts.find((d) => !d.channel_id || !d.pub_date);
     if (semCanal) { setErr('Todo destino precisa de canal e dia.'); return; }
     setSaving(true);
-    const payload = { ...form, updated_by: me?.id ?? null };
+    const cleanBrief = Object.fromEntries(Object.entries(brief).filter(([, v]) => v && v.trim()));
+    const payload = { ...form, brief: cleanBrief, updated_by: me?.id ?? null };
     let tid = topic?.id ?? null;
     if (tid) {
       const { error } = await supabase.from('social_topics').update(payload).eq('id', tid);
@@ -215,6 +219,9 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
             </div>
           )}
         </div>
+
+        <BriefEditor brief={brief} onChange={setBrief} />
+        <BrandGuide brand={form.brand} notes={notes} />
 
         <h4 className="sp-sech">Destinos <small>onde e quando sai, e o que herda da matriz</small></h4>
         <div className="sp-dests">

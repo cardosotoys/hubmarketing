@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { decide } from './actions';
+import { BRIEF_ETAPA1, BRIEF_ETAPA2, BriefRead } from './Brief';
 import { KIND_LABEL, brShort, destLabel, driveThumb, hhmm, inQueue1, inQueue2, licBlocked, slug, type ChannelMap } from './shared';
 
 /* Fila de aprovação: uma peça por vez, na ordem em que saem.
@@ -93,6 +94,7 @@ export default function ApprovalView({ live, byTopic, topicById, chans, meId, ca
             {leva.length > 0 && <><dt>Leva junto</dt><dd>{leva.map((x) => `${destLabel(x, chans).replace(/^[^·]+· /, '')} ${brShort(x.pub_date)}`).join(' · ')}</dd></>}
             {licBlocked(topic) && <><dt>Licenciado</dt><dd>Depois desta aprovação ainda falta o licenciador.</dd></>}
           </dl>
+          <BriefRead brief={topic?.brief} keys={gate === 1 ? BRIEF_ETAPA1 : BRIEF_ETAPA2} title={gate === 1 ? 'Briefing: por que e para quem' : 'Briefing: o que a arte precisa ter'} />
           <h4 className="sp-sech" style={{ margin: '14px 0 6px' }}>Legenda {lim ? <small>{cap.length} / {lim} caracteres</small> : null}</h4>
           <div className={`sp-caption ${lim && cap.length > lim ? 'over' : ''}`}>{cap || '—'}</div>
           {matriz && cur.link_kind === 'adapta' && matriz.caption && <p className="sp-inherit">Legenda da matriz: “{matriz.caption.slice(0, 140)}{matriz.caption.length > 140 ? '…' : ''}”</p>}

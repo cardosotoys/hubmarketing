@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
-import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialTopic } from '../types/database';
+import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
+import { BriefRead } from './social-plan/Brief';
 import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, licBlocked, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
@@ -57,6 +58,7 @@ export default function SocialPlan() {
   const [channels, setChannels] = useState<SocialChannel[]>([]);
   const [merged, setMerged] = useState<Map<string, string>>(new Map());
   const [deadlines, setDeadlines] = useState<SocialPlanDeadline[]>([]);
+  const [notes, setNotes] = useState<SocialStrategyNote[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [commentItemIds, setCommentItemIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export default function SocialPlan() {
   const com = useCommercial(view === 'materiais' || view === 'comercial' || view === 'final');
 
   const load = useCallback(async () => {
-    const [it, tp, ch, ar, dl, pf, cm, st] = await Promise.all([
+    const [it, tp, ch, ar, dl, pf, cm, st, nt] = await Promise.all([
       supabase.from('social_plan_items').select('*').eq('archived', false).order('pub_date'),
       supabase.from('social_topics').select('*'),
       supabase.from('social_channels').select('*').order('ord'),
@@ -81,7 +83,9 @@ export default function SocialPlan() {
       supabase.from('profiles').select('*').order('name'),
       supabase.from('social_plan_comments').select('item_id'),
       supabase.from('social_plan_settings').select('approver_id').eq('id', 1).single(),
+      supabase.from('social_strategy_notes').select('*').order('ord'),
     ]);
+    setNotes((nt.data as SocialStrategyNote[]) ?? []);
     // antes da migration 0108 a coluna archived não existe: cai no modo antigo em vez de esvaziar a tela
     let itData = it.data as SocialPlanItem[] | null;
     if (it.error) itData = ((await supabase.from('social_plan_items').select('*').order('pub_date')).data as SocialPlanItem[]) ?? [];
@@ -230,6 +234,7 @@ export default function SocialPlan() {
       me={profile}
       isPriv={isPriv}
       fronts={fronts}
+      notes={notes}
       onClose={closeTopic}
       onOpenItem={openItem}
       onSaved={async (tid) => {
@@ -331,7 +336,7 @@ export default function SocialPlan() {
           ? <FinalTab live={live} byTopic={byTopic} topicById={topicById} chans={chans} banners={com.banners} materials={com.materials} products={com.products} />
           : <Loading />)}
         {view === 'estrategia' && (
-          <StrategyView live={live} byTopic={byTopic} topicById={topicById} deadlines={deadlines} canMark={canDecide} isPriv={isPriv}
+          <StrategyView live={live} byTopic={byTopic} topicById={topicById} deadlines={deadlines} notes={notes} canMark={canDecide} isPriv={isPriv}
             meId={profile?.id ?? null} onChanged={load} />
         )}
         {view === 'cal' && (
@@ -653,6 +658,9 @@ function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, a
           <dd>{eff.caption ? <div className="sp-caption">{eff.caption}</div> : '—'}</dd></div>
         <div className="sp-field"><dt>Criativo{item.link_kind !== 'matriz' && !item.creative_changed ? ' (da matriz)' : ''}</dt>
           <dd>{eff.creative ? <a className="sp-linkbtn" href={eff.creative} target="_blank" rel="noreferrer">Abrir no Drive ↗</a> : '—'}</dd></div>
+        {topic?.brief && Object.keys(topic.brief).length > 0 && (
+          <details className="coc-details"><summary>Briefing de arte</summary><BriefRead brief={topic.brief} title="" /></details>
+        )}
         {topic?.licensed && <p className="sp-relnote">Produto licenciado · {topic.licensor_ok ? 'aprovado pelo licenciador' : 'aguardando aprovação do licenciador'}</p>}
 
         {topic && (

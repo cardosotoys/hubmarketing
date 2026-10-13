@@ -907,6 +907,7 @@ export interface SocialTopic {
   licensed: boolean;
   licensor_ok: boolean;
   licensor_proof: string;
+  brief?: Record<string, string>;   // briefing de arte (0115)
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -1705,4 +1706,16 @@ export interface ContentTaskBoardRow {
   assignee_id: string | null;
   assignee_name: string | null;
   due_date: string | null;
+}
+
+// ---- Estratégia do período, pendências, guia das marcas e formatos (0115) ----
+export interface SocialStrategyNote {
+  ext_key: string;
+  section: 'estrategia' | 'pendencia' | 'guia' | 'formato' | 'leitura';
+  brand: string | null;
+  item: string;
+  value: string;
+  note: string | null;
+  ord: number;
+  done: boolean;
 }
