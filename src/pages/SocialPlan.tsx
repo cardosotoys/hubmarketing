@@ -9,6 +9,9 @@ import { KIND_LABEL, destLabel, effective, hhmm, inQueue1, inQueue2, licBlocked,
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
 import CentralView from './social-plan/CentralView';
+import MateriaisView from './social-plan/MateriaisView';
+import ComercialView from './social-plan/ComercialView';
+import { useCommercial } from './social-plan/useCommercial';
 import { MonthView, WeekView } from './social-plan/CalendarViews';
 import AssuntosView from './social-plan/AssuntosView';
 import TopicSheet from './social-plan/TopicSheet';
@@ -55,7 +58,7 @@ const timeAgo = (iso: string) => {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type View = 'central' | 'aprovacao' | 'cal' | 'assuntos' | 'feed' | 'lista' | 'prazos';
+type View = 'central' | 'aprovacao' | 'cal' | 'assuntos' | 'materiais' | 'comercial' | 'feed' | 'lista' | 'prazos';
 type CalMode = 'semana' | 'mes';
 type Filters = {
   marca: Set<string>; rede: Set<string>; tipo: Set<string>; origem: Set<string>;
@@ -84,6 +87,7 @@ export default function SocialPlan() {
   const [approverId, setApproverId] = useState<string | null>(null);
   const [reviewOnly, setReviewOnly] = useState(false);
   const [flash, setFlash] = useState('');
+  const com = useCommercial(view === 'materiais' || view === 'comercial');
 
   const load = useCallback(async () => {
     const [it, tp, ch, ar, dl, pf, cm, st] = await Promise.all([
@@ -289,14 +293,14 @@ export default function SocialPlan() {
           </div>
         )}
         <nav className="sp-views" role="tablist">
-          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
+          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['materiais', 'Banco de materiais'], ['comercial', 'Área comercial'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}{v === 'aprovacao' && filaN > 0 ? <span className="sp-tabcnt">{filaN}</span> : null}</button>
           ))}
         </nav>
       </header>
 
       {/* ---------- filtros ---------- */}
-      {!['prazos', 'central', 'aprovacao'].includes(view) && (
+      {!['prazos', 'central', 'aprovacao', 'materiais', 'comercial'].includes(view) && (
         <div className="sp-filters">
           <div className="sp-frow">
             <FGroup label="Marca"><Chips vals={['Playmi', 'Tópi', 'Cardoso']} sel={f.marca} onClick={(v) => toggle('marca', v)} tone="marca" /></FGroup>
@@ -330,6 +334,14 @@ export default function SocialPlan() {
           <ApprovalView live={live} byTopic={byTopic} topicById={topicById} chans={chans} meId={profile?.id ?? null}
             canDecide={canDecide} approverName={approverName} onOpen={openItem} onChanged={load} />
         )}
+        {view === 'materiais' && (com.loaded
+          ? <MateriaisView materials={com.materials} products={com.products} board={com.board} profiles={profiles} meId={profile?.id ?? null}
+              canRelease={canDecide} error={com.error} onChanged={async () => { await com.reload(); await load(); }} onOpenTopic={openTopic} />
+          : <Loading />)}
+        {view === 'comercial' && (com.loaded
+          ? <ComercialView materials={com.materials} banners={com.banners} board={com.board} products={com.products} profiles={profiles}
+              deadlines={deadlines} canRelease={canDecide} error={com.error} onChanged={com.reload} />
+          : <Loading />)}
         {view === 'cal' && (
           <>
             <div className="sp-calmode" role="tablist">

@@ -1649,3 +1649,55 @@ export interface ProductSalePause {
   criado_por: string | null;
   criado_em: string;
 }
+
+// ---- Centro de Operações de Conteúdo · banco de materiais e área comercial (0111) ----
+export interface ContentMaterial {
+  id: string;
+  product_id: string | null;
+  subject: string;
+  brand: string;
+  kind: 'foto' | 'video' | 'kit' | 'documento';
+  name: string;
+  drive_url: string;
+  status: 'pedido' | 'producao' | 'aguardando' | 'liberado';
+  task_id: string | null;
+  notes: string;
+  announced: boolean;
+  released_by: string | null;
+  released_at: string | null;
+  library_asset_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommercialBanner {
+  id: string;
+  seal: 'CAMPANHA' | 'LANÇAMENTO' | 'AVISO COMERCIAL' | 'CLUBE CARDOSO';
+  title: string;
+  subtitle: string;
+  cta: string;
+  cta_link: string;
+  starts_on: string;
+  ends_on: string;
+  marco: string;
+  art_url: string;
+  task_id: string | null;
+  owner_id: string | null;
+  released: boolean;
+  released_by: string | null;
+  released_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentTaskBoardRow {
+  task_id: string;
+  stage_name: string | null;
+  stage_position: number | null;
+  is_final: boolean;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  due_date: string | null;
+}
