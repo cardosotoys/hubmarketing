@@ -20,6 +20,7 @@ import Produtos from './pages/Produtos';
 import TabelaPrecos from './pages/TabelaPrecos';
 import MonitorPrecos from './pages/MonitorPrecos';
 import TradeMarketing from './pages/TradeMarketing';
+import VisaoFinal from './pages/VisaoFinal';
 import SocialPlan from './pages/SocialPlan';
 import Campo from './pages/Campo';
 import Reunioes from './pages/Reunioes';
@@ -83,6 +84,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           {/* Página de CAMPO — pública (sem login), acessada por link mágico com token */}
           <Route path="/campo" element={<Campo />} />
+          {/* Visão final do Centro de Operações de Conteúdo — pública, por link com token */}
+          <Route path="/visao-final" element={<VisaoFinal />} />
           <Route element={<AppLayout />}>
             <Route index element={<ModuleGate moduleKey="dashboard"><Dashboard /></ModuleGate>} />
             {/* Módulos novos (estrutura vazia — implementação futura) */}
