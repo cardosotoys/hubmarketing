@@ -250,56 +250,51 @@ export default function SocialPlan() {
 
   return (
     <div className="sp">
-      {/* ---------- cabeçalho ---------- */}
-      <header className="sp-header">
-        <div className="sp-headtop">
-          <p className="sp-eyebrow">Centro de Operações de Conteúdo</p>
-          <div className="sp-headactions">
+      {/* ---------- cabeçalho (casca do protótipo: faixa Azul Universo com as abas) ---------- */}
+      <header className="coc-head">
+        <div className="coc-top">
+          <div className="coc-brand">
+            <div className="coc-logo">C</div>
+            <div><small>Cardoso Hub · Marketing</small><b>Centro de Operações de Conteúdo</b></div>
+          </div>
+          <div className="coc-actions">
             {isPriv && (
-              <label className="sp-approversel" title="Quem aprova as peças do Social">
-                <span>Aprovação →</span>
+              <label className="coc-approver" title="Quem aprova as peças, libera materiais e banners e cria os links da visão final">
+                <span>Aprovador</span>
                 <select value={approverId ?? ''} onChange={(e) => setApprover(e.target.value)}>
                   <option value="">ninguém definido</option>
                   {profiles.filter((p) => !p.disabled).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </label>
             )}
-            <button className="sp-new" onClick={() => openTopic(null)}>+ Novo assunto</button>
+            <button className="coc-new" onClick={() => openTopic(null)}>Novo assunto</button>
           </div>
         </div>
-        <h1 className="sp-h1">Conteúdo de <em>Cardoso</em>, <em>Playmi</em> e <em>Tópi</em>,<br />do assunto ao último destino</h1>
-        <p className="sp-sub">
-          Cada assunto nasce uma vez, com pauta e estratégia, e se desdobra em destinos: a matriz, os reaproveitamentos
-          (mesma peça em outro canal ou dia) e as adaptações (legenda própria, como do Instagram para o LinkedIn ou o WhatsApp).
-        </p>
-        <div className="sp-linhas">
-          {['#70BD8F', '#BF91D1', '#ED6199', '#2163C4', '#E87821', '#00B2C7', '#EA5C18', '#F3D22A', '#2EBADA', '#DA3A2F'].map((c, i) => (
-            <span key={i} style={{ background: c }} />
-          ))}
-        </div>
-        <div className="sp-kpis">
-          <div className="sp-kpi"><b>{kpi.assuntos}</b><span>assuntos</span></div>
-          <div className="sp-kpi"><b>{kpi.total}</b><span>destinos</span></div>
-          <div className="sp-kpi"><b>{kpi.reap}</b><span>reaproveitamentos e adaptações</span></div>
-          <div className="sp-kpi"><b>{kpi.sku}</b><span>produtos citados</span></div>
-          <div className="sp-kpi" style={{ borderColor: '#CFE6DA' }}><b style={{ color: '#2E9E6B' }}>{kpi.ok}</b><span>aprovadas</span></div>
-          <div className="sp-kpi" style={{ borderColor: '#F0E0BC' }}><b style={{ color: '#B07C2B' }}>{kpi.aj}</b><span>com ajuste</span></div>
-          {kpi.guardadas > 0 && <div className="sp-kpi"><b>{kpi.guardadas}</b><span>guardadas · canal futuro</span></div>}
-        </div>
-        {myReviews.length > 0 && (
-          <div className="sp-reviewbanner">
-            <span>🔔 <b>{myReviews.length}</b> peça(s) esperando a sua aprovação</span>
-            <button className={reviewOnly ? 'on' : ''} onClick={() => setReviewOnly((v) => !v)}>
-              {reviewOnly ? 'Mostrar todas' : 'Ver só as minhas'}
-            </button>
-          </div>
-        )}
-        <nav className="sp-views" role="tablist">
+        <nav className="coc-tabs" role="tablist">
           {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['materiais', 'Banco de materiais'], ['comercial', 'Área comercial'], ['final', 'Visão final'], ['estrategia', 'Estratégia e cronograma'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
-            <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}{v === 'aprovacao' && filaN > 0 ? <span className="sp-tabcnt">{filaN}</span> : null}</button>
+            <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}{v === 'aprovacao' && filaN > 0 ? <span className="coc-cnt">{filaN}</span> : null}</button>
           ))}
         </nav>
       </header>
+      {myReviews.length > 0 && (
+        <div className="sp-reviewbanner coc-review">
+          <span><b>{myReviews.length}</b> peça(s) esperando a sua aprovação</span>
+          <button className={reviewOnly ? 'on' : ''} onClick={() => setReviewOnly((v) => !v)}>
+            {reviewOnly ? 'Mostrar todas' : 'Ver só as minhas'}
+          </button>
+        </div>
+      )}
+      {['cal', 'assuntos', 'feed', 'lista'].includes(view) && (
+        <div className="coc-kpis">
+          <div className="coc-kpi"><b>{kpi.assuntos}</b><span>assuntos</span></div>
+          <div className="coc-kpi"><b>{kpi.total}</b><span>destinos</span></div>
+          <div className="coc-kpi"><b>{kpi.reap}</b><span>reaproveitamentos e adaptações</span></div>
+          <div className="coc-kpi"><b>{kpi.sku}</b><span>produtos citados</span></div>
+          <div className="coc-kpi ok"><b>{kpi.ok}</b><span>legendas aprovadas</span></div>
+          <div className={`coc-kpi ${kpi.aj ? 'alert' : ''}`}><b>{kpi.aj}</b><span>com ajuste</span></div>
+          {kpi.guardadas > 0 && <div className="coc-kpi"><b>{kpi.guardadas}</b><span>guardadas · canal futuro</span></div>}
+        </div>
+      )}
 
       {/* ---------- filtros ---------- */}
       {!['prazos', 'central', 'aprovacao', 'materiais', 'comercial', 'final', 'estrategia'].includes(view) && (
