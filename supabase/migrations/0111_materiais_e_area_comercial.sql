@@ -36,6 +36,11 @@ create table if not exists public.content_materials (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- se uma rodada anterior criou a tabela incompleta, completa aqui
+alter table public.content_materials add column if not exists library_asset_id uuid;
+alter table public.content_materials add column if not exists created_by uuid references public.profiles (id) default auth.uid();
+alter table public.content_materials add column if not exists created_at timestamptz not null default now();
+alter table public.content_materials add column if not exists updated_at timestamptz not null default now();
 create index if not exists content_materials_product_idx on public.content_materials (product_id);
 create index if not exists content_materials_status_idx on public.content_materials (status);
 
