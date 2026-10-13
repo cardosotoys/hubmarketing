@@ -31,7 +31,7 @@ create table if not exists public.content_materials (
   announced boolean not null default false,   -- já virou aviso no WhatsApp
   released_by uuid references public.profiles (id),
   released_at timestamptz,
-  library_asset_id uuid references public.library_assets (id) on delete set null, -- quando o robô do Drive existir
+  library_asset_id uuid,   -- id do arquivo no espelho do Drive (a ligação com library_assets entra junto com a 0098)
   created_by uuid references public.profiles (id) default auth.uid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
