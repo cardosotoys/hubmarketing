@@ -64,3 +64,45 @@ export function effective(item: SocialPlanItem, matriz: SocialPlanItem | undefin
   if (item.link_kind === 'adapta' && !item.creative_changed) return { caption: item.caption, creative: matriz?.creative_url ?? null };
   return { caption: item.caption, creative: item.creative_url };
 }
+
+/* ---------- Fase 2: duas etapas de aprovação ----------
+ * Etapa 1 (pauta e legenda) = status. Etapa 2 (criativo final) = creative_status.
+ * Quem herda da matriz é resolvido no banco (0110); aqui só se decide quem tem botão. */
+export const ownGate1 = (x: SocialPlanItem) => x.link_kind !== 'reaproveita';
+export const ownGate2 = (x: SocialPlanItem) => x.link_kind === 'matriz' || (x.link_kind === 'adapta' && x.creative_changed);
+export const licBlocked = (t: { licensed: boolean; licensor_ok: boolean } | null | undefined) => !!t?.licensed && !t.licensor_ok;
+
+export type Tone = 'ok' | 'sky' | 'warn' | 'red' | '';
+export type PieceState = { label: string; tone: Tone; ready: boolean; done: boolean };
+
+export function pieceState(
+  x: SocialPlanItem, matriz: SocialPlanItem | undefined,
+  topic: { licensed: boolean; licensor_ok: boolean } | null | undefined, future: boolean,
+): PieceState {
+  const eff = effective(x, matriz);
+  const st = (label: string, tone: Tone, ready = false, done = false) => ({ label, tone, ready, done });
+  if (future) return st('Guardada · canal futuro', '');
+  if (x.stage === 'publicado') return st('Publicada', 'ok', true, true);
+  if (x.stage === 'agendado') return st('Agendada', 'sky', true, true);
+  if (x.status === 'ajuste') return st('Ajuste na legenda', 'red');
+  if (x.creative_status === 'ajuste') return st('Ajuste no criativo', 'red');
+  if (x.status === 'aprovada' && x.creative_status === 'aprovada')
+    return licBlocked(topic) ? st('Aguardando licenciador', 'warn') : st('Pronta para agendar', 'ok', true);
+  if (x.status === 'aprovada' && eff.creative) return st('Aguardando etapa 2', 'warn');
+  if (x.status === 'aprovada') return st('Em produção', '');
+  if (eff.caption) return st('Aguardando etapa 1', 'warn');
+  return st('Rascunho', '');
+}
+
+/** Filas de aprovação: só quem tem decisão própria naquela etapa. */
+export const inQueue1 = (x: SocialPlanItem) =>
+  ownGate1(x) && x.status === 'pendente' && !!x.caption?.trim() && x.stage !== 'agendado' && x.stage !== 'publicado';
+export const inQueue2 = (x: SocialPlanItem) =>
+  ownGate2(x) && x.status === 'aprovada' && !!x.creative_url && x.creative_status === 'pendente' && x.stage !== 'agendado' && x.stage !== 'publicado';
+
+/** Prévia de arquivo do Drive (não passa pelo Storage do Supabase). */
+export function driveThumb(url: string | null | undefined) {
+  if (!url) return null;
+  const m = url.match(/\/d\/([\w-]{10,})/) ?? url.match(/[?&]id=([\w-]{10,})/);
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : null;
+}

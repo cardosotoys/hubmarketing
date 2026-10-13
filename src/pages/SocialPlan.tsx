@@ -5,7 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialTopic } from '../types/database';
-import { KIND_LABEL, destLabel, effective, hhmm, slug } from './social-plan/shared';
+import { KIND_LABEL, destLabel, effective, hhmm, inQueue1, inQueue2, licBlocked, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
+import { decide, gateOwner, setStage } from './social-plan/actions';
+import ApprovalView from './social-plan/ApprovalView';
+import CentralView from './social-plan/CentralView';
 import { MonthView, WeekView } from './social-plan/CalendarViews';
 import AssuntosView from './social-plan/AssuntosView';
 import TopicSheet from './social-plan/TopicSheet';
@@ -52,7 +55,7 @@ const timeAgo = (iso: string) => {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type View = 'cal' | 'assuntos' | 'feed' | 'lista' | 'prazos';
+type View = 'central' | 'aprovacao' | 'cal' | 'assuntos' | 'feed' | 'lista' | 'prazos';
 type CalMode = 'semana' | 'mes';
 type Filters = {
   marca: Set<string>; rede: Set<string>; tipo: Set<string>; origem: Set<string>;
@@ -73,7 +76,7 @@ export default function SocialPlan() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [commentItemIds, setCommentItemIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<View>('cal');
+  const [view, setView] = useState<View>('central');
   const [calMode, setCalMode] = useState<CalMode>('semana');
   const [f, setF] = useState<Filters>(emptyFilters);
   const [selId, setSelId] = useState<string | null>(null);
@@ -96,7 +99,7 @@ export default function SocialPlan() {
     // antes da migration 0108 a coluna archived não existe: cai no modo antigo em vez de esvaziar a tela
     let itData = it.data as SocialPlanItem[] | null;
     if (it.error) itData = ((await supabase.from('social_plan_items').select('*').order('pub_date')).data as SocialPlanItem[]) ?? [];
-    setItems((itData ?? []).map((x) => ({ ...x, link_kind: x.link_kind ?? 'matriz' })));
+    setItems((itData ?? []).map((x) => ({ ...x, link_kind: x.link_kind ?? 'matriz', creative_status: x.creative_status ?? 'pendente' })));
     setTopics((tp.data as SocialTopic[]) ?? []);
     setChannels((ch.data as SocialChannel[]) ?? []);
     setMerged(new Map(((ar.data as { id: string; merged_into: string | null }[]) ?? []).filter((x) => x.merged_into).map((x) => [x.id, x.merged_into!])));
@@ -214,6 +217,8 @@ export default function SocialPlan() {
     [live, profile?.id],
   );
   const isPriv = profile?.role === 'diretoria' || profile?.role === 'administrador';
+  const canDecide = isPriv || (!!profile?.id && profile.id === approverId);
+  const filaN = useMemo(() => live.filter((x) => inQueue1(x) || inQueue2(x)).length, [live]);
   const approverName = profiles.find((p) => p.id === approverId)?.name ?? null;
 
   const setApprover = async (id: string) => {
@@ -284,14 +289,14 @@ export default function SocialPlan() {
           </div>
         )}
         <nav className="sp-views" role="tablist">
-          {([['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
-            <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}</button>
+          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
+            <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}{v === 'aprovacao' && filaN > 0 ? <span className="sp-tabcnt">{filaN}</span> : null}</button>
           ))}
         </nav>
       </header>
 
       {/* ---------- filtros ---------- */}
-      {view !== 'prazos' && (
+      {!['prazos', 'central', 'aprovacao'].includes(view) && (
         <div className="sp-filters">
           <div className="sp-frow">
             <FGroup label="Marca"><Chips vals={['Playmi', 'Tópi', 'Cardoso']} sel={f.marca} onClick={(v) => toggle('marca', v)} tone="marca" /></FGroup>
@@ -317,6 +322,14 @@ export default function SocialPlan() {
 
       <main className="sp-main">
         {flash && <div className="sp-saved" style={{ marginBottom: 12 }}>{flash}</div>}
+        {view === 'central' && (
+          <CentralView live={live} byTopic={byTopic} topicById={topicById} chans={chans} deadlines={deadlines} meId={profile?.id ?? null}
+            onOpen={openItem} onOpenTopic={openTopic} onGoApproval={() => setView('aprovacao')} onChanged={load} />
+        )}
+        {view === 'aprovacao' && (
+          <ApprovalView live={live} byTopic={byTopic} topicById={topicById} chans={chans} meId={profile?.id ?? null}
+            canDecide={canDecide} approverName={approverName} onOpen={openItem} onChanged={load} />
+        )}
         {view === 'cal' && (
           <>
             <div className="sp-calmode" role="tablist">
@@ -355,6 +368,7 @@ export default function SocialPlan() {
           profiles={profiles}
           approverId={approverId}
           approverName={approverName}
+          canDecide={canDecide}
           focusComments={params.get('focus') === 'comments'}
           onClose={closeSheet}
           onOpen={openItem}
@@ -507,7 +521,7 @@ function Vazio({ msg }: { msg?: string }) {
 }
 
 /* ================= painel do destino (aprovação + comentários) ================= */
-function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, approverName, focusComments, onClose, onOpen, onEditTopic, onChanged }: {
+function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, approverName, canDecide, focusComments, onClose, onOpen, onEditTopic, onChanged }: {
   item: SocialPlanItem;
   siblings: SocialPlanItem[];
   topic: SocialTopic | null;
@@ -516,6 +530,7 @@ function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, a
   profiles: Profile[];
   approverId: string | null;
   approverName: string | null;
+  canDecide: boolean;
   focusComments: boolean;
   onClose: () => void;
   onOpen: (id: string) => void;
@@ -570,13 +585,21 @@ function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, a
 
   const showFlash = (m: string) => { setFlash(m); setTimeout(() => setFlash((c) => (c === m ? '' : c)), 2200); };
 
-  // aprovar / pedir ajuste / voltar a pendente — decisão do aprovador encerra a espera
-  const setStatus = async (target: SocialPlanItem['status']) => {
-    const next = item.status === target ? 'pendente' : target;
-    const patch: Record<string, unknown> = { status: next, status_by: me?.id ?? null, status_at: new Date().toISOString() };
-    if (next === 'aprovada' || next === 'ajuste') patch.awaiting_review = false;
-    await supabase.from('social_plan_items').update(patch).eq('id', item.id);
-    showFlash(next === 'aprovada' ? 'aprovada' : next === 'ajuste' ? 'ajuste pedido' : 'voltou para pendente');
+  // decisão de uma etapa: vai para a peça dona dela (quem reaproveita decide na matriz)
+  const setGate = async (gate: 1 | 2, next: SocialPlanItem['status'], note?: string) => {
+    try {
+      await decide(gateOwner(item, gate, matriz), gate, next, me?.id ?? null, note);
+      showFlash(next === 'aprovada' ? `etapa ${gate} aprovada` : next === 'ajuste' ? 'ajuste pedido' : 'voltou para pendente');
+    } catch (e) { showFlash((e as Error).message); }
+    onChanged();
+  };
+  const toggleGate = (gate: 1 | 2, target: SocialPlanItem['status']) => {
+    const cur = gate === 1 ? item.status : item.creative_status;
+    setGate(gate, cur === target ? 'pendente' : target);
+  };
+  const state = pieceState(item, matriz, topic, false);
+  const markStage = async (s: SocialPlanItem['stage'], ok: string) => {
+    try { await setStage(item, s, me?.id ?? null); showFlash(ok); } catch (e) { showFlash((e as Error).message); }
     onChanged();
   };
 
@@ -606,7 +629,7 @@ function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, a
       item_id: item.id, author_id: me.id, body, kind, mentioned_ids: mentionIds, parent_id: replyTo?.id ?? null,
     });
     setText(''); setMentionIds([]); setReplyTo(null);
-    if (kind === 'adjust') await setStatus('ajuste');
+    if (kind === 'adjust' && ownGate1(item)) await setGate(1, 'ajuste');
     await loadComments();
     onChanged();
     showFlash(kind === 'adjust' ? 'ajuste registrado' : 'comentário enviado');
@@ -714,10 +737,38 @@ function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, a
             </div>
           )}
 
+          <p className="sp-statenow">Situação: <span className={`sp-state t-${state.tone}`}>{state.label}</span></p>
+          {([1, 2] as const).map((g) => {
+            const cur = g === 1 ? item.status : item.creative_status;
+            const own = g === 1 ? ownGate1(item) : ownGate2(item);
+            const lbl = cur === 'aprovada' ? 'aprovada' : cur === 'ajuste' ? 'com ajuste' : 'pendente';
+            const semCriativo = g === 2 && !effective(item, matriz).creative;
+            return (
+              <div className="sp-gaterow" key={g}>
+                <div><b>Etapa {g} · {g === 1 ? 'Pauta e legenda' : 'Criativo final'}</b> <span className={`sp-gst g-${cur}`}>{lbl}</span>
+                  {!own && <span className="sp-inherit"> · segue a matriz{matriz ? <> (<button className="sp-linkbtn" onClick={() => onOpen(matriz.id)}>abrir</button>)</> : null}</span>}</div>
+                {own && canDecide && (
+                  <div className="sp-abtns">
+                    <button className="sp-abtn ok" aria-pressed={cur === 'aprovada'} disabled={semCriativo || (g === 2 && item.status !== 'aprovada')}
+                      title={semCriativo ? 'Falta o link do criativo' : g === 2 && item.status !== 'aprovada' ? 'Aprove a etapa 1 antes' : ''}
+                      onClick={() => toggleGate(g, 'aprovada')}>Aprovar</button>
+                    <button className="sp-abtn aj" aria-pressed={cur === 'ajuste'} onClick={() => toggleGate(g, 'ajuste')}>Pedir ajuste</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {topic?.licensed && <p className="sp-inherit">Licenciado · {licBlocked(topic) ? 'falta marcar “aprovado pelo licenciador” no assunto, e sem isso não agenda' : 'aprovado pelo licenciador'}</p>}
           <div className="sp-abtns" style={{ marginTop: 10 }}>
-            <button className="sp-abtn ok" aria-pressed={item.status === 'aprovada'} onClick={() => setStatus('aprovada')}>Aprovar</button>
-            <button className="sp-abtn aj" aria-pressed={item.status === 'ajuste'} onClick={() => setStatus('ajuste')}>Pedir ajuste</button>
-            {item.status !== 'pendente' && <button className="sp-abtn zero" onClick={() => setStatus('pendente')}>voltar para pendente</button>}
+            {item.stage === 'agendado' ? <>
+              <button className="sp-abtn ok" onClick={() => markStage('publicado', 'marcada como publicada')}>Marcar publicada</button>
+              <button className="sp-abtn zero" onClick={() => markStage('producao', 'saiu do agendamento')}>desfazer agendamento</button>
+            </> : item.stage === 'publicado' ? (
+              <button className="sp-abtn zero" onClick={() => markStage('agendado', 'voltou para agendada')}>desfazer publicação</button>
+            ) : (
+              <button className="sp-abtn" disabled={!state.ready} title={state.ready ? '' : 'Só agenda depois das duas etapas (e do licenciador, se for o caso)'}
+                onClick={() => markStage('agendado', 'marcada como agendada')}>Marcar agendada</button>
+            )}
           </div>
           {flash && <div className="sp-saved">{flash}</div>}
         </div>

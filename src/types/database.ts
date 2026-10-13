@@ -870,6 +870,12 @@ export interface SocialPlanItem {
   mirror_facebook: boolean;
   archived: boolean;
   merged_into: string | null;
+  // Fase 2 (0110): etapa 2 = criativo final; status (acima) = etapa 1, pauta e legenda
+  creative_status: 'pendente' | 'aprovada' | 'ajuste';
+  creative_by: string | null;
+  creative_at: string | null;
+  stage_by: string | null;
+  stage_at: string | null;
 }
 
 export interface SocialChannel {
