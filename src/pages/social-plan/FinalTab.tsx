@@ -1,71 +1,57 @@
-import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import FinalBoard from './FinalBoard';
-import { useFinalData } from './useFinalData';
-import { brShort, todayISO, ymOf } from './shared';
+import { useMemo, useState } from 'react';
+import { useThumbs } from '../../lib/thumbs';
+import type { CommercialBanner, ContentMaterial, SocialPlanItem, SocialTopic } from '../../types/database';
+import FinalBoard, { type FinalData, type FinalPiece } from './FinalBoard';
+import { effective, pieceState, todayISO, ymOf, type ChannelMap } from './shared';
+import type { ProductLite } from './useCommercial';
 
-type Link = { token: string; label: string; active: boolean; created_at: string; last_seen_at: string | null; views: number };
-
-/* Aba Visão final dentro do Hub: os links sem login (criar, copiar, desativar) e a prévia do que eles mostram. */
-export default function FinalTab({ canManage }: { canManage: boolean }) {
-  const [links, setLinks] = useState<Link[]>([]);
-  const [label, setLabel] = useState('');
-  const [msg, setMsg] = useState('');
+/* Aba Visão final: o resultado, sem o andamento, montado direto do que o Hub já tem.
+ * Entra só peça pronta (duas etapas e licenciador), banner liberado e material liberado. */
+export default function FinalTab({ live, byTopic, topicById, chans, banners, materials, products }: {
+  live: SocialPlanItem[];
+  byTopic: Map<string, SocialPlanItem[]>;
+  topicById: Map<string, SocialTopic>;
+  chans: ChannelMap;
+  banners: CommercialBanner[];
+  materials: ContentMaterial[];
+  products: ProductLite[];
+}) {
   const [month, setMonth] = useState(() => ymOf(todayISO()));
-  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg((c) => (c === m ? '' : c)), 3000); };
-  const load = useCallback(async () => {
-    const { data } = await supabase.from('final_view_links').select('*').order('created_at', { ascending: false });
-    setLinks((data as Link[]) ?? []);
-  }, []);
-  useEffect(() => { if (canManage) load(); }, [canManage, load]);
-  const active = links.find((l) => l.active);
-  const { data, state } = useFinalData(active?.token ?? '', month);
-  const url = (t: string) => `${window.location.origin}/visao-final?t=${t}`;
+  const thumb = useThumbs();
+  const data = useMemo<FinalData>(() => {
+    const pieces: FinalPiece[] = [];
+    live.forEach((x) => {
+      const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+      if (!ch || ch.future) return;
+      const sibs = x.topic_id ? byTopic.get(x.topic_id) ?? [] : [];
+      const matriz = sibs.find((s) => s.link_kind === 'matriz');
+      const topic = x.topic_id ? topicById.get(x.topic_id) ?? null : null;
+      if (!pieceState(x, matriz, topic, false).ready) return;
+      const eff = effective(x, matriz);
+      pieces.push({
+        id: x.id, date: x.pub_date, time: x.pub_time ? x.pub_time.slice(0, 5) : null, brand: x.brand, account: ch.account,
+        channel: ch.name, network: ch.network, format: ch.formats.length ? x.piece_type : '', mirror_facebook: x.mirror_facebook,
+        kind: x.link_kind, title: topic?.title || x.pauta, product: x.product, caption: eff.caption, creative: eff.creative, stage: x.stage,
+        grid: x.piece_type === 'Reels' ? 'reels' : /carross/i.test(x.format) ? 'carrossel' : 'post',
+      });
+    });
+    pieces.sort((a, b) => (a.date + (a.time ?? '')).localeCompare(b.date + (b.time ?? '')));
+    const prod = new Map(products.map((p) => [p.id, p]));
+    return {
+      ok: true, today: todayISO(), from: `${month}-01`, to: `${month}-31`, pieces,
+      banners: banners.filter((b) => b.released),
+      materials: materials.filter((m) => m.status === 'liberado').map((m) => {
+        const p = m.product_id ? prod.get(m.product_id) : undefined;
+        return { id: m.id, kind: m.kind, name: m.name, drive_url: m.drive_url, product_code: p?.code ?? null, product_name: p?.name ?? null,
+          subject: m.subject, brand: p?.brand ?? m.brand, image: p?.image_url ? thumb(p.image_url) : '' };
+      }),
+    };
+  }, [live, byTopic, topicById, chans, banners, materials, products, month, thumb]);
 
-  const create = async () => {
-    const { error } = await supabase.from('final_view_links').insert({ label: label.trim() || 'Link da visão final' });
-    if (error) { flash(error.message); return; }
-    setLabel(''); flash('Link criado.'); await load();
-  };
-  const copy = async (t: string) => {
-    try { await navigator.clipboard.writeText(url(t)); flash('Link copiado. É só colar no WhatsApp ou no e-mail.'); } catch { flash(url(t)); }
-  };
-  const setActive = async (t: string, on: boolean) => {
-    const { error } = await supabase.from('final_view_links').update({ active: on }).eq('token', t);
-    if (error) flash(error.message); else { flash(on ? 'Link reativado.' : 'Link desativado: quem tiver ele não abre mais.'); await load(); }
-  };
-
-  if (!canManage) {
-    return <div className="sp-empty"><b>Os links da visão final ficam com o gerente</b>Só o aprovador ou a diretoria criam e enviam o link sem login. Para ver o cenário interno, use a Visão 2 da Área comercial e a Prévia do feed.</div>;
-  }
   return (
     <>
-      <section className="sp-box">
-        <h3>Links sem login <small>quem abre vê só o que está pronto: redes, calendário e área comercial</small></h3>
-        <div className="sp-linkfor" style={{ marginBottom: 8 }}>
-          <input id="fv-label" placeholder="Para quem é o link? Ex.: Diretoria, Representantes" value={label} onChange={(e) => setLabel(e.target.value)} />
-          <button className="sp-ebtn prim" onClick={create}>Criar link</button>
-        </div>
-        {links.length ? links.map((l) => (
-          <div className="sp-crow" key={l.token}>
-            <div className="sp-cmain static">
-              <b>{l.label || 'Link da visão final'}</b>
-              <span>Criado em {brShort(l.created_at.slice(0, 10))} · {l.views} visita{l.views === 1 ? '' : 's'}{l.last_seen_at ? ` · última em ${brShort(l.last_seen_at.slice(0, 10))}` : ''}</span>
-            </div>
-            <span className={`sp-state t-${l.active ? 'ok' : ''}`}>{l.active ? 'Ativo' : 'Desativado'}</span>
-            <div className="sp-cacts">
-              {l.active && <button className="sp-ebtn" onClick={() => copy(l.token)}>Copiar link</button>}
-              {l.active && <a className="sp-ebtn" href={url(l.token)} target="_blank" rel="noreferrer">Abrir</a>}
-              <button className="sp-ebtn" onClick={() => setActive(l.token, !l.active)}>{l.active ? 'Desativar' : 'Reativar'}</button>
-            </div>
-          </div>
-        )) : <p className="sp-calhint">Nenhum link ainda. Crie o primeiro acima.</p>}
-        {msg && <div className="sp-saved">{msg}</div>}
-      </section>
-      <h4 className="sp-sech">Prévia: o que o link mostra</h4>
-      {!active ? <p className="sp-calhint">Crie um link para ver a prévia.</p>
-        : state === 'ok' && data ? <FinalBoard data={data} month={month} onMonth={setMonth} />
-        : <p className="sp-calhint">{state === 'loading' ? 'Carregando…' : 'Não foi possível ler a visão final. A migration 0112 já rodou?'}</p>}
+      <p className="sp-calhint" style={{ marginTop: 0 }}>O resultado, sem o meio: só o que passou pelas duas etapas (e pelo licenciador), os banners e os materiais liberados.</p>
+      <FinalBoard data={data} month={month} onMonth={setMonth} />
     </>
   );
 }

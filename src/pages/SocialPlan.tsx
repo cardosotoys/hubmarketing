@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialTopic } from '../types/database';
-import { KIND_LABEL, destLabel, effective, hhmm, inQueue1, inQueue2, licBlocked, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
+import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, licBlocked, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
 import CentralView from './social-plan/CentralView';
@@ -13,6 +13,7 @@ import MateriaisView from './social-plan/MateriaisView';
 import ComercialView from './social-plan/ComercialView';
 import { useCommercial } from './social-plan/useCommercial';
 import FinalTab from './social-plan/FinalTab';
+import NetworkPreview from './social-plan/NetworkPreview';
 import StrategyView from './social-plan/StrategyView';
 import { MonthView, WeekView } from './social-plan/CalendarViews';
 import AssuntosView from './social-plan/AssuntosView';
@@ -25,28 +26,6 @@ import TopicSheet from './social-plan/TopicSheet';
  * Aprovação/ajuste, comentários em thread com menção e notificação
  * que abre direto na peça continuam por destino.
  * ------------------------------------------------------------------ */
-
-// cores dos guias de marca (idênticas ao documento)
-const COR_LINHA: Record<string, string> = {
-  'Play & Drive': '#2163C4', 'Play & Imagine': '#ED6199', 'Play & Ride': '#70BD8F',
-  'Play & Learn': '#BF91D1', 'Play & Collect': '#E87821', 'Play & Molto': '#00B2C7',
-  'Veículos': '#EA5C18', 'Faz de conta · Chef': '#F3D22A', 'Faz de conta · Festa': '#ED6199',
-  'Didáticos': '#2EBADA', 'Carrinhos de boneca': '#EA5C18', 'Blocos': '#2EBADA',
-  'Primeira infância e musicais': '#F3D22A', 'Praia e verão': '#2EBADA', 'Jogos e ar livre': '#EA5C18',
-  'Baús e organização': '#F3D22A',
-};
-const COR_DATA: Record<string, string> = {
-  'Dia das Crianças': '#DA3A2F', 'Black Friday': '#0E3041', 'Natal': '#70BD8F',
-  'Volta às aulas': '#00B2C7', 'Reposição de temporada': '#E87821',
-};
-const COR_CARDOSO = '#0A2530';
-function corTema(t: string) {
-  const nome = t.includes(' · ') ? t.split(' · ').slice(1).join(' · ') : t;
-  for (const k in COR_DATA) if (nome.startsWith(k)) return COR_DATA[k];
-  if (nome.startsWith('Play & Collect')) return COR_LINHA['Play & Collect'];
-  if (COR_LINHA[nome]) return COR_LINHA[nome];
-  return COR_CARDOSO;
-}
 
 const stMark = (s: SocialPlanItem['status']) => (s === 'aprovada' ? 'ok' : s === 'ajuste' ? 'aj' : '');
 const brFmt = (iso: string) => iso.split('-').reverse().join('/');
@@ -90,7 +69,7 @@ export default function SocialPlan() {
   const [reviewOnly, setReviewOnly] = useState(false);
   const [flash, setFlash] = useState('');
   const [moreF, setMoreF] = useState(false);
-  const com = useCommercial(view === 'materiais' || view === 'comercial');
+  const com = useCommercial(view === 'materiais' || view === 'comercial' || view === 'final');
 
   const load = useCallback(async () => {
     const [it, tp, ch, ar, dl, pf, cm, st] = await Promise.all([
@@ -286,7 +265,7 @@ export default function SocialPlan() {
           </div>
         </div>
         <nav className="coc-tabs" role="tablist">
-          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['materiais', 'Banco de materiais'], ['comercial', 'Área comercial'], ['final', 'Visão final'], ['estrategia', 'Estratégia e cronograma'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
+          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['materiais', 'Banco de materiais'], ['comercial', 'Área comercial'], ['final', 'Visão final'], ['estrategia', 'Estratégia e cronograma'], ['feed', 'Prévia por rede'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}{v === 'aprovacao' && filaN > 0 ? <span className="coc-cnt">{filaN}</span> : null}</button>
           ))}
         </nav>
@@ -348,7 +327,9 @@ export default function SocialPlan() {
           ? <ComercialView materials={com.materials} banners={com.banners} board={com.board} products={com.products} profiles={profiles}
               deadlines={deadlines} canRelease={canDecide} error={com.error} onChanged={com.reload} />
           : <Loading />)}
-        {view === 'final' && <FinalTab canManage={canDecide} />}
+        {view === 'final' && (com.loaded
+          ? <FinalTab live={live} byTopic={byTopic} topicById={topicById} chans={chans} banners={com.banners} materials={com.materials} products={com.products} />
+          : <Loading />)}
         {view === 'estrategia' && (
           <StrategyView live={live} byTopic={byTopic} topicById={topicById} deadlines={deadlines} canMark={canDecide} isPriv={isPriv}
             meId={profile?.id ?? null} onChanged={load} />
@@ -368,7 +349,7 @@ export default function SocialPlan() {
           <AssuntosView topics={shownTopics} byTopic={byTopic} chans={chans} selectedId={topicSheet?.id ?? null} onSelect={openTopic}
             editor={topicSheet ? topicEditor(true) : null} />
         )}
-        {view === 'feed' && <FeedView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
+        {view === 'feed' && <NetworkPreview items={previewItems(rows, byTopic, topicById, chans)} onOpen={openItem} />}
         {view === 'lista' && <ListView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'prazos' && <PrazosView deadlines={deadlines} />}
 
@@ -418,44 +399,6 @@ function Chips({ vals, sel, onClick, tone }: { vals: string[]; sel: Set<string>;
       {vals.map((v) => (
         <button key={v} className="sp-chip" data-v={v} data-tone={tone} aria-pressed={sel.has(v)} onClick={() => onClick(v)}>{v}</button>
       ))}
-    </div>
-  );
-}
-
-/* ---------------- prévia do feed ---------------- */
-function FeedView({ rows, onOpen, hasComment }: { rows: SocialPlanItem[]; onOpen: (id: string) => void; hasComment: Set<string> }) {
-  const feed = rows.filter((x) => (x.piece_type === 'Reels' || x.piece_type === 'Feed') && x.origin === 'Original' && x.network === 'Instagram');
-  if (!feed.length) return <Vazio msg="Nenhum post de feed com esses filtros. A prévia mostra apenas criativos originais publicados no Instagram." />;
-  return (
-    <div className="sp-feedwrap">
-      {['Playmi', 'Tópi', 'Cardoso'].map((marca) => {
-        const its = feed.filter((x) => x.brand === marca).sort((a, b) => a.pub_date.localeCompare(b.pub_date));
-        if (!its.length) return null;
-        const nodes: React.ReactNode[] = [];
-        let temaAtual: string | null = null;
-        its.forEach((x) => {
-          if (x.week_theme !== temaAtual) {
-            temaAtual = x.week_theme;
-            nodes.push(<div key={`rl${x.id}`} className="sp-rowlabel"><i style={{ background: corTema(x.week_theme) }} />{x.week_theme}</div>);
-          }
-          const c = corTema(x.week_theme);
-          const s = stMark(x.status);
-          nodes.push(
-            <div key={x.id} className={`sp-cellf ${s ? 'st-' + s : ''}`} style={{ background: `${c}14`, borderTop: `3px solid ${c}` }} onClick={() => onOpen(x.id)}>
-              <div className="tag" style={{ color: c }}>{x.format}{hasComment.has(x.id) ? ' · ✎' : ''}</div>
-              <div className="nm">{x.product}</div>
-              <div className="dt">{x.pub_date.slice(8, 10)}/{x.pub_date.slice(5, 7)}{s ? <span className="mk" style={{ color: s === 'ok' ? '#2E9E6B' : '#B07C2B' }}> {s === 'ok' ? '✓' : '!'}</span> : null}</div>
-            </div>,
-          );
-        });
-        return (
-          <div className="sp-feedcol" key={marca}>
-            <h3>{marca}</h3>
-            <p className="note">{its.length} posts de feed no Instagram · cada fileira é uma semana</p>
-            <div className="sp-fgrid">{nodes}</div>
-          </div>
-        );
-      })}
     </div>
   );
 }

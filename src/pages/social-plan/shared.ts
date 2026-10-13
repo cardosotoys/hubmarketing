@@ -106,3 +106,57 @@ export function driveThumb(url: string | null | undefined) {
   const m = url.match(/\/d\/([\w-]{10,})/) ?? url.match(/[?&]id=([\w-]{10,})/);
   return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : null;
 }
+
+/** Peças que entram no grid do Instagram (feed e Reels; Stories não aparecem no perfil). */
+export function feedTiles(
+  items: SocialPlanItem[], byTopic: Map<string, SocialPlanItem[]>,
+  topicById: Map<string, { title: string; licensed: boolean; licensor_ok: boolean }>, chans: ChannelMap,
+) {
+  return items
+    .filter((x) => {
+      const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+      return ch && ch.network === 'Instagram' && !ch.future && x.piece_type !== 'Stories';
+    })
+    .map((x) => {
+      const sibs = x.topic_id ? byTopic.get(x.topic_id) ?? [] : [];
+      const matriz = sibs.find((s) => s.link_kind === 'matriz');
+      const topic = x.topic_id ? topicById.get(x.topic_id) : undefined;
+      const st = pieceState(x, matriz, topic, false);
+      const eff = effective(x, matriz);
+      const kind: 'reels' | 'carrossel' | 'post' = x.piece_type === 'Reels' ? 'reels' : /carross/i.test(x.format) ? 'carrossel' : 'post';
+      return {
+        id: x.id, date: x.pub_date, time: x.pub_time ? x.pub_time.slice(0, 5) : null, account: chans.get(x.channel_id!)!.account,
+        kind, product: x.product, title: topic?.title || x.pauta, caption: eff.caption, creative: eff.creative,
+        ready: st.ready, status: st.label,
+      };
+    });
+}
+
+/** Tudo o que a prévia por rede precisa de cada destino (já com legenda e criativo efetivos). */
+export type PreviewItem = {
+  id: string; date: string; time: string | null; brand: string; account: string; channel: string; network: string;
+  format: string; mirror: boolean; product: string; title: string; caption: string | null; creative: string | null;
+  cta: string; ready: boolean; status: string; grid: 'reels' | 'carrossel' | 'post';
+};
+export function previewItems(
+  items: SocialPlanItem[], byTopic: Map<string, SocialPlanItem[]>,
+  topicById: Map<string, { title: string; licensed: boolean; licensor_ok: boolean }>, chans: ChannelMap,
+): PreviewItem[] {
+  const out: PreviewItem[] = [];
+  items.forEach((x) => {
+    const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+    if (!ch || ch.future) return;
+    const sibs = x.topic_id ? byTopic.get(x.topic_id) ?? [] : [];
+    const matriz = sibs.find((s) => s.link_kind === 'matriz');
+    const topic = x.topic_id ? topicById.get(x.topic_id) : undefined;
+    const st = pieceState(x, matriz, topic, false);
+    const eff = effective(x, matriz);
+    out.push({
+      id: x.id, date: x.pub_date, time: x.pub_time ? x.pub_time.slice(0, 5) : null, brand: x.brand, account: ch.account,
+      channel: ch.name, network: ch.network, format: ch.formats.length ? x.piece_type : '', mirror: x.mirror_facebook,
+      product: x.product, title: topic?.title || x.pauta, caption: eff.caption, creative: eff.creative, cta: x.cta,
+      ready: st.ready, status: st.label, grid: x.piece_type === 'Reels' ? 'reels' : /carross/i.test(x.format) ? 'carrossel' : 'post',
+    });
+  });
+  return out;
+}

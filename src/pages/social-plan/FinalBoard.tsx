@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { CommercialBanner } from '../../types/database';
 import { BannerArt } from './ComercialView';
-import { addDays, addMonths, brShort, dowIndex, driveThumb, monthName, parseYmd, slug } from './shared';
+import NetworkPreview from './NetworkPreview';
+import { addDays, addMonths, brShort, dowIndex, driveThumb, monthName, parseYmd, slug, type PreviewItem } from './shared';
 
 /* O cenário final, igual para o link sem login e para a prévia dentro do Hub.
  * Recebe só o que a função final_view (0112) devolve: nada de andamento, ajuste ou comentário. */
@@ -10,6 +11,7 @@ export type FinalPiece = {
   id: string; date: string; time: string | null; brand: string; account: string; channel: string; network: string;
   format: string; mirror_facebook: boolean; kind: string; title: string; product: string;
   caption: string | null; creative: string | null; stage: string;
+  grid?: 'reels' | 'carrossel' | 'post';   // como aparece no grid do Instagram
 };
 export type FinalMaterial = {
   id: string; kind: 'foto' | 'video' | 'kit' | 'documento'; name: string; drive_url: string;
@@ -35,7 +37,7 @@ export default function FinalBoard({ data, month, onMonth }: { data: FinalData; 
           <button role="tab" aria-selected={sec === 'cal'} onClick={() => setSec('cal')}>Calendário</button>
           <button role="tab" aria-selected={sec === 'comercial'} onClick={() => setSec('comercial')}>Área comercial</button>
         </div>
-        {sec !== 'comercial' && (
+        {sec === 'cal' && (
           <div className="sp-calnav">
             <button className="sp-ebtn" onClick={() => onMonth(addMonths(month, -1))}>‹</button>
             <b className="sp-final-month">{monthName(month)}</b>
@@ -69,21 +71,12 @@ function Tile({ p }: { p: FinalPiece }) {
 }
 
 function Redes({ pieces }: { pieces: FinalPiece[] }) {
-  if (!pieces.length) return <div className="sp-pt-empty">Nenhuma peça pronta neste mês ainda.</div>;
-  return (
-    <>
-      {(['Cardoso', 'Playmi', 'Tópi'] as const).map((acc) => {
-        const ps = pieces.filter((p) => p.account === acc);
-        if (!ps.length) return null;
-        return (
-          <section className="sp-box" key={acc} style={{ marginTop: 12 }}>
-            <h3><span><span className={`sp-dot b-${slug(acc)}`} /> {acc}</span><small>{ps.length} peça{ps.length === 1 ? '' : 's'} pronta{ps.length === 1 ? '' : 's'}</small></h3>
-            <div className="sp-fgrid2">{ps.map((p) => <Tile key={p.id} p={p} />)}</div>
-          </section>
-        );
-      })}
-    </>
-  );
+  const items: PreviewItem[] = pieces.map((p) => ({
+    id: p.id, date: p.date, time: p.time, brand: p.brand, account: p.account, channel: p.channel, network: p.network,
+    format: p.format, mirror: p.mirror_facebook, product: p.product, title: p.title, caption: p.caption, creative: p.creative,
+    cta: '', ready: true, status: stageLabel(p.stage), grid: p.grid ?? (p.format === 'Reels' ? 'reels' : 'post'),
+  }));
+  return <NetworkPreview items={items} readyToggle={false} />;
 }
 
 function Mes({ pieces, month, today }: { pieces: FinalPiece[]; month: string; today: string }) {
