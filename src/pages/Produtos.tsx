@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
+import { ensureThumb, thumbStatus, useThumbs } from '../lib/thumbs';
 import { normalizeUrl } from '../lib/url';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
@@ -161,11 +162,13 @@ export default function Produtos() {
    * evita mostrar um botão que ia dar erro. */
   const canEdit =
     profile?.role === 'diretoria' || profile?.role === 'administrador' || profile?.can_edit_products === true;
+  const thumb = useThumbs();
 
   return (
     <div className="page">
       <h1 className="page-title">Banco de Produtos</h1>
       <div className="page-sub">Catálogo central — Cardoso, Playmi, Tópi e linhas licenciadas. Clique numa linha para editar.</div>
+      {canEdit && <ThumbsTool />}
 
       {reviewCount > 0 && (
         <div className="banner soon">
@@ -284,7 +287,7 @@ export default function Produtos() {
                   onClick={() => canEdit && setEditing(p)}
                   onMouseEnter={(e) =>
                     (p.image_url || p.packaging_image_url) &&
-                    setPreview({ url: p.image_url, packaging: p.packaging_image_url, code: p.code, name: p.name, x: e.clientX, y: e.clientY })
+                    setPreview({ url: thumb(p.image_url), packaging: thumb(p.packaging_image_url), code: p.code, name: p.name, x: e.clientX, y: e.clientY })
                   }
                   onMouseMove={(e) => setPreview((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
                   onMouseLeave={() => setPreview(null)}
@@ -295,8 +298,8 @@ export default function Produtos() {
                   </td>
                   <td data-label="Produto">
                     {p.image_url && (
-                      <img
-                        src={p.image_url}
+                      <img loading="lazy" decoding="async"
+                        src={thumb(p.image_url)}
                         alt=""
                         style={{ width: 26, height: 26, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginRight: 8, border: '1px solid var(--border)' }}
                       />
@@ -433,7 +436,7 @@ export default function Produtos() {
               .filter((i) => i.url)
               .map((i) => (
                 <figure key={i.cap} style={{ margin: 0, flex: 1 }}>
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={i.url}
                     alt={i.cap}
                     style={{ width: '100%', height: 150, objectFit: 'contain', background: 'var(--surface-2)', borderRadius: 6, border: '1px solid var(--border)' }}
@@ -543,6 +546,8 @@ function ProductFormModal({
       return;
     }
     const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+    // miniatura sai do próprio arquivo escolhido, sem baixar a original de volta
+    ensureThumb(data.publicUrl, file).catch(() => {});
     if (which === 'product') setImageUrl(data.publicUrl);
     else setPackagingImageUrl(data.publicUrl);
     setUploading(null);
@@ -962,6 +967,7 @@ function ImageUploadField({
   onPick: (file: File) => void;
   onClear: () => void;
 }) {
+  const thumb = useThumbs();
   return (
     <div className="form-field" style={{ flex: 1 }}>
       <label>{label}</label>
@@ -982,7 +988,7 @@ function ImageUploadField({
         >
           {url ? (
             <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
-              <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={thumb(url)} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </a>
           ) : (
             <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>Sem imagem</span>
@@ -1015,6 +1021,61 @@ function ImageUploadField({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Gera as miniaturas que faltam (uma vez por foto). Baixa cada original uma única vez,
+ * reduz no navegador e guarda em product-images/thumbs/. Daí em diante as listas usam a leve. */
+function ThumbsTool() {
+  const [missing, setMissing] = useState<string[] | null>(null);
+  const [run, setRun] = useState<{ done: number; fail: number; total: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const count = useCallback(async () => {
+    const urls: string[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from('products').select('image_url, packaging_image_url').range(from, from + 999);
+      const rows = (data as { image_url: string; packaging_image_url: string }[]) ?? [];
+      rows.forEach((r) => { if (r.image_url) urls.push(r.image_url); if (r.packaging_image_url) urls.push(r.packaging_image_url); });
+      if (rows.length < 1000) break;
+    }
+    setMissing(await thumbStatus([...new Set(urls)]));
+  }, []);
+  useEffect(() => { count(); }, [count]);
+
+  const start = async () => {
+    if (!missing?.length) return;
+    setBusy(true);
+    const st = { done: 0, fail: 0, total: missing.length };
+    setRun({ ...st });
+    for (const u of missing) {
+      try { await ensureThumb(u); st.done++; } catch { st.fail++; }
+      setRun({ ...st });
+    }
+    setBusy(false);
+    await count();
+  };
+
+  if (!missing || (!missing.length && !run)) return null;
+  return (
+    <div className="banner soon" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <span className="ic">◐</span>
+      {run ? (
+        <span>
+          {busy ? 'Gerando miniaturas…' : 'Miniaturas geradas.'} <b>{run.done}</b> de {run.total}
+          {run.fail ? ` · ${run.fail} não abriram (foto fora do Hub ou apagada)` : ''}
+          {busy ? ' · deixe esta aba aberta' : ''}
+        </span>
+      ) : (
+        <span>
+          <b>{missing.length}</b> fotos ainda sem miniatura. As listas baixam a foto original inteira para mostrar um quadrinho,
+          e isso estoura a cota do Supabase. Gere uma vez e as listas passam a usar a versão leve.
+        </span>
+      )}
+      {!busy && missing.length > 0 && (
+        <button className="btn btn-primary" onClick={start}>Gerar {missing.length} miniaturas</button>
+      )}
     </div>
   );
 }

@@ -85,7 +85,7 @@ export default function CampaignCriativos() {
               {c.file_url && (c.file_path.match(/\.(mp4|mov|webm)$/i) ? (
                 <video src={c.file_url} controls style={{ width: '100%', borderRadius: 8, marginBottom: 8 }} />
               ) : (
-                <img src={c.file_url} alt={c.name} style={{ width: '100%', borderRadius: 8, marginBottom: 8, objectFit: 'cover', maxHeight: 160 }} />
+                <img loading="lazy" decoding="async" src={c.file_url} alt={c.name} style={{ width: '100%', borderRadius: 8, marginBottom: 8, objectFit: 'cover', maxHeight: 160 }} />
               ))}
               <h4>
                 {c.name} <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>v{c.version}</span>

@@ -329,7 +329,7 @@ function AssetThumb({ url, name, size }: { url: string; name: string; size: numb
   if (isImageUrl(url)) {
     return (
       <a href={url} target="_blank" rel="noreferrer" title={`${name} — abrir`}>
-        <img src={url} alt={name} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+        <img loading="lazy" decoding="async" src={url} alt={name} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
       </a>
     );
   }

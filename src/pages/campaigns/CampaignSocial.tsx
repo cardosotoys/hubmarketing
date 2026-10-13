@@ -73,7 +73,7 @@ export default function CampaignSocial() {
               {p.media_type === 'video' ? (
                 <video src={p.media_url} controls style={{ width: '100%', borderRadius: 8, marginBottom: 8 }} />
               ) : (
-                <img src={p.media_url} alt="" style={{ width: '100%', borderRadius: 8, marginBottom: 8, maxHeight: 160, objectFit: 'cover' }} />
+                <img loading="lazy" decoding="async" src={p.media_url} alt="" style={{ width: '100%', borderRadius: 8, marginBottom: 8, maxHeight: 160, objectFit: 'cover' }} />
               )}
               <p>{p.caption || '(sem legenda)'}</p>
               <span className="tag" style={{ background: 'var(--surface-2)', color: STATUS_COLOR[p.status] }}>

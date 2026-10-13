@@ -116,7 +116,7 @@ export default function RedesSociais() {
               {p.media_type === 'video' ? (
                 <video src={p.media_url} controls style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
               ) : (
-                <img src={p.media_url} alt={p.caption} style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                <img loading="lazy" decoding="async" src={p.media_url} alt={p.caption} style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
               )}
               <div style={{ padding: 15 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>

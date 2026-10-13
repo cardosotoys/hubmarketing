@@ -7,6 +7,7 @@ import { logActivity } from '../lib/activityLog';
 import { normalizeUrl } from '../lib/url';
 import { materializeSubsteps, recomputeSubstepDueDates } from '../lib/substeps';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
+import { ensureThumb, useThumbs } from '../lib/thumbs';
 import {
   APPROVAL_STATE_LABELS,
   PRIORITIES,
@@ -59,6 +60,7 @@ export default function TaskEditModal({
   // opcional: transforma os itens do "checklist livre" em demandas individuais (usado no módulo Marcas)
   onSpawnDemandas?: (labels: string[]) => void | Promise<void>;
 }) {
+  const thumb = useThumbs();
   const commentsRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(task.title);
@@ -391,6 +393,7 @@ export default function TaskEditModal({
       return;
     }
     const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+    ensureThumb(data.publicUrl, file).catch(() => {});
     const { error: dbErr } = await supabase.from('products').update({ packaging_image_url: data.publicUrl }).eq('id', sel.id);
     if (dbErr) {
       setMockupMsg(dbErr.message);
@@ -676,10 +679,10 @@ export default function TaskEditModal({
           // Dentro do módulo de embalagem só mostra o PRODUTO (a embalagem é o que se está criando,
           // e entra pelo upload de mockup abaixo). Fora dele, mostra produto + embalagem.
           const imgs = task.packaging_track
-            ? [{ url: sel.image_url, cap: '📦 Produto' }]
+            ? [{ url: thumb(sel.image_url), cap: '📦 Produto' }]
             : [
-                { url: sel.image_url, cap: '📦 Produto' },
-                { url: sel.packaging_image_url, cap: '🎁 Embalagem' },
+                { url: thumb(sel.image_url), cap: '📦 Produto' },
+                { url: thumb(sel.packaging_image_url), cap: '🎁 Embalagem' },
               ];
           const hasAny = imgs.some((i) => i.url);
           return (
@@ -700,7 +703,7 @@ export default function TaskEditModal({
                         style={{ textDecoration: 'none', color: 'var(--text-faint)' }}
                         title="Abrir imagem"
                       >
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={i.url}
                           alt={i.cap}
                           style={{
@@ -780,7 +783,7 @@ export default function TaskEditModal({
                     }}
                   >
                     {current ? (
-                      <img src={current} alt="Mockup" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img loading="lazy" decoding="async" src={thumb(current)} alt="Mockup" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     ) : (
                       <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>Sem mockup</span>
                     )}
@@ -1013,7 +1016,7 @@ export default function TaskEditModal({
             <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
               {isImg && (
                 <a href={href} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={href}
                     alt={f.name}
                     style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}

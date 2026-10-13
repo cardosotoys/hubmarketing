@@ -171,7 +171,7 @@ export default function SocialContent() {
                 return (
                   <div key={i.id} draggable onDragStart={() => setDragId(i.id)} onDragEnd={() => setDragId(null)} onClick={() => setOpenId(i.id)}
                     className="card" style={{ padding: 8, marginBottom: 8, cursor: 'pointer' }}>
-                    {thumb ? <img src={thumb.url} alt="" style={{ width: '100%', height: 64, objectFit: 'cover', borderRadius: 7, marginBottom: 6, display: 'block' }} />
+                    {thumb ? <img loading="lazy" decoding="async" src={thumb.url} alt="" style={{ width: '100%', height: 64, objectFit: 'cover', borderRadius: 7, marginBottom: 6, display: 'block' }} />
                       : <div style={{ height: 40, borderRadius: 7, marginBottom: 6, background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{st.icon}</div>}
                     <div style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.25 }}>{i.title || 'Sem título'}</div>
                     {(i.objective || i.pilar) && <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.objective ? `🎯 ${i.objective}` : i.pilar}</div>}
@@ -319,7 +319,7 @@ function Detail({ item, brands, profiles, products, me, profById, media, approva
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
           {media.map((m) => (
             <div key={m.id} style={{ position: 'relative' }}>
-              {isImg(m.url) ? <a href={m.url} target="_blank" rel="noreferrer"><img src={m.url} alt={m.name} style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} /></a>
+              {isImg(m.url) ? <a href={m.url} target="_blank" rel="noreferrer"><img loading="lazy" decoding="async" src={m.url} alt={m.name} style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} /></a>
                 : <a href={m.url} target="_blank" rel="noreferrer" className="pill">🎬 {m.name}</a>}
               <button onClick={() => delMedia(m)} title="Remover" style={{ position: 'absolute', top: -7, right: -7, width: 19, height: 19, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--red)', cursor: 'pointer', fontSize: 11 }}>✕</button>
             </div>

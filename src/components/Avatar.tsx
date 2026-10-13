@@ -11,7 +11,7 @@ export default function Avatar({
 }) {
   const classes = `avatar${size === 'lg' ? ' lg' : ''}${className ? ` ${className}` : ''}`;
   if (profile?.avatar_url) {
-    return <img src={profile.avatar_url} alt="" className={classes} style={{ objectFit: 'cover' }} />;
+    return <img loading="lazy" decoding="async" src={profile.avatar_url} alt="" className={classes} style={{ objectFit: 'cover' }} />;
   }
   return <div className={classes}>{profile?.avatar_initials ?? '··'}</div>;
 }

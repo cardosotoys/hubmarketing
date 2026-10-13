@@ -1,3 +1,4 @@
+import { useThumbs } from '../lib/thumbs';
 export type ProductHoverData = {
   code: string;
   name: string;
@@ -10,10 +11,11 @@ export type ProductHoverData = {
 // Pop-up flutuante com a(s) imagem(ns) do produto, seguindo o cursor. Controlado pelo pai
 // (que rastreia o mouse) — usado nas listas de Produtos, Demandas e Embalagens.
 export default function ProductImageHover({ data }: { data: ProductHoverData }) {
+  const t = useThumbs();
   if (!data || (!data.product && !data.packaging)) return null;
   const imgs = [
-    { url: data.product, cap: '📦 Produto' },
-    { url: data.packaging, cap: '🎁 Embalagem' },
+    { url: t(data.product), cap: '📦 Produto' },
+    { url: t(data.packaging), cap: '🎁 Embalagem' },
   ].filter((i) => i.url);
   return (
     <div
@@ -37,7 +39,7 @@ export default function ProductImageHover({ data }: { data: ProductHoverData }) 
       <div style={{ display: 'flex', gap: 8 }}>
         {imgs.map((i) => (
           <figure key={i.cap} style={{ margin: 0, flex: 1 }}>
-            <img
+            <img loading="lazy" decoding="async"
               src={i.url}
               alt={i.cap}
               style={{ width: '100%', height: 150, objectFit: 'contain', background: 'var(--surface-2)', borderRadius: 6, border: '1px solid var(--border)' }}

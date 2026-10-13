@@ -13,7 +13,7 @@ export default function RichText({ text }: { text: string }) {
         if (isImageUrl(p)) {
           return (
             <a key={i} href={p} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
-              <img src={p} alt="anexo" style={{ maxWidth: 200, maxHeight: 150, borderRadius: 6, display: 'block', margin: '4px 0', border: '1px solid var(--border)' }} />
+              <img loading="lazy" decoding="async" src={p} alt="anexo" style={{ maxWidth: 200, maxHeight: 150, borderRadius: 6, display: 'block', margin: '4px 0', border: '1px solid var(--border)' }} />
             </a>
           );
         }
