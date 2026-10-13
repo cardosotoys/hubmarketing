@@ -89,6 +89,7 @@ export default function SocialPlan() {
   const [approverId, setApproverId] = useState<string | null>(null);
   const [reviewOnly, setReviewOnly] = useState(false);
   const [flash, setFlash] = useState('');
+  const [moreF, setMoreF] = useState(false);
   const com = useCommercial(view === 'materiais' || view === 'comercial');
 
   const load = useCallback(async () => {
@@ -183,6 +184,7 @@ export default function SocialPlan() {
     });
   };
   const clearFilters = () => setF(emptyFilters());
+  const extraN = f.rede.size + f.tipo.size + f.origem.size + f.mes.size + f.status.size;
 
   const pass = useCallback((x: SocialPlanItem) => {
     if (reviewOnly && !(x.awaiting_review && x.approver_id === profile?.id)) return false;
@@ -232,19 +234,32 @@ export default function SocialPlan() {
     await supabase.from('social_plan_settings').update({ approver_id: id || null, updated_at: new Date().toISOString() }).eq('id', 1);
   };
 
-  const kpi = useMemo(() => ({
-    total: live.length,
-    assuntos: new Set(live.map((x) => x.topic_id)).size,
-    reap: live.filter((x) => x.link_kind !== 'matriz').length,
-    sku: new Set(live.map((x) => x.product)).size,
-    ok: live.filter((x) => x.status === 'aprovada').length,
-    aj: live.filter((x) => x.status === 'ajuste').length,
-    guardadas: items.length - live.length,
-  }), [live, items.length]);
+
 
   const showFlash = (m: string) => { setFlash(m); setTimeout(() => setFlash((c) => (c === m ? '' : c)), 2600); };
   const selected = selId ? items.find((x) => x.id === selId) ?? null : null;
   const sheetTopic = topicSheet?.id ? topicById.get(topicSheet.id) ?? null : null;
+
+  const topicEditor = (inline: boolean) => topicSheet && (
+    <TopicSheet
+      key={topicSheet.id ?? 'novo'}
+      inline={inline}
+      topic={sheetTopic}
+      items={sheetTopic ? byTopic.get(sheetTopic.id) ?? [] : []}
+      channels={channels}
+      chans={chans}
+      me={profile}
+      isPriv={isPriv}
+      fronts={fronts}
+      onClose={closeTopic}
+      onOpenItem={openItem}
+      onSaved={async (tid) => {
+        await load();
+        if (inline && tid) openTopic(tid); else closeTopic();
+        showFlash(tid ? 'Assunto salvo' : 'Assunto excluído');
+      }}
+    />
+  );
 
   if (loading) return <Loading />;
 
@@ -267,7 +282,7 @@ export default function SocialPlan() {
                 </select>
               </label>
             )}
-            <button className="coc-new" onClick={() => openTopic(null)}>Novo assunto</button>
+            <button className="coc-new" onClick={() => { setView('assuntos'); openTopic(null); }}>Novo assunto</button>
           </div>
         </div>
         <nav className="coc-tabs" role="tablist">
@@ -284,40 +299,34 @@ export default function SocialPlan() {
           </button>
         </div>
       )}
-      {['cal', 'assuntos', 'feed', 'lista'].includes(view) && (
-        <div className="coc-kpis">
-          <div className="coc-kpi"><b>{kpi.assuntos}</b><span>assuntos</span></div>
-          <div className="coc-kpi"><b>{kpi.total}</b><span>destinos</span></div>
-          <div className="coc-kpi"><b>{kpi.reap}</b><span>reaproveitamentos e adaptações</span></div>
-          <div className="coc-kpi"><b>{kpi.sku}</b><span>produtos citados</span></div>
-          <div className="coc-kpi ok"><b>{kpi.ok}</b><span>legendas aprovadas</span></div>
-          <div className={`coc-kpi ${kpi.aj ? 'alert' : ''}`}><b>{kpi.aj}</b><span>com ajuste</span></div>
-          {kpi.guardadas > 0 && <div className="coc-kpi"><b>{kpi.guardadas}</b><span>guardadas · canal futuro</span></div>}
-        </div>
-      )}
 
       {/* ---------- filtros ---------- */}
       {!['prazos', 'central', 'aprovacao', 'materiais', 'comercial', 'final', 'estrategia'].includes(view) && (
-        <div className="sp-filters">
-          <div className="sp-frow">
-            <FGroup label="Marca"><Chips vals={['Playmi', 'Tópi', 'Cardoso']} sel={f.marca} onClick={(v) => toggle('marca', v)} tone="marca" /></FGroup>
-            <FGroup label="Rede"><Chips vals={['Instagram', 'Facebook', 'TikTok', 'YouTube Shorts', 'Pinterest', 'LinkedIn', 'WhatsApp', 'Google Meu Negócio']} sel={f.rede} onClick={(v) => toggle('rede', v)} /></FGroup>
-            <FGroup label="Tipo de peça"><Chips vals={['Reels', 'Feed', 'Stories', 'LinkedIn', 'Pin']} sel={f.tipo} onClick={(v) => toggle('tipo', v)} tone="red" /></FGroup>
-            <FGroup label="Produção"><Chips vals={['Original', 'Apoio', 'Reaproveitamento']} sel={f.origem} onClick={(v) => toggle('origem', v)} /></FGroup>
-            <FGroup label="Mês"><Chips vals={meses} sel={f.mes} onClick={(v) => toggle('mes', v)} /></FGroup>
-            <FGroup label="Aprovação"><Chips vals={['Pendente', 'Aprovada', 'Com ajuste', 'Com comentário']} sel={f.status} onClick={(v) => toggle('status', v)} /></FGroup>
-            <FGroup label="Buscar">
-              <div className="sp-searchwrap">
-                <span aria-hidden>🔍</span>
-                <input type="search" placeholder="produto, SKU, pauta, legenda…" value={f.q}
-                  onChange={(e) => setF((p) => ({ ...p, q: e.target.value.toLowerCase().trim() }))} />
-              </div>
-            </FGroup>
+        <div className="sp-filters coc-filters">
+          <div className="coc-frow">
+            <div className="sp-searchwrap">
+              <span aria-hidden>🔍</span>
+              <input type="search" placeholder="produto, SKU, pauta, legenda…" value={f.q}
+                onChange={(e) => setF((p) => ({ ...p, q: e.target.value.toLowerCase().trim() }))} />
+            </div>
+            <Chips vals={['Playmi', 'Tópi', 'Cardoso']} sel={f.marca} onClick={(v) => toggle('marca', v)} tone="marca" />
+            <button className={`sp-clear ${moreF ? 'on' : ''}`} onClick={() => setMoreF((v) => !v)}>
+              {moreF ? 'Menos filtros' : 'Mais filtros'}{extraN ? ` (${extraN})` : ''}
+            </button>
             <div className="sp-fmeta">
-              <span className="sp-count"><b>{rows.length}</b> de {live.length}</span>
-              <button className="sp-clear" onClick={clearFilters}>limpar filtros</button>
+              <span className="sp-count"><b>{rows.length}</b> de {live.length} destinos</span>
+              {(extraN > 0 || f.marca.size > 0 || !!f.q) && <button className="sp-clear" onClick={clearFilters}>limpar</button>}
             </div>
           </div>
+          {moreF && (
+            <div className="sp-frow coc-fmore">
+              <FGroup label="Rede"><Chips vals={['Instagram', 'Facebook', 'TikTok', 'YouTube Shorts', 'Pinterest', 'LinkedIn', 'WhatsApp', 'Google Meu Negócio']} sel={f.rede} onClick={(v) => toggle('rede', v)} /></FGroup>
+              <FGroup label="Tipo de peça"><Chips vals={['Reels', 'Feed', 'Stories', 'LinkedIn', 'Pin']} sel={f.tipo} onClick={(v) => toggle('tipo', v)} tone="red" /></FGroup>
+              <FGroup label="Produção"><Chips vals={['Original', 'Apoio', 'Reaproveitamento']} sel={f.origem} onClick={(v) => toggle('origem', v)} /></FGroup>
+              {view !== 'assuntos' && <FGroup label="Mês"><Chips vals={meses} sel={f.mes} onClick={(v) => toggle('mes', v)} /></FGroup>}
+              <FGroup label="Aprovação"><Chips vals={['Pendente', 'Aprovada', 'Com ajuste', 'Com comentário']} sel={f.status} onClick={(v) => toggle('status', v)} /></FGroup>
+            </div>
+          )}
         </div>
       )}
 
@@ -355,7 +364,10 @@ export default function SocialPlan() {
               : <MonthView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} />}
           </>
         )}
-        {view === 'assuntos' && <AssuntosView topics={shownTopics} byTopic={byTopic} chans={chans} onOpenTopic={openTopic} />}
+        {view === 'assuntos' && (
+          <AssuntosView topics={shownTopics} byTopic={byTopic} chans={chans} selectedId={topicSheet?.id ?? null} onSelect={openTopic}
+            editor={topicSheet ? topicEditor(true) : null} />
+        )}
         {view === 'feed' && <FeedView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'lista' && <ListView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'prazos' && <PrazosView deadlines={deadlines} />}
@@ -391,25 +403,7 @@ export default function SocialPlan() {
         />
       )}
 
-      {topicSheet && (
-        <TopicSheet
-          key={topicSheet.id ?? 'novo'}
-          topic={sheetTopic}
-          items={sheetTopic ? byTopic.get(sheetTopic.id) ?? [] : []}
-          channels={channels}
-          chans={chans}
-          me={profile}
-          isPriv={isPriv}
-          fronts={fronts}
-          onClose={closeTopic}
-          onOpenItem={openItem}
-          onSaved={async (tid) => {
-            closeTopic();
-            await load();
-            showFlash(tid ? 'Assunto salvo' : 'Assunto excluído');
-          }}
-        />
-      )}
+      {topicSheet && view !== 'assuntos' && topicEditor(false)}
     </div>
   );
 }

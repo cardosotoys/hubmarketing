@@ -33,7 +33,7 @@ function toDraft(x: SocialPlanItem): Draft {
   };
 }
 
-export default function TopicSheet({ topic, items, channels, chans, me, isPriv, fronts, onClose, onSaved, onOpenItem }: {
+export default function TopicSheet({ topic, items, channels, chans, me, isPriv, fronts, onClose, onSaved, onOpenItem, inline }: {
   topic: SocialTopic | null;
   items: SocialPlanItem[];          // todos os destinos deste assunto (inclui canal futuro)
   channels: SocialChannel[];
@@ -44,6 +44,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
   onClose: () => void;
   onSaved: (topicId: string) => void;
   onOpenItem: (id: string) => void;
+  inline?: boolean;               // dentro da aba Assuntos, sem sobrepor a tela
 }) {
   const [form, setForm] = useState<TopicForm>(() => (topic ? {
     title: topic.title, brand: topic.brand, product: topic.product, sku: topic.sku, front: topic.front,
@@ -180,9 +181,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
   };
 
   return (
-    <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="sp-panel sp-panel-wide">
-        <button className="close" aria-label="Fechar" onClick={onClose}>×</button>
+    <Wrap inline={inline} onClose={onClose}>
         <div className="sp-tags"><span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>{topic ? 'Assunto' : 'Novo assunto'}</span></div>
         <h3 className="sp-panel-h3">{form.title || 'Assunto sem título'}</h3>
 
@@ -305,6 +304,17 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
           <button className="sp-ebtn" onClick={onClose}>Cancelar</button>
           {topic && isPriv && <button className="sp-ebtn danger" style={{ marginLeft: 'auto' }} onClick={removeTopic}>Excluir assunto</button>}
         </div>
+    </Wrap>
+  );
+}
+
+function Wrap({ inline, onClose, children }: { inline?: boolean; onClose: () => void; children: React.ReactNode }) {
+  if (inline) return <div className="coc-topic-inline">{children}</div>;
+  return (
+    <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sp-panel sp-panel-wide">
+        <button className="close" aria-label="Fechar" onClick={onClose}>×</button>
+        {children}
       </div>
     </div>
   );
