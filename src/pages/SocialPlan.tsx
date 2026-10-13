@@ -13,6 +13,7 @@ import MateriaisView from './social-plan/MateriaisView';
 import ComercialView from './social-plan/ComercialView';
 import { useCommercial } from './social-plan/useCommercial';
 import FinalTab from './social-plan/FinalTab';
+import StrategyView from './social-plan/StrategyView';
 import { MonthView, WeekView } from './social-plan/CalendarViews';
 import AssuntosView from './social-plan/AssuntosView';
 import TopicSheet from './social-plan/TopicSheet';
@@ -59,7 +60,7 @@ const timeAgo = (iso: string) => {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type View = 'central' | 'aprovacao' | 'cal' | 'assuntos' | 'materiais' | 'comercial' | 'final' | 'feed' | 'lista' | 'prazos';
+type View = 'central' | 'aprovacao' | 'cal' | 'assuntos' | 'materiais' | 'comercial' | 'final' | 'estrategia' | 'feed' | 'lista' | 'prazos';
 type CalMode = 'semana' | 'mes';
 type Filters = {
   marca: Set<string>; rede: Set<string>; tipo: Set<string>; origem: Set<string>;
@@ -294,14 +295,14 @@ export default function SocialPlan() {
           </div>
         )}
         <nav className="sp-views" role="tablist">
-          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['materiais', 'Banco de materiais'], ['comercial', 'Área comercial'], ['final', 'Visão final'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
+          {([['central', 'Central'], ['aprovacao', 'Aprovação'], ['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['materiais', 'Banco de materiais'], ['comercial', 'Área comercial'], ['final', 'Visão final'], ['estrategia', 'Estratégia e cronograma'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}{v === 'aprovacao' && filaN > 0 ? <span className="sp-tabcnt">{filaN}</span> : null}</button>
           ))}
         </nav>
       </header>
 
       {/* ---------- filtros ---------- */}
-      {!['prazos', 'central', 'aprovacao', 'materiais', 'comercial', 'final'].includes(view) && (
+      {!['prazos', 'central', 'aprovacao', 'materiais', 'comercial', 'final', 'estrategia'].includes(view) && (
         <div className="sp-filters">
           <div className="sp-frow">
             <FGroup label="Marca"><Chips vals={['Playmi', 'Tópi', 'Cardoso']} sel={f.marca} onClick={(v) => toggle('marca', v)} tone="marca" /></FGroup>
@@ -344,6 +345,10 @@ export default function SocialPlan() {
               deadlines={deadlines} canRelease={canDecide} error={com.error} onChanged={com.reload} />
           : <Loading />)}
         {view === 'final' && <FinalTab canManage={canDecide} />}
+        {view === 'estrategia' && (
+          <StrategyView live={live} byTopic={byTopic} topicById={topicById} deadlines={deadlines} canMark={canDecide} isPriv={isPriv}
+            meId={profile?.id ?? null} onChanged={load} />
+        )}
         {view === 'cal' && (
           <>
             <div className="sp-calmode" role="tablist">

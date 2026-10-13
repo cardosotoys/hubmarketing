@@ -3657,3 +3657,27 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp-pub-head small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
 .sp-pub-head b{font-size:17px}
 .sp-pub-logo{width:36px;height:36px;border-radius:10px;background:var(--red);display:grid;place-items:center;font-weight:800;color:#fff;flex:none}
+
+/* ---------- Fase 5: estratégia e cronograma (0113) ---------- */
+.sp-frente{padding:9px 0;border-top:1px solid var(--line-2)}
+.sp-frente:first-of-type{border-top:0}
+.sp-frente-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px}
+.sp-frente-h b{display:flex;gap:4px;align-items:center;color:var(--ink)}
+.sp-frente-h span{color:var(--muted);font-size:12px}
+.sp-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surf2);margin-top:6px}
+.sp-bar i{display:block;height:100%}
+.s-pub{background:#2E9E6B}.s-pronta{background:#4CBDC7}.s-aprov{background:#E0A02B}.s-ajuste{background:var(--red)}.s-prod{background:var(--line)}
+.sp-legend .sw.s-pub{background:#2E9E6B}.sp-legend .sw.s-pronta{background:#4CBDC7}.sp-legend .sw.s-aprov{background:#E0A02B}.sp-legend .sw.s-ajuste{background:var(--red)}.sp-legend .sw.s-prod{background:var(--line)}
+.sp-seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.sp-seg button{appearance:none;border:0;background:var(--card);padding:5px 9px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.sp-seg button[aria-pressed="true"]{background:var(--pl-deep);color:#fff}
+.sp-gantt{overflow-x:auto}
+.sp-gtable{min-width:760px;display:grid;font-size:12px}
+.sp-gh{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--line)}
+.sp-glabel{padding:10px 4px;font-weight:600;border-bottom:1px solid var(--line-2);display:flex;align-items:center;color:var(--ink)}
+.sp-gtrack{position:relative;border-bottom:1px solid var(--line-2);min-height:40px}
+.sp-gspan{position:absolute;top:16px;height:8px;border-radius:4px;background:var(--line)}
+.sp-gms{position:absolute;top:12px;width:14px;height:14px;transform:translateX(-7px) rotate(45deg);border-radius:3px;border:2px solid var(--card)}
+.sp-gms.dig{background:#4CBDC7}.sp-gms.com{background:var(--tp-laranja)}.sp-gms.mix{background:var(--pl-deep)}.sp-gms.done{background:#2E9E6B}
+.sp-gtoday{position:absolute;top:0;bottom:0;width:2px;background:var(--red)}
+.sp-legend .sw.g-dig{background:#4CBDC7}.sp-legend .sw.g-com{background:var(--tp-laranja)}.sp-legend .sw.g-mix{background:var(--pl-deep)}.sp-legend .sw.g-done{background:#2E9E6B}.sp-legend .sw.g-today{background:var(--red);width:3px}

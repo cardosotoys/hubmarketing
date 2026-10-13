@@ -968,6 +968,11 @@ export interface SocialPlanDeadline {
   acao: string;
   resp: string;
   ord: number;
+  // andamento (0113)
+  status?: 'pendente' | 'andamento' | 'feito';
+  status_by?: string | null;
+  status_at?: string | null;
+  note?: string;
 }
 
 export interface AccessPreset {
