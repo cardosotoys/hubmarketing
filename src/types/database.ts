@@ -859,6 +859,52 @@ export interface SocialPlanItem {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
+  // Centro de Operações de Conteúdo (0108): destino de um assunto
+  topic_id: string | null;
+  channel_id: string | null;
+  link_kind: 'matriz' | 'reaproveita' | 'adapta';
+  pub_time: string | null; // HH:MM:SS
+  caption: string | null;
+  creative_url: string | null;
+  creative_changed: boolean;
+  mirror_facebook: boolean;
+  archived: boolean;
+  merged_into: string | null;
+}
+
+export interface SocialChannel {
+  id: string;
+  account: 'Cardoso' | 'Playmi' | 'Tópi';
+  name: string;
+  network: string;
+  caption_limit: number | null;
+  formats: string[];
+  mirror: string | null;
+  future: boolean;
+  active: boolean;
+  ord: number;
+}
+
+export interface SocialTopic {
+  id: string;
+  ext_key: string | null;
+  title: string;
+  brand: string;
+  product: string;
+  sku: string;
+  product_id: string | null;
+  front: string;
+  objective: string;
+  strategy: string;
+  cta: string;
+  media_use: string;
+  licensed: boolean;
+  licensor_ok: boolean;
+  licensor_proof: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface SocialPlanComment {

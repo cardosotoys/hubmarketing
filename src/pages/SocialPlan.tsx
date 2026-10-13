@@ -4,32 +4,19 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
-import type { Profile, SocialPlanItem, SocialPlanComment, SocialPlanDeadline } from '../types/database';
+import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialTopic } from '../types/database';
+import { KIND_LABEL, destLabel, effective, hhmm, slug } from './social-plan/shared';
+import { MonthView, WeekView } from './social-plan/CalendarViews';
+import AssuntosView from './social-plan/AssuntosView';
+import TopicSheet from './social-plan/TopicSheet';
 
 /* ------------------------------------------------------------------ *
- * Planejamento de mídias digitais — espelha o "documento vivo" (HTML),
- * agora vivo no hub: aprovação/ajuste, comentários em thread com menção,
- * notificação que abre direto no item e edição de cada peça.
+ * Centro de Operações de Conteúdo — planejamento de mídias digitais.
+ * Um ASSUNTO (social_topics) tem vários DESTINOS (social_plan_items):
+ * canal, dia, hora, legenda, criativo e o vínculo com a matriz.
+ * Aprovação/ajuste, comentários em thread com menção e notificação
+ * que abre direto na peça continuam por destino.
  * ------------------------------------------------------------------ */
-
-const NOME_MES: Record<string, string> = {
-  '2026-08': 'Agosto 2026', '2026-09': 'Setembro 2026', '2026-10': 'Outubro 2026', '2026-11': 'Novembro 2026',
-  '2026-12': 'Dezembro 2026', '2027-01': 'Janeiro 2027', '2027-02': 'Fevereiro 2027', '2027-03': 'Março 2027',
-};
-const MESES = ['Ago/26', 'Set/26', 'Out/26', 'Nov/26', 'Dez/26', 'Jan/27', 'Fev/27', 'Mar/27'];
-const DOW = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-// mapa de reaproveitamento: rede → tipo/formato da peça reaproveitada
-const REUSE: Record<string, { type: string; format: string }> = {
-  'TikTok': { type: 'Reels', format: 'Reels / Short' },
-  'YouTube Shorts': { type: 'Reels', format: 'Reels / Short' },
-  'Pinterest': { type: 'Pin', format: 'Pin' },
-};
-const REUSE_NETS = ['TikTok', 'YouTube Shorts', 'Pinterest'];
-// campos de conteúdo que a peça-mãe propaga para os reaproveitamentos ao ser editada
-const SHARED_FIELDS = ['pub_date', 'weekday', 'month_label', 'brand', 'product', 'sku', 'pauta', 'week_theme', 'objective', 'cta', 'media_use'] as const;
-const slug = (s: string) =>
-  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 // cores dos guias de marca (idênticas ao documento)
 const COR_LINHA: Record<string, string> = {
@@ -65,7 +52,8 @@ const timeAgo = (iso: string) => {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type View = 'cal' | 'feed' | 'lista' | 'prazos';
+type View = 'cal' | 'assuntos' | 'feed' | 'lista' | 'prazos';
+type CalMode = 'semana' | 'mes';
 type Filters = {
   marca: Set<string>; rede: Set<string>; tipo: Set<string>; origem: Set<string>;
   mes: Set<string>; status: Set<string>; q: string;
@@ -78,26 +66,40 @@ export default function SocialPlan() {
   const { profile } = useAuth();
   const [params, setParams] = useSearchParams();
   const [items, setItems] = useState<SocialPlanItem[]>([]);
+  const [topics, setTopics] = useState<SocialTopic[]>([]);
+  const [channels, setChannels] = useState<SocialChannel[]>([]);
+  const [merged, setMerged] = useState<Map<string, string>>(new Map());
   const [deadlines, setDeadlines] = useState<SocialPlanDeadline[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [commentItemIds, setCommentItemIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('cal');
+  const [calMode, setCalMode] = useState<CalMode>('semana');
   const [f, setF] = useState<Filters>(emptyFilters);
   const [selId, setSelId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [topicSheet, setTopicSheet] = useState<{ id: string | null } | null>(null);
   const [approverId, setApproverId] = useState<string | null>(null);
   const [reviewOnly, setReviewOnly] = useState(false);
+  const [flash, setFlash] = useState('');
 
   const load = useCallback(async () => {
-    const [it, dl, pf, cm, st] = await Promise.all([
-      supabase.from('social_plan_items').select('*').order('pub_date'),
+    const [it, tp, ch, ar, dl, pf, cm, st] = await Promise.all([
+      supabase.from('social_plan_items').select('*').eq('archived', false).order('pub_date'),
+      supabase.from('social_topics').select('*'),
+      supabase.from('social_channels').select('*').order('ord'),
+      supabase.from('social_plan_items').select('id, merged_into').eq('archived', true),
       supabase.from('social_plan_deadlines').select('*').order('ord'),
       supabase.from('profiles').select('*').order('name'),
       supabase.from('social_plan_comments').select('item_id'),
       supabase.from('social_plan_settings').select('approver_id').eq('id', 1).single(),
     ]);
-    setItems((it.data as SocialPlanItem[]) ?? []);
+    // antes da migration 0108 a coluna archived não existe: cai no modo antigo em vez de esvaziar a tela
+    let itData = it.data as SocialPlanItem[] | null;
+    if (it.error) itData = ((await supabase.from('social_plan_items').select('*').order('pub_date')).data as SocialPlanItem[]) ?? [];
+    setItems((itData ?? []).map((x) => ({ ...x, link_kind: x.link_kind ?? 'matriz' })));
+    setTopics((tp.data as SocialTopic[]) ?? []);
+    setChannels((ch.data as SocialChannel[]) ?? []);
+    setMerged(new Map(((ar.data as { id: string; merged_into: string | null }[]) ?? []).filter((x) => x.merged_into).map((x) => [x.id, x.merged_into!])));
     setDeadlines((dl.data as SocialPlanDeadline[]) ?? []);
     setProfiles((pf.data as Profile[]) ?? []);
     setCommentItemIds(new Set(((cm.data as { item_id: string }[]) ?? []).map((c) => c.item_id)));
@@ -107,33 +109,60 @@ export default function SocialPlan() {
 
   useEffect(() => { load(); }, [load]);
 
-  // realtime: item aprovado/editado ou comentário novo reflete sozinho
+  // realtime: peça, assunto ou comentário novo reflete sozinho
   useEffect(() => {
     const ch = supabase
       .channel('social-plan')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'social_plan_items' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'social_topics' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'social_plan_comments' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
 
-  // deep-link ?item=ID → abre o painel direto na peça (vindo da notificação)
+  const chans = useMemo(() => new Map(channels.map((c) => [c.id, c])), [channels]);
+  const topicById = useMemo(() => new Map(topics.map((t) => [t.id, t])), [topics]);
+  const byTopic = useMemo(() => {
+    const m = new Map<string, SocialPlanItem[]>();
+    items.forEach((x) => { if (x.topic_id) (m.get(x.topic_id) ?? m.set(x.topic_id, []).get(x.topic_id)!).push(x); });
+    return m;
+  }, [items]);
+  const isFuture = useCallback((x: SocialPlanItem) => !!(x.channel_id && chans.get(x.channel_id)?.future), [chans]);
+
+  // deep-link ?item=ID → abre a peça (vindo da notificação); Facebook espelho antigo cai na peça do Instagram
   useEffect(() => {
-    const id = params.get('item');
+    const raw = params.get('item');
+    const id = raw && merged.has(raw) ? merged.get(raw)! : raw;
     if (id && items.some((x) => x.id === id)) setSelId(id);
-  }, [params, items]);
+    const tid = params.get('assunto');
+    if (tid && topicById.has(tid)) setTopicSheet({ id: tid });
+  }, [params, items, merged, topicById]);
 
   const openItem = (id: string) => {
+    setTopicSheet(null);
     setSelId(id);
     const p = new URLSearchParams(params);
-    p.set('item', id);
+    p.set('item', id); p.delete('assunto');
     setParams(p, { replace: true });
   };
   const closeSheet = () => {
     setSelId(null);
     const p = new URLSearchParams(params);
-    p.delete('item');
-    p.delete('focus');
+    p.delete('item'); p.delete('focus');
+    setParams(p, { replace: true });
+  };
+  const openTopic = (id: string | null) => {
+    setSelId(null);
+    setTopicSheet({ id });
+    const p = new URLSearchParams(params);
+    p.delete('item'); p.delete('focus');
+    if (id) p.set('assunto', id); else p.delete('assunto');
+    setParams(p, { replace: true });
+  };
+  const closeTopic = () => {
+    setTopicSheet(null);
+    const p = new URLSearchParams(params);
+    p.delete('assunto');
     setParams(p, { replace: true });
   };
 
@@ -160,17 +189,29 @@ export default function SocialPlan() {
       if (!bate) return false;
     }
     if (f.q) {
-      const blob = `${x.pauta} ${x.sku} ${x.product} ${x.week_theme} ${x.objective} ${x.format}`.toLowerCase();
+      const blob = `${x.pauta} ${x.sku} ${x.product} ${x.week_theme} ${x.objective} ${x.format} ${x.caption ?? ''}`.toLowerCase();
       if (!blob.includes(f.q)) return false;
     }
     return true;
   }, [f, commentItemIds, reviewOnly, profile?.id]);
 
-  const rows = useMemo(() => items.filter(pass), [items, pass]);
+  // peças em canal futuro (ex.: TikTok da Playmi) ficam guardadas: só aparecem no assunto
+  const live = useMemo(() => items.filter((x) => !isFuture(x)), [items, isFuture]);
+  const rows = useMemo(() => live.filter(pass), [live, pass]);
+  const shownTopics = useMemo(() => {
+    const ids = new Set(rows.map((x) => x.topic_id));
+    return topics.filter((t) => ids.has(t.id));
+  }, [rows, topics]);
+  const meses = useMemo(() => {
+    const m = new Map<string, string>();
+    live.forEach((x) => { if (x.month_label) m.set(x.pub_date.slice(0, 7), x.month_label); });
+    return [...m.entries()].sort().map(([, v]) => v);
+  }, [live]);
+  const fronts = useMemo(() => [...new Set(topics.map((t) => t.front).filter(Boolean))].sort(), [topics]);
 
   const myReviews = useMemo(
-    () => (profile?.id ? items.filter((x) => x.awaiting_review && x.approver_id === profile.id) : []),
-    [items, profile?.id],
+    () => (profile?.id ? live.filter((x) => x.awaiting_review && x.approver_id === profile.id) : []),
+    [live, profile?.id],
   );
   const isPriv = profile?.role === 'diretoria' || profile?.role === 'administrador';
   const approverName = profiles.find((p) => p.id === approverId)?.name ?? null;
@@ -181,15 +222,18 @@ export default function SocialPlan() {
   };
 
   const kpi = useMemo(() => ({
-    total: items.length,
-    orig: items.filter((x) => x.origin === 'Original').length,
-    reap: items.filter((x) => x.origin !== 'Original').length,
-    sku: new Set(items.map((x) => x.product)).size,
-    ok: items.filter((x) => x.status === 'aprovada').length,
-    aj: items.filter((x) => x.status === 'ajuste').length,
-  }), [items]);
+    total: live.length,
+    assuntos: new Set(live.map((x) => x.topic_id)).size,
+    reap: live.filter((x) => x.link_kind !== 'matriz').length,
+    sku: new Set(live.map((x) => x.product)).size,
+    ok: live.filter((x) => x.status === 'aprovada').length,
+    aj: live.filter((x) => x.status === 'ajuste').length,
+    guardadas: items.length - live.length,
+  }), [live, items.length]);
 
+  const showFlash = (m: string) => { setFlash(m); setTimeout(() => setFlash((c) => (c === m ? '' : c)), 2600); };
   const selected = selId ? items.find((x) => x.id === selId) ?? null : null;
+  const sheetTopic = topicSheet?.id ? topicById.get(topicSheet.id) ?? null : null;
 
   if (loading) return <Loading />;
 
@@ -198,7 +242,7 @@ export default function SocialPlan() {
       {/* ---------- cabeçalho ---------- */}
       <header className="sp-header">
         <div className="sp-headtop">
-          <p className="sp-eyebrow">Planejamento de mídias digitais</p>
+          <p className="sp-eyebrow">Centro de Operações de Conteúdo</p>
           <div className="sp-headactions">
             {isPriv && (
               <label className="sp-approversel" title="Quem aprova as peças do Social">
@@ -209,13 +253,13 @@ export default function SocialPlan() {
                 </select>
               </label>
             )}
-            <button className="sp-new" onClick={() => setCreating(true)}>+ Nova peça</button>
+            <button className="sp-new" onClick={() => openTopic(null)}>+ Novo assunto</button>
           </div>
         </div>
-        <h1 className="sp-h1">Oito meses de conteúdo<br />para <em>Cardoso</em>, <em>Playmi</em> e <em>Tópi</em></h1>
+        <h1 className="sp-h1">Conteúdo de <em>Cardoso</em>, <em>Playmi</em> e <em>Tópi</em>,<br />do assunto ao último destino</h1>
         <p className="sp-sub">
-          De 17 de agosto de 2026 a 31 de março de 2027. Cada semana rende três criativos de feed por marca de consumo —
-          uma fileira inteira do grid do Instagram — mais os stories de apoio e os reaproveitamentos entre redes.
+          Cada assunto nasce uma vez, com pauta e estratégia, e se desdobra em destinos: a matriz, os reaproveitamentos
+          (mesma peça em outro canal ou dia) e as adaptações (legenda própria, como do Instagram para o LinkedIn ou o WhatsApp).
         </p>
         <div className="sp-linhas">
           {['#70BD8F', '#BF91D1', '#ED6199', '#2163C4', '#E87821', '#00B2C7', '#EA5C18', '#F3D22A', '#2EBADA', '#DA3A2F'].map((c, i) => (
@@ -223,13 +267,13 @@ export default function SocialPlan() {
           ))}
         </div>
         <div className="sp-kpis">
-          <div className="sp-kpi"><b>{kpi.total}</b><span>publicações</span></div>
-          <div className="sp-kpi"><b>{kpi.orig}</b><span>criativos novos</span></div>
-          <div className="sp-kpi"><b>{kpi.reap}</b><span>reaproveitamentos</span></div>
-          <div className="sp-kpi"><b>33</b><span>semanas</span></div>
+          <div className="sp-kpi"><b>{kpi.assuntos}</b><span>assuntos</span></div>
+          <div className="sp-kpi"><b>{kpi.total}</b><span>destinos</span></div>
+          <div className="sp-kpi"><b>{kpi.reap}</b><span>reaproveitamentos e adaptações</span></div>
           <div className="sp-kpi"><b>{kpi.sku}</b><span>produtos citados</span></div>
           <div className="sp-kpi" style={{ borderColor: '#CFE6DA' }}><b style={{ color: '#2E9E6B' }}>{kpi.ok}</b><span>aprovadas</span></div>
           <div className="sp-kpi" style={{ borderColor: '#F0E0BC' }}><b style={{ color: '#B07C2B' }}>{kpi.aj}</b><span>com ajuste</span></div>
+          {kpi.guardadas > 0 && <div className="sp-kpi"><b>{kpi.guardadas}</b><span>guardadas · canal futuro</span></div>}
         </div>
         {myReviews.length > 0 && (
           <div className="sp-reviewbanner">
@@ -240,7 +284,7 @@ export default function SocialPlan() {
           </div>
         )}
         <nav className="sp-views" role="tablist">
-          {([['cal', 'Calendário'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
+          {([['cal', 'Calendário'], ['assuntos', 'Assuntos'], ['feed', 'Prévia do feed'], ['lista', 'Lista'], ['prazos', 'Prazos comerciais']] as [View, string][]).map(([v, label]) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>{label}</button>
           ))}
         </nav>
@@ -251,20 +295,20 @@ export default function SocialPlan() {
         <div className="sp-filters">
           <div className="sp-frow">
             <FGroup label="Marca"><Chips vals={['Playmi', 'Tópi', 'Cardoso']} sel={f.marca} onClick={(v) => toggle('marca', v)} tone="marca" /></FGroup>
-            <FGroup label="Rede"><Chips vals={['Instagram', 'Facebook', 'TikTok', 'YouTube Shorts', 'Pinterest', 'LinkedIn']} sel={f.rede} onClick={(v) => toggle('rede', v)} /></FGroup>
+            <FGroup label="Rede"><Chips vals={['Instagram', 'Facebook', 'TikTok', 'YouTube Shorts', 'Pinterest', 'LinkedIn', 'WhatsApp', 'Google Meu Negócio']} sel={f.rede} onClick={(v) => toggle('rede', v)} /></FGroup>
             <FGroup label="Tipo de peça"><Chips vals={['Reels', 'Feed', 'Stories', 'LinkedIn', 'Pin']} sel={f.tipo} onClick={(v) => toggle('tipo', v)} tone="red" /></FGroup>
             <FGroup label="Produção"><Chips vals={['Original', 'Apoio', 'Reaproveitamento']} sel={f.origem} onClick={(v) => toggle('origem', v)} /></FGroup>
-            <FGroup label="Mês"><Chips vals={MESES} sel={f.mes} onClick={(v) => toggle('mes', v)} /></FGroup>
+            <FGroup label="Mês"><Chips vals={meses} sel={f.mes} onClick={(v) => toggle('mes', v)} /></FGroup>
             <FGroup label="Aprovação"><Chips vals={['Pendente', 'Aprovada', 'Com ajuste', 'Com comentário']} sel={f.status} onClick={(v) => toggle('status', v)} /></FGroup>
             <FGroup label="Buscar">
               <div className="sp-searchwrap">
                 <span aria-hidden>🔍</span>
-                <input type="search" placeholder="produto, SKU, pauta…" value={f.q}
+                <input type="search" placeholder="produto, SKU, pauta, legenda…" value={f.q}
                   onChange={(e) => setF((p) => ({ ...p, q: e.target.value.toLowerCase().trim() }))} />
               </div>
             </FGroup>
             <div className="sp-fmeta">
-              <span className="sp-count"><b>{rows.length}</b> de {items.length}</span>
+              <span className="sp-count"><b>{rows.length}</b> de {live.length}</span>
               <button className="sp-clear" onClick={clearFilters}>limpar filtros</button>
             </div>
           </div>
@@ -272,16 +316,28 @@ export default function SocialPlan() {
       )}
 
       <main className="sp-main">
-        {view === 'cal' && <CalView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
+        {flash && <div className="sp-saved" style={{ marginBottom: 12 }}>{flash}</div>}
+        {view === 'cal' && (
+          <>
+            <div className="sp-calmode" role="tablist">
+              <button role="tab" aria-selected={calMode === 'semana'} onClick={() => setCalMode('semana')}>Semana</button>
+              <button role="tab" aria-selected={calMode === 'mes'} onClick={() => setCalMode('mes')}>Mês</button>
+            </div>
+            {calMode === 'semana'
+              ? <WeekView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} />
+              : <MonthView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} />}
+          </>
+        )}
+        {view === 'assuntos' && <AssuntosView topics={shownTopics} byTopic={byTopic} chans={chans} onOpenTopic={openTopic} />}
         {view === 'feed' && <FeedView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'lista' && <ListView rows={rows} onOpen={openItem} hasComment={commentItemIds} />}
         {view === 'prazos' && <PrazosView deadlines={deadlines} />}
 
-        {view !== 'prazos' && (
+        {(view === 'cal' || view === 'assuntos') && (
           <div className="sp-legend">
-            <span><i style={{ background: '#fff', border: '1px solid var(--line)' }} />Criativo novo — precisa ser produzido</span>
-            <span><i style={{ background: 'var(--amber-bg)', border: '1px solid #F0E3C6' }} />Stories de apoio — usa sobra de gravação</span>
-            <span><i style={{ background: 'var(--violet-bg)' }} />Reaproveitamento entre redes</span>
+            <span><i className="sw k-matriz" />Matriz: a peça principal do assunto</span>
+            <span><i className="sw k-reaproveita" />Reaproveita: mesma legenda e criativo</span>
+            <span><i className="sw k-adapta" />Adapta: legenda própria</span>
             <span><i style={{ background: '#EAF6F0', border: '1px solid #2E9E6B' }} />Aprovada</span>
             <span><i style={{ background: '#FDF5E4', border: '1px solid #E0A02B' }} />Com ajuste</span>
           </div>
@@ -292,7 +348,9 @@ export default function SocialPlan() {
         <DetailSheet
           key={selected.id}
           item={selected}
-          items={items}
+          siblings={selected.topic_id ? byTopic.get(selected.topic_id) ?? [] : []}
+          topic={selected.topic_id ? topicById.get(selected.topic_id) ?? null : null}
+          chans={chans}
           me={profile}
           profiles={profiles}
           approverId={approverId}
@@ -300,15 +358,28 @@ export default function SocialPlan() {
           focusComments={params.get('focus') === 'comments'}
           onClose={closeSheet}
           onOpen={openItem}
+          onEditTopic={openTopic}
           onChanged={load}
         />
       )}
 
-      {creating && (
-        <CreateSheet
+      {topicSheet && (
+        <TopicSheet
+          key={topicSheet.id ?? 'novo'}
+          topic={sheetTopic}
+          items={sheetTopic ? byTopic.get(sheetTopic.id) ?? [] : []}
+          channels={channels}
+          chans={chans}
           me={profile}
-          onClose={() => setCreating(false)}
-          onCreated={async (id) => { setCreating(false); await load(); openItem(id); }}
+          isPriv={isPriv}
+          fronts={fronts}
+          onClose={closeTopic}
+          onOpenItem={openItem}
+          onSaved={async (tid) => {
+            closeTopic();
+            await load();
+            showFlash(tid ? 'Assunto salvo' : 'Assunto excluído');
+          }}
         />
       )}
     </div>
@@ -326,55 +397,6 @@ function Chips({ vals, sel, onClick, tone }: { vals: string[]; sel: Set<string>;
         <button key={v} className="sp-chip" data-v={v} data-tone={tone} aria-pressed={sel.has(v)} onClick={() => onClick(v)}>{v}</button>
       ))}
     </div>
-  );
-}
-
-/* ---------------- calendário ---------------- */
-function CalView({ rows, onOpen, hasComment }: { rows: SocialPlanItem[]; onOpen: (id: string) => void; hasComment: Set<string> }) {
-  if (!rows.length) return <Vazio />;
-  const meses = Object.keys(NOME_MES);
-  const porDia: Record<string, SocialPlanItem[]> = {};
-  rows.forEach((x) => { (porDia[x.pub_date] = porDia[x.pub_date] || []).push(x); });
-  return (
-    <>
-      {meses.map((ym) => {
-        const [Y, M] = ym.split('-').map(Number);
-        const doMes = rows.filter((x) => x.pub_date.startsWith(ym));
-        if (!doMes.length) return null;
-        const dias = new Date(Y, M, 0).getDate();
-        const inicio = (new Date(Y, M - 1, 1).getDay() + 6) % 7;
-        const cells: React.ReactNode[] = [];
-        for (let i = 0; i < inicio; i++) cells.push(<div key={`off${i}`} className="sp-day off" />);
-        for (let dia = 1; dia <= dias; dia++) {
-          const key = `${Y}-${String(M).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-          const its = porDia[key] || [];
-          const dow = (new Date(Y, M - 1, dia).getDay() + 6) % 7;
-          const cls = ['sp-day', dow >= 5 ? 'wknd' : '', its.length ? '' : 'empty'].filter(Boolean).join(' ');
-          cells.push(
-            <div key={key} className={cls}>
-              <div className="sp-dnum"><b>{dia}</b>{its.length ? <span>{its.length}</span> : null}</div>
-              {its.map((x) => {
-                const o = x.origin === 'Reaproveitamento' ? 'o-reap' : x.origin === 'Apoio' ? 'o-apoio' : '';
-                const s = stMark(x.status);
-                return (
-                  <div key={x.id} className={`sp-pill b-${slug(x.brand)} ${o} ${s ? 'st-' + s : ''}`} onClick={() => onOpen(x.id)}>
-                    <div className="row"><b>{x.product}</b>{s ? <span className={`sp-stt ${s}`} /> : null}</div>
-                    <i>{x.brand} · {x.network} · {x.piece_type}{hasComment.has(x.id) ? ' · 💬' : ''}</i>
-                  </div>
-                );
-              })}
-            </div>,
-          );
-        }
-        return (
-          <div className="sp-month" key={ym}>
-            <div className="sp-mhead"><h2>{NOME_MES[ym]}</h2><span>{doMes.length} publicações</span></div>
-            <div className="sp-dow">{DOW.map((d) => <div key={d}>{d}</div>)}</div>
-            <div className="sp-grid">{cells}</div>
-          </div>
-        );
-      })}
-    </>
   );
 }
 
@@ -430,7 +452,7 @@ function ListView({ rows, onOpen, hasComment }: { rows: SocialPlanItem[]; onOpen
           const s = stMark(x.status);
           return (
             <tr key={x.id} className={`${o} ${s ? 'st-' + s : ''}`} onClick={() => onOpen(x.id)}>
-              <td className="mono">{x.pub_date.slice(8, 10)}/{x.pub_date.slice(5, 7)}<br />{x.weekday.slice(0, 3)}</td>
+              <td className="mono">{x.pub_date.slice(8, 10)}/{x.pub_date.slice(5, 7)}<br />{x.weekday.slice(0, 3)}{x.pub_time ? ` · ${x.pub_time.slice(0, 5)}` : ''}</td>
               <td><span className={`sp-badge b-${slug(x.brand)}`}>{x.brand}</span></td>
               <td className="mono">{x.network}</td>
               <td><span className={`sp-badge t-${slug(x.piece_type)}`}>{x.piece_type}</span></td>
@@ -484,12 +506,12 @@ function Vazio({ msg }: { msg?: string }) {
   );
 }
 
-/* ================= painel de detalhe (aprovação + comentários + edição) ================= */
-type EditForm = Pick<SocialPlanItem, 'pub_date' | 'brand' | 'network' | 'piece_type' | 'format' | 'origin' | 'pauta' | 'product' | 'sku' | 'week_theme' | 'objective' | 'cta' | 'media_use' | 'channel'>;
-
-function DetailSheet({ item, items, me, profiles, approverId, approverName, focusComments, onClose, onOpen, onChanged }: {
+/* ================= painel do destino (aprovação + comentários) ================= */
+function DetailSheet({ item, siblings, topic, chans, me, profiles, approverId, approverName, focusComments, onClose, onOpen, onEditTopic, onChanged }: {
   item: SocialPlanItem;
-  items: SocialPlanItem[];
+  siblings: SocialPlanItem[];
+  topic: SocialTopic | null;
+  chans: Map<string, SocialChannel>;
   me: Profile | null;
   profiles: Profile[];
   approverId: string | null;
@@ -497,6 +519,7 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
   focusComments: boolean;
   onClose: () => void;
   onOpen: (id: string) => void;
+  onEditTopic: (id: string) => void;
   onChanged: () => void;
 }) {
   const [comments, setComments] = useState<(SocialPlanComment & { author: { name: string } | null })[]>([]);
@@ -506,23 +529,13 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
   const [text, setText] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
   const [replyTo, setReplyTo] = useState<{ id: string; author: string } | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<EditForm>(() => pick(item));
-  const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState('');
   const commentsRef = useRef<HTMLDivElement>(null);
   const active = profiles.filter((p) => !p.disabled);
 
-  const children = items.filter((x) => x.parent_item_id === item.id);
-  const parent = item.parent_item_id ? items.find((x) => x.id === item.parent_item_id) ?? null : null;
-  const reuseTaken = new Set(children.map((c) => c.network));
-  const reuseAvail = item.network === 'Instagram' && item.origin !== 'Reaproveitamento'
-    ? REUSE_NETS.filter((n) => !reuseTaken.has(n)) : [];
-  const [reuseSel, setReuseSel] = useState<Set<string>>(() => {
-    if (item.network !== 'Instagram' || item.origin === 'Reaproveitamento') return new Set();
-    const base = item.piece_type === 'Reels' ? ['TikTok', 'YouTube Shorts'] : item.piece_type === 'Feed' ? ['Pinterest'] : [];
-    return new Set(base.filter((n) => !reuseTaken.has(n)));
-  });
+  const matriz = siblings.find((x) => x.link_kind === 'matriz');
+  const eff = effective(item, matriz);
+  const others = siblings.filter((x) => x.id !== item.id).sort((a, b) => (a.pub_date + (a.pub_time ?? '')).localeCompare(b.pub_date + (b.pub_time ?? '')));
 
   const loadComments = useCallback(async () => {
     const { data } = await supabase
@@ -551,7 +564,6 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
   };
 
   useEffect(() => { loadComments(); }, [loadComments]);
-  useEffect(() => { setForm(pick(item)); }, [item]);
   useEffect(() => {
     if (focusComments) setTimeout(() => commentsRef.current?.scrollIntoView({ behavior: 'smooth' }), 250);
   }, [focusComments]);
@@ -600,54 +612,9 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
     showFlash(kind === 'adjust' ? 'ajuste registrado' : 'comentário enviado');
   };
 
-  const saveEdit = async () => {
-    setSaving(true);
-    const { weekday, month_label } = derive(form.pub_date);
-    await supabase.from('social_plan_items').update({ ...form, weekday, month_label, updated_by: me?.id ?? null }).eq('id', item.id);
-    // propaga os campos compartilhados para os reaproveitamentos vinculados
-    if (children.length) {
-      const shared: Record<string, unknown> = { weekday, month_label };
-      for (const k of SHARED_FIELDS) shared[k] = (form as Record<string, unknown>)[k] ?? (k === 'weekday' ? weekday : k === 'month_label' ? month_label : undefined);
-      await supabase.from('social_plan_items').update(shared).in('id', children.map((c) => c.id));
-    }
-    setSaving(false); setEditing(false); showFlash(children.length ? 'peça e reaproveitamentos atualizados' : 'peça atualizada'); onChanged();
-  };
-
-  const duplicate = async () => {
-    const clone = { ...pick(item), pauta: item.pauta ? `${item.pauta} (cópia)` : '' };
-    const { weekday, month_label } = derive(clone.pub_date);
-    const { data } = await supabase.from('social_plan_items')
-      .insert({ ...clone, weekday, month_label, status: 'pendente', updated_by: me?.id ?? null }).select('id').single();
-    onChanged();
-    if (data) onOpen((data as { id: string }).id);
-  };
-
-  const remove = async () => {
-    if (!window.confirm('Excluir esta peça? Esta ação não pode ser desfeita.')) return;
-    if (children.length && window.confirm(`Esta peça tem ${children.length} reaproveitamento(s) vinculado(s). Excluir também?`)) {
-      await supabase.from('social_plan_items').delete().in('id', children.map((c) => c.id));
-    }
-    await supabase.from('social_plan_items').delete().eq('id', item.id);
-    onClose(); onChanged();
-  };
-
-  const generateReuse = async (nets: string[]) => {
-    if (!nets.length) return;
-    const { weekday, month_label } = derive(item.pub_date);
-    const base = { ...pick(item), weekday, month_label, status: 'pendente' as const, updated_by: me?.id ?? null };
-    const extras = nets.map((net) => ({
-      ...base, origin: 'Reaproveitamento', network: net, channel: net,
-      piece_type: REUSE[net].type, format: REUSE[net].format, parent_item_id: item.id,
-    }));
-    await supabase.from('social_plan_items').insert(extras);
-    showFlash(`+${nets.length} reaproveitamento(s)`); onChanged();
-  };
-
-
   const toggleMention = (id: string) =>
     setMentionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const o = item.origin;
   const threads = comments.filter((c) => !c.parent_id);
   const repliesOf = (pid: string) => comments.filter((c) => c.parent_id === pid);
 
@@ -684,73 +651,51 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
     );
   };
 
+
   return (
     <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sp-panel">
         <button className="close" aria-label="Fechar" onClick={onClose}>×</button>
         <div className="sp-tags">
           <span className={`sp-badge b-${slug(item.brand)}`}>{item.brand}</span>
-          <span className={`sp-badge t-${slug(item.piece_type)}`}>{item.piece_type}</span>
-          <span className="sp-badge" style={{ background: '#EFEAE1', color: '#6B655C' }}>{o}</span>
+          <span className={`sp-kind k-${item.link_kind}`}>{KIND_LABEL[item.link_kind]}</span>
           {item.status === 'aprovada' && <span className="sp-badge" style={{ background: '#EAF6F0', color: '#1E7A50' }}>Aprovada</span>}
           {item.status === 'ajuste' && <span className="sp-badge" style={{ background: '#FDF5E4', color: '#8A6113' }}>Com ajuste</span>}
         </div>
 
-        {!editing ? (
-          <>
-            <h3 className="sp-panel-h3">{item.pauta}</h3>
-            <dl>
-              <Field dt="Quando" dd={`${brFmt(item.pub_date)} · ${item.weekday}`} />
-              <Field dt="Onde" dd={item.channel} />
-              <Field dt="Formato" dd={item.format} />
-              <Field dt="Produto" dd={item.product} />
-              <Field dt="SKU" dd={item.sku} mono />
-              <Field dt="Semana e tema" dd={item.week_theme} />
-              <Field dt="Objetivo" dd={item.objective} />
-              <Field dt="Chamada" dd={item.cta} />
-              <Field dt="Uso de mídia" dd={item.media_use} />
-            </dl>
-            {parent && (
-              <p className="sp-relnote">↳ Reaproveitamento de <button className="sp-linkbtn" onClick={() => onOpen(parent.id)}>{parent.product || parent.pauta || 'peça-mãe'}</button> ({parent.network})</p>
-            )}
-            {children.length > 0 && (
-              <div className="sp-childbox">
-                <span className="sp-flabel">Reaproveitamentos desta peça</span>
-                <div className="sp-childlist">
-                  {children.map((c) => (
-                    <button key={c.id} className="sp-childchip" onClick={() => onOpen(c.id)}>
-                      {c.network}{stMark(c.status) === 'ok' ? ' ✓' : stMark(c.status) === 'aj' ? ' !' : ''}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {reuseAvail.length > 0 && (
-              <div className="sp-reusebox" style={{ marginTop: 12 }}>
-                <span className="sp-flabel">Gerar reaproveitamento em</span>
-                <div className="sp-mchips" style={{ marginTop: 6 }}>
-                  {reuseAvail.map((net) => (
-                    <button key={net} type="button" className={`sp-mchip ${reuseSel.has(net) ? 'on' : ''}`}
-                      onClick={() => setReuseSel((prev) => { const s = new Set(prev); s.has(net) ? s.delete(net) : s.add(net); return s; })}>
-                      {reuseSel.has(net) ? '✓ ' : '+ '}{net}
-                    </button>
-                  ))}
-                </div>
-                <button className="sp-ebtn prim" style={{ marginTop: 8 }} disabled={!reuseSel.size}
-                  onClick={() => { generateReuse([...reuseSel]); setReuseSel(new Set()); }}>
-                  Gerar {reuseSel.size || ''} peça(s)
+        <h3 className="sp-panel-h3">{topic?.title || item.pauta}</h3>
+        <dl>
+          <Field dt="Quando" dd={`${brFmt(item.pub_date)} · ${item.weekday}${item.pub_time ? ` · ${hhmm(item.pub_time)}` : ' · sem horário'}`} />
+          <Field dt="Onde" dd={destLabel(item, chans)} />
+          <Field dt="Produto" dd={item.product} />
+          <Field dt="SKU" dd={item.sku} mono />
+          <Field dt="Frente" dd={item.week_theme} />
+          <Field dt="Objetivo" dd={item.objective} />
+          {topic?.strategy ? <Field dt="Estratégia" dd={topic.strategy} /> : null}
+          <Field dt="Chamada" dd={item.cta} />
+          <Field dt="Uso de mídia" dd={item.media_use} />
+        </dl>
+        <div className="sp-field"><dt>Legenda{item.link_kind === 'reaproveita' ? ' (da matriz)' : ''}</dt>
+          <dd>{eff.caption ? <div className="sp-caption">{eff.caption}</div> : '—'}</dd></div>
+        <div className="sp-field"><dt>Criativo{item.link_kind !== 'matriz' && !item.creative_changed ? ' (da matriz)' : ''}</dt>
+          <dd>{eff.creative ? <a className="sp-linkbtn" href={eff.creative} target="_blank" rel="noreferrer">Abrir no Drive ↗</a> : '—'}</dd></div>
+        {topic?.licensed && <p className="sp-relnote">Produto licenciado · {topic.licensor_ok ? 'aprovado pelo licenciador' : 'aguardando aprovação do licenciador'}</p>}
+
+        {topic && (
+          <div className="sp-childbox">
+            <span className="sp-flabel">Outros destinos deste assunto</span>
+            <div className="sp-childlist">
+              {others.length ? others.map((c) => (
+                <button key={c.id} className="sp-childchip" onClick={() => onOpen(c.id)}>
+                  {destLabel(c, chans).replace(/^[^·]+· /, '')} · {c.pub_date.slice(8, 10)}/{c.pub_date.slice(5, 7)}{stMark(c.status) === 'ok' ? ' ✓' : stMark(c.status) === 'aj' ? ' !' : ''}
                 </button>
-              </div>
-            )}
-            <div className="sp-detail-actions">
-              <button className="sp-ebtn" onClick={() => setEditing(true)}>✎ Editar</button>
-              <button className="sp-ebtn" onClick={duplicate}>⧉ Duplicar</button>
-              <button className="sp-ebtn danger" onClick={remove}>🗑 Excluir</button>
+              )) : <span className="sp-relnote" style={{ margin: 0 }}>Só esta peça por enquanto.</span>}
             </div>
-          </>
-        ) : (
-          <EditPanel form={form} setForm={setForm} onSave={saveEdit} onCancel={() => { setEditing(false); setForm(pick(item)); }} saving={saving} />
+          </div>
         )}
+        <div className="sp-detail-actions">
+          {topic && <button className="sp-ebtn prim" onClick={() => onEditTopic(topic.id)}>✎ Editar assunto e destinos</button>}
+        </div>
 
         {/* ---------- aprovação ---------- */}
         <div className="sp-aprov">
@@ -810,131 +755,4 @@ function DetailSheet({ item, items, me, profiles, approverId, approverName, focu
 
 function Field({ dt, dd, mono }: { dt: string; dd: string; mono?: boolean }) {
   return <div className="sp-field"><dt>{dt}</dt><dd className={mono ? 'mono' : ''}>{dd || '—'}</dd></div>;
-}
-
-function EditPanel({ form, setForm, onSave, onCancel, saving, createMode, extra }: {
-  form: EditForm; setForm: React.Dispatch<React.SetStateAction<EditForm>>; onSave: () => void; onCancel: () => void; saving: boolean; createMode?: boolean; extra?: React.ReactNode;
-}) {
-  const upd = (k: keyof EditForm, v: string) => setForm((p) => ({ ...p, [k]: v }));
-  const sel = (k: keyof EditForm, opts: string[]) => (
-    <select value={form[k]} onChange={(e) => upd(k, e.target.value)}>
-      {opts.map((o) => <option key={o} value={o}>{o}</option>)}
-    </select>
-  );
-  return (
-    <div className="sp-edit">
-      <h3 className="sp-panel-h3">{createMode ? 'Nova peça' : 'Editar peça'}</h3>
-      <ERow label="Pauta (título)"><textarea rows={2} value={form.pauta} onChange={(e) => upd('pauta', e.target.value)} /></ERow>
-      <div className="sp-egrid">
-        <ERow label="Data"><input type="date" value={form.pub_date} onChange={(e) => upd('pub_date', e.target.value)} /></ERow>
-        <ERow label="Marca">{sel('brand', ['Playmi', 'Tópi', 'Cardoso'])}</ERow>
-        <ERow label="Rede">{sel('network', ['Instagram', 'Facebook', 'TikTok', 'YouTube Shorts', 'Pinterest', 'LinkedIn'])}</ERow>
-        <ERow label="Tipo">{sel('piece_type', ['Reels', 'Feed', 'Stories', 'LinkedIn', 'Pin'])}</ERow>
-        <ERow label="Produção">{sel('origin', ['Original', 'Apoio', 'Reaproveitamento'])}</ERow>
-        <ERow label="Formato"><input value={form.format} onChange={(e) => upd('format', e.target.value)} /></ERow>
-        <ERow label="Onde (canal)"><input value={form.channel} onChange={(e) => upd('channel', e.target.value)} /></ERow>
-        <ERow label="Produto"><input value={form.product} onChange={(e) => upd('product', e.target.value)} /></ERow>
-        <ERow label="SKU"><input value={form.sku} onChange={(e) => upd('sku', e.target.value)} /></ERow>
-        <ERow label="Semana e tema"><input value={form.week_theme} onChange={(e) => upd('week_theme', e.target.value)} /></ERow>
-      </div>
-      <ERow label="Objetivo"><textarea rows={2} value={form.objective} onChange={(e) => upd('objective', e.target.value)} /></ERow>
-      <ERow label="Chamada (CTA)"><input value={form.cta} onChange={(e) => upd('cta', e.target.value)} /></ERow>
-      <ERow label="Uso de mídia"><input value={form.media_use} onChange={(e) => upd('media_use', e.target.value)} /></ERow>
-      {extra}
-      <div className="sp-edit-actions">
-        <button className="sp-ebtn prim" onClick={onSave} disabled={saving}>{saving ? 'Salvando…' : createMode ? 'Criar peça' : 'Salvar alterações'}</button>
-        <button className="sp-ebtn" onClick={onCancel}>Cancelar</button>
-      </div>
-    </div>
-  );
-}
-function ERow({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="sp-erow"><span>{label}</span>{children}</label>;
-}
-
-function pick(x: SocialPlanItem): EditForm {
-  const { pub_date, brand, network, piece_type, format, origin, pauta, product, sku, week_theme, objective, cta, media_use, channel } = x;
-  return { pub_date, brand, network, piece_type, format, origin, pauta, product, sku, week_theme, objective, cta, media_use, channel };
-}
-
-function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function derive(iso: string) {
-  const [Y, M, D] = iso.split('-').map(Number);
-  const weekday = DOW[(new Date(Y, M - 1, D).getDay() + 6) % 7];
-  const ym = `${Y}-${String(M).padStart(2, '0')}`;
-  const month_label = MESES[Object.keys(NOME_MES).indexOf(ym)] ?? '';
-  return { weekday, month_label };
-}
-function blankForm(): EditForm {
-  return {
-    pub_date: todayISO(), brand: 'Playmi', network: 'Instagram', piece_type: 'Feed', format: '',
-    origin: 'Original', pauta: '', product: '', sku: '', week_theme: '', objective: '', cta: '', media_use: '', channel: '',
-  };
-}
-
-/* ---------------- criar peça nova ---------------- */
-function CreateSheet({ me, onClose, onCreated }: {
-  me: Profile | null; onClose: () => void; onCreated: (id: string) => void;
-}) {
-  const [form, setForm] = useState<EditForm>(blankForm);
-  const [reuse, setReuse] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);
-
-  // sugere redes de reaproveitamento conforme rede/tipo da peça-mãe (Instagram)
-  useEffect(() => {
-    if (form.network !== 'Instagram') { setReuse(new Set()); return; }
-    if (form.piece_type === 'Reels') setReuse(new Set(['TikTok', 'YouTube Shorts']));
-    else if (form.piece_type === 'Feed') setReuse(new Set(['Pinterest']));
-    else setReuse(new Set());
-  }, [form.network, form.piece_type]);
-
-  const toggleReuse = (net: string) =>
-    setReuse((prev) => { const s = new Set(prev); s.has(net) ? s.delete(net) : s.add(net); return s; });
-
-  const save = async () => {
-    if (!form.pauta.trim() && !form.product.trim()) return;
-    setSaving(true);
-    const { weekday, month_label } = derive(form.pub_date);
-    const base = { ...form, weekday, month_label, status: 'pendente' as const, updated_by: me?.id ?? null };
-    const { data, error } = await supabase.from('social_plan_items').insert(base).select('id').single();
-    const newId = (data as { id: string } | null)?.id;
-    // gera as peças de reaproveitamento escolhidas, vinculadas à mãe (parent_item_id)
-    if (!error && newId && reuse.size) {
-      const extras = [...reuse].map((net) => ({
-        ...base, origin: 'Reaproveitamento', network: net, channel: net,
-        piece_type: REUSE[net].type, format: REUSE[net].format, parent_item_id: newId,
-      }));
-      await supabase.from('social_plan_items').insert(extras);
-    }
-    setSaving(false);
-    if (!error && newId) onCreated(newId);
-  };
-
-  const showReuse = form.network === 'Instagram';
-  const reuseBox = showReuse ? (
-    <div className="sp-reusebox">
-      <span className="sp-flabel">Gerar reaproveitamento em</span>
-      <div className="sp-mchips" style={{ marginTop: 6 }}>
-        {REUSE_NETS.map((net) => (
-          <button key={net} type="button" className={`sp-mchip ${reuse.has(net) ? 'on' : ''}`} onClick={() => toggleReuse(net)}>
-            {reuse.has(net) ? '✓ ' : '+ '}{net}
-          </button>
-        ))}
-      </div>
-      <p className="sp-reusehint">{reuse.size ? `Cria +${reuse.size} peça(s) “Reaproveitamento” com o mesmo produto e data.` : 'Nenhuma peça extra será criada.'}</p>
-    </div>
-  ) : null;
-
-  return (
-    <div className="sp-sheet on" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="sp-panel">
-        <button className="close" aria-label="Fechar" onClick={onClose}>×</button>
-        <div className="sp-tags"><span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>Nova peça</span></div>
-        <EditPanel form={form} setForm={setForm} onSave={save} onCancel={onClose} saving={saving} createMode extra={reuseBox} />
-      </div>
-    </div>
-  );
 }
