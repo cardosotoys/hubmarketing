@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { decide } from './actions';
+import DrivePlayer from './DrivePlayer';
 import { BRIEF_ETAPA1, BRIEF_ETAPA2, BriefRead } from './Brief';
-import { KIND_LABEL, brShort, destLabel, driveThumb, hhmm, inQueue1, inQueue2, licBlocked, slug, type ChannelMap } from './shared';
+import { KIND_LABEL, brShort, destLabel, hhmm, inQueue1, inQueue2, licBlocked, slug, type ChannelMap } from './shared';
 
 /* Fila de aprovação: uma peça por vez, na ordem em que saem.
  * Etapa 1 = pauta e legenda; etapa 2 = criativo final. Só aparece quem tem decisão própria. */
@@ -62,7 +63,6 @@ export default function ApprovalView({ live, byTopic, topicById, chans, meId, ca
   const topic = cur.topic_id ? topicById.get(cur.topic_id) ?? null : null;
   const leva = sibs.filter((x) => x.id !== cur.id && (x.link_kind === 'reaproveita' || (gate === 2 && cur.link_kind === 'matriz' && x.link_kind === 'adapta' && !x.creative_changed)));
   const creative = cur.creative_url;
-  const thumb = driveThumb(creative);
   const lim = cur.channel_id ? chans.get(cur.channel_id)?.caption_limit : null;
   const cap = cur.caption ?? '';
   const pos = (gate === 1 ? q1 : q2).findIndex((x) => x.id === cur.id) + 1;
@@ -73,7 +73,7 @@ export default function ApprovalView({ live, byTopic, topicById, chans, meId, ca
       {tabs}{head}
       <div className="sp-appr">
         <div className="sp-appr-art">
-          {thumb ? <img src={thumb} alt="Prévia do criativo no Drive" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : null}
+          {creative && <DrivePlayer url={creative} vertical={/Reels|Stories|Shorts|TikTok|Status/.test(`${cur.piece_type} ${cur.channel_id ? chans.get(cur.channel_id)?.name ?? '' : ''}`)} />}
           <div className="sp-appr-ph">
             <span>{destLabel(cur, chans)}</span>
             <b>{cur.product || cur.pauta}</b>

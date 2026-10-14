@@ -4312,3 +4312,23 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .pv-head{padding:12px 16px}.sp .pv-head h2{font-size:18px;white-space:normal}
   .sp .pv-doc{padding:28px 18px 40px}
 }
+
+/* ---------- Player do Drive embutido (vídeo/imagem/pasta tocando dentro do Hub) ---------- */
+.sp .dp{position:relative;width:100%;overflow:hidden;border-radius:inherit;background:transparent}
+.sp .dp>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
+.sp .dp>iframe{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:3;background:#000}
+.sp .dp.on.folder>iframe{background:#fff}
+.sp .dp-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;appearance:none;border:0;display:flex;align-items:center;gap:10px;padding:10px 18px 10px 10px;border-radius:999px;background:rgba(10,37,48,.78);backdrop-filter:blur(6px);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 10px 30px -10px rgba(0,0,0,.6);transition:transform .18s,background .18s}
+.sp .dp-play span{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#0A2530;font-size:14px;padding-left:2px}
+.sp .dp-play.folder span{padding-left:0;font-size:16px}
+.sp .dp-play:hover{transform:translate(-50%,-50%) scale(1.05);background:rgba(10,37,48,.92)}
+.sp .dp-x{position:absolute;top:10px;right:10px;z-index:5;appearance:none;border:0;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:1;cursor:pointer}
+/* na fila de aprovação */
+.sp .sp-appr-art .dp{border-radius:14px;background:#0B0F12}
+.sp .sp-appr-art .dp.v{aspect-ratio:9/16}.sp .sp-appr-art .dp.q{aspect-ratio:4/5}
+/* no celular da peça aberta */
+.sp .pv-media .dp{position:absolute;inset:0}
+.sp .pv-media .dp .pv-poster{z-index:0}
+.sp .pv-phone.v .pv-media .dp.on~*{display:none}
+.sp .pv-phone.v:has(.dp.on) .pv-reel-ui{display:none}
+.sp .dp-play{white-space:nowrap}

@@ -6,7 +6,8 @@ import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
 import { Linkify } from './social-plan/Brief';
-import { KIND_LABEL, destLabel, driveThumb, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
+import DrivePlayer from './social-plan/DrivePlayer';
+import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
 import CentralView from './social-plan/CentralView';
@@ -632,7 +633,6 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
 
 
   const brief = topic?.brief ?? {};
-  const thumb = driveThumb(eff.creative);
   const ch = item.channel_id ? chans.get(item.channel_id) : undefined;
   const vertical = /Reels|Stories|Shorts|TikTok|Status/.test(`${item.piece_type} ${ch?.name ?? ''}`);
   const lim = ch?.caption_limit ?? null;
@@ -669,12 +669,13 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
 
   const Media = ({ big }: { big?: boolean }) => (
     <div className={`pv-media b-${brandK} ${vertical ? 'v' : 'q'} ${big ? 'big' : ''}`}>
-      {thumb && <img src={thumb} alt="" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
-      <div className="pv-poster">
-        <span>{item.brand}</span>
-        <b>{brief.texto_arte || item.product || titulo}</b>
-        {brief.gancho && <em>{brief.gancho}</em>}
-      </div>
+      <DrivePlayer url={eff.creative} vertical={vertical} poster={(
+        <div className="pv-poster">
+          <span>{item.brand}</span>
+          <b>{brief.texto_arte || item.product || titulo}</b>
+          {brief.gancho && <em>{brief.gancho}</em>}
+        </div>
+      )} />
     </div>
   );
 
