@@ -69,7 +69,8 @@ export default function SocialPlan() {
   const [f, setF] = useState<Filters>(emptyFilters);
   const [selId, setSelId] = useState<string | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ id: string | null } | null>(null);
-  const [approverId, setApproverId] = useState<string | null>(null);
+  const [approverIds, setApproverIds] = useState<string[]>([]);
+  const [pickOpen, setPickOpen] = useState(false);
   const [reviewOnly, setReviewOnly] = useState(false);
   const [flash, setFlash] = useState('');
   const [moreF, setMoreF] = useState(false);
@@ -92,7 +93,7 @@ export default function SocialPlan() {
       supabase.from('social_plan_deadlines').select('*').order('ord'),
       supabase.from('profiles').select('*').order('name'),
       supabase.from('social_plan_comments').select('item_id'),
-      supabase.from('social_plan_settings').select('approver_id').eq('id', 1).single(),
+      supabase.from('social_plan_settings').select('*').eq('id', 1).single(),
       supabase.from('social_strategy_notes').select('*').order('ord'),
     ]);
     setNotes((nt.data as SocialStrategyNote[]) ?? []);
@@ -106,7 +107,9 @@ export default function SocialPlan() {
     setDeadlines((dl.data as SocialPlanDeadline[]) ?? []);
     setProfiles((pf.data as Profile[]) ?? []);
     setCommentItemIds(new Set(((cm.data as { item_id: string }[]) ?? []).map((c) => c.item_id)));
-    setApproverId((st.data as { approver_id: string | null } | null)?.approver_id ?? null);
+    // um ou mais aprovadores (0117); antes dela só existe approver_id
+    const sd = st.data as { approver_id: string | null; approver_ids?: string[] | null } | null;
+    setApproverIds(sd?.approver_ids?.length ? sd.approver_ids : sd?.approver_id ? [sd.approver_id] : []);
     setLoading(false);
   }, []);
 
@@ -180,7 +183,7 @@ export default function SocialPlan() {
   const extraN = f.rede.size + f.tipo.size + f.origem.size + f.mes.size + f.status.size;
 
   const pass = useCallback((x: SocialPlanItem) => {
-    if (reviewOnly && !(x.awaiting_review && x.approver_id === profile?.id)) return false;
+    if (reviewOnly && !(x.awaiting_review && !!profile?.id && approverIds.includes(profile.id))) return false;
     if (f.marca.size && !f.marca.has(x.brand)) return false;
     if (f.rede.size && !f.rede.has(x.network)) return false;
     if (f.tipo.size && !f.tipo.has(x.piece_type)) return false;
@@ -214,17 +217,30 @@ export default function SocialPlan() {
   const fronts = useMemo(() => [...new Set(topics.map((t) => t.front).filter(Boolean))].sort(), [topics]);
 
   const myReviews = useMemo(
-    () => (profile?.id ? live.filter((x) => x.awaiting_review && x.approver_id === profile.id) : []),
-    [live, profile?.id],
+    () => (profile?.id && approverIds.includes(profile.id) ? live.filter((x) => x.awaiting_review) : []),
+    [live, profile?.id, approverIds],
   );
   const isPriv = profile?.role === 'diretoria' || profile?.role === 'administrador';
-  const canDecide = isPriv || (!!profile?.id && profile.id === approverId);
+  // qualquer aprovador decide: o primeiro que aprovar ou pedir ajuste resolve o post
+  const isApprover = !!profile?.id && approverIds.includes(profile.id);
+  const canDecide = isPriv || isApprover;
+  const approverId = approverIds[0] ?? null;
   const filaN = useMemo(() => live.filter((x) => inQueue1(x) || inQueue2(x)).length, [live]);
-  const approverName = profiles.find((p) => p.id === approverId)?.name ?? null;
+  const approverList = approverIds.map((id) => profiles.find((p) => p.id === id)?.name).filter(Boolean) as string[];
+  // um aprovador: nome inteiro; vários: só os primeiros nomes ("Fabiana ou João")
+  const approverName = !approverList.length ? null : approverList.length === 1 ? approverList[0] : approverList.map((n) => n.split(' ')[0]).join(' ou ');
 
-  const setApprover = async (id: string) => {
-    setApproverId(id || null);
-    await supabase.from('social_plan_settings').update({ approver_id: id || null, updated_at: new Date().toISOString() }).eq('id', 1);
+  const toggleApprover = async (id: string) => {
+    const next = approverIds.includes(id) ? approverIds.filter((x) => x !== id) : [...approverIds, id];
+    setApproverIds(next);
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('social_plan_settings').update({ approver_ids: next, approver_id: next[0] ?? null, updated_at: now }).eq('id', 1);
+    if (error) {
+      // sem a 0117 só cabe um aprovador
+      await supabase.from('social_plan_settings').update({ approver_id: next[next.length - 1] ?? null, updated_at: now }).eq('id', 1);
+      setApproverIds(next.length ? [next[next.length - 1]] : []);
+      showFlash('Para ter mais de um aprovador, rode a migration 0117 no Supabase.');
+    }
   };
 
 
@@ -258,12 +274,12 @@ export default function SocialPlan() {
   if (loading) return <Loading />;
 
   // o aprovador entra direto no modo aprovador (qualquer perfil); pode trocar pelo botão e a escolha fica guardada
-  const lens = lensPref ?? (!!profile?.id && profile.id === approverId);
+  const lens = lensPref ?? isApprover;
   if (lens) {
     return (
       <div className="sp al-shell">
         <ApproverLens live={live} byTopic={byTopic} topicById={topicById} chans={chans} meId={profile?.id ?? null}
-          canDecide={canDecide} approverName={approverName} onExit={() => setLensPref(false)} onChanged={load} />
+          canDecide={canDecide} approverName={approverName} meName={profile?.name ?? null} onExit={() => setLensPref(false)} onChanged={load} />
       </div>
     );
   }
@@ -279,13 +295,26 @@ export default function SocialPlan() {
           </div>
           <div className="coc-actions">
             {isPriv && (
-              <label className="coc-approver" title="Quem aprova as peças, libera materiais e banners e cria os links da visão final">
-                <span>Aprovador</span>
-                <select value={approverId ?? ''} onChange={(e) => setApprover(e.target.value)}>
-                  <option value="">ninguém definido</option>
-                  {profiles.filter((p) => !p.disabled).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
+              <div className="coc-approver" title="Quem aprova as peças e libera materiais e banners. Com mais de um, qualquer um decide.">
+                <span>{approverList.length > 1 ? 'Aprovadores' : 'Aprovador'}</span>
+                <button type="button" className="coc-apick" aria-expanded={pickOpen} onClick={() => setPickOpen((v) => !v)}>
+                  {approverList.length ? `${approverList[0].split(' ')[0]}${approverList.length > 1 ? ` +${approverList.length - 1}` : ''}` : 'ninguém definido'} ▾
+                </button>
+                {pickOpen && (
+                  <>
+                    <div className="coc-apick-bg" onClick={() => setPickOpen(false)} />
+                    <div className="coc-apick-pop" role="listbox" aria-multiselectable>
+                      <p>Qualquer um deles aprova. O primeiro que decidir resolve o post.</p>
+                      {profiles.filter((p) => !p.disabled).map((p) => (
+                        <label key={p.id}>
+                          <input type="checkbox" checked={approverIds.includes(p.id)} onChange={() => toggleApprover(p.id)} />
+                          <span>{p.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <button className="coc-lens" onClick={() => setLensPref(true)} title="A tela de quem só aprova: o post, a legenda, o porquê e onde vai sair">Ver como aprovador</button>
             <button className="coc-new" onClick={() => { setView('assuntos'); openTopic(null); }}>Novo assunto</button>
@@ -593,7 +622,6 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
     await supabase.from('social_plan_items').update({ awaiting_review: false }).eq('id', item.id);
     showFlash('aprovação cancelada'); onChanged();
   };
-  const iAmApprover = me?.id === item.approver_id;
 
   const postComment = async (kind: SocialPlanComment['kind']) => {
     const raw = text.trim();
@@ -828,8 +856,8 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               </li>
             ))}
           </ol>
-          {!canDecide && !item.awaiting_review && <button className="pv-btn pri wide" onClick={sendForReview} disabled={!approverId}>Pedir aprovação{approverName ? ` a ${approverName.split(' ')[0]}` : ''}</button>}
-          {item.awaiting_review && <p className="pv-note">Aguardando {profiles.find((p) => p.id === item.approver_id)?.name ?? 'o aprovador'}{iAmApprover ? ' (você)' : ''} · <button className="pv-link" onClick={cancelReview}>cancelar</button></p>}
+          {!canDecide && !item.awaiting_review && <button className="pv-btn pri wide" onClick={sendForReview} disabled={!approverId}>Pedir aprovação{approverName && !approverName.includes(' ou ') ? ` a ${approverName.split(' ')[0]}` : ''}</button>}
+          {item.awaiting_review && <p className="pv-note">Aguardando {approverName ?? 'o aprovador'}{canDecide ? ' (você pode decidir)' : ''} · <button className="pv-link" onClick={cancelReview}>cancelar</button></p>}
           {flash && <p className="pv-flash">{flash}</p>}
 
           {topic && (

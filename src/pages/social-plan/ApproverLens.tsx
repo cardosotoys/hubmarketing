@@ -12,7 +12,7 @@ import { DOW, brShort, dowIndex, hhmm, inQueue1, inQueue2, licBlocked, previewIt
 
 type Card = { item: SocialPlanItem; gate: 1 | 2 };
 
-export default function ApproverLens({ live, byTopic, topicById, chans, meId, canDecide, approverName, onExit, onChanged }: {
+export default function ApproverLens({ live, byTopic, topicById, chans, meId, canDecide, approverName, meName, onExit, onChanged }: {
   live: SocialPlanItem[];
   byTopic: Map<string, SocialPlanItem[]>;
   topicById: Map<string, SocialTopic>;
@@ -20,6 +20,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
   meId: string | null;
   canDecide: boolean;
   approverName: string | null;
+  meName?: string | null;
   onExit?: () => void;
   onChanged: () => Promise<void> | void;
 }) {
@@ -39,7 +40,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
   ].sort((a, b) => when(a.item).localeCompare(when(b.item)));
   const queue = all.filter((c) => !skip.has(c.item.id));
   const card = (focus && queue.find((c) => c.item.id === focus)) || queue[0];
-  const first = (approverName ?? '').split(' ')[0];
+  const first = (meName ?? '').split(' ')[0];
 
   const act = async (d: 'aprovada' | 'ajuste') => {
     if (!card) return;
@@ -189,7 +190,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
                 </div>
               )}
             </div>
-          ) : <p className="al-note">Esta é a tela de quem aprova. Só {first || 'o aprovador'} decide por aqui.</p>}
+          ) : <p className="al-note">Esta é a tela de quem aprova. Só {approverName ?? 'o aprovador'} decide por aqui.</p>}
         </section>
       </div>
     </div>
