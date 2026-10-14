@@ -10,6 +10,7 @@ import DrivePlayer from './social-plan/DrivePlayer';
 import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
+import ApproverLens from './social-plan/ApproverLens';
 import CentralView from './social-plan/CentralView';
 import MateriaisView from './social-plan/MateriaisView';
 import ComercialView from './social-plan/ComercialView';
@@ -72,6 +73,7 @@ export default function SocialPlan() {
   const [reviewOnly, setReviewOnly] = useState(false);
   const [flash, setFlash] = useState('');
   const [moreF, setMoreF] = useState(false);
+  const [lensPref, setLensPref] = useState<boolean | null>(null);
   const com = useCommercial(view === 'materiais' || view === 'comercial' || view === 'final');
 
   const load = useCallback(async () => {
@@ -248,6 +250,17 @@ export default function SocialPlan() {
 
   if (loading) return <Loading />;
 
+  // quem só aprova (o aprovador que não é da diretoria/administração) entra direto no modo aprovador
+  const lens = lensPref ?? (!!profile?.id && profile.id === approverId && !isPriv);
+  if (lens) {
+    return (
+      <div className="sp al-shell">
+        <ApproverLens live={live} byTopic={byTopic} topicById={topicById} chans={chans} meId={profile?.id ?? null}
+          canDecide={canDecide} approverName={approverName} onExit={() => setLensPref(false)} onChanged={load} />
+      </div>
+    );
+  }
+
   return (
     <div className="sp">
       {/* ---------- cabeçalho (casca do protótipo: faixa Azul Universo com as abas) ---------- */}
@@ -267,6 +280,7 @@ export default function SocialPlan() {
                 </select>
               </label>
             )}
+            <button className="coc-lens" onClick={() => setLensPref(true)} title="A tela de quem só aprova: o post, a legenda, o porquê e onde vai sair">Ver como aprovador</button>
             <button className="coc-new" onClick={() => { setView('assuntos'); openTopic(null); }}>Novo assunto</button>
           </div>
         </div>
