@@ -68,56 +68,88 @@ export default function ApprovalView({ live, byTopic, topicById, chans, meId, ca
   const pos = (gate === 1 ? q1 : q2).findIndex((x) => x.id === cur.id) + 1;
   const total = gate === 1 ? q1.length : q2.length;
 
+  const ch = cur.channel_id ? chans.get(cur.channel_id) : undefined;
+  const vertical = /Reels|Stories|Shorts|TikTok|Status/.test(`${cur.piece_type} ${ch?.name ?? ''}`);
+  const brief = topic?.brief ?? {};
+  const temBrief = (gate === 1 ? BRIEF_ETAPA1 : BRIEF_ETAPA2).some((k) => brief[k]);
+  const titulo = topic?.title || cur.pauta;
+
   return (
     <>
       {tabs}{head}
-      <div className="sp-appr">
-        <div className="sp-appr-art">
-          {creative && <DrivePlayer url={creative} vertical={/Reels|Stories|Shorts|TikTok|Status/.test(`${cur.piece_type} ${cur.channel_id ? chans.get(cur.channel_id)?.name ?? '' : ''}`)} />}
-          <div className="sp-appr-ph">
-            <span>{destLabel(cur, chans)}</span>
-            <b>{cur.product || cur.pauta}</b>
-            {creative
-              ? <a className="sp-linkbtn" href={creative} target="_blank" rel="noreferrer">Abrir o criativo no Drive ↗</a>
-              : <em>{gate === 1 ? 'Na etapa 1 se avalia a pauta e a legenda. O criativo vem depois.' : 'Sem criativo.'}</em>}
-          </div>
+      <div className="ap">
+        <div className="ap-art">
+          <DrivePlayer url={creative} vertical={vertical} title={titulo} className={`ap-media b-${slug(cur.brand)}`} poster={(
+            <div className="ap-poster">
+              <span>{cur.brand}</span>
+              <b>{brief.texto_arte || cur.product || titulo}</b>
+              {!creative && <em>{gate === 1 ? 'Na etapa 1 se avalia a pauta e a legenda. O criativo vem depois.' : 'Sem criativo.'}</em>}
+            </div>
+          )} />
         </div>
-        <div className="sp-appr-info">
-          <div className="sp-appr-prog"><span>{pos} de {total} · sai {brShort(cur.pub_date)}{cur.pub_time ? ` às ${hhmm(cur.pub_time)}` : ' · sem horário'}</span><i style={{ width: `${(pos / total) * 100}%` }} /></div>
-          <h3 className="sp-panel-h3">{topic?.title || cur.pauta}</h3>
-          <dl className="sp-kv">
-            <dt>Destino</dt><dd><span className={`sp-badge b-${slug(cur.brand)}`}>{cur.brand}</span> {destLabel(cur, chans)} <span className={`sp-kind k-${cur.link_kind}`}>{KIND_LABEL[cur.link_kind]}</span></dd>
-            {cur.week_theme && <><dt>Frente</dt><dd>{cur.week_theme}</dd></>}
-            {cur.objective && <><dt>Objetivo</dt><dd>{cur.objective}</dd></>}
-            {topic?.strategy && <><dt>Por que agora</dt><dd>{topic.strategy}</dd></>}
-            {(cur.cta || cur.media_use) && <><dt>CTA · mídia</dt><dd>{[cur.cta, cur.media_use].filter(Boolean).join(' · ')}</dd></>}
-            {leva.length > 0 && <><dt>Leva junto</dt><dd>{leva.map((x) => `${destLabel(x, chans).replace(/^[^·]+· /, '')} ${brShort(x.pub_date)}`).join(' · ')}</dd></>}
-            {licBlocked(topic) && <><dt>Licenciado</dt><dd>Depois desta aprovação ainda falta o licenciador.</dd></>}
-          </dl>
-          <BriefRead brief={topic?.brief} keys={gate === 1 ? BRIEF_ETAPA1 : BRIEF_ETAPA2} title={gate === 1 ? 'Briefing: por que e para quem' : 'Briefing: o que a arte precisa ter'} />
-          <h4 className="sp-sech" style={{ margin: '14px 0 6px' }}>Legenda {lim ? <small>{cap.length} / {lim} caracteres</small> : null}</h4>
-          <div className={`sp-caption ${lim && cap.length > lim ? 'over' : ''}`}>{cap || '—'}</div>
-          {matriz && cur.link_kind === 'adapta' && matriz.caption && <p className="sp-inherit">Legenda da matriz: “{matriz.caption.slice(0, 140)}{matriz.caption.length > 140 ? '…' : ''}”</p>}
 
-          {!canDecide && <p className="sp-inherit" style={{ marginTop: 12 }}>Só o aprovador (ou a diretoria) decide. Você pode comentar na peça.</p>}
-          {canDecide && (adjusting ? (
-            <div style={{ marginTop: 12 }}>
-              <label className="sp-erow"><span>O que precisa mudar</span>
-                <textarea id="appr-note" rows={3} autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: trocar o CTA, cortar a segunda frase" /></label>
-              <div className="sp-abtns">
-                <button className="sp-abtn aj" disabled={busy} onClick={() => act('ajuste')}>Enviar pedido de ajuste</button>
-                <button className="sp-abtn zero" onClick={() => { setAdjusting(false); setNote(''); }}>cancelar</button>
-              </div>
+        <div className="ap-info">
+          <div className="ap-prog"><i style={{ width: `${(pos / total) * 100}%` }} /></div>
+          <p className="ap-count"><b>{pos}</b> de {total} · sai {brShort(cur.pub_date)}{cur.pub_time ? ` às ${hhmm(cur.pub_time)}` : ''}</p>
+          <h3 className="ap-title">{titulo}</h3>
+          <p className="ap-where">
+            <span className={`sp-badge b-${slug(cur.brand)}`}>{cur.brand}</span>
+            <span>{destLabel(cur, chans).replace(/^[^·]+· /, '')}</span>
+            <span className={`sp-kind k-${cur.link_kind}`}>{KIND_LABEL[cur.link_kind]}</span>
+          </p>
+          {leva.length > 0 && (
+            <p className="ap-leva">Leva junto: {leva.map((x) => `${destLabel(x, chans).replace(/^[^·]+· /, '')} ${brShort(x.pub_date)}`).join(' · ')}</p>
+          )}
+          {licBlocked(topic) && <p className="ap-warn">Produto licenciado: depois desta aprovação ainda falta o licenciador.</p>}
+
+          <section className="ap-sec ap-cap">
+            <h4>Legenda {lim ? <small className={cap.length > lim ? 'over' : ''}>{cap.length}/{lim}</small> : null}</h4>
+            <p>{cap || '—'}</p>
+            {matriz && cur.link_kind === 'adapta' && matriz.caption && <p className="ap-dim">Legenda da matriz: “{matriz.caption.slice(0, 140)}{matriz.caption.length > 140 ? '…' : ''}”</p>}
+          </section>
+
+          <details className="ap-sec" open={gate === 1}>
+            <summary>Por que esta peça existe</summary>
+            {(brief.meta || cur.objective) && <p className="ap-lead">{brief.meta || cur.objective}</p>}
+            {(topic?.strategy || brief.porque) && <p>{topic?.strategy || brief.porque}</p>}
+            <dl className="ap-dl">
+              {brief.publico && <><dt>Para quem</dt><dd>{brief.publico}</dd></>}
+              {brief.mensagem && <><dt>O que dizer</dt><dd>{brief.mensagem}</dd></>}
+              {(cur.cta || cur.media_use) && <><dt>Chamada</dt><dd>{[cur.cta, cur.media_use].filter(Boolean).join(' · ')}</dd></>}
+              {cur.week_theme && <><dt>Frente</dt><dd>{cur.week_theme}</dd></>}
+            </dl>
+          </details>
+
+          {temBrief && gate === 2 && (
+            <details className="ap-sec" open>
+              <summary>O que a arte precisa ter</summary>
+              <BriefRead brief={brief} keys={BRIEF_ETAPA2} title="" />
+            </details>
+          )}
+
+          {!canDecide && <p className="ap-dim" style={{ marginTop: 12 }}>Só o aprovador (ou a diretoria) decide. Você pode comentar na peça.</p>}
+          {msg && <p className="ap-msg">{msg}</p>}
+
+          {canDecide && (
+            <div className={`ap-bar ${adjusting ? 'adj' : ''}`}>
+              {adjusting ? (
+                <>
+                  <textarea id="appr-note" rows={2} autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="O que precisa mudar? Ex.: trocar o CTA, cortar a segunda frase" />
+                  <div className="ap-bar-row">
+                    <button className="ap-btn ghost" onClick={() => { setAdjusting(false); setNote(''); }}>Cancelar</button>
+                    <button className="ap-btn warn" disabled={busy} onClick={() => act('ajuste')}>Enviar ajuste</button>
+                  </div>
+                </>
+              ) : (
+                <div className="ap-bar-row">
+                  <button className="ap-btn ghost" onClick={() => setSkip((s) => new Set(s).add(cur.id))}>Pular</button>
+                  <button className="ap-btn" disabled={busy} onClick={() => setAdjusting(true)}>Pedir ajuste</button>
+                  <button className="ap-btn pri" disabled={busy} onClick={() => act('aprovada')}>Aprovar</button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="sp-abtns" style={{ marginTop: 14 }}>
-              <button className="sp-abtn ok" disabled={busy} onClick={() => act('aprovada')}>Aprovar</button>
-              <button className="sp-abtn aj" disabled={busy} onClick={() => setAdjusting(true)}>Pedir ajuste</button>
-              <button className="sp-abtn" onClick={() => setSkip((s) => new Set(s).add(cur.id))}>Pular</button>
-              <button className="sp-abtn zero" onClick={() => onOpen(cur.id)}>abrir peça e comentários</button>
-            </div>
-          ))}
-          {msg && <div className="sp-saved">{msg}</div>}
+          )}
+          <button className="ap-open" onClick={() => onOpen(cur.id)}>Abrir a peça completa e os comentários →</button>
         </div>
       </div>
     </>

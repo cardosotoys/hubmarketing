@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-/* Toca o criativo do Drive dentro do Hub (player do próprio Drive, embutido).
- * Arquivo → capa + ▶ Reproduzir → vídeo/imagem no lugar. Pasta → grade de arquivos da pasta.
- * Funciona para quem tem acesso ao arquivo no Drive (ou se ele estiver "qualquer pessoa com o link"). */
+/* Criativo do Drive dentro do Hub. A capa fica no lugar; ▶ abre uma tela própria de reprodução
+ * (tela cheia no celular, janela centralizada no computador), porque o player do Drive precisa de
+ * largura para os controles — espremido num quadro estreito ele corta o vídeo.
+ * Arquivo → player do Drive (/preview). Pasta → grade de arquivos da pasta. */
 
 export function driveTarget(url: string | null | undefined): { kind: 'file' | 'folder'; id: string } | null {
   if (!url) return null;
@@ -12,39 +14,53 @@ export function driveTarget(url: string | null | undefined): { kind: 'file' | 'f
   return file ? { kind: 'file', id: file[1] } : null;
 }
 
-export default function DrivePlayer({ url, vertical, poster, autoOpen = false, className = '' }: {
+function Lightbox({ url, kind, id, vertical, title, onClose }: {
+  url: string; kind: 'file' | 'folder'; id: string; vertical: boolean; title?: string; onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+  const src = kind === 'file' ? `https://drive.google.com/file/d/${id}/preview` : `https://drive.google.com/embeddedfolderview?id=${id}#grid`;
+  return createPortal(
+    <div className="dp-lb" role="dialog" aria-label={title ?? 'Criativo'} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="dp-lb-bar">
+        <b>{title ?? (kind === 'file' ? 'Criativo' : 'Arquivos da pasta')}</b>
+        <a href={url} target="_blank" rel="noreferrer">Abrir no Drive ↗</a>
+        <button type="button" onClick={onClose} aria-label="Fechar">×</button>
+      </div>
+      <div className={`dp-lb-stage ${kind} ${vertical ? 'v' : 'q'}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <iframe src={src} title={title ?? 'Criativo no Drive'} allow="autoplay; fullscreen" allowFullScreen />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+export default function DrivePlayer({ url, vertical, poster, title, className = '' }: {
   url: string | null | undefined;
   vertical: boolean;
-  poster?: React.ReactNode;     // o que aparece atrás enquanto não toca (cartaz da marca etc.)
-  autoOpen?: boolean;
+  poster?: React.ReactNode;     // o que aparece atrás enquanto não há imagem (cartaz da marca etc.)
+  title?: string;
   className?: string;
 }) {
   const tgt = driveTarget(url);
-  const [open, setOpen] = useState(autoOpen);
+  const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
-  // trocou de peça: volta para a capa
-  useEffect(() => { setOpen(autoOpen); setBroken(false); }, [url, autoOpen]);
-  if (!tgt) return <div className={`dp ${vertical ? 'v' : 'q'} ${className}`}>{poster}</div>;
-
-  if (open) {
-    const src = tgt.kind === 'file'
-      ? `https://drive.google.com/file/d/${tgt.id}/preview`
-      : `https://drive.google.com/embeddedfolderview?id=${tgt.id}#grid`;
-    return (
-      <div className={`dp on ${tgt.kind} ${vertical ? 'v' : 'q'} ${className}`}>
-        <iframe src={src} title="Criativo no Drive" allow="autoplay; fullscreen" allowFullScreen />
-        <button type="button" className="dp-x" onClick={() => setOpen(false)} aria-label="Fechar o player">×</button>
-      </div>
-    );
-  }
+  useEffect(() => { setOpen(false); setBroken(false); }, [url]);
+  if (!tgt || !url) return <div className={`dp ${vertical ? 'v' : 'q'} ${className}`}>{poster}</div>;
   const thumb = tgt.kind === 'file' && !broken ? `https://drive.google.com/thumbnail?id=${tgt.id}&sz=w1000` : null;
   return (
     <div className={`dp ${vertical ? 'v' : 'q'} ${className}`}>
       {poster}
       {thumb && <img src={thumb} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />}
       <button type="button" className={`dp-play ${tgt.kind}`} onClick={() => setOpen(true)}>
-        {tgt.kind === 'file' ? <><span aria-hidden>▶</span>Reproduzir aqui</> : <><span aria-hidden>▦</span>Ver arquivos da pasta</>}
+        {tgt.kind === 'file' ? <><span aria-hidden>▶</span>Reproduzir</> : <><span aria-hidden>▦</span>Ver arquivos</>}
       </button>
+      {open && <Lightbox url={url} kind={tgt.kind} id={tgt.id} vertical={vertical} title={title} onClose={() => setOpen(false)} />}
     </div>
   );
 }
