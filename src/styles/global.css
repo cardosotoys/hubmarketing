@@ -4551,3 +4551,45 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .al-bar{bottom:0;margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #E6DED2}
   .sp .al-btn{padding:13px 8px;font-size:14.5px}
 }
+
+/* ===== Celular: calendário vira agenda, assuntos alternam lista ↔ assunto ===== */
+.sp .sp-mdots,.sp .sp-magenda,.sp .coc-back{display:none}
+@media (max-width:760px){
+  .sp .sp-mhead{gap:6px}
+  .sp .sp-mhead h2{font-size:19px}
+  .sp .sp-calnav{width:100%;display:flex;gap:6px}
+  .sp .sp-calnav .sp-ebtn{flex:1;font-size:0;padding:9px 6px}
+  .sp .sp-calnav .sp-ebtn:first-child::before{content:'‹ Anterior';font-size:13px}
+  .sp .sp-calnav .sp-ebtn:nth-child(2)::before{content:'Hoje';font-size:13px}
+  .sp .sp-calnav .sp-ebtn:last-child::before{content:'Próximo ›';font-size:13px}
+  /* mês: grade compacta com pontinhos por marca; o dia tocado abre a agenda embaixo */
+  .sp .sp-dow{display:grid!important;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;text-align:center}
+  .sp .sp-grid{grid-template-columns:repeat(7,1fr)!important;gap:4px}
+  .sp .sp-day{min-height:52px!important;padding:6px 2px;align-items:center;gap:4px;cursor:pointer;border-radius:10px}
+  .sp .sp-day .sp-pill{display:none}
+  .sp .sp-day .sp-dnum{justify-content:center}
+  .sp .sp-day .sp-dnum span{display:none}
+  .sp .sp-day .sp-dnum b{font-size:14px}
+  .sp .sp-day.sel{background:#0A2530!important;opacity:1}
+  .sp .sp-day.sel .sp-dnum b{color:#fff}
+  .sp .sp-mdots{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+  .sp .sp-mdots i{width:6px;height:6px;border-radius:50%;background:#0A2530}
+  .sp .sp-day.sel .sp-mdots i.b-cardoso{background:#fff}
+  .sp .sp-mdots i.b-playmi{background:#00B3C6}.sp .sp-mdots i.b-topi{background:#EA5C18}
+  .sp .sp-magenda{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .sp .sp-magenda h3{margin:0 0 2px;font-size:16px;font-weight:800}
+  .sp .sp-magenda .sp-pill,.sp .sp-wday .sp-pill{padding:10px 12px;border-radius:12px}
+  .sp .sp-magenda .sp-pill b,.sp .sp-wday .sp-pill b{font-size:14px}
+  .sp .sp-magenda .sp-pill i,.sp .sp-wday .sp-pill i{font-size:12px}
+  /* semana: um dia embaixo do outro, sem rolar para o lado */
+  .sp .sp-week{grid-template-columns:1fr;overflow:visible;gap:8px}
+  .sp .sp-wday{min-height:0;padding:10px 12px}
+  .sp .sp-wdhead{justify-content:flex-start;gap:8px}
+  .sp .sp-wday:not(:has(.sp-pill)){flex-direction:row;align-items:baseline;gap:10px;padding:8px 12px;background:transparent;box-shadow:none}
+  .sp .sp-wday:not(:has(.sp-pill)) .sp-wdhead{margin:0}
+  .sp .sp-calhint{display:none}
+  /* assuntos: ou a lista, ou o assunto aberto */
+  .sp .coc-split.has-sel .coc-alist{display:none}
+  .sp .coc-alist{position:static;max-height:none}
+  .sp .coc-back{display:block;appearance:none;border:0;background:transparent;font:inherit;font-size:14px;font-weight:700;color:#0A2530;padding:4px 0 12px;cursor:pointer}
+}

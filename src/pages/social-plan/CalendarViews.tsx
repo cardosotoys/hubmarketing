@@ -50,6 +50,7 @@ export function MonthView({ rows, chans, onOpen, hasComment }: Props) {
   const hoje = ymOf(todayISO());
   const [ym, setYm] = useState(() => (months.includes(hoje) ? hoje : months[0] ?? hoje));
   const [hl, setHl] = useState<string | null>(null);
+  const [dia, setDia] = useState<string | null>(null); // celular: o dia tocado abre a agenda embaixo
   const first = `${ym}-01`;
   const start = addDays(first, -dowIndex(first));
   const [Y, M] = ym.split('-').map(Number);
@@ -58,6 +59,9 @@ export function MonthView({ rows, chans, onOpen, hasComment }: Props) {
   const doMes = rows.filter((x) => x.pub_date.startsWith(ym));
   const today = todayISO();
   const cells = Array.from({ length: total }, (_, i) => addDays(start, i));
+  // dia aberto na agenda do celular: o tocado, senão hoje (se for deste mês), senão o primeiro com peça
+  const diaSel = dia && dia.startsWith(ym) ? dia : (today.startsWith(ym) ? today : doMes.map((x) => x.pub_date).sort()[0] ?? first);
+  const doDia = rows.filter((x) => x.pub_date === diaSel).sort(byTime);
   return (
     <div className="sp-month">
       <div className="sp-mhead">
@@ -75,12 +79,18 @@ export function MonthView({ rows, chans, onOpen, hasComment }: Props) {
           const out = !iso.startsWith(ym);
           const cls = ['sp-day', dowIndex(iso) >= 5 ? 'wknd' : '', its.length ? '' : 'empty', out ? 'out' : '', iso === today ? 'today' : ''].filter(Boolean).join(' ');
           return (
-            <div key={iso} className={cls}>
+            <div key={iso} className={`${cls}${diaSel === iso ? ' sel' : ''}`} onClick={() => { if (!out) setDia(iso); }}>
               <div className="sp-dnum"><b>{parseYmd(iso).getDate()}</b>{its.length ? <span>{its.length}</span> : null}</div>
+              {!out && its.length > 0 && <span className="sp-mdots" aria-hidden>{its.slice(0, 4).map((x) => <i key={x.id} className={`b-${slug(x.brand)}`} />)}</span>}
               {!out && its.map((x) => <Pill key={x.id} x={x} chans={chans} onOpen={onOpen} hasComment={hasComment} hl={hl} setHl={setHl} compact />)}
             </div>
           );
         })}
+      </div>
+      <div className="sp-magenda">
+        <h3>{['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'][dowIndex(diaSel)]}, {brShort(diaSel)}</h3>
+        {doDia.length ? doDia.map((x) => <Pill key={x.id} x={x} chans={chans} onOpen={onOpen} hasComment={hasComment} hl={null} setHl={() => {}} />)
+          : <span className="sp-wempty">Nada sai neste dia.</span>}
       </div>
     </div>
   );

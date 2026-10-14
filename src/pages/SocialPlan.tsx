@@ -73,7 +73,14 @@ export default function SocialPlan() {
   const [reviewOnly, setReviewOnly] = useState(false);
   const [flash, setFlash] = useState('');
   const [moreF, setMoreF] = useState(false);
-  const [lensPref, setLensPref] = useState<boolean | null>(null);
+  // escolha entre modo aprovador e Centro completo fica guardada neste navegador
+  const [lensPref, setLensPrefState] = useState<boolean | null>(() => {
+    try { const v = localStorage.getItem('coc-lens'); return v === null ? null : v === '1'; } catch { return null; }
+  });
+  const setLensPref = (v: boolean) => {
+    setLensPrefState(v);
+    try { localStorage.setItem('coc-lens', v ? '1' : '0'); } catch { /* sem armazenamento: vale só nesta visita */ }
+  };
   const com = useCommercial(view === 'materiais' || view === 'comercial' || view === 'final');
 
   const load = useCallback(async () => {
@@ -250,8 +257,8 @@ export default function SocialPlan() {
 
   if (loading) return <Loading />;
 
-  // quem só aprova (o aprovador que não é da diretoria/administração) entra direto no modo aprovador
-  const lens = lensPref ?? (!!profile?.id && profile.id === approverId && !isPriv);
+  // o aprovador entra direto no modo aprovador (qualquer perfil); pode trocar pelo botão e a escolha fica guardada
+  const lens = lensPref ?? (!!profile?.id && profile.id === approverId);
   if (lens) {
     return (
       <div className="sp al-shell">
@@ -366,7 +373,7 @@ export default function SocialPlan() {
           </>
         )}
         {view === 'assuntos' && (
-          <AssuntosView topics={shownTopics} byTopic={byTopic} chans={chans} selectedId={topicSheet?.id ?? null} onSelect={openTopic}
+          <AssuntosView topics={shownTopics} byTopic={byTopic} chans={chans} selectedId={topicSheet?.id ?? null} onSelect={openTopic} onBack={closeTopic}
             editor={topicSheet ? topicEditor(true) : null} />
         )}
         {view === 'feed' && <NetworkPreview items={previewItems(rows, byTopic, topicById, chans)} onOpen={openItem} />}

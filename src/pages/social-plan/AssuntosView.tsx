@@ -4,12 +4,13 @@ import { addMonths, brShort, monthName, slug, todayISO, ymOf, type ChannelMap } 
 
 /* Assuntos, como no protótipo: lista enxuta à esquerda (um mês por vez) e o assunto aberto à direita.
  * O editor da direita vem pronto do pai (TopicSheet em modo inline). */
-export default function AssuntosView({ topics, byTopic, chans, selectedId, onSelect, editor }: {
+export default function AssuntosView({ topics, byTopic, chans, selectedId, onSelect, onBack, editor }: {
   topics: SocialTopic[];
   byTopic: Map<string, SocialPlanItem[]>;
   chans: ChannelMap;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onBack?: () => void;
   editor: React.ReactNode;
 }) {
   const rows = useMemo(() => topics
@@ -31,7 +32,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
   const doMes = rows.filter((r) => ymOf(r.date) === ym);
 
   return (
-    <div className="coc-split">
+    <div className={`coc-split ${editor ? 'has-sel' : ''}`}>
       <aside className="coc-alist">
         <div className="coc-alist-head">
           <button className="sp-ebtn" aria-label="Mês anterior" onClick={() => setYm(addMonths(ym, -1))}>‹</button>
@@ -60,6 +61,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
         </div>
       </aside>
       <section className="coc-editor">
+        {editor && onBack && <button type="button" className="coc-back" onClick={onBack}>‹ Todos os assuntos de {monthName(ym)}</button>}
         {editor ?? (
           <div className="coc-editor-empty">
             <b>Escolha um assunto à esquerda</b>
