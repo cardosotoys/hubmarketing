@@ -4121,3 +4121,35 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .pc-dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
 .sp .pc-dot.s-ok{background:#2E9E6B}.sp .pc-dot.s-aj{background:#DA3A2F}
 .sp .pc-decide .sp-comments{margin:0}
+
+/* Peça aberta em TELA INTEIRA: topo fixo, colunas na altura toda, cada uma rola sozinha */
+.sp .pc-overlay{padding:0;align-items:stretch;overflow:hidden;background:var(--bg)}
+.sp .pc-modal{width:100vw;max-width:none;height:100vh;height:100dvh;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
+.sp .pc-head{flex:none;padding:18px 32px 16px;padding-top:calc(18px + env(safe-area-inset-top, 0px))}
+.sp .pc-head h2{font-size:28px}
+.sp .pc-body{flex:1;min-height:0;padding:0;gap:0;grid-template-columns:minmax(0,1.05fr) minmax(0,1.35fr) minmax(0,0.95fr)}
+.sp .pc-col{height:100%;overflow-y:auto;padding:22px 24px 40px;overscroll-behavior:contain}
+.sp .pc-piece{background:var(--surf3);border-right:1px solid var(--line-2)}
+.sp .pc-decide{border-left:1px solid var(--line-2)}
+.sp .pc-piece .pc-art.v{aspect-ratio:auto;height:min(64vh,720px)}
+.sp .pc-piece .pc-art.q{aspect-ratio:auto;height:min(56vh,620px)}
+.sp .pc-art-ph b{font-size:28px}
+.sp .pc-lead{font-size:20px!important}
+.sp .pc-block{padding:18px 20px}
+.sp .pc-block p{font-size:15px}
+.sp .pc-caption p{font-size:16px}
+.sp .pc-hook{font-size:21px}
+.sp .pc-steps,.sp .pc-row p{font-size:15px}
+.sp .pc-close{width:44px;height:44px;font-size:26px}
+@media (max-width:1180px){
+  .sp .pc-body{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);overflow-y:auto;display:grid}
+  .sp .pc-col{height:auto;overflow:visible}
+  .sp .pc-decide{grid-column:1/-1;border-left:0;border-top:1px solid var(--line-2)}
+}
+@media (max-width:760px){
+  .sp .pc-body{grid-template-columns:1fr}
+  .sp .pc-head{padding:14px 16px}
+  .sp .pc-head h2{font-size:21px}
+  .sp .pc-col{padding:16px}
+  .sp .pc-piece{border-right:0}
+}
