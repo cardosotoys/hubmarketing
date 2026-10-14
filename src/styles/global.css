@@ -4332,3 +4332,49 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .pv-phone.v .pv-media .dp.on~*{display:none}
 .sp .pv-phone.v:has(.dp.on) .pv-reel-ui{display:none}
 .sp .dp-play{white-space:nowrap}
+
+/* ---------- Peça aberta em telas menores: vira uma página que rola inteira (sem sobreposição) ---------- */
+@media (max-width:1180px){
+  .sp .pv{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .sp .pv-head{position:sticky;top:0;z-index:5}
+  .sp .pv-body{flex:none;min-height:auto;overflow:visible;display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.3fr)}
+  .sp .pv-body>*{min-height:auto;overflow:visible;animation:none}
+  .sp .pv-side{grid-column:1/-1;border-left:0;border-top:1px solid var(--line-2)}
+}
+@media (max-width:760px){
+  .sp .pv-head{flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top, 0px))}
+  .sp .pv-head-l{flex:1;min-width:0;align-items:flex-start;gap:10px}
+  .sp .pv-brand{width:36px;height:36px;border-radius:11px;font-size:16px}
+  .sp .pv-head h2{font-size:17px;line-height:1.25;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .sp .pv-head p{font-size:12px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .sp .pv-head-r{order:-1;margin-left:auto;display:contents}
+  .sp .pv-close{order:2;width:36px;height:36px;font-size:20px;flex:none}
+  .sp .pv-state{order:3;flex-basis:100%;width:max-content;max-width:100%;padding:5px 12px;font-size:12px;margin-left:46px}
+  .sp .pv-body{display:block}
+  .sp .pv-stage{padding:20px 16px 24px}
+  .sp .pv-phone{width:min(290px,78vw);border-radius:34px;padding:8px}
+  .sp .pv-phone.v .pv-media{inset:8px;border-radius:27px}
+  .sp .pv-reel-ui{left:8px;right:8px;bottom:8px;border-radius:0 0 27px 27px;padding:30px 14px 16px}
+  .sp .pv-post{border-radius:27px}
+  .sp .pv-poster b{font-size:22px}
+  .sp .dp-play{font-size:13px;padding:8px 14px 8px 8px}
+  .sp .dp-play span{width:30px;height:30px}
+  .sp .pv-doc{padding:24px 16px 28px}
+  .sp .pv-headline{font-size:24px;max-width:none}
+  .sp .pv-lede{font-size:15.5px}
+  .sp .pv-facts{grid-template-columns:1fr;gap:16px;margin-top:22px}
+  .sp .pv-sep{margin:32px 0 16px}
+  .sp .pv-quote{font-size:22px;padding-left:14px;max-width:none}
+  .sp .pv-onart{font-size:16px}
+  .sp .pv-timeline{flex-direction:column;gap:14px}
+  .sp .pv-tl-step{display:grid;grid-template-columns:6px minmax(0,1fr);column-gap:12px}
+  .sp .pv-tl-bar{grid-row:1/3;width:6px;height:auto;margin:0}
+  .sp .pv-tl-step p{padding-right:0}
+  .sp .pv-rules li{font-size:14.5px}
+  .sp .pv-side{padding:24px 16px calc(32px + env(safe-area-inset-bottom, 0px))}
+  .sp .pv-acts .pv-btn{flex:1;text-align:center}
+}
+@media (max-width:760px){
+  .sp .pv-head-l{flex:1 1 calc(100% - 52px)}
+  .sp .pv-state{flex:0 0 auto;width:auto}
+}
