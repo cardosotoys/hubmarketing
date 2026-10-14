@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
 import { Linkify } from './social-plan/Brief';
-import { KIND_LABEL, destLabel, driveThumb, effective, previewItems, hhmm, inQueue1, inQueue2, licBlocked, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
+import { KIND_LABEL, destLabel, driveThumb, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
 import CentralView from './social-plan/CentralView';
@@ -636,177 +636,217 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const ch = item.channel_id ? chans.get(item.channel_id) : undefined;
   const vertical = /Reels|Stories|Shorts|TikTok|Status/.test(`${item.piece_type} ${ch?.name ?? ''}`);
   const lim = ch?.caption_limit ?? null;
-  const estrutura = (brief.estrutura ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
+  const [openCmts, setOpenCmts] = useState(focusComments);
+  const brandK = slug(item.brand);
+  const titulo = topic?.title || item.pauta;
   const copyCaption = async () => {
-    try { await navigator.clipboard.writeText(eff.caption ?? ''); showFlash('legenda copiada'); } catch { showFlash('não deu para copiar aqui'); }
+    try { await navigator.clipboard.writeText(eff.caption ?? ''); showFlash('Legenda copiada'); } catch { showFlash('Não deu para copiar aqui'); }
   };
-  const quando = `${item.weekday ? item.weekday.slice(0, 3) + ', ' : ''}${brFmt(item.pub_date)}${item.pub_time ? ` · ${hhmm(item.pub_time)}` : ' · sem horário'}`;
+  const quando = `${item.weekday ? item.weekday.slice(0, 3) + ', ' : ''}${brFmt(item.pub_date)}${item.pub_time ? ` às ${hhmm(item.pub_time)}` : ''}`;
+
+  // roteiro "0–3 s: texto" → linha do tempo
+  const roteiro = (brief.estrutura ?? '').split('\n').map((s) => s.trim()).filter(Boolean).map((s) => {
+    const k = s.indexOf(':');
+    return k > 0 && k < 16 ? { t: s.slice(0, k).trim(), d: s.slice(k + 1).trim() } : { t: '', d: s };
+  });
+  // direção visual: cores (#hex), fontes (Títulos/Textos) e o resto em texto
+  const dv = brief.direcao_visual ?? '';
+  const cores = dv.split('·').map((s) => s.trim()).map((s) => { const m = s.match(/#[0-9A-Fa-f]{6}/); return m ? { n: s.replace(m[0], '').trim(), hex: m[0] } : null; }).filter(Boolean) as { n: string; hex: string }[];
+  const fontes = dv.split('·').map((s) => s.trim()).filter((s) => /^(Títulos|Textos):/i.test(s));
+  const dvTexto = dv.split('·').map((s) => s.trim()).filter((s) => s && !/#[0-9A-Fa-f]{6}/.test(s) && !/^(Títulos|Textos):/i.test(s)).join(' · ');
+  // obrigatório / evitar → lista com ✓ e ✕
+  const regras = (brief.obrigatorio_evitar ?? '').split(/(?<=\.)\s+/).map((s) => s.trim()).filter(Boolean)
+    .map((s) => ({ s, nao: /^(sem |não |nunca |evitar)/i.test(s) }));
+
+  // caminho da aprovação
+  type Passo = { k: string; label: string; st: 'feito' | 'agora' | 'ajuste' | 'depois' | 'herda'; sub: string };
+  const passos: Passo[] = [];
+  const g1 = item.status, g2 = item.creative_status;
+  passos.push({ k: 'g1', label: 'Pauta e legenda', st: !ownGate1(item) ? 'herda' : g1 === 'aprovada' ? 'feito' : g1 === 'ajuste' ? 'ajuste' : 'agora', sub: !ownGate1(item) ? 'segue a matriz' : g1 === 'aprovada' ? 'aprovada' : g1 === 'ajuste' ? 'ajuste pedido' : 'esperando aprovação' });
+  passos.push({ k: 'g2', label: 'Criativo final', st: !ownGate2(item) ? 'herda' : g2 === 'aprovada' ? 'feito' : g2 === 'ajuste' ? 'ajuste' : g1 === 'aprovada' ? 'agora' : 'depois', sub: !ownGate2(item) ? 'segue a matriz' : g2 === 'aprovada' ? 'aprovado' : g2 === 'ajuste' ? 'ajuste pedido' : !eff.creative ? 'falta o link do criativo' : g1 === 'aprovada' ? 'esperando aprovação' : 'depois da pauta' });
+  if (topic?.licensed) passos.push({ k: 'lic', label: 'Licenciador', st: topic.licensor_ok ? 'feito' : (g1 === 'aprovada' && g2 === 'aprovada') ? 'agora' : 'depois', sub: topic.licensor_ok ? 'aprovado' : 'marcar no assunto quando o licenciador aprovar' });
+  passos.push({ k: 'ag', label: 'Agendamento', st: item.stage === 'agendado' || item.stage === 'publicado' ? 'feito' : state.ready ? 'agora' : 'depois', sub: item.stage === 'publicado' ? 'publicada' : item.stage === 'agendado' ? 'agendada' : state.ready ? 'pronta para agendar' : 'depois das aprovações' });
+
+  const Media = ({ big }: { big?: boolean }) => (
+    <div className={`pv-media b-${brandK} ${vertical ? 'v' : 'q'} ${big ? 'big' : ''}`}>
+      {thumb && <img src={thumb} alt="" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
+      <div className="pv-poster">
+        <span>{item.brand}</span>
+        <b>{brief.texto_arte || item.product || titulo}</b>
+        {brief.gancho && <em>{brief.gancho}</em>}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="pc-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="pc-modal" role="dialog" aria-label={topic?.title || item.pauta}>
-        <header className="pc-head">
-          <div className="pc-head-main">
-            <div className="pc-tags">
-              <span className={`sp-badge b-${slug(item.brand)}`}>{item.brand}</span>
-              <span className={`sp-kind k-${item.link_kind}`}>{KIND_LABEL[item.link_kind]}</span>
-              <span className={`sp-state t-${state.tone}`}>{state.label}</span>
-              {topic?.licensed && <span className="sp-state t-warn">Licenciado</span>}
-            </div>
-            <h2>{topic?.title || item.pauta}</h2>
-            <p className="pc-meta"><b>{quando}</b><span>{destLabel(item, chans)}</span>{item.product && <span>{item.product}{item.sku ? ` · REF ${item.sku}` : ''}</span>}</p>
+    <div className="pv" role="dialog" aria-label={titulo}>
+      <header className={`pv-head b-${brandK}`}>
+        <div className="pv-head-l">
+          <span className={`pv-brand b-${brandK}`} title={item.brand}>{item.brand[0]}</span>
+          <div>
+            <h2>{titulo}</h2>
+            <p><b>{quando}</b> · {destLabel(item, chans)}{item.product ? ` · ${item.product}` : ''} · <span className={`pv-kind k-${item.link_kind}`}>{KIND_LABEL[item.link_kind]}</span></p>
           </div>
-          <button className="pc-close" aria-label="Fechar" onClick={onClose}>×</button>
-        </header>
+        </div>
+        <div className="pv-head-r">
+          <span className={`pv-state t-${state.tone}`}>{state.label}</span>
+          <button className="pv-close" aria-label="Fechar" onClick={onClose}>×</button>
+        </div>
+      </header>
 
-        <div className="pc-body">
-          {/* ---------- 1. a peça ---------- */}
-          <section className="pc-col pc-piece">
-            <div className={`pc-art ${vertical ? 'v' : 'q'}`}>
-              {thumb ? <img src={thumb} alt="" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : null}
-              <span className="pc-art-ph"><small>{ch?.name ?? item.network}{item.piece_type ? ` · ${item.piece_type}` : ''}</small><b>{item.product || topic?.title || item.pauta}</b></span>
-            </div>
-            {eff.creative
-              ? <a className="pc-drive" href={eff.creative} target="_blank" rel="noreferrer">Abrir o criativo no Drive ↗{item.link_kind !== 'matriz' && !item.creative_changed ? <small>da matriz</small> : null}</a>
-              : <p className="pc-muted">Criativo ainda sem link.</p>}
-            <div className="pc-caption">
-              <div className="pc-caption-h">
-                <b>Legenda{item.link_kind === 'reaproveita' ? ' (da matriz)' : ''}</b>
-                {eff.caption && <span>{lim ? `${eff.caption.length}/${lim}` : `${eff.caption.length} caracteres`}</span>}
-                {eff.caption && <button className="sp-ebtn" onClick={copyCaption}>Copiar</button>}
-              </div>
-              {eff.caption ? <p>{eff.caption}</p> : <p className="pc-muted">Sem legenda ainda.</p>}
-            </div>
-          </section>
-
-          {/* ---------- 2. por que e como ---------- */}
-          <section className="pc-col pc-why">
-            <div className="pc-block">
-              <h3>Por que esta peça existe</h3>
-              {(brief.meta || item.objective) && <p className="pc-lead">{brief.meta || item.objective}</p>}
-              {(topic?.strategy || brief.porque) && <p>{topic?.strategy || brief.porque}</p>}
-              <div className="pc-facts">
-                {brief.publico && <div><span>Público</span><p>{brief.publico}</p></div>}
-                {brief.mensagem && <div><span>Mensagem-chave</span><p>{brief.mensagem}</p></div>}
-                {brief.medicao && <div><span>Como saber se funcionou</span><p>{brief.medicao}</p></div>}
-                {(item.cta || item.media_use) && <div><span>Chamada · mídia</span><p>{[item.cta, item.media_use].filter(Boolean).join(' · ')}</p></div>}
-                {brief.estrategia && <div><span>Estratégia usada</span><p>{brief.estrategia}</p></div>}
-                {item.week_theme && <div><span>Frente</span><p>{item.week_theme}</p></div>}
-              </div>
-            </div>
-
-            {Object.keys(brief).length > 0 && (
-              <div className="pc-block">
-                <h3>Como fazer a arte {brief.formato_medida && <span className="pc-chip">{brief.formato_medida}</span>}</h3>
-                {brief.gancho && <blockquote className="pc-hook"><span>Gancho</span>{brief.gancho}</blockquote>}
-                {brief.texto_arte && <div className="pc-row"><span>Texto na arte</span><p><b>{brief.texto_arte}</b></p></div>}
-                {estrutura.length > 0 && (
-                  <div className="pc-row"><span>Roteiro</span>
-                    <ol className="pc-steps">{estrutura.map((s, i) => {
-                      const k = s.indexOf(':');
-                      return <li key={i}>{k > 0 && k < 14 ? <><b>{s.slice(0, k)}</b>{s.slice(k + 1)}</> : s}</li>;
-                    })}</ol>
-                  </div>
-                )}
-                {brief.direcao_visual && <div className="pc-row"><span>Direção visual</span><p>{brief.direcao_visual}</p></div>}
-                {brief.obrigatorio_evitar && <div className="pc-warn"><span>Obrigatório e evitar</span><p>{brief.obrigatorio_evitar}</p></div>}
-                {brief.derivadas && <div className="pc-row"><span>Artes derivadas</span><p>{brief.derivadas}</p></div>}
-                {(brief.material_base || brief.material_status) && <div className="pc-row"><span>Material</span><p>{brief.material_status && !(brief.material_base ?? '').startsWith(brief.material_status) && <>{brief.material_status}. </>}{brief.material_base && <Linkify text={brief.material_base} />}</p></div>}
-                {(brief.prazo_pauta || brief.prazo_criativo) && (
-                  <div className="pc-deadlines">
-                    {brief.prazo_pauta && <span>Pauta + legenda até <b>{brief.prazo_pauta}</b></span>}
-                    {brief.prazo_criativo && <span>Criativo até <b>{brief.prazo_criativo}</b></span>}
-                    {brief.prazo_obs && <small>{brief.prazo_obs}</small>}
-                  </div>
-                )}
+      <div className="pv-body">
+        {/* ---------- 1. como vai aparecer ---------- */}
+        <section className={`pv-stage b-${brandK}`}>
+          <div className={`pv-phone ${vertical ? 'v' : 'q'}`}>
+            {vertical ? (
+              <>
+                <Media big />
+                <div className="pv-reel-ui">
+                  <div className="pv-reel-who"><i className={`b-${brandK}`}>{item.brand[0]}</i><b>{item.brand.toLowerCase()}</b></div>
+                  {eff.caption && <p>{eff.caption.split('\n')[0]}</p>}
+                </div>
+              </>
+            ) : (
+              <div className="pv-post">
+                <div className="pv-post-h"><i className={`b-${brandK}`}>{item.brand[0]}</i><b>{item.brand.toLowerCase()}</b><span>{ch?.name ?? item.network}</span></div>
+                <Media />
+                <div className="pv-post-c">{eff.caption ? <p><b>{item.brand.toLowerCase()}</b> {eff.caption.split('\n').slice(0, 3).join(' ')}</p> : <p className="pv-dim">Sem legenda ainda.</p>}</div>
               </div>
             )}
-          </section>
+          </div>
+          <div className="pv-stage-actions">
+            {eff.creative ? <a href={eff.creative} target="_blank" rel="noreferrer">Abrir criativo no Drive ↗</a> : <span>Criativo ainda sem link</span>}
+            {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
+          </div>
+          {eff.caption && (
+            <details className="pv-fullcap">
+              <summary>Legenda completa {lim ? <small>{eff.caption.length}/{lim}</small> : null}</summary>
+              <p>{eff.caption}</p>
+            </details>
+          )}
+        </section>
 
-          {/* ---------- 3. decisão ---------- */}
-          <aside className="pc-col pc-decide">
-            <div className="pc-block">
-              <h3>Aprovação</h3>
-              {([1, 2] as const).map((g) => {
-                const cur = g === 1 ? item.status : item.creative_status;
-                const own = g === 1 ? ownGate1(item) : ownGate2(item);
-                const semCriativo = g === 2 && !effective(item, matriz).creative;
-                return (
-                  <div className={`pc-gate g-${cur}`} key={g}>
-                    <div className="pc-gate-h"><b>{g === 1 ? 'Pauta e legenda' : 'Criativo final'}</b><span>{cur === 'aprovada' ? 'Aprovada' : cur === 'ajuste' ? 'Com ajuste' : 'Pendente'}</span></div>
-                    {!own ? <p className="pc-muted">Segue a matriz{matriz ? <> · <button className="sp-linkbtn" onClick={() => onOpen(matriz.id)}>abrir a matriz</button></> : null}</p>
-                      : canDecide ? (
-                        <div className="pc-gate-btns">
-                          <button className="sp-abtn ok" aria-pressed={cur === 'aprovada'} disabled={semCriativo || (g === 2 && item.status !== 'aprovada')}
-                            title={semCriativo ? 'Falta o link do criativo' : g === 2 && item.status !== 'aprovada' ? 'Aprove a pauta e a legenda antes' : ''}
-                            onClick={() => toggleGate(g, 'aprovada')}>Aprovar</button>
-                          <button className="sp-abtn aj" aria-pressed={cur === 'ajuste'} onClick={() => toggleGate(g, 'ajuste')}>Pedir ajuste</button>
-                        </div>
-                      ) : <p className="pc-muted">Quem decide é {approverName ?? 'o aprovador'}.</p>}
-                  </div>
-                );
-              })}
-              {topic?.licensed && <p className={`pc-note ${licBlocked(topic) ? 'warn' : ''}`}>{licBlocked(topic) ? 'Licenciado: falta marcar “aprovado pelo licenciador” no assunto. Sem isso, não agenda.' : 'Licenciado: aprovado pelo licenciador.'}</p>}
-              {item.awaiting_review ? (
-                <div className="pc-note">Aguardando {profiles.find((p) => p.id === item.approver_id)?.name ?? 'o aprovador'}{iAmApprover ? ' (é você)' : ''} · <button className="sp-linkbtn" onClick={cancelReview}>cancelar pedido</button></div>
-              ) : !canDecide && (
-                <button className="sp-ebtn prim pc-wide" onClick={sendForReview} disabled={!approverId}>Pedir aprovação{approverName ? ` a ${approverName}` : ''}</button>
-              )}
-              <div className="pc-schedule">
-                {item.stage === 'agendado' ? <>
-                  <button className="sp-ebtn prim" onClick={() => markStage('publicado', 'marcada como publicada')}>Marcar publicada</button>
-                  <button className="sp-linkbtn" onClick={() => markStage('producao', 'saiu do agendamento')}>desfazer agendamento</button>
-                </> : item.stage === 'publicado' ? (
-                  <><span className="sp-state t-ok">Publicada</span><button className="sp-linkbtn" onClick={() => markStage('agendado', 'voltou para agendada')}>desfazer</button></>
-                ) : (
-                  <button className="sp-ebtn prim pc-wide" disabled={!state.ready} title={state.ready ? '' : 'Só agenda depois das duas etapas (e do licenciador, se for o caso)'}
-                    onClick={() => markStage('agendado', 'marcada como agendada')}>Marcar agendada</button>
-                )}
-              </div>
-              {flash && <div className="sp-saved">{flash}</div>}
-            </div>
+        {/* ---------- 2. o briefing, lido como uma página ---------- */}
+        <article className="pv-doc">
+          <p className="pv-kicker">Por que esta peça existe</p>
+          <h3 className="pv-headline">{brief.meta || item.objective || titulo}</h3>
+          {(topic?.strategy || brief.porque) && <p className="pv-lede">{topic?.strategy || brief.porque}</p>}
 
-            {topic && (
-              <div className="pc-block">
-                <h3>Outros destinos <small>{others.length}</small></h3>
-                {others.length ? (
-                  <ul className="pc-dests">{others.map((c) => (
-                    <li key={c.id}><button onClick={() => onOpen(c.id)}>
-                      <b>{brFmt(c.pub_date).slice(0, 5)}{c.pub_time ? ` ${hhmm(c.pub_time)}` : ''}</b>
-                      <span>{destLabel(c, chans).replace(/^[^·]+· /, '')}</span>
-                      <i className={`pc-dot s-${stMark(c.status) || 'pend'}`} />
-                    </button></li>
-                  ))}</ul>
-                ) : <p className="pc-muted">Só esta peça por enquanto.</p>}
-                <button className="sp-ebtn pc-wide" onClick={() => onEditTopic(topic.id)}>Editar assunto e destinos</button>
-              </div>
-            )}
+          <div className="pv-facts">
+            {brief.publico && <div><span>Para quem</span><p>{brief.publico}</p></div>}
+            {brief.mensagem && <div><span>O que dizer</span><p>{brief.mensagem}</p></div>}
+            {brief.medicao && <div><span>Como medir</span><p>{brief.medicao}</p></div>}
+            {(item.cta || item.media_use) && <div><span>Chamada</span><p>{item.cta}{item.media_use ? <small>{item.media_use}</small> : null}</p></div>}
+          </div>
 
-            <div className="pc-block sp-comments" ref={commentsRef}>
-              <h3>Comentários</h3>
-              {threads.length === 0 && <p className="pc-muted">Nenhum comentário ainda.</p>}
-              {threads.map((c) => renderCmt(c, false))}
-              <div className="sp-composer">
-                {replyTo && (
-                  <div className="sp-replybar">Respondendo a <b>{replyTo.author}</b>
-                    <button onClick={() => setReplyTo(null)}>✕</button></div>
-                )}
-                <textarea placeholder="Comentário ou o que precisa mudar…" value={text} onChange={(e) => setText(e.target.value)} />
-                <div className="sp-mchips">
-                  {active.map((p) => (
-                    <button key={p.id} className={`sp-mchip ${mentionIds.includes(p.id) ? 'on' : ''}`} onClick={() => toggleMention(p.id)}>@{p.name}</button>
+          {Object.keys(brief).length > 0 && (
+            <>
+              <div className="pv-sep"><span>Como fazer a arte</span>{brief.formato_medida && <b>{brief.formato_medida}</b>}</div>
+              {brief.gancho && <blockquote className={`pv-quote b-${brandK}`}>{brief.gancho}</blockquote>}
+              {brief.texto_arte && <p className="pv-onart"><span>Texto na arte</span>{brief.texto_arte}</p>}
+
+              {roteiro.length > 0 && (
+                <div className="pv-timeline">
+                  {roteiro.map((r, i) => (
+                    <div key={i} className="pv-tl-step">
+                      <span className={`pv-tl-bar b-${brandK}`} style={{ opacity: 0.45 + (0.55 * (i + 1)) / roteiro.length }} />
+                      <b>{r.t || `Parte ${i + 1}`}</b>
+                      <p>{r.d}</p>
+                    </div>
                   ))}
                 </div>
-                <div className="sp-composer-actions">
-                  <button className="sp-abtn" onClick={() => postComment('comment')} disabled={!text.trim() && !mentionIds.length}>Comentar</button>
-                  <button className="sp-abtn aj" onClick={() => postComment('adjust')}>Pedir ajuste</button>
+              )}
+
+              {(cores.length > 0 || fontes.length > 0 || dvTexto) && (
+                <div className="pv-visual">
+                  {cores.length > 0 && <div className="pv-swatches">{cores.map((c) => <span key={c.hex} title={`${c.n} ${c.hex}`}><i style={{ background: c.hex }} />{c.n || c.hex}</span>)}</div>}
+                  {fontes.length > 0 && <div className="pv-fonts">{fontes.map((f) => <span key={f}>{f}</span>)}</div>}
+                  {dvTexto && <p>{dvTexto}</p>}
                 </div>
+              )}
+
+              {regras.length > 0 && (
+                <ul className="pv-rules">{regras.map((r) => <li key={r.s} className={r.nao ? 'no' : 'yes'}>{r.s}</li>)}</ul>
+              )}
+
+              <div className="pv-foot">
+                {brief.derivadas && <p><span>Derivadas</span>{brief.derivadas}</p>}
+                {(brief.material_base || brief.material_status) && <p><span>Material</span>{brief.material_status && !(brief.material_base ?? '').startsWith(brief.material_status) && <>{brief.material_status}. </>}{brief.material_base && <Linkify text={brief.material_base} />}</p>}
+                {(brief.prazo_pauta || brief.prazo_criativo || brief.prazo_obs) && <p><span>Prazos</span>{[brief.prazo_pauta && `pauta até ${brief.prazo_pauta}`, brief.prazo_criativo && `criativo até ${brief.prazo_criativo}`, brief.prazo_obs].filter(Boolean).join(' · ')}</p>}
               </div>
-            </div>
-          </aside>
-        </div>
+            </>
+          )}
+        </article>
+
+        {/* ---------- 3. o caminho até publicar ---------- */}
+        <aside className="pv-side">
+          <p className="pv-kicker">Caminho até publicar</p>
+          <ol className="pv-path">
+            {passos.map((ps) => (
+              <li key={ps.k} className={ps.st}>
+                <i />
+                <div>
+                  <b>{ps.label}</b>
+                  <small>{ps.sub}{ps.st === 'herda' && matriz ? <> · <button className="pv-link" onClick={() => onOpen(matriz.id)}>abrir a matriz</button></> : null}</small>
+                  {(ps.k === 'g1' || ps.k === 'g2') && ps.st !== 'herda' && canDecide && (ps.st === 'agora' || ps.st === 'ajuste') && (
+                    <div className="pv-acts">
+                      <button className="pv-btn pri" disabled={ps.k === 'g2' && !eff.creative} onClick={() => toggleGate(ps.k === 'g1' ? 1 : 2, 'aprovada')}>Aprovar</button>
+                      {ps.st !== 'ajuste' && <button className="pv-btn" onClick={() => toggleGate(ps.k === 'g1' ? 1 : 2, 'ajuste')}>Pedir ajuste</button>}
+                    </div>
+                  )}
+                  {(ps.k === 'g1' || ps.k === 'g2') && ps.st === 'feito' && canDecide && (
+                    <button className="pv-link" onClick={() => toggleGate(ps.k === 'g1' ? 1 : 2, 'aprovada')}>desfazer</button>
+                  )}
+                  {ps.k === 'ag' && (
+                    item.stage === 'agendado' ? <div className="pv-acts"><button className="pv-btn pri" onClick={() => markStage('publicado', 'Marcada como publicada')}>Marcar publicada</button><button className="pv-link" onClick={() => markStage('producao', 'Saiu do agendamento')}>desfazer</button></div>
+                      : item.stage === 'publicado' ? <button className="pv-link" onClick={() => markStage('agendado', 'Voltou para agendada')}>desfazer</button>
+                      : state.ready ? <div className="pv-acts"><button className="pv-btn pri" onClick={() => markStage('agendado', 'Marcada como agendada')}>Marcar agendada</button></div> : null
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+          {!canDecide && !item.awaiting_review && <button className="pv-btn pri wide" onClick={sendForReview} disabled={!approverId}>Pedir aprovação{approverName ? ` a ${approverName.split(' ')[0]}` : ''}</button>}
+          {item.awaiting_review && <p className="pv-note">Aguardando {profiles.find((p) => p.id === item.approver_id)?.name ?? 'o aprovador'}{iAmApprover ? ' (você)' : ''} · <button className="pv-link" onClick={cancelReview}>cancelar</button></p>}
+          {flash && <p className="pv-flash">{flash}</p>}
+
+          {topic && (
+            <>
+              <p className="pv-kicker" style={{ marginTop: 26 }}>Também sai em</p>
+              {others.length ? (
+                <ul className="pv-dests">{others.map((c) => (
+                  <li key={c.id}><button onClick={() => onOpen(c.id)}>
+                    <span className="pv-dests-d">{brFmt(c.pub_date).slice(0, 5)}</span>
+                    <span className="pv-dests-c">{destLabel(c, chans).replace(/^[^·]+· /, '')}</span>
+                    <i className={`pc-dot s-${stMark(c.status) || 'pend'}`} />
+                  </button></li>
+                ))}</ul>
+              ) : <p className="pv-dim">Só aqui, por enquanto.</p>}
+              <button className="pv-link strong" onClick={() => onEditTopic(topic.id)}>Editar assunto e destinos →</button>
+            </>
+          )}
+
+          <div className="pv-cmts sp-comments" ref={commentsRef}>
+            <button className="pv-cmts-t" onClick={() => setOpenCmts((v) => !v)} aria-expanded={openCmts}>
+              Comentários <span>{threads.length}</span><em>{openCmts ? 'fechar' : 'abrir'}</em>
+            </button>
+            {openCmts && (
+              <>
+                {threads.map((c) => renderCmt(c, false))}
+                <div className="sp-composer">
+                  {replyTo && <div className="sp-replybar">Respondendo a <b>{replyTo.author}</b><button onClick={() => setReplyTo(null)}>✕</button></div>}
+                  <textarea placeholder="Escreva um comentário ou o que precisa mudar…" value={text} onChange={(e) => setText(e.target.value)} />
+                  <div className="sp-mchips">{active.map((p) => <button key={p.id} className={`sp-mchip ${mentionIds.includes(p.id) ? 'on' : ''}`} onClick={() => toggleMention(p.id)}>@{p.name}</button>)}</div>
+                  <div className="sp-composer-actions">
+                    <button className="pv-btn pri" onClick={() => postComment('comment')} disabled={!text.trim() && !mentionIds.length}>Comentar</button>
+                    <button className="pv-btn" onClick={() => postComment('adjust')}>Enviar como ajuste</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
 }
-
