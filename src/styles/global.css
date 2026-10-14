@@ -4593,3 +4593,12 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .coc-alist{position:static;max-height:none}
   .sp .coc-back{display:block;appearance:none;border:0;background:transparent;font:inherit;font-size:14px;font-weight:700;color:#0A2530;padding:4px 0 12px;cursor:pointer}
 }
+/* modo aprovador: abas "Para aprovar" / "Como fica nas redes" */
+.sp .al-top{flex-wrap:wrap}
+.sp .al-tabs{order:4;width:100%;display:flex;gap:4px;background:#fff;border-radius:14px;padding:4px;box-shadow:0 1px 2px rgba(10,37,48,.06)}
+.sp .al-tabs button{appearance:none;flex:1;border:0;background:transparent;font:inherit;font-size:14px;font-weight:700;color:#4A5B62;padding:10px 12px;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.sp .al-tabs button[aria-selected="true"]{background:#0A2530;color:#fff}
+.sp .al-tabs button span{font-size:12px;min-width:20px;padding:1px 6px;border-radius:999px;background:#DA3A2F;color:#fff}
+.sp .al-hint{font-size:14px;color:#4A5B62;margin:0 0 14px}
+@media (min-width:861px){.sp .al-tabs{width:auto;flex:0 0 auto;order:1}.sp .al-left{order:2}.sp .al-exit{order:3}}
+@media (max-width:860px){.sp .al-tabs{margin:2px 0 0}.sp .al-hint{padding:0 16px}.sp .al .np{padding:0 16px}}

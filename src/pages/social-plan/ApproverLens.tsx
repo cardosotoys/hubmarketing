@@ -2,11 +2,13 @@ import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { decide } from './actions';
 import DrivePlayer from './DrivePlayer';
-import { DOW, brShort, dowIndex, hhmm, inQueue1, inQueue2, licBlocked, slug, type ChannelMap } from './shared';
+import NetworkPreview from './NetworkPreview';
+import { DOW, brShort, dowIndex, hhmm, inQueue1, inQueue2, licBlocked, previewItems, slug, type ChannelMap } from './shared';
 
 /* Modo aprovador: quem só aprova vê o post como vai sair, a legenda, o porquê e onde ele vai.
  * Nada da construção (briefing, roteiro, direção de arte, vínculos, etapas) — isso é de quem cria.
- * As duas etapas viram uma fila só, em linguagem simples: "ideia e legenda" ou "arte final". */
+ * As duas etapas viram uma fila só, em linguagem simples: "ideia e legenda" ou "arte final".
+ * A segunda aba mostra como tudo fica em cada rede; tocar num post que espera decisão leva para ele. */
 
 type Card = { item: SocialPlanItem; gate: 1 | 2 };
 
@@ -27,6 +29,8 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [done, setDone] = useState(0);
+  const [tab, setTab] = useState<'aprovar' | 'redes'>('aprovar');
+  const [focus, setFocus] = useState<string | null>(null);
 
   const when = (x: SocialPlanItem) => x.pub_date + (x.pub_time ?? '');
   const all: Card[] = [
@@ -34,7 +38,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
     ...live.filter(inQueue2).map((item) => ({ item, gate: 2 as const })),
   ].sort((a, b) => when(a.item).localeCompare(when(b.item)));
   const queue = all.filter((c) => !skip.has(c.item.id));
-  const card = queue[0];
+  const card = (focus && queue.find((c) => c.item.id === focus)) || queue[0];
   const first = (approverName ?? '').split(' ')[0];
 
   const act = async (d: 'aprovada' | 'ajuste') => {
@@ -43,7 +47,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
     setBusy(true); setMsg('');
     try {
       await decide(card.item, card.gate, d, meId, note);
-      setNote(''); setAdjusting(false); setDone((n) => n + 1);
+      setFocus(null); setNote(''); setAdjusting(false); setDone((n) => n + 1);
       setMsg(d === 'aprovada' ? 'Aprovado ✓' : 'Ajuste enviado para quem está criando.');
       await onChanged();
     } catch (e) { setMsg((e as Error).message); }
@@ -58,8 +62,27 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
       </div>
       <span className="al-left">{queue.length ? <><b>{queue.length}</b> {queue.length === 1 ? 'post espera' : 'posts esperam'} você</> : 'Tudo em dia'}</span>
       {onExit && <button className="al-exit" onClick={onExit}>Centro completo</button>}
+      <nav className="al-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'aprovar'} onClick={() => setTab('aprovar')}>Para aprovar{queue.length ? <span>{queue.length}</span> : null}</button>
+        <button role="tab" aria-selected={tab === 'redes'} onClick={() => setTab('redes')}>Como fica nas redes</button>
+      </nav>
     </header>
   );
+
+  if (tab === 'redes') {
+    const abrir = (id: string) => {
+      if (!queue.some((c) => c.item.id === id)) return;
+      setFocus(id); setAdjusting(false); setNote(''); setMsg(''); setTab('aprovar');
+      window.scrollTo({ top: 0 });
+    };
+    return (
+      <div className="al">
+        {top}
+        <p className="al-hint">Os posts do plano como vão aparecer em cada rede. Tocar num post que espera você leva direto para a aprovação dele.</p>
+        <NetworkPreview items={previewItems(live, byTopic, topicById, chans)} onOpen={abrir} />
+      </div>
+    );
+  }
 
   if (!card) {
     return (
@@ -160,7 +183,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
                 </>
               ) : (
                 <div className="al-row">
-                  <button className="al-btn ghost" onClick={() => { setSkip((s) => new Set(s).add(cur.id)); setMsg(''); }}>Depois</button>
+                  <button className="al-btn ghost" onClick={() => { setSkip((s) => new Set(s).add(cur.id)); setFocus(null); setMsg(''); }}>Depois</button>
                   <button className="al-btn" disabled={busy} onClick={() => { setAdjusting(true); setMsg(''); }}>Pedir ajuste</button>
                   <button className="al-btn pri" disabled={busy} onClick={() => act('aprovada')}>Aprovar</button>
                 </div>
