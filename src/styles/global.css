@@ -4611,3 +4611,6 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .coc-apick-pop label{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:9px;font-size:14px;cursor:pointer}
 .sp .coc-apick-pop label:hover{background:#F3EEE7}
 .sp .coc-apick-pop input{width:16px;height:16px;accent-color:#0A2530}
+/* data comercial em espera (campanha parada) */
+.sp .coc-st-badge.pausado{background:#ECE7F3;border-color:#ECE7F3;color:#5B4A7A}
+.sp .coc-st-camp li.pausado .coc-st-what,.sp .coc-st-camp li.pausado .coc-st-when{opacity:.55}

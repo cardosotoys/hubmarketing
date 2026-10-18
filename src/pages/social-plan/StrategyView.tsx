@@ -24,8 +24,9 @@ function bucketOf(label: string): Bucket {
 }
 const empty = (): Record<Bucket, number> => ({ pub: 0, pronta: 0, aprov: 0, ajuste: 0, prod: 0 });
 const area = (resp: string) => (resp.includes('+') ? 'mix' : /^Digital/i.test(resp) ? 'dig' : 'com');
-const ST_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', feito: 'Feito' } as const;
-const NEXT = { pendente: 'andamento', andamento: 'feito', feito: 'pendente' } as const;
+const ST_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', feito: 'Feito', pausado: 'Em espera' } as const;
+// campanha em espera volta para pendente com um clique
+const NEXT = { pendente: 'andamento', andamento: 'feito', feito: 'pendente', pausado: 'pendente' } as const;
 
 /* ---- leitura dos textos da estratégia ---- */
 const brandOfItem = (item: string) => BRANDS.find((b) => item.endsWith(b)) ?? null;
@@ -262,7 +263,7 @@ function Datas({ deadlines, canMark, isPriv, meId, onChanged, flash }: {
       <div className="coc-st-camps">
         {visiveis.map((g) => {
           const feitos = g.ms.filter((m) => m.status === 'feito').length;
-          const prox = g.ms.find((m) => m.status !== 'feito');
+          const prox = g.ms.find((m) => m.status !== 'feito' && m.status !== 'pausado');
           const [nome, quando] = g.marco.includes('(') ? [g.marco.replace(/\s*\(.*\)\s*$/, ''), g.marco.match(/\(([^)]*)\)/)?.[1] ?? ''] : [g.marco, ''];
           return (
             <section key={g.marco} className="coc-st-camp">
@@ -273,7 +274,7 @@ function Datas({ deadlines, canMark, isPriv, meId, onChanged, flash }: {
               <ol>
                 {g.ms.map((m) => {
                   const st = (m.status ?? 'pendente') as keyof typeof ST_LABEL;
-                  const atrasado = m.limite! < hoje && st !== 'feito';
+                  const atrasado = m.limite! < hoje && st !== 'feito' && st !== 'pausado';
                   return (
                     <li key={m.id} className={`${st} ${m === prox ? 'next' : ''}`}>
                       <span className="coc-st-when"><b>{brShort(m.limite!)}</b><small>{m.dm}</small></span>

@@ -970,7 +970,7 @@ export interface SocialPlanDeadline {
   resp: string;
   ord: number;
   // andamento (0113)
-  status?: 'pendente' | 'andamento' | 'feito';
+  status?: 'pendente' | 'andamento' | 'feito' | 'pausado';
   status_by?: string | null;
   status_at?: string | null;
   note?: string;
