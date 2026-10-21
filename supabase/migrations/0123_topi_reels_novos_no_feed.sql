@@ -1,11 +1,11 @@
 -- Cardoso Marketing Hub — Tópi: Reels novos com os produtos que ainda não estão no feed (21/10/2026).
 --
 -- Os Reels de produto do plano repetiam produtos já postados no perfil (ficaram em espera na 0122).
--- Entram 18 assuntos novos nas quartas e sextas às 12h, de 28/10 a 30/12, com produtos Tópi
+-- Entram 18 assuntos novos nas quartas e sextas às 19h, de 28/10 a 30/12, com produtos Tópi
 -- que ainda não apareceram no perfil, priorizados pelo giro (CARDOSO_PRODUTO - CURVA_2026):
 -- Trator Agro e Tandy Bombeiro (curva A) primeiro, depois Invictus Graneleiro e Super Cegonheiro (B),
 -- a linha Tópi Chef, Jeep Rally, Batedeira/Liquidificador, Invictus Caçamba, Pandeiro e a linha Bolo.
--- Cada Reels leva: Stories no mesmo dia 19h30; quarta → TikTok na quinta 19h e YouTube (playlist Tópi)
+-- Cada Reels leva: Stories no mesmo dia 21h; quarta → TikTok na quinta 19h e YouTube (playlist Tópi)
 -- no sábado 18h; sexta → Stories novo com enquete no sábado 10h30 e TikTok no sábado 19h.
 -- Material: gerar imagens IA a partir da foto do produto e montar o Reels com imagens.
 -- Prefixo novo 'plano-2026-10c:'. Idempotente (não duplica se rodar de novo).
@@ -50,165 +50,165 @@ select i.ext_id, t.id, c.id, i.link_kind, i.pub_date::date, i.pub_time::time, i.
        t.front, t.brand, c.network, i.canal, i.piece_type, i.format, i.origin, t.title, t.product, t.sku, t.objective, t.cta, t.media_use,
        t.product_id, i.caption, i.creative_url, i.creative_changed, i.mirror_facebook
   from (values
-  ('plano-2026-10c:t01:0','plano-2026-10c:t01','Tópi · Instagram','matriz','2026-10-28','12:00','Quarta','Out/26','Reels','Reels','Original','O Tópi Trator Agro leva a fazenda para o quintal: puxa, empurra e transporta toda a colheita de faz de conta. 🌽
+  ('plano-2026-10c:t01:0','plano-2026-10c:t01','Tópi · Instagram','matriz','2026-10-28','19:00','Quarta','Out/26','Reels','Reels','Original','O Tópi Trator Agro leva a fazenda para o quintal: puxa, empurra e transporta toda a colheita de faz de conta. 🌽
 A partir de 3 anos.
 Qual seria a primeira colheita aí na sua casa?
 Brincar é Tópi! 🧡
 #Tópi #TratorAgro #BrincarNaFazenda',null,false,true),
-  ('plano-2026-10c:t01:1','plano-2026-10c:t01','Tópi · Instagram','reaproveita','2026-10-28','19:30','Quarta','Out/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t01:1','plano-2026-10c:t01','Tópi · Instagram','reaproveita','2026-10-28','21:00','Quarta','Out/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t01:2','plano-2026-10c:t01','Tópi · TikTok','reaproveita','2026-10-29','19:00','Quinta','Out/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t01:3','plano-2026-10c:t01','Cardoso · YouTube · playlist Tópi','reaproveita','2026-10-31','18:00','Sábado','Out/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t02:0','plano-2026-10c:t02','Tópi · Instagram','matriz','2026-10-30','12:00','Sexta','Out/26','Reels','Reels','Original','Alerta! O bombeiro mirim já está a caminho! 🚒
+  ('plano-2026-10c:t02:0','plano-2026-10c:t02','Tópi · Instagram','matriz','2026-10-30','19:00','Sexta','Out/26','Reels','Reels','Original','Alerta! O bombeiro mirim já está a caminho! 🚒
 Com o Tandy Bombeiro, a criança comanda o resgate e salva o dia na sala de casa.
 A partir de 3 anos.
 Quem é o herói da brincadeira aí?
 Brincar é Tópi! 🧡
 #Tópi #TandyBombeiro #Bombeiro',null,false,true),
-  ('plano-2026-10c:t02:1','plano-2026-10c:t02','Tópi · Instagram','reaproveita','2026-10-30','19:30','Sexta','Out/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t02:1','plano-2026-10c:t02','Tópi · Instagram','reaproveita','2026-10-30','21:00','Sexta','Out/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t02:2','plano-2026-10c:t02','Tópi · Instagram','adapta','2026-10-31','10:30','Sábado','Out/26','Stories','Stories','Original','Bombeiro ou policial: qual é o seu herói? 🚒🚓 [enquete: Bombeiro / Policial]',null,false,false),
   ('plano-2026-10c:t02:3','plano-2026-10c:t02','Tópi · TikTok','reaproveita','2026-10-31','19:00','Sábado','Out/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t03:0','plano-2026-10c:t03','Tópi · Instagram','matriz','2026-11-04','12:00','Quarta','Nov/26','Reels','Reels','Original','O restaurante da criançada está aberto! 🍽️
+  ('plano-2026-10c:t03:0','plano-2026-10c:t03','Tópi · Instagram','matriz','2026-11-04','19:00','Quarta','Nov/26','Reels','Reels','Original','O restaurante da criançada está aberto! 🍽️
 Com o Tópi Chef Menu, ela escolhe o prato, monta a mesa e serve a família inteira.
 A partir de 3 anos.
 Qual prato sairia primeiro do seu restaurante?
 Brincar é Tópi! 🧡
 #Tópi #TópiChef #FazDeConta',null,false,true),
-  ('plano-2026-10c:t03:1','plano-2026-10c:t03','Tópi · Instagram','reaproveita','2026-11-04','19:30','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t03:1','plano-2026-10c:t03','Tópi · Instagram','reaproveita','2026-11-04','21:00','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t03:2','plano-2026-10c:t03','Tópi · TikTok','reaproveita','2026-11-05','19:00','Quinta','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t03:3','plano-2026-10c:t03','Cardoso · YouTube · playlist Tópi','reaproveita','2026-11-07','18:00','Sábado','Nov/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t04:0','plano-2026-10c:t04','Tópi · Instagram','matriz','2026-11-06','12:00','Sexta','Nov/26','Reels','Reels','Original','Carrega, transporta e descarrega! 🚛
+  ('plano-2026-10c:t04:0','plano-2026-10c:t04','Tópi · Instagram','matriz','2026-11-06','19:00','Sexta','Nov/26','Reels','Reels','Original','Carrega, transporta e descarrega! 🚛
 O Tópi Invictus Graneleiro leva a carga de um canto ao outro da casa, e a estrada é a imaginação.
 A partir de 3 anos.
 O que vai na caçamba hoje?
 Brincar é Tópi! 🧡
 #Tópi #Invictus #Caminhão',null,false,true),
-  ('plano-2026-10c:t04:1','plano-2026-10c:t04','Tópi · Instagram','reaproveita','2026-11-06','19:30','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t04:1','plano-2026-10c:t04','Tópi · Instagram','reaproveita','2026-11-06','21:00','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t04:2','plano-2026-10c:t04','Tópi · Instagram','adapta','2026-11-07','10:30','Sábado','Nov/26','Stories','Stories','Original','Que carga o caminhão leva hoje? 🚛 [enquete: Brinquedos / Frutinhas]',null,false,false),
   ('plano-2026-10c:t04:3','plano-2026-10c:t04','Tópi · TikTok','reaproveita','2026-11-07','19:00','Sábado','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t05:0','plano-2026-10c:t05','Tópi · Instagram','matriz','2026-11-11','12:00','Quarta','Nov/26','Reels','Reels','Original','Já é hora do chá? ☕🧁
+  ('plano-2026-10c:t05:0','plano-2026-10c:t05','Tópi · Instagram','matriz','2026-11-11','19:00','Quarta','Nov/26','Reels','Reels','Original','Já é hora do chá? ☕🧁
 Com o Tópi Chef Chá da Tarde, as bonecas, os bichinhos e a vovó estão convidados.
 A partir de 3 anos.
 Quem vem para o chá aí na sua casa?
 Brincar é Tópi! 🧡
 #Tópi #TópiChef #ChaDaTarde',null,false,true),
-  ('plano-2026-10c:t05:1','plano-2026-10c:t05','Tópi · Instagram','reaproveita','2026-11-11','19:30','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t05:1','plano-2026-10c:t05','Tópi · Instagram','reaproveita','2026-11-11','21:00','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t05:2','plano-2026-10c:t05','Tópi · TikTok','reaproveita','2026-11-12','19:00','Quinta','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t05:3','plano-2026-10c:t05','Cardoso · YouTube · playlist Tópi','reaproveita','2026-11-14','18:00','Sábado','Nov/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t06:0','plano-2026-10c:t06','Tópi · Instagram','matriz','2026-11-13','12:00','Sexta','Nov/26','Reels','Reels','Original','Todos os carrinhos a bordo! 🚚🚗
+  ('plano-2026-10c:t06:0','plano-2026-10c:t06','Tópi · Instagram','matriz','2026-11-13','19:00','Sexta','Nov/26','Reels','Reels','Original','Todos os carrinhos a bordo! 🚚🚗
 O Tópi Invictus Super Cegonheiro leva a frota inteira para a próxima aventura.
 A partir de 3 anos.
 Quantos carrinhos cabem aí?
 Brincar é Tópi! 🧡
 #Tópi #Invictus #Cegonheiro',null,false,true),
-  ('plano-2026-10c:t06:1','plano-2026-10c:t06','Tópi · Instagram','reaproveita','2026-11-13','19:30','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t06:1','plano-2026-10c:t06','Tópi · Instagram','reaproveita','2026-11-13','21:00','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t06:2','plano-2026-10c:t06','Tópi · Instagram','adapta','2026-11-14','10:30','Sábado','Nov/26','Stories','Stories','Original','Quantos carrinhos tem aí? 🚗 [caixinha]',null,false,false),
   ('plano-2026-10c:t06:3','plano-2026-10c:t06','Tópi · TikTok','reaproveita','2026-11-14','19:00','Sábado','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t07:0','plano-2026-10c:t07','Tópi · Instagram','matriz','2026-11-18','12:00','Quarta','Nov/26','Reels','Reels','Original','Bom dia, chef! O café da manhã está servido. 🥞
+  ('plano-2026-10c:t07:0','plano-2026-10c:t07','Tópi · Instagram','matriz','2026-11-18','19:00','Quarta','Nov/26','Reels','Reels','Original','Bom dia, chef! O café da manhã está servido. 🥞
 Com o Tópi Chef Brunch, a criança prepara a mesa e serve quem acordou.
 A partir de 3 anos.
 Panqueca ou pão de queijo?
 Brincar é Tópi! 🧡
 #Tópi #TópiChef #FazDeConta',null,false,true),
-  ('plano-2026-10c:t07:1','plano-2026-10c:t07','Tópi · Instagram','reaproveita','2026-11-18','19:30','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t07:1','plano-2026-10c:t07','Tópi · Instagram','reaproveita','2026-11-18','21:00','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t07:2','plano-2026-10c:t07','Tópi · TikTok','reaproveita','2026-11-19','19:00','Quinta','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t07:3','plano-2026-10c:t07','Cardoso · YouTube · playlist Tópi','reaproveita','2026-11-21','18:00','Sábado','Nov/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t08:0','plano-2026-10c:t08','Tópi · Instagram','matriz','2026-11-20','12:00','Sexta','Nov/26','Reels','Reels','Original','Prepara que a trilha começa agora! 🚙💨
+  ('plano-2026-10c:t08:0','plano-2026-10c:t08','Tópi · Instagram','matriz','2026-11-20','19:00','Sexta','Nov/26','Reels','Reels','Original','Prepara que a trilha começa agora! 🚙💨
 O Jeep Rally encara tapete, quintal e qualquer trilha inventada.
 A partir de 3 anos.
 Para onde vai a próxima aventura?
 Brincar é Tópi! 🧡
 #Tópi #JeepRally #Aventura',null,false,true),
-  ('plano-2026-10c:t08:1','plano-2026-10c:t08','Tópi · Instagram','reaproveita','2026-11-20','19:30','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t08:1','plano-2026-10c:t08','Tópi · Instagram','reaproveita','2026-11-20','21:00','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t08:2','plano-2026-10c:t08','Tópi · Instagram','adapta','2026-11-21','10:30','Sábado','Nov/26','Stories','Stories','Original','Trilha na lama ou na areia? 🚙 [enquete: Lama / Areia]',null,false,false),
   ('plano-2026-10c:t08:3','plano-2026-10c:t08','Tópi · TikTok','reaproveita','2026-11-21','19:00','Sábado','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t09:0','plano-2026-10c:t09','Tópi · Instagram','matriz','2026-11-25','12:00','Quarta','Nov/26','Reels','Reels','Original','Bate, mistura e serve! 🍰
+  ('plano-2026-10c:t09:0','plano-2026-10c:t09','Tópi · Instagram','matriz','2026-11-25','19:00','Quarta','Nov/26','Reels','Reels','Original','Bate, mistura e serve! 🍰
 A Tópi Batedeira e o Tópi Liquidificador completam a cozinha de faz de conta para preparar a receita favorita.
 A partir de 3 anos.
 Bolo ou vitamina?
 Brincar é Tópi! 🧡
 #Tópi #FazDeConta #Cozinha',null,false,true),
-  ('plano-2026-10c:t09:1','plano-2026-10c:t09','Tópi · Instagram','reaproveita','2026-11-25','19:30','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t09:1','plano-2026-10c:t09','Tópi · Instagram','reaproveita','2026-11-25','21:00','Quarta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t09:2','plano-2026-10c:t09','Tópi · TikTok','reaproveita','2026-11-26','19:00','Quinta','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t09:3','plano-2026-10c:t09','Cardoso · YouTube · playlist Tópi','reaproveita','2026-11-28','18:00','Sábado','Nov/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t10:0','plano-2026-10c:t10','Tópi · Instagram','matriz','2026-11-27','12:00','Sexta','Nov/26','Reels','Reels','Original','Abre a caçamba que a obra começou! 🚧
+  ('plano-2026-10c:t10:0','plano-2026-10c:t10','Tópi · Instagram','matriz','2026-11-27','19:00','Sexta','Nov/26','Reels','Reels','Original','Abre a caçamba que a obra começou! 🚧
 O Tópi Invictus Caçamba carrega, levanta e despeja tudo na obra de faz de conta.
 A partir de 3 anos.
 O que a obra vai construir?
 Brincar é Tópi! 🧡
 #Tópi #Invictus #Construção',null,false,true),
-  ('plano-2026-10c:t10:1','plano-2026-10c:t10','Tópi · Instagram','reaproveita','2026-11-27','19:30','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t10:1','plano-2026-10c:t10','Tópi · Instagram','reaproveita','2026-11-27','21:00','Sexta','Nov/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t10:2','plano-2026-10c:t10','Tópi · Instagram','adapta','2026-11-28','10:30','Sábado','Nov/26','Stories','Stories','Original','O que a obra vai construir? 🏗️ [enquete: Casa / Ponte]',null,false,false),
   ('plano-2026-10c:t10:3','plano-2026-10c:t10','Tópi · TikTok','reaproveita','2026-11-28','19:00','Sábado','Nov/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t11:0','plano-2026-10c:t11','Tópi · Instagram','matriz','2026-12-02','12:00','Quarta','Dez/26','Reels','Reels','Original','Avental pronto? A cozinha é sua! 👩‍🍳
+  ('plano-2026-10c:t11:0','plano-2026-10c:t11','Tópi · Instagram','matriz','2026-12-02','19:00','Quarta','Dez/26','Reels','Reels','Original','Avental pronto? A cozinha é sua! 👩‍🍳
 Com as cozinhas Tópi Chef, a criança prepara, cozinha e serve a família inteira.
 A partir de 3 anos.
 Qual é a especialidade do chef aí?
 Brincar é Tópi! 🧡
 #Tópi #TópiChef #FazDeConta',null,false,true),
-  ('plano-2026-10c:t11:1','plano-2026-10c:t11','Tópi · Instagram','reaproveita','2026-12-02','19:30','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t11:1','plano-2026-10c:t11','Tópi · Instagram','reaproveita','2026-12-02','21:00','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t11:2','plano-2026-10c:t11','Tópi · TikTok','reaproveita','2026-12-03','19:00','Quinta','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t11:3','plano-2026-10c:t11','Cardoso · YouTube · playlist Tópi','reaproveita','2026-12-05','18:00','Sábado','Dez/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t12:0','plano-2026-10c:t12','Tópi · Instagram','matriz','2026-12-04','12:00','Sexta','Dez/26','Reels','Reels','Original','Quem chega primeiro na roda? 🎶
+  ('plano-2026-10c:t12:0','plano-2026-10c:t12','Tópi · Instagram','matriz','2026-12-04','19:00','Sexta','Dez/26','Reels','Reels','Original','Quem chega primeiro na roda? 🎶
 Com o Tópi Pandeiro, a criança puxa a cantoria e a família inteira entra na festa.
 A partir de 3 anos.
 Qual música não pode faltar?
 Brincar é Tópi! 🧡
 #Tópi #Pandeiro #Musical',null,false,true),
-  ('plano-2026-10c:t12:1','plano-2026-10c:t12','Tópi · Instagram','reaproveita','2026-12-04','19:30','Sexta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t12:1','plano-2026-10c:t12','Tópi · Instagram','reaproveita','2026-12-04','21:00','Sexta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t12:2','plano-2026-10c:t12','Tópi · Instagram','adapta','2026-12-05','10:30','Sábado','Dez/26','Stories','Stories','Original','Qual música não pode faltar na festa? 🎶 [caixinha]',null,false,false),
   ('plano-2026-10c:t12:3','plano-2026-10c:t12','Tópi · TikTok','reaproveita','2026-12-05','19:00','Sábado','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t13:0','plano-2026-10c:t13','Tópi · Instagram','matriz','2026-12-09','12:00','Quarta','Dez/26','Reels','Reels','Original','Saindo quentinho do forno! 🍕
+  ('plano-2026-10c:t13:0','plano-2026-10c:t13','Tópi · Instagram','matriz','2026-12-09','19:00','Quarta','Dez/26','Reels','Reels','Original','Saindo quentinho do forno! 🍕
 Com a Tópi Chef Cozinha Forno, a criança assa a pizza, o bolo e o que mais inventar.
 A partir de 3 anos.
 Pizza ou bolo?
 Brincar é Tópi! 🧡
 #Tópi #TópiChef #FazDeConta',null,false,true),
-  ('plano-2026-10c:t13:1','plano-2026-10c:t13','Tópi · Instagram','reaproveita','2026-12-09','19:30','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t13:1','plano-2026-10c:t13','Tópi · Instagram','reaproveita','2026-12-09','21:00','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t13:2','plano-2026-10c:t13','Tópi · TikTok','reaproveita','2026-12-10','19:00','Quinta','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t13:3','plano-2026-10c:t13','Cardoso · YouTube · playlist Tópi','reaproveita','2026-12-12','18:00','Sábado','Dez/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t14:0','plano-2026-10c:t14','Tópi · Instagram','matriz','2026-12-11','12:00','Sexta','Dez/26','Reels','Reels','Original','Formas, letras e números: tudo vira brincadeira! 🐘🦁🦛
+  ('plano-2026-10c:t14:0','plano-2026-10c:t14','Tópi · Instagram','matriz','2026-12-11','19:00','Sexta','Dez/26','Reels','Reels','Original','Formas, letras e números: tudo vira brincadeira! 🐘🦁🦛
 O Bolofante ensina as formas, o Bololéo as letras e o Bolopótamo os números.
 A partir de 18 meses.
 Qual desses é a cara do seu pequeno?
 Brincar é Tópi! 🧡
 #Tópi #AprenderBrincando #Bebê',null,false,true),
-  ('plano-2026-10c:t14:1','plano-2026-10c:t14','Tópi · Instagram','reaproveita','2026-12-11','19:30','Sexta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t14:1','plano-2026-10c:t14','Tópi · Instagram','reaproveita','2026-12-11','21:00','Sexta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t14:2','plano-2026-10c:t14','Tópi · Instagram','adapta','2026-12-12','10:30','Sábado','Dez/26','Stories','Stories','Original','Formas, letras ou números? 🐘🦁🦛 [enquete: Formas / Letras / Números]',null,false,false),
   ('plano-2026-10c:t14:3','plano-2026-10c:t14','Tópi · TikTok','reaproveita','2026-12-12','19:00','Sábado','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t15:0','plano-2026-10c:t15','Tópi · Instagram','matriz','2026-12-16','12:00','Quarta','Dez/26','Reels','Reels','Original','Hoje o cardápio vem da feira! 🥕🐟
+  ('plano-2026-10c:t15:0','plano-2026-10c:t15','Tópi · Instagram','matriz','2026-12-16','19:00','Quarta','Dez/26','Reels','Reels','Original','Hoje o cardápio vem da feira! 🥕🐟
 As cozinhas Tópi Chef Legumes, Legumes e Mar e Terra e Mar deixam o cardápio de faz de conta bem variado.
 A partir de 3 anos.
 Qual prato a criança inventaria?
 Brincar é Tópi! 🧡
 #Tópi #TópiChef #FazDeConta',null,false,true),
-  ('plano-2026-10c:t15:1','plano-2026-10c:t15','Tópi · Instagram','reaproveita','2026-12-16','19:30','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t15:1','plano-2026-10c:t15','Tópi · Instagram','reaproveita','2026-12-16','21:00','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t15:2','plano-2026-10c:t15','Tópi · TikTok','reaproveita','2026-12-17','19:00','Quinta','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t15:3','plano-2026-10c:t15','Cardoso · YouTube · playlist Tópi','reaproveita','2026-12-19','18:00','Sábado','Dez/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t16:0','plano-2026-10c:t16','Tópi · Instagram','matriz','2026-12-18','12:00','Sexta','Dez/26','Reels','Reels','Original','Tem fã de caminhão aí? O presente está aqui! 🚛🎁
+  ('plano-2026-10c:t16:0','plano-2026-10c:t16','Tópi · Instagram','matriz','2026-12-18','19:00','Sexta','Dez/26','Reels','Reels','Original','Tem fã de caminhão aí? O presente está aqui! 🚛🎁
 Graneleiro, Super Cegonheiro, Caçamba e Jeep Rally: a frota da Tópi para o Natal.
 A partir de 3 anos.
 Qual vai para debaixo da árvore?
 Brincar é Tópi! 🧡
 #Tópi #PresenteDeNatal #Caminhão',null,false,true),
-  ('plano-2026-10c:t16:1','plano-2026-10c:t16','Tópi · Instagram','reaproveita','2026-12-18','19:30','Sexta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t16:1','plano-2026-10c:t16','Tópi · Instagram','reaproveita','2026-12-18','21:00','Sexta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t16:2','plano-2026-10c:t16','Tópi · Instagram','adapta','2026-12-19','10:30','Sábado','Dez/26','Stories','Stories','Original','Qual vai para debaixo da árvore? 🎄 [enquete: Cegonheiro / Jeep Rally]',null,false,false),
   ('plano-2026-10c:t16:3','plano-2026-10c:t16','Tópi · TikTok','reaproveita','2026-12-19','19:00','Sábado','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t17:0','plano-2026-10c:t17','Tópi · Instagram','matriz','2026-12-23','12:00','Quarta','Dez/26','Reels','Reels','Original','A ceia de Natal da criançada está servida! 🎄🍽️
+  ('plano-2026-10c:t17:0','plano-2026-10c:t17','Tópi · Instagram','matriz','2026-12-23','19:00','Quarta','Dez/26','Reels','Reels','Original','A ceia de Natal da criançada está servida! 🎄🍽️
 Com a linha Tópi Chef, a criança prepara a própria ceia e serve a família inteira.
 A partir de 3 anos.
 O que não pode faltar na ceia aí?
 Brincar é Tópi! 🧡
 #Tópi #Natal #TópiChef',null,false,true),
-  ('plano-2026-10c:t17:1','plano-2026-10c:t17','Tópi · Instagram','reaproveita','2026-12-23','19:30','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t17:1','plano-2026-10c:t17','Tópi · Instagram','reaproveita','2026-12-23','21:00','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t17:2','plano-2026-10c:t17','Tópi · TikTok','reaproveita','2026-12-24','19:00','Quinta','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t17:3','plano-2026-10c:t17','Cardoso · YouTube · playlist Tópi','reaproveita','2026-12-26','18:00','Sábado','Dez/26','Shorts','Shorts','Reaproveitamento',null,null,false,false),
-  ('plano-2026-10c:t18:0','plano-2026-10c:t18','Tópi · Instagram','matriz','2026-12-30','12:00','Quarta','Dez/26','Reels','Reels','Original','Férias começaram: bora pro quintal! ☀️🚜
+  ('plano-2026-10c:t18:0','plano-2026-10c:t18','Tópi · Instagram','matriz','2026-12-30','19:00','Quarta','Dez/26','Reels','Reels','Original','Férias começaram: bora pro quintal! ☀️🚜
 Trator Agro na colheita, Jeep Rally na trilha: a brincadeira das férias é lá fora.
 A partir de 3 anos.
 Qual é a brincadeira favorita das férias?
 Brincar é Tópi! 🧡
 #Tópi #Férias #BrincarAoArLivre',null,false,true),
-  ('plano-2026-10c:t18:1','plano-2026-10c:t18','Tópi · Instagram','reaproveita','2026-12-30','19:30','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
+  ('plano-2026-10c:t18:1','plano-2026-10c:t18','Tópi · Instagram','reaproveita','2026-12-30','21:00','Quarta','Dez/26','Stories','Stories','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t18:2','plano-2026-10c:t18','Tópi · TikTok','reaproveita','2026-12-31','19:00','Quinta','Dez/26','Reels','Vídeo','Reaproveitamento',null,null,false,false),
   ('plano-2026-10c:t18:3','plano-2026-10c:t18','Cardoso · YouTube · playlist Tópi','reaproveita','2027-01-02','18:00','Sábado','Jan/27','Shorts','Shorts','Reaproveitamento',null,null,false,false)
   ) as i (ext_id, topic_key, canal, link_kind, pub_date, pub_time, weekday, month_label, piece_type, format, origin, caption, creative_url, creative_changed, mirror_facebook)
