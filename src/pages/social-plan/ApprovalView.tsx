@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { decide } from './actions';
-import DrivePlayer from './DrivePlayer';
+import { CreativeMedia } from './DrivePlayer';
 import { BRIEF_ETAPA1, BRIEF_ETAPA2, BriefRead } from './Brief';
 import { KIND_LABEL, brShort, destLabel, hhmm, inQueue1, inQueue2, licBlocked, slug, type ChannelMap } from './shared';
 
@@ -79,7 +79,7 @@ export default function ApprovalView({ live, byTopic, topicById, chans, meId, ca
       {tabs}{head}
       <div className="ap">
         <div className="ap-art">
-          <DrivePlayer url={creative} vertical={vertical} title={titulo} className={`ap-media b-${slug(cur.brand)}`} poster={(
+          <CreativeMedia urls={cur.creative_slides?.length ? cur.creative_slides : creative ? [creative] : []} vertical={vertical} title={titulo} className={`ap-media b-${slug(cur.brand)}`} poster={(
             <div className="ap-poster">
               <span>{cur.brand}</span>
               <b>{brief.texto_arte || cur.product || titulo}</b>

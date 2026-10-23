@@ -4614,3 +4614,22 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 /* data comercial em espera (campanha parada) */
 .sp .coc-st-badge.pausado{background:#ECE7F3;border-color:#ECE7F3;color:#5B4A7A}
 .sp .coc-st-camp li.pausado .coc-st-what,.sp .coc-st-camp li.pausado .coc-st-when{opacity:.55}
+/* carrossel: uma lâmina por vez, setas, pontinhos e contador como no Instagram */
+.sp .dp-car{position:relative;width:100%;overflow:hidden;border-radius:inherit}
+.sp .dp-car > .dp{position:absolute;inset:0;height:100%}
+.sp .pv-media .dp-car{position:absolute;inset:0}
+.sp .dp-car-n{position:absolute;top:10px;right:10px;z-index:6;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+.sp .dp-car-a{position:absolute;top:50%;transform:translateY(-50%);z-index:6;appearance:none;border:0;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.88);color:#0A2530;font-size:20px;line-height:1;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);display:grid;place-items:center;padding:0 0 2px}
+.sp .dp-car-a.l{left:8px}.sp .dp-car-a.r{right:8px}
+.sp .dp-car-dots{position:absolute;bottom:8px;left:0;right:0;z-index:6;display:flex;justify-content:center;gap:4px;pointer-events:none}
+.sp .dp-car-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55);box-shadow:0 0 2px rgba(0,0,0,.4)}
+.sp .dp-car-dots i.on{background:#3897F0}
+.sp .dp-car .dp-play{top:auto;bottom:24px;transform:translateX(-50%)}
+.sp .dp-car .dp-play:hover{transform:translateX(-50%) scale(1.05)}
+/* editor: lâminas do carrossel */
+.sp .sp-slides{display:flex;flex-direction:column;gap:6px;margin:4px 0 2px}
+.sp .sp-slide{display:flex;gap:6px;align-items:center}
+.sp .sp-slide b{flex:0 0 74px;font-size:12px;color:var(--muted);font-weight:600}
+.sp .sp-slide input{flex:1}
+.sp .sp-slide button{appearance:none;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px}
+.sp .sp-addslide{appearance:none;border:1px dashed var(--line);background:transparent;border-radius:10px;padding:7px 10px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;align-self:flex-start}

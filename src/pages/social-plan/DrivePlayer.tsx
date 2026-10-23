@@ -40,12 +40,13 @@ function Lightbox({ url, kind, id, vertical, title, onClose }: {
   );
 }
 
-export default function DrivePlayer({ url, vertical, poster, title, className = '' }: {
+export default function DrivePlayer({ url, vertical, poster, title, className = '', playLabel = 'Reproduzir' }: {
   url: string | null | undefined;
   vertical: boolean;
   poster?: React.ReactNode;     // o que aparece atrás enquanto não há imagem (cartaz da marca etc.)
   title?: string;
   className?: string;
+  playLabel?: string;
 }) {
   const tgt = driveTarget(url);
   const [open, setOpen] = useState(false);
@@ -58,9 +59,37 @@ export default function DrivePlayer({ url, vertical, poster, title, className = 
       {poster}
       {thumb && <img src={thumb} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />}
       <button type="button" className={`dp-play ${tgt.kind}`} onClick={() => setOpen(true)}>
-        {tgt.kind === 'file' ? <><span aria-hidden>▶</span>Reproduzir</> : <><span aria-hidden>▦</span>Ver arquivos</>}
+        {tgt.kind === 'file' ? <><span aria-hidden>▶</span>{playLabel}</> : <><span aria-hidden>▦</span>Ver arquivos</>}
       </button>
       {open && <Lightbox url={url} kind={tgt.kind} id={tgt.id} vertical={vertical} title={title} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+/* Criativo com lâminas (carrossel): passa de lâmina com as setas, os pontinhos ou arrastando o dedo,
+ * como no Instagram. Com uma lâmina só, é o DrivePlayer normal. */
+export function CreativeMedia({ urls, vertical, poster, title, className = '' }: {
+  urls: string[];
+  vertical: boolean;
+  poster?: React.ReactNode;
+  title?: string;
+  className?: string;
+}) {
+  const [i, setI] = useState(0);
+  const [x0, setX0] = useState<number | null>(null);
+  const n = urls.length;
+  useEffect(() => { setI(0); }, [urls.join('|')]);
+  if (n <= 1) return <DrivePlayer url={urls[0] ?? null} vertical={vertical} poster={poster} title={title} className={className} />;
+  const go = (d: number) => setI((v) => Math.min(n - 1, Math.max(0, v + d)));
+  return (
+    <div className={`dp-car ${className}`}
+      onTouchStart={(e) => setX0(e.touches[0].clientX)}
+      onTouchEnd={(e) => { if (x0 !== null) { const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); } setX0(null); }}>
+      <DrivePlayer key={urls[i]} url={urls[i]} vertical={vertical} poster={poster} title={`${title ?? 'Carrossel'} · lâmina ${i + 1} de ${n}`} playLabel="Ampliar lâmina" />
+      <span className="dp-car-n">{i + 1}/{n}</span>
+      {i > 0 && <button type="button" className="dp-car-a l" aria-label="Lâmina anterior" onClick={() => go(-1)}>‹</button>}
+      {i < n - 1 && <button type="button" className="dp-car-a r" aria-label="Próxima lâmina" onClick={() => go(1)}>›</button>}
+      <span className="dp-car-dots" aria-hidden>{urls.map((u, k) => <i key={u + k} className={k === i ? 'on' : ''} />)}</span>
     </div>
   );
 }

@@ -60,9 +60,11 @@ export function defaultPieceType(ch: SocialChannel) {
 
 /** Legenda e criativo que valem para a peça: reaproveita herda da matriz; adapta herda o criativo se não mudou. */
 export function effective(item: SocialPlanItem, matriz: SocialPlanItem | undefined) {
-  if (item.link_kind === 'reaproveita') return { caption: matriz?.caption ?? null, creative: matriz?.creative_url ?? null };
-  if (item.link_kind === 'adapta' && !item.creative_changed) return { caption: item.caption, creative: matriz?.creative_url ?? null };
-  return { caption: item.caption, creative: item.creative_url };
+  const src = item.link_kind === 'reaproveita' || (item.link_kind === 'adapta' && !item.creative_changed) ? matriz : item;
+  const creative = src?.creative_url ?? null;
+  // carrossel: todas as lâminas; peça simples: só o criativo
+  const slides = src?.creative_slides?.length ? src.creative_slides : creative ? [creative] : [];
+  return { caption: item.link_kind === 'reaproveita' ? matriz?.caption ?? null : item.caption, creative, slides };
 }
 
 /* ---------- Fase 2: duas etapas de aprovação ----------

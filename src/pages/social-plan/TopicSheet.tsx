@@ -13,6 +13,8 @@ type TopicForm = Pick<SocialTopic, 'title' | 'brand' | 'product' | 'sku' | 'fron
 type Draft = {
   key: string; id?: string; channel_id: string; piece_type: string; format: string;
   pub_date: string; pub_time: string; link_kind: Kind; caption: string; creative_url: string;
+  more: string[];   // carrossel: lâminas 2, 3… (a lâmina 1 é o creative_url)
+  had?: boolean;    // já tinha lâminas gravadas (para poder limpar)
   creative_changed: boolean; mirror_facebook: boolean; origin?: string; status?: SocialPlanItem['status'];
 };
 
@@ -29,7 +31,7 @@ function toDraft(x: SocialPlanItem): Draft {
   return {
     key: x.id, id: x.id, channel_id: x.channel_id ?? '', piece_type: x.piece_type, format: x.format,
     pub_date: x.pub_date, pub_time: x.pub_time ? x.pub_time.slice(0, 5) : '', link_kind: x.link_kind,
-    caption: x.caption ?? '', creative_url: x.creative_url ?? '', creative_changed: x.creative_changed,
+    caption: x.caption ?? '', creative_url: x.creative_url ?? '', more: (x.creative_slides ?? []).slice(1), had: (x.creative_slides?.length ?? 0) > 0, creative_changed: x.creative_changed,
     mirror_facebook: x.mirror_facebook, origin: x.origin, status: x.status,
   };
 }
@@ -59,7 +61,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
       const ds = items.map(toDraft);
       return [...ds.filter((d) => d.link_kind === 'matriz'), ...ds.filter((d) => d.link_kind !== 'matriz').sort((a, b) => (a.pub_date + a.pub_time).localeCompare(b.pub_date + b.pub_time))];
     }
-    return [{ key: newKey(), channel_id: 'pl-ig', piece_type: 'Feed', format: '', pub_date: todayISO(), pub_time: '', link_kind: 'matriz', caption: '', creative_url: '', creative_changed: false, mirror_facebook: true }];
+    return [{ key: newKey(), channel_id: 'pl-ig', piece_type: 'Feed', format: '', pub_date: todayISO(), pub_time: '', link_kind: 'matriz', caption: '', creative_url: '', more: [], creative_changed: false, mirror_facebook: true }];
   });
   const [removed, setRemoved] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -88,7 +90,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
     return {
       channel_id, link_kind, pub_date, pub_time,
       piece_type: piece_type ?? (ch ? defaultPieceType(ch) : ''), format: '',
-      caption: link_kind === 'adapta' ? matriz?.caption ?? '' : '', creative_url: '', creative_changed: false,
+      caption: link_kind === 'adapta' ? matriz?.caption ?? '' : '', creative_url: '', more: [], creative_changed: false,
       mirror_facebook: !!ch?.mirror && piece_type !== 'Stories',
     };
   };
@@ -158,6 +160,10 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
         mirror_facebook: !!ch?.mirror && d.mirror_facebook,
         updated_by: me?.id ?? null,
       };
+      // lâminas do carrossel: só manda a coluna quando há lâminas (ou havia), para funcionar antes da migration 0128
+      const slides = (d.link_kind === 'matriz' || (d.link_kind === 'adapta' && d.creative_changed)) && d.more.some((u) => u.trim())
+        ? [d.creative_url, ...d.more].map((u) => u.trim()).filter(Boolean).map(normalizeUrl) : [];
+      if (slides.length || d.had) Object.assign(row, { creative_slides: slides });
       const { error } = d.id
         ? await supabase.from('social_plan_items').update(row).eq('id', d.id)
         : await supabase.from('social_plan_items').insert(row);
@@ -269,8 +275,28 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                       <textarea id={`c-${d.key}`} rows={4} value={d.caption} onChange={(e) => updD(d.key, { caption: e.target.value })} /></label>
                     {d.link_kind === 'adapta' && <label className="sp-check"><input id={`cc-${d.key}`} type="checkbox" checked={d.creative_changed} onChange={(e) => updD(d.key, { creative_changed: e.target.checked })} /> O criativo também muda (recorte, versão, nova arte)</label>}
                     {(d.link_kind === 'matriz' || d.creative_changed) ? (
-                      <label className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Criativo no Drive' : 'Criativo adaptado no Drive'}</span>
-                        <input id={`cr-${d.key}`} placeholder="Cole o link do arquivo ou da pasta no Drive" value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
+                      (/carrossel/i.test(`${d.format} ${d.piece_type}`) || d.more.length > 0) ? (
+                        <div className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Lâminas do carrossel no Drive' : 'Lâminas adaptadas no Drive'} <small>um link por lâmina, na ordem</small></span>
+                          <div className="sp-slides">
+                            <label className="sp-slide"><b>Lâmina 1 (capa)</b>
+                              <input id={`cr-${d.key}`} placeholder="Link da lâmina 1 no Drive" value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
+                            {d.more.map((u, k) => (
+                              <label className="sp-slide" key={k}><b>Lâmina {k + 2}</b>
+                                <input id={`cr-${d.key}-${k}`} placeholder={`Link da lâmina ${k + 2} no Drive`} value={u}
+                                  onChange={(e) => updD(d.key, { more: d.more.map((v, j) => (j === k ? e.target.value : v)) })} />
+                                <button type="button" aria-label={`Tirar lâmina ${k + 2}`} onClick={() => updD(d.key, { more: d.more.filter((_, j) => j !== k) })}>×</button>
+                              </label>
+                            ))}
+                            <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [...d.more, ''] })}>+ Adicionar lâmina</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <label className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Criativo no Drive' : 'Criativo adaptado no Drive'}</span>
+                            <input id={`cr-${d.key}`} placeholder="Cole o link do arquivo ou da pasta no Drive" value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
+                          {d.piece_type !== 'Reels' && d.piece_type !== 'Stories' && <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [''] })}>+ É carrossel? Adicionar lâminas</button>}
+                        </>
+                      )
                     ) : <p className="sp-inherit">↳ Usa o criativo da matriz.</p>}
                   </>
                 )}

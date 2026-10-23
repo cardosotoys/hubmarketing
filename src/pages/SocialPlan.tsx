@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
 import { Linkify } from './social-plan/Brief';
-import DrivePlayer from './social-plan/DrivePlayer';
+import { CreativeMedia } from './social-plan/DrivePlayer';
 import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
@@ -718,7 +718,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
 
   const Media = ({ big }: { big?: boolean }) => (
     <div className={`pv-media b-${brandK} ${vertical ? 'v' : 'q'} ${big ? 'big' : ''}`}>
-      <DrivePlayer url={eff.creative} vertical={vertical} poster={(
+      <CreativeMedia urls={eff.slides} vertical={vertical} title={titulo} poster={(
         <div className="pv-poster">
           <span>{item.brand}</span>
           <b>{brief.texto_arte || item.product || titulo}</b>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { decide } from './actions';
-import DrivePlayer from './DrivePlayer';
+import { CreativeMedia } from './DrivePlayer';
 import NetworkPreview from './NetworkPreview';
 import { DOW, brShort, dowIndex, hhmm, inQueue1, inQueue2, licBlocked, previewItems, slug, type ChannelMap } from './shared';
 
@@ -131,7 +131,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
               <span className={`al-ava b-${slug(cur.brand)}`}>{cur.brand[0]}</span>
               <span><b>{conta}</b><small>{ch?.network ?? cur.network ?? ''}{cur.piece_type ? ` · ${cur.piece_type}` : ''}</small></span>
             </div>
-            <DrivePlayer url={cur.creative_url} vertical={vertical} title={titulo} className={`al-media b-${slug(cur.brand)}`} poster={(
+            <CreativeMedia urls={cur.creative_slides?.length ? cur.creative_slides : cur.creative_url ? [cur.creative_url] : []} vertical={vertical} title={titulo} className={`al-media b-${slug(cur.brand)}`} poster={(
               <div className="al-poster">
                 <b>{brief.texto_arte || cur.product || titulo}</b>
                 {!cur.creative_url && <em>A arte é feita depois que você aprovar a ideia e a legenda.</em>}

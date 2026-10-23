@@ -866,6 +866,7 @@ export interface SocialPlanItem {
   pub_time: string | null; // HH:MM:SS
   caption: string | null;
   creative_url: string | null;
+  creative_slides?: string[] | null;   // carrossel: um link por lâmina (a 1ª é a capa = creative_url)
   creative_changed: boolean;
   mirror_facebook: boolean;
   archived: boolean;
