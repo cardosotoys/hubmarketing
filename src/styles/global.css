@@ -4633,3 +4633,23 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .sp-slide input{flex:1}
 .sp .sp-slide button{appearance:none;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px}
 .sp .sp-addslide{appearance:none;border:1px dashed var(--line);background:transparent;border-radius:10px;padding:7px 10px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;align-self:flex-start}
+/* peça aberta — feed e carrossel: post grande, sem moldura de celular, tira de lâminas embaixo */
+.sp .pv-feed{width:min(440px,100%);display:flex;flex-direction:column;gap:12px}
+.sp .pv-feed .pv-post{border-radius:18px;box-shadow:0 24px 50px -24px rgba(10,37,48,.45)}
+.sp .pv-feed .pv-post-dots{display:flex;justify-content:center;gap:4px;padding:10px 0 0}
+.sp .pv-feed .pv-post-dots i{width:6px;height:6px;border-radius:50%;background:#C9CDD1}
+.sp .pv-feed .pv-post-dots i.on{background:#3897F0}
+.sp .pv-feed .dp-car-dots{display:none}
+.sp .pv-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.sp .pv-strip button{position:relative;flex:0 0 64px;aspect-ratio:4/5;border:2px solid transparent;border-radius:10px;overflow:hidden;padding:0;background:#E3E7E9;cursor:pointer;opacity:.6;transition:opacity .15s,border-color .15s}
+.sp .pv-strip button.on{border-color:#0A2530;opacity:1}
+.sp .pv-strip button:hover{opacity:1}
+.sp .pv-strip img{width:100%;height:100%;object-fit:cover;display:block}
+.sp .pv-strip .ph{display:grid;place-items:center;height:100%;font-size:10px;color:var(--muted)}
+.sp .pv-strip b{position:absolute;left:4px;bottom:4px;font-size:10px;font-weight:800;color:#fff;background:rgba(0,0,0,.55);border-radius:6px;padding:1px 5px}
+/* arte parada: sem botão grande; clicar amplia */
+.sp .dp.still img{cursor:zoom-in}
+.sp .dp-zoom{position:absolute;right:10px;bottom:10px;z-index:5;appearance:none;border:0;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;display:grid;place-items:center}
+.sp .dp-zoom:hover{background:rgba(0,0,0,.75)}
+.sp .dp-car.still .dp-car-a{width:26px;height:26px;font-size:17px;background:rgba(255,255,255,.8)}
+@media (max-width:760px){.sp .pv-feed{width:100%}.sp .pv-strip button{flex-basis:56px}}

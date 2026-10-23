@@ -40,13 +40,19 @@ function Lightbox({ url, kind, id, vertical, title, onClose }: {
   );
 }
 
-export default function DrivePlayer({ url, vertical, poster, title, className = '', playLabel = 'Reproduzir' }: {
+export function driveThumbOf(url: string | null | undefined, w = 1000) {
+  const t = driveTarget(url);
+  return t?.kind === 'file' ? `https://drive.google.com/thumbnail?id=${t.id}&sz=w${w}` : null;
+}
+
+export default function DrivePlayer({ url, vertical, poster, title, className = '', playLabel = 'Reproduzir', still = false }: {
   url: string | null | undefined;
   vertical: boolean;
   poster?: React.ReactNode;     // o que aparece atrás enquanto não há imagem (cartaz da marca etc.)
   title?: string;
   className?: string;
   playLabel?: string;
+  still?: boolean;              // arte parada (feed/carrossel): sem o botão grande no meio; clicar amplia
 }) {
   const tgt = driveTarget(url);
   const [open, setOpen] = useState(false);
@@ -54,6 +60,17 @@ export default function DrivePlayer({ url, vertical, poster, title, className = 
   useEffect(() => { setOpen(false); setBroken(false); }, [url]);
   if (!tgt || !url) return <div className={`dp ${vertical ? 'v' : 'q'} ${className}`}>{poster}</div>;
   const thumb = tgt.kind === 'file' && !broken ? `https://drive.google.com/thumbnail?id=${tgt.id}&sz=w1000` : null;
+  const lb = open && <Lightbox url={url} kind={tgt.kind} id={tgt.id} vertical={vertical} title={title} onClose={() => setOpen(false)} />;
+  if (still && tgt.kind === 'file') {
+    return (
+      <div className={`dp still ${vertical ? 'v' : 'q'} ${className}`}>
+        {poster}
+        {thumb && <img src={thumb} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} onClick={() => setOpen(true)} />}
+        <button type="button" className="dp-zoom" aria-label="Ampliar" title="Ampliar" onClick={() => setOpen(true)}>⤢</button>
+        {lb}
+      </div>
+    );
+  }
   return (
     <div className={`dp ${vertical ? 'v' : 'q'} ${className}`}>
       {poster}
@@ -61,31 +78,37 @@ export default function DrivePlayer({ url, vertical, poster, title, className = 
       <button type="button" className={`dp-play ${tgt.kind}`} onClick={() => setOpen(true)}>
         {tgt.kind === 'file' ? <><span aria-hidden>▶</span>{playLabel}</> : <><span aria-hidden>▦</span>Ver arquivos</>}
       </button>
-      {open && <Lightbox url={url} kind={tgt.kind} id={tgt.id} vertical={vertical} title={title} onClose={() => setOpen(false)} />}
+      {lb}
     </div>
   );
 }
 
 /* Criativo com lâminas (carrossel): passa de lâmina com as setas, os pontinhos ou arrastando o dedo,
- * como no Instagram. Com uma lâmina só, é o DrivePlayer normal. */
-export function CreativeMedia({ urls, vertical, poster, title, className = '' }: {
+ * como no Instagram. Com uma lâmina só, é o DrivePlayer normal. A lâmina aberta pode vir de fora
+ * (index/onIndex), para a tira de miniaturas ao lado ficar em sincronia. */
+export function CreativeMedia({ urls, vertical, poster, title, className = '', still = false, index, onIndex }: {
   urls: string[];
   vertical: boolean;
   poster?: React.ReactNode;
   title?: string;
   className?: string;
+  still?: boolean;
+  index?: number;
+  onIndex?: (i: number) => void;
 }) {
-  const [i, setI] = useState(0);
+  const [own, setOwn] = useState(0);
   const [x0, setX0] = useState<number | null>(null);
   const n = urls.length;
-  useEffect(() => { setI(0); }, [urls.join('|')]);
-  if (n <= 1) return <DrivePlayer url={urls[0] ?? null} vertical={vertical} poster={poster} title={title} className={className} />;
-  const go = (d: number) => setI((v) => Math.min(n - 1, Math.max(0, v + d)));
+  const i = Math.min(index ?? own, Math.max(0, n - 1));
+  const setI = (v: number) => { setOwn(v); onIndex?.(v); };
+  useEffect(() => { setOwn(0); }, [urls.join('|')]);
+  if (n <= 1) return <DrivePlayer url={urls[0] ?? null} vertical={vertical} poster={poster} title={title} className={className} still={still} />;
+  const go = (d: number) => setI(Math.min(n - 1, Math.max(0, i + d)));
   return (
-    <div className={`dp-car ${className}`}
+    <div className={`dp-car ${still ? 'still' : ''} ${className}`}
       onTouchStart={(e) => setX0(e.touches[0].clientX)}
       onTouchEnd={(e) => { if (x0 !== null) { const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); } setX0(null); }}>
-      <DrivePlayer key={urls[i]} url={urls[i]} vertical={vertical} poster={poster} title={`${title ?? 'Carrossel'} · lâmina ${i + 1} de ${n}`} playLabel="Ampliar lâmina" />
+      <DrivePlayer key={urls[i]} url={urls[i]} vertical={vertical} poster={poster} title={`${title ?? 'Carrossel'} · lâmina ${i + 1} de ${n}`} playLabel="Ampliar lâmina" still={still} />
       <span className="dp-car-n">{i + 1}/{n}</span>
       {i > 0 && <button type="button" className="dp-car-a l" aria-label="Lâmina anterior" onClick={() => go(-1)}>‹</button>}
       {i < n - 1 && <button type="button" className="dp-car-a r" aria-label="Próxima lâmina" onClick={() => go(1)}>›</button>}

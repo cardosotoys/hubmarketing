@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
 import { Linkify } from './social-plan/Brief';
-import { CreativeMedia } from './social-plan/DrivePlayer';
+import { CreativeMedia, driveThumbOf } from './social-plan/DrivePlayer';
 import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
@@ -686,6 +686,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const vertical = /Reels|Stories|Shorts|TikTok|Status/.test(`${item.piece_type} ${ch?.name ?? ''}`);
   const lim = ch?.caption_limit ?? null;
   const [openCmts, setOpenCmts] = useState(focusComments);
+  const [lam, setLam] = useState(0);   // lâmina aberta do carrossel
   const brandK = slug(item.brand);
   const titulo = topic?.title || item.pauta;
   const copyCaption = async () => {
@@ -718,7 +719,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
 
   const Media = ({ big }: { big?: boolean }) => (
     <div className={`pv-media b-${brandK} ${vertical ? 'v' : 'q'} ${big ? 'big' : ''}`}>
-      <CreativeMedia urls={eff.slides} vertical={vertical} title={titulo} poster={(
+      <CreativeMedia urls={eff.slides} vertical={vertical} title={titulo} still={!vertical} index={lam} onIndex={setLam} poster={(
         <div className="pv-poster">
           <span>{item.brand}</span>
           <b>{brief.texto_arte || item.product || titulo}</b>
@@ -747,8 +748,8 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
       <div className="pv-body">
         {/* ---------- 1. como vai aparecer ---------- */}
         <section className={`pv-stage b-${brandK}`}>
-          <div className={`pv-phone ${vertical ? 'v' : 'q'}`}>
-            {vertical ? (
+          {vertical ? (
+          <div className="pv-phone v">
               <>
                 <Media big />
                 <div className="pv-reel-ui">
@@ -756,16 +757,35 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
                   {eff.caption && <p>{eff.caption.split('\n')[0]}</p>}
                 </div>
               </>
-            ) : (
+          </div>
+          ) : (
+            /* feed, carrossel, LinkedIn: o post do tamanho certo, sem moldura de celular, e a tira de lâminas */
+            <div className="pv-feed">
               <div className="pv-post">
                 <div className="pv-post-h"><i className={`b-${brandK}`}>{item.brand[0]}</i><b>{item.brand.toLowerCase()}</b><span>{ch?.name ?? item.network}</span></div>
                 <Media />
+                {eff.slides.length > 1 && (
+                  <div className="pv-post-dots" aria-hidden>{eff.slides.map((u, k) => <i key={u + k} className={k === Math.min(lam, eff.slides.length - 1) ? 'on' : ''} />)}</div>
+                )}
                 <div className="pv-post-c">{eff.caption ? <p><b>{item.brand.toLowerCase()}</b> {eff.caption.split('\n').slice(0, 3).join(' ')}</p> : <p className="pv-dim">Sem legenda ainda.</p>}</div>
               </div>
-            )}
-          </div>
+              {eff.slides.length > 1 && (
+                <div className="pv-strip" role="tablist" aria-label="Lâminas do carrossel">
+                  {eff.slides.map((u, k) => {
+                    const th = driveThumbOf(u, 300);
+                    return (
+                      <button key={u + k} type="button" role="tab" aria-selected={k === lam} className={k === lam ? 'on' : ''} onClick={() => setLam(k)}>
+                        {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="ph">link</span>}
+                        <b>{k + 1}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           <div className="pv-stage-actions">
-            {eff.creative ? <a href={eff.creative} target="_blank" rel="noreferrer">Abrir criativo no Drive ↗</a> : <span>Criativo ainda sem link</span>}
+            {eff.creative ? <a href={eff.slides[lam] ?? eff.creative} target="_blank" rel="noreferrer">{eff.slides.length > 1 ? `Abrir lâmina ${Math.min(lam, eff.slides.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a> : <span>Criativo ainda sem link</span>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
           {eff.caption && (
