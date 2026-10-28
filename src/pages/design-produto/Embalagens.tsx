@@ -55,7 +55,8 @@ export default function Embalagens({
   const [fPriority, setFPriority] = useState('all');
   const [fStage, setFStage] = useState('all');
   const [hideDone, setHideDone] = useState(false);
-  const [sort, setSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'prazo_desc' | 'meta' | 'meta_desc' | 'assignee' | 'stage'>('recent');
+  // Padrão: ordenar pela DATA DE ENTREGA (🏁 due_date), da mais próxima para a mais distante.
+  const [sort, setSort] = useState<'recent' | 'title' | 'priority' | 'prazo' | 'prazo_desc' | 'meta' | 'meta_desc' | 'assignee' | 'stage'>('prazo');
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showNew, setShowNew] = useState(false);
