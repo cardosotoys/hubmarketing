@@ -1,5 +1,5 @@
 -- REMANEJO DE 02/11/2026: de 29/10 em diante só saíram a Totokross (Playmi, qui 29/10 10h30, conferido no Business Suite)
--- e o Boliche (Tópi, sex 30/10, informado pelo Aldair). Roda Livre e o resto não saíram.
+-- Roda Livre, Boliche e o resto não saíram (o Boliche segue em espera, como na 0139).
 -- Mantém o teto semanal do Instagram (Playmi 3, Tópi 3, Cardoso 2), horário comercial, Google 1 por semana e LinkedIn semanal.
 --   · Cardoso: Roda Livre vai para ter 03/11 10h; "Licenciados no Natal" vai para seg 09/11 no lugar de
 --     "Licenciados que mais giram no Natal", que fica em espera (os dois falavam a mesma coisa)
@@ -17,13 +17,14 @@ update public.social_plan_items i
   from public.social_topics t
  where t.id = i.topic_id and t.ext_key = 'plano-2026-10b:t014' and i.channel_id = 'pl-ig' and i.link_kind = 'matriz' and i.pub_date = '2026-10-29';
 
-update public.social_topics set paused_at = null, updated_at = now()
- where ext_key = 'plano-2026-10b:t006' and paused_at is not null;
+-- o Boliche NÃO saiu: continua em espera (desfaz se uma versão anterior deste SQL o marcou como publicado)
+update public.social_topics set paused_at = coalesce(paused_at, now()), updated_at = now()
+ where ext_key = 'plano-2026-10b:t006';
 
 update public.social_plan_items i
-   set archived = false, stage = 'publicado', stage_at = coalesce(i.stage_at, now()), updated_at = now()
+   set archived = true, stage = 'planejamento', stage_at = null, updated_at = now()
   from public.social_topics t
- where t.id = i.topic_id and t.ext_key = 'plano-2026-10b:t006' and i.channel_id = 'tp-ig' and i.link_kind = 'matriz' and i.pub_date = '2026-10-30';
+ where t.id = i.topic_id and t.ext_key = 'plano-2026-10b:t006' and (i.stage = 'publicado' or not i.archived);
 
 -- 2) em espera
 update public.social_topics t
