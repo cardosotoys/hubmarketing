@@ -148,6 +148,13 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
           const conta = new Map<string, number>();
           rows.filter((x) => x.pub_date >= sem[0] && x.pub_date <= sem[6]).forEach((x) => { const a = feedIG(x); if (a) conta.set(a, (conta.get(a) ?? 0) + 1); });
           return [
+            <div key={`w${sem[0]}`} className="cm-week" aria-label="Posts no feed do Instagram nesta semana">
+              <span>Feed do Instagram na semana</span>
+              {Object.entries(TETO).map(([a, max]) => {
+                const n = conta.get(a) ?? 0;
+                return <b key={a} className={`b-${slug(a)} ${n > max ? 'over' : n === max ? 'full' : ''}`}>{a} {n}/{max}</b>;
+              })}
+            </div>,
             ...sem.map((iso) => {
               const its = rows.filter((x) => x.pub_date === iso).sort(byTime);
               const out = !iso.startsWith(ym);
@@ -196,13 +203,6 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
                 </div>
               );
             }),
-            <div key={`w${sem[0]}`} className="cm-week" aria-label="Posts no feed do Instagram nesta semana">
-              <span>Feed do Instagram na semana</span>
-              {Object.entries(TETO).map(([a, max]) => {
-                const n = conta.get(a) ?? 0;
-                return <b key={a} className={`b-${slug(a)} ${n > max ? 'over' : n === max ? 'full' : ''}`}>{a} {n}/{max}</b>;
-              })}
-            </div>,
           ];
         })}
       </div>
