@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
+import { useThumbs } from '../lib/thumbs';
 import type { PriceTable, PriceTableItem, Product, ProductSalePause } from '../types/database';
 
 /* Tabela de Preços — a área que alimenta o pré-pedido do comercial.
@@ -21,6 +22,15 @@ const moeda = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curr
 const hojeISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+/* Nome curto da tabela para caber na coluna (o nome inteiro fica no title). */
+const curto = (nome: string) => {
+  const n = nome.toLowerCase();
+  if (n.includes('nordeste')) return 'N, NE e CO';
+  if (n.includes('simples')) return 'SP Simples';
+  if (n.includes('rpa')) return 'SP RPA';
+  if (n.includes('sul')) return 'Sul e Sudeste';
+  return nome.length > 16 ? nome.slice(0, 15) + '…' : nome;
 };
 const brDate = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '—');
 
@@ -44,6 +54,8 @@ export default function TabelaPrecos() {
   const [erro, setErro] = useState('');
   const [editando, setEditando] = useState<Linha | null>(null);
   const [pausando, setPausando] = useState<Linha | null>(null);
+  const [celula, setCelula] = useState<{ codigo: string; tid: string; valor: string } | null>(null);   // preço sendo editado na própria célula
+  const thumb = useThumbs();
 
   const carregar = useCallback(async () => {
     const [t, i, p, pa] = await Promise.all([
@@ -152,94 +164,123 @@ export default function TabelaPrecos() {
     );
   }
 
+  // todas as tabelas lado a lado: uma linha por produto, uma coluna por região
+  const precoDe = new Map<string, Map<string, PriceTableItem>>();
+  for (const i of itens) {
+    if (!precoDe.has(i.codigo)) precoDe.set(i.codigo, new Map());
+    precoDe.get(i.codigo)!.set(i.price_table_id, i);
+  }
+  const grupos = (() => {
+    const m = new Map<string, Linha[]>();
+    for (const l of linhas) {
+      const g = l.produto ? (l.produto.line || 'Sem linha') : 'Sem produto no catálogo';
+      if (!m.has(g)) m.set(g, []);
+      m.get(g)!.push(l);
+    }
+    return [...m.entries()];
+  })();
+  const salvarCelula = async () => {
+    if (!celula) return;
+    const num = Number(celula.valor.replace(/\./g, '').replace(',', '.'));
+    const item = precoDe.get(celula.codigo)?.get(celula.tid);
+    if (!item || !Number.isFinite(num) || num <= 0) { setCelula(null); return; }
+    if (num !== item.preco) await salvarPreco({ ...item, produto: null, pausa: null }, num);
+    setCelula(null);
+  };
+
   return (
     <div className="page tp-page">
-      <header className="pd-head tp-head">
-        <div className="pd-head-t">
+      <header className="tp-top">
+        <div>
           <h1>Tabela de Preços</h1>
           <p>Preço de atacado por região e regime. Não aparece para o lojista na vitrine.</p>
         </div>
-        <div className="pd-head-n">
-          {tabela && <>
-            <div className="pd-stat"><b>{resumo.itens}</b><span>itens com preço</span></div>
-            <div className={`pd-stat ${resumo.pausados ? 'pd-stat-warn' : ''}`}><b>{resumo.pausados}</b><span>pausados</span></div>
-            <div className="pd-stat"><b>{resumo.semProduto}</b><span>sem produto no catálogo</span></div>
-            <div className="pd-stat"><b>{resumo.semPreco}</b><span>produtos sem preço</span></div>
-          </>}
-        </div>
+        <label className="pd-search tp-search">
+          <span aria-hidden>⌕</span>
+          <input placeholder="Buscar produto ou código" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          {busca && <button type="button" aria-label="Limpar busca" onClick={() => setBusca('')}>×</button>}
+        </label>
       </header>
 
       {erro && <div className="alert error" role="status">{erro}</div>}
 
-      <section className="pd-ctrl">
-        <div className="tp-tabs" role="tablist" aria-label="Tabela">
-          {tabelas.map((t) => (
-            <button type="button" role="tab" key={t.id} aria-selected={t.id === tabelaId} onClick={() => setTabelaId(t.id)}>{t.nome}</button>
-          ))}
+      <div className="tp-bar">
+        <div className="tp-filtros" role="tablist" aria-label="Filtro">
+          <button type="button" role="tab" aria-selected={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos <b>{resumo.itens}</b></button>
+          <button type="button" role="tab" aria-selected={filtro === 'pausados'} onClick={() => setFiltro('pausados')}>Pausados <b>{resumo.pausados}</b></button>
+          <button type="button" role="tab" aria-selected={filtro === 'sem_produto'} onClick={() => setFiltro('sem_produto')}>Sem produto <b>{resumo.semProduto}</b></button>
         </div>
         {tabela && (
           <p className="tp-info">
-            Atende <b>{tabela.ufs.join(', ') || 'nenhum estado'}</b>
-            {tabela.simples === true && ' · só optantes do Simples'}
-            {tabela.simples === false && ' · só quem não é do Simples'}
-            {' · '}vigente desde {brDate(tabela.vigente_desde)}
-            {tabela.origem && ` · de ${tabela.origem}`}
+            {resumo.semPreco > 0 && <><b>{resumo.semPreco}</b> produtos do catálogo sem preço em {curto(tabela.nome)} · </>}
+            {curto(tabela.nome)} atende {tabela.ufs.join(', ') || 'nenhum estado'}
+            {tabela.simples === true && ', só Simples'}{tabela.simples === false && ', fora do Simples'}
+            {' · '}desde {brDate(tabela.vigente_desde)}
           </p>
         )}
-        <div className="pd-ctrl-top">
-          <label className="pd-search">
-            <span aria-hidden>⌕</span>
-            <input placeholder="Buscar por código ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
-            {busca && <button type="button" aria-label="Limpar busca" onClick={() => setBusca('')}>×</button>}
-          </label>
-          <div className="pd-view tp-filter" role="tablist" aria-label="Filtro">
-            <button type="button" role="tab" aria-selected={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos</button>
-            <button type="button" role="tab" aria-selected={filtro === 'pausados'} onClick={() => setFiltro('pausados')}>Pausados</button>
-            <button type="button" role="tab" aria-selected={filtro === 'sem_produto'} onClick={() => setFiltro('sem_produto')}>Sem produto</button>
-          </div>
-        </div>
-      </section>
-
-      <div className="pd-table-wrap">
-        <table className="pd-table tp-table">
-          <thead>
-            <tr>
-              <th>Produto</th><th className="num">Preço</th><th className="num">Por caixa</th>
-              <th className="num">Caixa fechada</th><th>Situação</th><th />
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.slice(0, 400).map((l) => (
-              <tr key={l.codigo} className={l.pausa ? 'paused' : ''}>
-                <td className="pd-tprod">
-                  <span className="pd-tname">
-                    <b>{l.produto?.name ?? l.descricao}</b>
-                    <small><code>{l.codigo}</code>{!l.produto && <em className="rev">sem produto no catálogo</em>}</small>
-                  </span>
-                </td>
-                <td className="num strong">{moeda(l.preco)}</td>
-                <td className="num">{l.qtd_caixa ?? '—'}</td>
-                <td className="num">{l.qtd_caixa ? moeda(l.preco * l.qtd_caixa) : '—'}</td>
-                <td>
-                  {l.pausa
-                    ? <span className="tp-st paused">Pausado{l.pausa.ate ? ` até ${brDate(l.pausa.ate)}` : ''}{l.pausa.price_table_id === null ? ' · todas' : ' · esta tabela'}</span>
-                    : <span className="tp-st">À venda</span>}
-                </td>
-                <td className="tp-acts">
-                  <button type="button" onClick={() => setEditando(l)}>Preço</button>
-                  {l.pausa
-                    ? <button type="button" className="on" onClick={() => voltarAVender(l)}>Voltar a vender</button>
-                    : <button type="button" onClick={() => setPausando(l)}>Pausar</button>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
-      {linhas.length > 400 && (
-        <p className="pd-count">Mostrando os 400 primeiros de {linhas.length}. Use a busca para achar o resto.</p>
-      )}
+      <div className="tp-grid" style={{ ['--n' as string]: tabelas.length }}>
+        <div className="tp-row tp-hrow">
+          <span className="tp-prod-h">Produto</span>
+          {tabelas.map((t) => (
+            <button type="button" key={t.id} className={`tp-col-h ${t.id === tabelaId ? 'on' : ''}`} onClick={() => setTabelaId(t.id)} title={t.nome}>
+              {curto(t.nome)}
+            </button>
+          ))}
+        </div>
+
+        {grupos.map(([g, ls]) => (
+          <section key={g} className="tp-group">
+            <h3>{g}<span>{ls.length}</span></h3>
+            {ls.map((l) => {
+              const precos = precoDe.get(l.codigo);
+              const foto = l.produto?.image_url ? thumb(l.produto.image_url) : '';
+              return (
+                <div key={l.codigo} className={`tp-row ${l.pausa ? 'paused' : ''}`}>
+                  <div className="tp-prod">
+                    <span className="tp-thumb">{foto ? <img src={foto} alt="" loading="lazy" decoding="async" /> : <i>{l.codigo}</i>}</span>
+                    <span className="tp-pn">
+                      <b>{l.produto?.name ?? l.descricao}</b>
+                      <small>
+                        <code>{l.codigo}</code>
+                        {l.qtd_caixa ? <span>caixa com {l.qtd_caixa}</span> : null}
+                        {l.pausa && <em>Pausado{l.pausa.ate ? ` até ${brDate(l.pausa.ate)}` : ''}{l.pausa.price_table_id === null ? ' em todas' : ''}</em>}
+                        {!l.produto && <em className="warn">fora do catálogo</em>}
+                      </small>
+                    </span>
+                    <span className="tp-rowacts">
+                      {l.pausa
+                        ? <button type="button" onClick={() => voltarAVender(l)}>Voltar a vender</button>
+                        : <button type="button" onClick={() => setPausando(l)}>Pausar</button>}
+                    </span>
+                  </div>
+                  {tabelas.map((t) => {
+                    const it = precos?.get(t.id);
+                    const ed = celula && celula.codigo === l.codigo && celula.tid === t.id;
+                    return (
+                      <div key={t.id} className={`tp-cell ${t.id === tabelaId ? 'on' : ''}`} data-r={curto(t.nome)}>
+                        {!it ? <span className="tp-none">—</span> : ed ? (
+                          <input autoFocus inputMode="decimal" value={celula.valor} aria-label={`Preço em ${t.nome}`}
+                            onChange={(e) => setCelula({ ...celula, valor: e.target.value })}
+                            onKeyDown={(e) => { if (e.key === 'Enter') void salvarCelula(); if (e.key === 'Escape') setCelula(null); }}
+                            onBlur={() => void salvarCelula()} />
+                        ) : (
+                          <button type="button" title="Clique para mudar o preço" onClick={() => setCelula({ codigo: l.codigo, tid: t.id, valor: String(it.preco).replace('.', ',') })}>
+                            <b>{moeda(it.preco)}</b>
+                            {it.qtd_caixa ? <small>{moeda(it.preco * it.qtd_caixa)} a caixa</small> : null}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </section>
+        ))}
+      </div>
+
       {linhas.length === 0 && <EmptyState title="Nada aqui" hint="Nenhum item com esse filtro." />}
 
       {editando && <ModalPreco linha={editando} onFechar={() => setEditando(null)} onSalvar={salvarPreco} />}
