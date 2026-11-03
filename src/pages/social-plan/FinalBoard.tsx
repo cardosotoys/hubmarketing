@@ -11,6 +11,7 @@ export type FinalPiece = {
   id: string; date: string; time: string | null; brand: string; account: string; channel: string; network: string;
   format: string; mirror_facebook: boolean; kind: string; title: string; product: string;
   caption: string | null; creative: string | null; stage: string;
+  slides?: string[] | null;   // lâminas do carrossel (0154)
   grid?: 'reels' | 'carrossel' | 'post';   // como aparece no grid do Instagram
 };
 export type FinalMaterial = {

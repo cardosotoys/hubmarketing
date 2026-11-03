@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 import { useThumbs } from '../../lib/thumbs';
 import type { CommercialBanner, ContentMaterial, SocialPlanItem, SocialTopic } from '../../types/database';
 import FinalBoard, { type FinalData, type FinalPiece } from './FinalBoard';
@@ -51,7 +52,42 @@ export default function FinalTab({ live, byTopic, topicById, chans, banners, mat
   return (
     <>
       <p className="sp-calhint" style={{ marginTop: 0 }}>O resultado, sem o meio: só o que passou pelas duas etapas (e pelo licenciador), os banners e os materiais liberados.</p>
+      <LinksBaixar />
       <FinalBoard data={data} month={month} onMonth={setMonth} />
     </>
+  );
+}
+
+type Link = { token: string; label: string; active: boolean; views: number; last_seen_at: string | null };
+
+/* Os links sem login das peças aprovadas (Comercial e Marketing, criados na 0154). Só quem libera conteúdo vê. */
+function LinksBaixar() {
+  const [links, setLinks] = useState<Link[]>([]);
+  const [copiado, setCopiado] = useState('');
+  useEffect(() => {
+    supabase.from('final_view_links').select('token, label, active, views, last_seen_at').order('label')
+      .then(({ data }) => setLinks((data as Link[] | null) ?? []));
+  }, []);
+  if (!links.length) return null;
+  const url = (l: Link) => `${window.location.origin}/pecas?t=${l.token}`;
+  const copiar = (l: Link) => navigator.clipboard?.writeText(url(l)).then(() => { setCopiado(l.token); setTimeout(() => setCopiado(''), 1800); });
+  const alternar = async (l: Link) => {
+    const { error } = await supabase.from('final_view_links').update({ active: !l.active }).eq('token', l.token);
+    if (!error) setLinks((xs) => xs.map((x) => (x.token === l.token ? { ...x, active: !l.active } : x)));
+  };
+  return (
+    <div className="pc-links">
+      <b>Links para baixar as peças aprovadas</b>
+      <span className="sp-calhint" style={{ margin: 0 }}>Sem login. Quem abre vê só o que foi aprovado e baixa direto do Drive.</span>
+      {links.map((l) => (
+        <div key={l.token} className={`pc-link ${l.active ? '' : 'off'}`}>
+          <span className="pc-link-n">{l.label || 'Sem nome'}</span>
+          <span className="pc-link-s">{l.active ? `${l.views} ${l.views === 1 ? 'acesso' : 'acessos'}${l.last_seen_at ? ` · último em ${new Date(l.last_seen_at).toLocaleDateString('pt-BR')}` : ''}` : 'Desligado'}</span>
+          <button type="button" className="sp-linkbtn" onClick={() => copiar(l)} disabled={!l.active}>{copiado === l.token ? 'Copiado ✓' : 'Copiar link'}</button>
+          <a className="sp-linkbtn" href={url(l)} target="_blank" rel="noreferrer">Abrir</a>
+          <button type="button" className={`sp-linkbtn ${l.active ? 'danger' : ''}`} onClick={() => alternar(l)}>{l.active ? 'Desligar' : 'Religar'}</button>
+        </div>
+      ))}
+    </div>
   );
 }
