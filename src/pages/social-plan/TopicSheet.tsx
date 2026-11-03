@@ -4,7 +4,7 @@ import { normalizeUrl } from '../../lib/url';
 import type { Profile, SocialChannel, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
 import { BrandGuide, BriefEditor } from './Brief';
 import DrivePicker, { driveFolderFor } from './DrivePicker';
-import { KIND_LABEL, addDays, defaultPieceType, derive, todayISO, type ChannelMap, type Kind } from './shared';
+import { DOW, KIND_LABEL, addDays, brShort, defaultPieceType, derive, dowIndex, driveThumb, todayISO, type ChannelMap, type Kind } from './shared';
 
 /* ================= Assunto + destinos =================
  * O assunto é a ideia (pauta, estratégia). Cada destino é uma linha de social_plan_items:
@@ -69,6 +69,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
   const [err, setErr] = useState('');
   const [add, setAdd] = useState({ channel_id: 'wa-st', link_kind: 'reaproveita' as Kind, pub_date: '', pub_time: '' });
   const [picker, setPicker] = useState<{ key: string; multiple: boolean } | null>(null);
+  const [pautaOpen, setPautaOpen] = useState(!topic);
 
   const matriz = drafts.find((d) => d.link_kind === 'matriz');
   const upd = <K extends keyof TopicForm>(k: K, v: TopicForm[K]) => setForm((p) => ({ ...p, [k]: v }));
@@ -194,44 +195,17 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
 
   return (
     <Wrap inline={inline} onClose={onClose}>
-        <div className="sp-tags"><span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>{topic ? 'Assunto' : 'Novo assunto'}</span></div>
-        <h3 className="sp-panel-h3">{form.title || 'Assunto sem título'}</h3>
-
-        <div className="sp-edit">
-          <label className="sp-erow"><span>Título da pauta</span><textarea id="tp-title" rows={2} value={form.title} onChange={(e) => upd('title', e.target.value)} /></label>
-          <div className="sp-egrid">
-            <label className="sp-erow"><span>Marca</span>
-              <select id="tp-brand" value={form.brand} onChange={(e) => {
-                const b = e.target.value; const old = IG_OF[form.brand];
-                upd('brand', b);
-                // assunto novo: a matriz no Instagram acompanha a marca
-                if (!topic) setDrafts((ds) => ds.map((d) => (d.link_kind === 'matriz' && d.channel_id === old ? { ...d, channel_id: IG_OF[b] } : d)));
-              }}>{BRANDS.map((b) => <option key={b}>{b}</option>)}</select></label>
-            <label className="sp-erow"><span>Frente / tema da semana</span>
-              <input id="tp-front" list="sp-fronts" value={form.front} onChange={(e) => upd('front', e.target.value)} />
-              <datalist id="sp-fronts">{fronts.map((f) => <option key={f} value={f} />)}</datalist></label>
-            <label className="sp-erow"><span>Produto</span><input id="tp-product" value={form.product} onChange={(e) => upd('product', e.target.value)} /></label>
-            <label className="sp-erow"><span>SKU / eixo</span><input id="tp-sku" value={form.sku} onChange={(e) => upd('sku', e.target.value)} /></label>
-          </div>
-          <label className="sp-erow"><span>Objetivo</span><textarea id="tp-obj" rows={2} value={form.objective} onChange={(e) => upd('objective', e.target.value)} /></label>
-          <label className="sp-erow"><span>Estratégia: por que esta peça existe agora</span><textarea id="tp-strat" rows={2} value={form.strategy} onChange={(e) => upd('strategy', e.target.value)} /></label>
-          <div className="sp-egrid">
-            <label className="sp-erow"><span>Chamada (CTA)</span><input id="tp-cta" value={form.cta} onChange={(e) => upd('cta', e.target.value)} /></label>
-            <label className="sp-erow"><span>Uso de mídia</span><input id="tp-media" value={form.media_use} onChange={(e) => upd('media_use', e.target.value)} /></label>
-          </div>
-          <label className="sp-check"><input id="tp-lic" type="checkbox" checked={form.licensed} onChange={(e) => upd('licensed', e.target.checked)} /> Produto licenciado (Marvel, Disney, Galinha Pintadinha, Bluey, Smurfs…)</label>
-          {form.licensed && (
-            <div className="sp-licbox">
-              <label className="sp-check"><input id="tp-licok" type="checkbox" checked={form.licensor_ok} onChange={(e) => upd('licensor_ok', e.target.checked)} /> Aprovado pelo licenciador (a aprovação acontece por e-mail)</label>
-              <label className="sp-erow"><span>Comprovante do licenciador</span><input id="tp-licproof" placeholder="Link do e-mail ou PDF no Drive" value={form.licensor_proof} onChange={(e) => upd('licensor_proof', e.target.value)} /></label>
-            </div>
-          )}
-        </div>
-
-        <BriefEditor brief={brief} onChange={setBrief} />
-        <BrandGuide brand={form.brand} notes={notes} />
-
-        <h4 className="sp-sech">Destinos <small>onde e quando sai, e o que herda da matriz</small></h4>
+        <header className="coc-topic-head">
+          <div className="sp-tags"><span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>{topic ? 'Assunto' : 'Novo assunto'}</span></div>
+          <h3 className="sp-panel-h3">{form.title || 'Assunto sem título'}</h3>
+          <p className="coc-topic-meta">
+            <span>{form.brand}</span>
+            {matriz?.pub_date && <span>{DOW[dowIndex(matriz.pub_date)].slice(0, 3)} {brShort(matriz.pub_date)}{matriz.pub_time ? ` · ${matriz.pub_time}` : ''}</span>}
+            {form.sku && <span>REF {form.sku}</span>}
+            {form.licensed && <span className="lic">licenciado{form.licensor_ok ? ' · aprovado' : ' · falta aval'}</span>}
+          </p>
+        </header>
+        <h4 className="sp-sech">Onde sai <small>cada destino com o criativo, o dia e a hora</small></h4>
         <div className="sp-dests">
           {drafts.map((d) => {
             const ch = chans.get(d.channel_id);
@@ -239,6 +213,20 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
             const herdada = matriz?.caption ?? '';
             return (
               <div key={d.key} className={`sp-dest ${d.link_kind === 'matriz' ? 'matriz' : ''}`}>
+                {(() => {
+                  const herda = d.link_kind === 'reaproveita' || (d.link_kind === 'adapta' && !d.creative_changed);
+                  const src = herda ? matriz?.creative_url : d.creative_url;
+                  const thumb = driveThumb(src);
+                  const n = herda ? 0 : d.more.filter(Boolean).length;
+                  return (
+                    <div className={`sp-dest-art ${thumb ? '' : 'empty'}`}>
+                      {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>{herda ? 'Usa a arte da matriz' : 'Sem arte'}</span>}
+                      {n > 0 && <em>{n + 1} lâminas</em>}
+                      <b>{ch ? `${ch.account === form.brand || ch.account === 'Cardoso' ? '' : ch.account + ' · '}${ch.name}` : 'Canal'} · {d.piece_type}</b>
+                      <small>{d.pub_date ? `${DOW[dowIndex(d.pub_date)].slice(0, 3)} ${brShort(d.pub_date)}` : ''}{d.pub_time ? ` · ${d.pub_time}` : ''}</small>
+                    </div>
+                  );
+                })()}
                 <div className="sp-dest-top">
                   <span className={`sp-kind k-${d.link_kind}`}>{KIND_LABEL[d.link_kind]}</span>
                   {ch?.future && <span className="sp-badge" style={{ background: 'var(--surf2)', color: 'var(--muted)' }}>guardada · canal futuro</span>}
@@ -339,6 +327,47 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
         </div>
         <p className="sp-inherit">O que reaproveita segue a aprovação da matriz. O que adapta tem a própria legenda aprovada{removed.length ? `. ${removed.length} destino(s) serão removidos ao salvar.` : '.'}</p>
 
+        <section className="coc-brief coc-pauta">
+          <button type="button" className="coc-fold" onClick={() => setPautaOpen((v) => !v)} aria-expanded={pautaOpen}>
+            <b>Pauta e estratégia</b><span>título, marca, produto, objetivo, CTA · {pautaOpen ? 'recolher' : 'abrir'}</span>
+          </button>
+          {pautaOpen && (
+        <div className="sp-edit">
+          <label className="sp-erow"><span>Título da pauta</span><textarea id="tp-title" rows={2} value={form.title} onChange={(e) => upd('title', e.target.value)} /></label>
+          <div className="sp-egrid">
+            <label className="sp-erow"><span>Marca</span>
+              <select id="tp-brand" value={form.brand} onChange={(e) => {
+                const b = e.target.value; const old = IG_OF[form.brand];
+                upd('brand', b);
+                // assunto novo: a matriz no Instagram acompanha a marca
+                if (!topic) setDrafts((ds) => ds.map((d) => (d.link_kind === 'matriz' && d.channel_id === old ? { ...d, channel_id: IG_OF[b] } : d)));
+              }}>{BRANDS.map((b) => <option key={b}>{b}</option>)}</select></label>
+            <label className="sp-erow"><span>Frente / tema da semana</span>
+              <input id="tp-front" list="sp-fronts" value={form.front} onChange={(e) => upd('front', e.target.value)} />
+              <datalist id="sp-fronts">{fronts.map((f) => <option key={f} value={f} />)}</datalist></label>
+            <label className="sp-erow"><span>Produto</span><input id="tp-product" value={form.product} onChange={(e) => upd('product', e.target.value)} /></label>
+            <label className="sp-erow"><span>SKU / eixo</span><input id="tp-sku" value={form.sku} onChange={(e) => upd('sku', e.target.value)} /></label>
+          </div>
+          <label className="sp-erow"><span>Objetivo</span><textarea id="tp-obj" rows={2} value={form.objective} onChange={(e) => upd('objective', e.target.value)} /></label>
+          <label className="sp-erow"><span>Estratégia: por que esta peça existe agora</span><textarea id="tp-strat" rows={2} value={form.strategy} onChange={(e) => upd('strategy', e.target.value)} /></label>
+          <div className="sp-egrid">
+            <label className="sp-erow"><span>Chamada (CTA)</span><input id="tp-cta" value={form.cta} onChange={(e) => upd('cta', e.target.value)} /></label>
+            <label className="sp-erow"><span>Uso de mídia</span><input id="tp-media" value={form.media_use} onChange={(e) => upd('media_use', e.target.value)} /></label>
+          </div>
+          <label className="sp-check"><input id="tp-lic" type="checkbox" checked={form.licensed} onChange={(e) => upd('licensed', e.target.checked)} /> Produto licenciado (Marvel, Disney, Galinha Pintadinha, Bluey, Smurfs…)</label>
+          {form.licensed && (
+            <div className="sp-licbox">
+              <label className="sp-check"><input id="tp-licok" type="checkbox" checked={form.licensor_ok} onChange={(e) => upd('licensor_ok', e.target.checked)} /> Aprovado pelo licenciador (a aprovação acontece por e-mail)</label>
+              <label className="sp-erow"><span>Comprovante do licenciador</span><input id="tp-licproof" placeholder="Link do e-mail ou PDF no Drive" value={form.licensor_proof} onChange={(e) => upd('licensor_proof', e.target.value)} /></label>
+            </div>
+          )}
+        </div>
+
+
+          )}
+        </section>
+        <BriefEditor brief={brief} onChange={setBrief} defaultOpen={!topic} />
+        <BrandGuide brand={form.brand} notes={notes} />
         {picker && (() => {
           const d = drafts.find((x) => x.key === picker.key);
           const alvo = d && driveFolderFor(d.channel_id, chans.get(d.channel_id)?.account, d.piece_type, picker.multiple || /carrossel/i.test(d.format));

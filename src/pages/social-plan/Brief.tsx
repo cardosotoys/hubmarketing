@@ -35,8 +35,8 @@ export function BriefRead({ brief, keys, title = 'Briefing de arte' }: { brief?:
 }
 
 /** Editor do briefing dentro do assunto. */
-export function BriefEditor({ brief, onChange }: { brief: Record<string, string>; onChange: (b: Record<string, string>) => void }) {
-  const [open, setOpen] = useState(true);
+export function BriefEditor({ brief, onChange, defaultOpen = true }: { brief: Record<string, string>; onChange: (b: Record<string, string>) => void; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const filled = Object.values(brief).filter(Boolean).length;
   return (
     <section className="coc-brief">
