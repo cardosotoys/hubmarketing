@@ -5824,3 +5824,68 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .emb-cal-ev.k-late img{box-shadow:0 0 0 2px #da3a2f}
   .emb-files{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 }
+
+/* ===================== Painel (Dashboard) com a identidade Cardoso ===================== */
+.dash2{--cardoso:#da3a2f;--universo:#0a2530;--ceu:#4cbdc7;display:flex;flex-direction:column;gap:16px}
+.dh-hero{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:22px;padding:28px 28px 24px;border-radius:30px;background:var(--universo);color:#fff;box-shadow:0 20px 44px -26px rgba(10,37,48,.85)}
+.dh-hero::after{content:'';position:absolute;right:-90px;top:-120px;width:340px;height:340px;border-radius:50%;border:38px solid rgba(76,189,199,.11);pointer-events:none}
+.dh-hero>*{position:relative;z-index:1}
+.dh-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.dh-hero small{font-size:12.5px;font-weight:700;color:var(--ceu);letter-spacing:.01em}
+.dh-hero h1{margin:4px 0 0;font-size:32px;font-weight:800;letter-spacing:-.025em;color:#fff}
+.dh-hero p{margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.7)}
+.dh-acts{display:flex;gap:8px;flex-wrap:wrap}
+.dh-act{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:999px;background:var(--cardoso);color:#fff;font-size:14px;font-weight:800;text-decoration:none;box-shadow:0 10px 22px -10px rgba(218,58,47,.9)}
+.dh-act b{min-width:22px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.22);font-size:12.5px;text-align:center}
+.dh-act.ghost{background:rgba(255,255,255,.1);box-shadow:none}
+.dh-act:hover{filter:brightness(1.06)}
+.dh-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.dh-kpi{display:flex;flex-direction:column;gap:2px;padding:16px 18px;border-radius:20px;background:rgba(255,255,255,.07);color:#fff;text-decoration:none;transition:background .15s}
+.dh-kpi:hover{background:rgba(255,255,255,.12)}
+.dh-kpi b{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}
+.dh-kpi span{font-size:13.5px;font-weight:700;color:rgba(255,255,255,.85)}
+.dh-kpi em{font-style:normal;font-size:12px;color:rgba(255,255,255,.55)}
+.dh-kpi.late{background:var(--cardoso)}
+.dh-kpi.late em{color:rgba(255,255,255,.8)}
+.dh-kpi.warn b{color:#F3C26B}
+.dh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.dh-card{display:flex;flex-direction:column;gap:14px;padding:20px 22px 22px;background:var(--surface);border-radius:26px;box-shadow:var(--shadow-sm);min-width:0}
+.dh-card>header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.dh-card h2{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
+.dh-card>header span{font-size:12px;color:var(--text-faint)}
+.dh-activity{grid-column:1/-1}
+.dash2 .activity-heatmap{flex-wrap:nowrap;gap:28px}
+.dash2 .activity-heatmap-grid{flex:1}
+.dash2 .activity-heatmap-stats{min-width:200px}
+.dash2 .ahm-num{font-size:34px}
+.dh-money-n{display:flex;flex-direction:column;gap:2px}
+.dh-money-n b{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums}
+.dh-money-n span{font-size:13px;color:var(--text-dim)}
+.dh-bar{height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.dh-bar i{display:block;height:100%;border-radius:999px;background:var(--cardoso)}
+.dh-money-f{display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)}
+.dh-money-f b{color:var(--text);font-variant-numeric:tabular-nums}
+.dh-exec{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:18px;background:var(--universo);color:#fff;font-size:14px;font-weight:800;text-decoration:none}
+.dh-exec span{font-size:12px;font-weight:600;color:rgba(255,255,255,.65)}
+.dh-note{margin:0;font-size:13px;color:var(--text-dim)}
+.dh-sec-h{display:flex;align-items:baseline;justify-content:space-between;margin-top:8px}
+.dh-sec-h h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--text);position:relative;padding-bottom:8px}
+.dh-sec-h h2::after{content:'';position:absolute;left:0;bottom:0;width:36px;height:4px;border-radius:999px;background:var(--cardoso)}
+.dh-sec-h a{font-size:13.5px;font-weight:800;color:var(--text);text-decoration:none}
+.dh-projects .project-card{border-radius:24px;border:0;box-shadow:var(--shadow-sm);overflow:hidden;padding-top:20px}
+.dh-projects .project-card .brand-strip{height:6px;border-radius:0}
+.dh-projects .project-card h3{font-size:16px;font-weight:800;letter-spacing:-.01em}
+.dh-projects .progress-mini .bar i{background:var(--universo)}
+@media (max-width:1100px){.dh-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dh-money{grid-column:1/-1}}
+@media (max-width:760px){
+  .dh-hero{padding:22px 18px 18px;border-radius:24px;gap:18px}
+  .dh-hero h1{font-size:25px}
+  .dh-acts{width:100%}.dh-act{flex:1;justify-content:center}
+  .dh-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dh-kpi{padding:12px 14px;border-radius:16px}
+  .dh-kpi b{font-size:26px}
+  .dh-grid{grid-template-columns:1fr}
+  .dash2 .activity-heatmap{flex-wrap:wrap}
+  .dash2 .activity-heatmap-stats{flex-direction:row;padding-left:0;border-left:0;min-width:0;width:100%;justify-content:space-between}
+  .dash2 .ahm-num{font-size:24px}
+}

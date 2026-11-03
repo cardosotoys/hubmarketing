@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-const WEEKS = 18;
+const WEEKS = 30;
 const CELL = 15;
 const GAP = 4;
 const MONTH_LABELS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -67,8 +67,8 @@ export default function ActivityHeatmap({ actorId }: { actorId?: string }) {
     ? new Date(selected + 'T00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
     : null;
 
-  // escala de cor por marca (Vermelho Cardoso em 4 níveis)
-  const scale = ['var(--surface-2)', 'rgba(218,58,47,0.30)', 'rgba(218,58,47,0.55)', 'rgba(218,58,47,0.80)', 'var(--accent)'];
+  // escala nos azuis da marca (Azul Céu → Azul Universo): atividade não é alerta, então não usa vermelho
+  const scale = ['var(--surface-2)', 'rgba(76,189,199,0.35)', 'rgba(76,189,199,0.7)', '#2a8f9a', '#0a2530'];
   const bucket = (n: number) => (n === 0 ? 0 : Math.min(4, Math.ceil((n / max) * 4)));
 
   if (loading) {
@@ -78,7 +78,7 @@ export default function ActivityHeatmap({ actorId }: { actorId?: string }) {
   return (
     <div className="activity-heatmap">
       <div className="activity-heatmap-grid">
-        <svg width={width} height={height + 16} viewBox={`0 0 ${width} ${height + 16}`} style={{ maxWidth: '100%' }}>
+        <svg width={width} height={height + 16} viewBox={`0 0 ${width} ${height + 16}`} style={{ width: '100%', height: 'auto' }}>
           {weeks.map((week, wi) => {
             const firstOfMonth = week.find((d) => d.getDate() <= 7);
             return (
