@@ -1,7 +1,7 @@
 // Service worker do Cardoso Hub — recebe notificação push com o app fechado/em segundo plano
 // (Web Push API) e mantém um cache leve pra abrir offline com os últimos dados vistos. Bump
 // CACHE_VERSION quando quiser forçar a limpeza do cache antigo num próximo deploy.
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';   // v3: limpa caches que guardaram o index.html no lugar de CSS/JS
 const SHELL_CACHE = `cardoso-hub-shell-${CACHE_VERSION}`;
 const DATA_CACHE = `cardoso-hub-data-${CACHE_VERSION}`;
 
@@ -68,12 +68,23 @@ async function networkFirst(request, cacheName, fallbackRequest) {
 
 // Cache primeiro pros estáticos — cada arquivo JS/CSS do build tem hash no nome, então o
 // conteúdo nunca muda sob a mesma URL; não tem motivo pra sempre bater na rede antes.
+// Um arquivo .css/.js que volta como página HTML não é o arquivo: é a reescrita da SPA respondendo por
+// um arquivo que não existe (ex.: durante um deploy). Nunca guardar isso, senão a tela fica sem estilo até
+// limpar o cache na mão.
+function respostaCerta(request, response) {
+  if (!response.ok) return false;
+  const tipo = response.headers.get('content-type') || '';
+  if (/\.(css|js|mjs)(\?|$)/.test(new URL(request.url).pathname) && tipo.includes('text/html')) return false;
+  return true;
+}
+
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
-  if (cached) return cached;
+  if (cached && respostaCerta(request, cached)) return cached;
+  if (cached) await cache.delete(request);
   const response = await fetch(request);
-  if (response.ok) cache.put(request, response.clone());
+  if (respostaCerta(request, response)) cache.put(request, response.clone());
   return response;
 }
 
