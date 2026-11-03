@@ -55,6 +55,11 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
     setSelected(null);
   }, [location.pathname]);
 
+  // /design-produto/embalagens também "contém" /design-produto: acende só o item mais específico
+  const todosOsItens = NAV_GROUPS.flatMap((g) => g.modules.flatMap((m) => m.items));
+  const filhoMaisEspecifico = (to: string) =>
+    todosOsItens.some((i) => i.to !== to && i.to.startsWith(to + '/') && location.pathname.startsWith(i.to));
+
   function renderItem(item: NavItem) {
     if (item.requiresConfig && !seesConfig) {
       return (
@@ -66,7 +71,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       );
     }
     return (
-      <NavLink key={item.to} to={item.to} end={item.end} onClick={onClose} className={({ isActive }) => `npi${isActive ? ' active' : ''}`}>
+      <NavLink key={item.to} to={item.to} end={item.end} onClick={onClose}
+        className={({ isActive }) => `npi${isActive && !filhoMaisEspecifico(item.to) ? ' active' : ''}`}>
         <span className="ic"><Icon name={item.icon} /></span>
         <span>{item.label}</span>
         {item.to === '/demandas' && openTasks !== null && openTasks > 0 && <span className="npi-badge">{openTasks}</span>}
