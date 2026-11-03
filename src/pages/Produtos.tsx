@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { logActivity } from '../lib/activityLog';
 import { ensureThumb, thumbStatus, useThumbs } from '../lib/thumbs';
 import { normalizeUrl } from '../lib/url';
-import Modal from '../components/Modal';
+import { createPortal } from 'react-dom';
 import EmptyState from '../components/EmptyState';
 import Loading from '../components/Loading';
 import { PRIORITY_LABELS, type Brand, type Product, type ProjectStage, type Priority } from '../types/database';
@@ -372,6 +372,7 @@ export default function Produtos() {
         <ProductFormModal
           brands={brands}
           actorId={profile.id}
+          sugestoes={{ lines, categories: toyCategories, ages: ageRanges }}
           onClose={() => setShowNew(false)}
           onSaved={() => {
             setShowNew(false);
@@ -385,6 +386,7 @@ export default function Produtos() {
         <ProductFormModal
           brands={brands}
           actorId={profile.id}
+          sugestoes={{ lines, categories: toyCategories, ages: ageRanges }}
           product={editing}
           onClose={() => setEditing(null)}
           onSaved={() => {
@@ -455,10 +457,12 @@ function ProductFormModal({
   product,
   onClose,
   onSaved,
+  sugestoes,
 }: {
   brands: Brand[];
   actorId: string;
   product?: ProductWithBrand;
+  sugestoes?: { lines: string[]; categories: string[]; ages: string[] };
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -637,297 +641,209 @@ function ProductFormModal({
     onSaved();
   }
 
-  return (
-    <Modal title={isEdit ? 'Editar produto' : 'Novo produto'} onClose={onClose} wide>
-      <form onSubmit={handleSubmit}>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-code">Código</label>
-            <input id="np-code" required value={code} onChange={(e) => setCode(e.target.value)} />
+  // trava a rolagem da página atrás e fecha no Esc
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+
+  const brand = brands.find((b) => b.id === brandId);
+  const difs = differentials.split('\n').map((x) => x.trim()).filter(Boolean);
+  const SECOES = [
+    ['pf-id', 'Identificação'], ['pf-venda', 'Vitrine do CRM'], ['pf-carac', 'Características'],
+    ['pf-medidas', 'Medidas'], ['pf-fiscal', 'Fiscal'], ['pf-log', 'Caixa e palete'], ['pf-sit', 'Situação'],
+  ] as const;
+  const ir = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  return createPortal(
+    <div className="pf" role="dialog" aria-label={isEdit ? `Editar ${code} ${name}` : 'Novo produto'} style={{ ['--bc' as string]: brand?.color ?? '#0a2530' }}>
+      <form onSubmit={handleSubmit} className="pf-form">
+        <header className="pf-head">
+          <button type="button" className="pf-x" aria-label="Fechar" onClick={onClose}>×</button>
+          <div className="pf-head-t">
+            <small>{isEdit ? 'Ficha do produto' : 'Novo produto'}{brand ? ` · ${brand.label}` : ''}{line ? ` · ${line}` : ''}</small>
+            <h2>{code ? <code>{code}</code> : null}{name || 'Sem nome ainda'}</h2>
           </div>
-          <div className="form-field" style={{ flex: 2 }}>
-            <label htmlFor="np-name">Nome</label>
-            <input id="np-name" required value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="pf-head-chips">
+            <span className={`pf-chip ${active ? 'ok' : ''}`}>{active ? 'No catálogo vigente' : 'Fora do catálogo'}</span>
+            {needsReview && <span className="pf-chip warn">Revisar</span>}
+            {inmetroNumber && <span className="pf-chip ok">INMETRO</span>}
           </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-brand">Marca</label>
-            <select id="np-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.label}
-                </option>
+          <div className="pf-head-acts">
+            <button type="button" className="pf-btn ghost" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="pf-btn prim" disabled={saving}>{saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar produto'}</button>
+          </div>
+        </header>
+
+        <nav className="pf-nav" aria-label="Seções da ficha">
+          {SECOES.map(([id, t]) => <button type="button" key={id} onClick={() => ir(id)}>{t}</button>)}
+        </nav>
+
+        <div className="pf-body">
+          {/* coluna da vitrine: as duas fotos, sempre à vista */}
+          <aside className="pf-side">
+            <ImageUploadField label="Produto" url={imageUrl} busy={uploading === 'product'} downloadName={`${code || 'produto'}-produto`}
+              onPick={(f) => uploadImage(f, 'product')} onClear={() => setImageUrl('')} />
+            <ImageUploadField label="Embalagem" url={packagingImageUrl} busy={uploading === 'packaging'} downloadName={`${code || 'produto'}-embalagem`}
+              onPick={(f) => uploadImage(f, 'packaging')} onClear={() => setPackagingImageUrl('')} />
+          </aside>
+
+          <div className="pf-main">
+            {error && <div className="pf-err">{error}</div>}
+
+            <section className="pf-sec" id="pf-id">
+              <h3>Identificação</h3>
+              <div className="pf-grid">
+                <label className="pf-f s1"><span>Código</span><input id="np-code" required value={code} onChange={(e) => setCode(e.target.value)} /></label>
+                <label className="pf-f s3"><span>Nome</span><input id="np-name" required value={name} onChange={(e) => setName(e.target.value)} /></label>
+                <div className="pf-f s4"><span>Marca</span>
+                  <div className="pf-seg" role="radiogroup" aria-label="Marca">
+                    {brands.map((b) => (
+                      <button type="button" role="radio" aria-checked={brandId === b.id} key={b.id} onClick={() => setBrandId(b.id)}>
+                        <i style={{ background: b.color }} />{b.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="pf-f s2"><span>Linha</span><input id="np-line" list="pf-l-linhas" value={line} onChange={(e) => setLine(e.target.value)} /></label>
+                <label className="pf-f s2"><span>Categoria</span><input id="np-category" list="pf-l-cats" value={toyCategory} onChange={(e) => setToyCategory(e.target.value)} placeholder="Ex.: Didáticos" /></label>
+                <label className="pf-f s2"><span>Sub-categoria</span><input id="np-sub-category" value={subCategory} onChange={(e) => setSubCategory(e.target.value)} placeholder="Didáticos, Pelúcia, Blocos…" /></label>
+                <label className="pf-f s1"><span>Faixa etária</span><input id="np-age" list="pf-l-idades" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} /></label>
+                <label className="pf-f s1"><span>Gênero</span><input id="np-gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Unissex, Menino…" /></label>
+                <label className="pf-f s2"><span>Nome na embalagem</span><input id="np-packaging-name" value={packagingName} onChange={(e) => setPackagingName(e.target.value)} placeholder="O nome curto, de marketing" /></label>
+                <label className="pf-f s2"><span>Nome anterior</span><input id="np-previous-name" value={previousName} onChange={(e) => setPreviousName(e.target.value)} placeholder="Como o produto se chamava antes" /></label>
+                <label className="pf-f s4"><span>Nome técnico (nota fiscal)</span><input id="np-technical-name" value={technicalName} onChange={(e) => setTechnicalName(e.target.value)} /></label>
+              </div>
+            </section>
+
+            {/* O que o lojista lê na vitrine do CRM. Escrito aqui, aparece lá na hora. */}
+            <section className="pf-sec" id="pf-venda">
+              <h3>Vitrine do CRM <small>o que o lojista lê embaixo do nome</small></h3>
+              <div className="pf-grid">
+                <label className="pf-f s4"><span>Descrição de venda</span>
+                  <textarea id="np-description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="A frase que o lojista lê embaixo do nome, na vitrine" /></label>
+                <label className="pf-f s4"><span>Diferenciais <em className={difs.length > 4 ? 'over' : ''}>{difs.length} de 4 · um por linha</em></span>
+                  <textarea id="np-differentials" rows={4} value={differentials} onChange={(e) => setDifferentials(e.target.value)} placeholder={'Porta abre e fecha\nPrato giratório'} /></label>
+              </div>
+            </section>
+
+            <section className="pf-sec" id="pf-carac">
+              <h3>Características</h3>
+              <div className="pf-grid">
+                <label className="pf-f s2"><span>Material</span><input id="np-material" value={material} onChange={(e) => setMaterial(e.target.value)} /></label>
+                <label className="pf-f s2"><span>Cor predominante</span><input id="np-color" value={color} onChange={(e) => setColor(e.target.value)} /></label>
+                <div className="pf-f s4"><span>O brinquedo tem</span>
+                  <div className="pf-toggles">
+                    <label className={hasMechanism ? 'on' : ''}><input type="checkbox" checked={hasMechanism} onChange={(e) => setHasMechanism(e.target.checked)} />Mecanismo</label>
+                    <label className={hasSound ? 'on' : ''}><input type="checkbox" checked={hasSound} onChange={(e) => setHasSound(e.target.checked)} />Som</label>
+                    <label className={hasLight ? 'on' : ''}><input type="checkbox" checked={hasLight} onChange={(e) => setHasLight(e.target.checked)} />Luz</label>
+                  </div>
+                </div>
+                <label className="pf-f s2"><span>Tipo de bateria</span><input id="np-battery" value={batteryType} onChange={(e) => setBatteryType(e.target.value)} placeholder="Não possui, 2xAA…" /></label>
+                <label className="pf-f s2"><span>Peso suportado</span><input id="np-supported-weight" value={supportedWeight} onChange={(e) => setSupportedWeight(e.target.value)} placeholder="Ex.: 20kg" /></label>
+              </div>
+            </section>
+
+            <section className="pf-sec" id="pf-medidas">
+              <h3>Medidas</h3>
+              <div className="pf-mgroup"><b>Produto</b>
+                <div className="pf-ms">
+                  <Medida label="Comprimento" unit="mm" value={productLengthMm} onChange={setProductLengthMm} />
+                  <Medida label="Largura" unit="mm" value={productWidthMm} onChange={setProductWidthMm} />
+                  <Medida label="Altura" unit="mm" value={productHeightMm} onChange={setProductHeightMm} />
+                  <Medida label="Peso" unit="kg" value={productWeightKg} onChange={setProductWeightKg} />
+                </div>
+              </div>
+              <div className="pf-mgroup"><b>Embalagem individual</b>
+                <div className="pf-ms">
+                  <Medida label="Comprimento" unit="mm" value={packageLengthMm} onChange={setPackageLengthMm} />
+                  <Medida label="Largura" unit="mm" value={packageWidthMm} onChange={setPackageWidthMm} />
+                  <Medida label="Altura" unit="mm" value={packageHeightMm} onChange={setPackageHeightMm} />
+                  <Medida label="Peso" unit="kg" value={packageWeightKg} onChange={setPackageWeightKg} />
+                </div>
+              </div>
+              <label className="pf-f"><span>Conteúdo da embalagem</span><textarea id="np-pkg-contents" rows={2} value={packageContents} onChange={(e) => setPackageContents(e.target.value)} /></label>
+            </section>
+
+            <section className="pf-sec" id="pf-fiscal">
+              <h3>Fiscal e códigos</h3>
+              <div className="pf-grid">
+                <label className="pf-f s2"><span>EAN</span><input id="np-ean" inputMode="numeric" value={ean} onChange={(e) => setEan(e.target.value)} placeholder="Código de barras" /></label>
+                <label className="pf-f s2"><span>Nº de registro INMETRO</span><input id="np-inmetro" value={inmetroNumber} onChange={(e) => setInmetroNumber(e.target.value)} placeholder="Ex.: 000000/0000" /></label>
+                <label className="pf-f s1"><span>NCM</span><input id="np-ncm" value={ncm} onChange={(e) => setNcm(e.target.value)} /></label>
+                <label className="pf-f s1"><span>CST</span><input id="np-cst" value={cst} onChange={(e) => setCst(e.target.value)} /></label>
+                <label className="pf-f s2"><span>DUN</span><input id="np-dun" value={dun} onChange={(e) => setDun(e.target.value)} /></label>
+              </div>
+            </section>
+
+            <section className="pf-sec" id="pf-log">
+              <h3>Caixa master e palete</h3>
+              <div className="pf-mgroup"><b>Caixa master</b>
+                <div className="pf-ms five">
+                  <Medida label="Comprimento" unit="mm" value={cartonLengthMm} onChange={setCartonLengthMm} />
+                  <Medida label="Largura" unit="mm" value={cartonWidthMm} onChange={setCartonWidthMm} />
+                  <Medida label="Altura" unit="mm" value={cartonHeightMm} onChange={setCartonHeightMm} />
+                  <Medida label="Qtd. por caixa" unit="un" value={cartonQuantity} onChange={setCartonQuantity} />
+                  <Medida label="Peso bruto" unit="kg" value={cartonGrossWeightKg} onChange={setCartonGrossWeightKg} />
+                </div>
+              </div>
+              <label className="pf-f"><span>Observação da caixa</span><input value={cartonNote} onChange={(e) => setCartonNote(e.target.value)} placeholder='Ex.: "4 unissex e 2 rosas"' /></label>
+              <div className="pf-mgroup"><b>Paletização <small>"4X3" = 4 caixas por camada × 3 camadas</small></b>
+                <div className="pf-ms three">
+                  <label className="pf-m"><span>Lastro × camadas</span><div><input value={palletLayerPattern} onChange={(e) => setPalletLayerPattern(e.target.value)} placeholder="4X3" /></div></label>
+                  <Medida label="Altura" unit="m" value={palletHeightM} onChange={setPalletHeightM} />
+                  <Medida label="Total no palete" unit="cx" value={palletTotalUnits} onChange={setPalletTotalUnits} />
+                </div>
+              </div>
+            </section>
+
+            <section className="pf-sec" id="pf-sit">
+              <h3>Situação</h3>
+              <label className={`pf-switch ${active ? 'on' : ''}`}>
+                <input id="np-active" type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+                <i aria-hidden /><span><b>No catálogo vigente</b>Desligado, o produto sai das novas seleções do CRM e o histórico fica.</span>
+              </label>
+              {isEdit && (
+                <label className={`pf-switch warn ${needsReview ? 'on' : ''}`}>
+                  <input id="np-review" type="checkbox" checked={needsReview} onChange={(e) => setNeedsReview(e.target.checked)} />
+                  <i aria-hidden /><span><b>Marcar para revisão</b>Aparece em "para revisar" no Banco de Produtos.</span>
+                </label>
+              )}
+              {isEdit && (confirmingDelete ? (
+                <div className="pf-del">
+                  <span>Excluir este produto? Não dá para desfazer.</span>
+                  <button type="button" className="pf-btn ghost" onClick={() => setConfirmingDelete(false)}>Cancelar</button>
+                  <button type="button" className="pf-btn danger" onClick={handleDelete}>Excluir</button>
+                </div>
+              ) : (
+                <button type="button" className="pf-delbtn" onClick={() => setConfirmingDelete(true)}>Excluir produto</button>
               ))}
-            </select>
-          </div>
-        </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-line">Linha</label>
-            <input id="np-line" value={line} onChange={(e) => setLine(e.target.value)} />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-category">Categoria</label>
-            <input id="np-category" value={toyCategory} onChange={(e) => setToyCategory(e.target.value)} placeholder="Ex: Didáticos" />
-          </div>
-        </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-age">Faixa etária</label>
-            <input id="np-age" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-gender">Gênero</label>
-            <input id="np-gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Unissex, Menino, Menina…" />
-          </div>
-        </div>
-        <div className="form-field">
-          <label htmlFor="np-technical-name">Nome técnico (nota fiscal)</label>
-          <input id="np-technical-name" value={technicalName} onChange={(e) => setTechnicalName(e.target.value)} />
-        </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-previous-name">Nome anterior</label>
-            <input id="np-previous-name" value={previousName} onChange={(e) => setPreviousName(e.target.value)} placeholder="Como o produto se chamava antes" />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-packaging-name">Nome na embalagem</label>
-            <input id="np-packaging-name" value={packagingName} onChange={(e) => setPackagingName(e.target.value)} placeholder="O nome curto, de marketing" />
-          </div>
-        </div>
-        <div className="form-field">
-          <label htmlFor="np-sub-category">Sub-categoria</label>
-          <input id="np-sub-category" value={subCategory} onChange={(e) => setSubCategory(e.target.value)} placeholder="Didáticos, Pelúcia, Blocos…" />
-        </div>
-
-        {/* O que o lojista lê na vitrine do CRM. Escrito aqui, aparece lá na hora. */}
-        <div className="form-field">
-          <label htmlFor="np-description">Descrição de venda</label>
-          <textarea
-            id="np-description"
-            rows={2}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="A frase que o lojista lê embaixo do nome, na vitrine"
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="np-differentials">Diferenciais — um por linha, até 4</label>
-          <textarea
-            id="np-differentials"
-            rows={4}
-            value={differentials}
-            onChange={(e) => setDifferentials(e.target.value)}
-            placeholder={'Porta abre e fecha\nPrato giratório'}
-          />
-        </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-material">Material</label>
-            <input id="np-material" value={material} onChange={(e) => setMaterial(e.target.value)} />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-color">Cor predominante</label>
-            <input id="np-color" value={color} onChange={(e) => setColor(e.target.value)} />
-          </div>
-        </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-ean">EAN</label>
-            <input id="np-ean" value={ean} onChange={(e) => setEan(e.target.value)} placeholder="Código de barras" />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-inmetro">🏅 Nº de registro INMETRO</label>
-            <input id="np-inmetro" value={inmetroNumber} onChange={(e) => setInmetroNumber(e.target.value)} placeholder="Ex.: 000000/0000" />
+            </section>
           </div>
         </div>
 
-        {/* Imagens do produto e da embalagem (upload) */}
-        <div className="responsive-row">
-          <ImageUploadField
-            label="📦 Imagem do produto"
-            url={imageUrl}
-            busy={uploading === 'product'}
-            downloadName={`${code || 'produto'}-produto`}
-            onPick={(f) => uploadImage(f, 'product')}
-            onClear={() => setImageUrl('')}
-          />
-          <ImageUploadField
-            label="🎁 Imagem da embalagem"
-            url={packagingImageUrl}
-            busy={uploading === 'packaging'}
-            downloadName={`${code || 'produto'}-embalagem`}
-            onPick={(f) => uploadImage(f, 'packaging')}
-            onClear={() => setPackagingImageUrl('')}
-          />
+        {/* celular: salvar sempre ao alcance do polegar */}
+        <div className="pf-bar">
+          <button type="button" className="pf-btn ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="pf-btn prim" disabled={saving}>{saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar produto'}</button>
         </div>
 
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={hasMechanism} onChange={(e) => setHasMechanism(e.target.checked)} style={{ width: 'auto' }} />
-              Possui mecanismo
-            </label>
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={hasSound} onChange={(e) => setHasSound(e.target.checked)} style={{ width: 'auto' }} />
-              Possui som
-            </label>
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={hasLight} onChange={(e) => setHasLight(e.target.checked)} style={{ width: 'auto' }} />
-              Possui luz
-            </label>
-          </div>
-        </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-battery">Tipo de bateria</label>
-            <input id="np-battery" value={batteryType} onChange={(e) => setBatteryType(e.target.value)} placeholder="Não possui, 2xAA…" />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="np-supported-weight">Peso suportado</label>
-            <input id="np-supported-weight" value={supportedWeight} onChange={(e) => setSupportedWeight(e.target.value)} placeholder="Ex: 20kg" />
-          </div>
-        </div>
-
-        <div className="form-field">
-          <label>Medidas do produto</label>
-          <div className="responsive-row">
-            <input placeholder="Comprim. (mm)" value={productLengthMm} onChange={(e) => setProductLengthMm(e.target.value)} style={{ flex: 1 }} />
-            <input placeholder="Largura (mm)" value={productWidthMm} onChange={(e) => setProductWidthMm(e.target.value)} style={{ flex: 1 }} />
-            <input placeholder="Altura (mm)" value={productHeightMm} onChange={(e) => setProductHeightMm(e.target.value)} style={{ flex: 1 }} />
-            <input placeholder="Peso (kg)" value={productWeightKg} onChange={(e) => setProductWeightKg(e.target.value)} style={{ flex: 1 }} />
-          </div>
-        </div>
-
-        <details className="panel" style={{ margin: '10px 0' }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>⚙ Dados fiscais e logística</summary>
-          <div style={{ marginTop: 10 }}>
-            <div className="form-field">
-              <label htmlFor="np-pkg-contents">Conteúdo da embalagem</label>
-              <textarea id="np-pkg-contents" rows={2} value={packageContents} onChange={(e) => setPackageContents(e.target.value)} />
-            </div>
-            <div className="form-field">
-              <label>Medidas da embalagem individual</label>
-              <div className="responsive-row">
-                <input placeholder="Comprim. (mm)" value={packageLengthMm} onChange={(e) => setPackageLengthMm(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Largura (mm)" value={packageWidthMm} onChange={(e) => setPackageWidthMm(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Altura (mm)" value={packageHeightMm} onChange={(e) => setPackageHeightMm(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Peso (kg)" value={packageWeightKg} onChange={(e) => setPackageWeightKg(e.target.value)} style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="responsive-row">
-              <div className="form-field" style={{ flex: 1 }}>
-                <label htmlFor="np-ncm">NCM</label>
-                <input id="np-ncm" value={ncm} onChange={(e) => setNcm(e.target.value)} />
-              </div>
-              <div className="form-field" style={{ flex: 1 }}>
-                <label htmlFor="np-cst">CST</label>
-                <input id="np-cst" value={cst} onChange={(e) => setCst(e.target.value)} />
-              </div>
-              <div className="form-field" style={{ flex: 1 }}>
-                <label htmlFor="np-dun">DUN</label>
-                <input id="np-dun" value={dun} onChange={(e) => setDun(e.target.value)} />
-              </div>
-            </div>
-            <div className="form-field">
-              <label>Medidas da caixa master</label>
-              <div className="responsive-row">
-                <input placeholder="Comprim. (mm)" value={cartonLengthMm} onChange={(e) => setCartonLengthMm(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Largura (mm)" value={cartonWidthMm} onChange={(e) => setCartonWidthMm(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Altura (mm)" value={cartonHeightMm} onChange={(e) => setCartonHeightMm(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Qtd. por caixa" value={cartonQuantity} onChange={(e) => setCartonQuantity(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Peso bruto (kg)" value={cartonGrossWeightKg} onChange={(e) => setCartonGrossWeightKg(e.target.value)} style={{ flex: 1 }} />
-              </div>
-              <input
-                placeholder='Observação da caixa — ex.: "4 unissex e 2 rosas"'
-                value={cartonNote}
-                onChange={(e) => setCartonNote(e.target.value)}
-                style={{ marginTop: 8 }}
-              />
-            </div>
-            <div className="form-field">
-              <label>Paletização</label>
-              <div className="responsive-row">
-                <input placeholder="Padrão (ex: 4X3)" value={palletLayerPattern} onChange={(e) => setPalletLayerPattern(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Altura (m)" value={palletHeightM} onChange={(e) => setPalletHeightM(e.target.value)} style={{ flex: 1 }} />
-                <input placeholder="Unidades totais" value={palletTotalUnits} onChange={(e) => setPalletTotalUnits(e.target.value)} style={{ flex: 1 }} />
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <input
-            id="np-active"
-            type="checkbox"
-            checked={active}
-            onChange={(e) => setActive(e.target.checked)}
-            style={{ width: 'auto' }}
-          />
-          <label htmlFor="np-active" style={{ margin: 0 }}>
-            No catálogo vigente — desmarcado, o produto sai das novas seleções do CRM e o histórico fica
-          </label>
-        </div>
-
-        {isEdit && (
-          <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input
-              id="np-review"
-              type="checkbox"
-              checked={needsReview}
-              onChange={(e) => setNeedsReview(e.target.checked)}
-              style={{ width: 'auto' }}
-            />
-            <label htmlFor="np-review" style={{ margin: 0 }}>
-              Marcar para revisão
-            </label>
-          </div>
-        )}
-        {error && (
-          <div className="banner error">
-            <span className="ic">✕</span>
-            <span>{error}</span>
-          </div>
-        )}
-
-        {confirmingDelete ? (
-          <div className="banner error" style={{ alignItems: 'center' }}>
-            <span className="ic">⚠</span>
-            <span style={{ flex: 1 }}>Excluir este produto? Não dá pra desfazer.</span>
-            <button type="button" className="btn ghost sm" onClick={() => setConfirmingDelete(false)}>
-              Cancelar
-            </button>
-            <button type="button" className="btn sm" style={{ background: 'var(--red)' }} onClick={handleDelete}>
-              Excluir
-            </button>
-          </div>
-        ) : (
-          <div className="modal-actions" style={{ justifyContent: isEdit ? 'space-between' : 'flex-end' }}>
-            {isEdit && (
-              <button
-                type="button"
-                className="btn ghost sm"
-                style={{ color: 'var(--red)' }}
-                onClick={() => setConfirmingDelete(true)}
-              >
-                Excluir
-              </button>
-            )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="btn ghost" onClick={onClose}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn" disabled={saving}>
-                {saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar produto'}
-              </button>
-            </div>
-          </div>
-        )}
+        <datalist id="pf-l-linhas">{(sugestoes?.lines ?? []).map((x) => <option key={x} value={x} />)}</datalist>
+        <datalist id="pf-l-cats">{(sugestoes?.categories ?? []).map((x) => <option key={x} value={x} />)}</datalist>
+        <datalist id="pf-l-idades">{(sugestoes?.ages ?? []).map((x) => <option key={x} value={x} />)}</datalist>
       </form>
-    </Modal>
+    </div>,
+    document.body,
+  );
+}
+
+/* Campo de medida com a unidade dentro, fora do formulário para o cursor não sair do campo a cada tecla. */
+function Medida({ label, unit, value, onChange }: { label: string; unit: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="pf-m"><span>{label}</span><div><input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder="—" /><em>{unit}</em></div></label>
   );
 }
 
@@ -967,57 +883,21 @@ function ImageUploadField({
 }) {
   const thumb = useThumbs();
   return (
-    <div className="form-field" style={{ flex: 1 }}>
-      <label>{label}</label>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <div
-          style={{
-            width: 96,
-            height: 96,
-            borderRadius: 8,
-            border: '1px solid var(--border)',
-            background: 'var(--surface-2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          {url ? (
-            <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
-              <img loading="lazy" decoding="async" src={thumb(url)} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </a>
-          ) : (
-            <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>Sem imagem</span>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label className="btn ghost sm" style={{ cursor: busy ? 'wait' : 'pointer' }}>
-            {busy ? 'Enviando…' : url ? 'Trocar imagem' : 'Enviar imagem'}
-            <input
-              type="file"
-              accept="image/*"
-              disabled={busy}
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPick(f);
-                e.target.value = '';
-              }}
-            />
-          </label>
-          {url && (
-            <button type="button" className="btn ghost sm" onClick={() => downloadImage(url, downloadName)}>
-              ⬇ Baixar
-            </button>
-          )}
-          {url && (
-            <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={onClear}>
-              Remover
-            </button>
-          )}
-        </div>
+    <div className="pf-img">
+      <div className="pf-img-h"><b>{label}</b>
+        {url && <span><button type="button" onClick={() => downloadImage(url, downloadName)}>Baixar</button><button type="button" className="x" onClick={onClear}>Remover</button></span>}
+      </div>
+      <div className="pf-img-box">
+        {url ? (
+          <a href={url} target="_blank" rel="noreferrer" title="Abrir a foto original">
+            <img loading="lazy" decoding="async" src={thumb(url)} alt={label} />
+          </a>
+        ) : <span className="pf-img-none">Sem foto {label === 'Produto' ? 'do produto' : 'da embalagem'}</span>}
+        <label className={`pf-img-up ${busy ? 'busy' : ''}`}>
+          {busy ? 'Enviando…' : url ? 'Trocar foto' : 'Enviar foto'}
+          <input type="file" accept="image/*" disabled={busy}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
+        </label>
       </div>
     </div>
   );
