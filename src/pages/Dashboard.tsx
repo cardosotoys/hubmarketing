@@ -156,7 +156,7 @@ export default function Dashboard() {
 
       <div className="dh-grid">
         <section className="dh-card dh-activity">
-          <header><h2>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h2><span>últimas 30 semanas · clique num dia para ver o número</span></header>
+          <header><h2>{seesEverything ? 'Atividade da equipe' : 'Sua atividade'}</h2><span>últimas 40 semanas · clique num dia para ver o número</span></header>
           <ActivityHeatmap actorId={seesEverything ? undefined : profile?.id} />
         </section>
 

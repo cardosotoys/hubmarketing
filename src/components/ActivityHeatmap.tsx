@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-const WEEKS = 30;
+const WEEKS = 40;
 const CELL = 15;
 const GAP = 4;
 const MONTH_LABELS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -80,7 +80,8 @@ export default function ActivityHeatmap({ actorId }: { actorId?: string }) {
       <div className="activity-heatmap-grid">
         <svg width={width} height={height + 16} viewBox={`0 0 ${width} ${height + 16}`} style={{ width: '100%', height: 'auto' }}>
           {weeks.map((week, wi) => {
-            const firstOfMonth = week.find((d) => d.getDate() <= 7);
+            // rótulo só na semana que contém o dia 1 (antes repetia o mês em duas semanas seguidas)
+            const firstOfMonth = week.find((d) => d.getDate() === 1);
             return (
               <g key={wi}>
                 {firstOfMonth && (
