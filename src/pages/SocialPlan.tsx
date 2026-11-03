@@ -697,7 +697,9 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const seq = ehSequencia(item.channel_id, item.piece_type);
   const carrossel = !seq && (/carross/i.test(`${item.format} ${item.piece_type}`) || ((item.link_kind === 'matriz' || item.creative_changed) && eff.slides.length > 1));
   // Story/Status: as telas próprias e, no fim, o repost do feed
-  const telas = telasDaSequencia(item, matriz, pastaRef ? [] : eff.slides);
+  // telas próprias: as da peça quando ela é a matriz ou tem versão própria; senão nenhuma (só o repost do feed)
+  const proprias = seq && !pastaRef && (item.link_kind === 'matriz' || item.creative_changed) ? eff.slides : [];
+  const telas = telasDaSequencia(item, matriz, proprias);
   const slidesArte = seq ? telas.urls : pastaRef ? [] : eff.slides;
   const alvoDrive = item.channel_id ? driveFolderFor(item.channel_id, ch?.account, item.piece_type, carrossel) : null;
   const mch = matriz?.channel_id ? chans.get(matriz.channel_id) : undefined;
@@ -716,11 +718,9 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
     onChanged();
   };
   // Story/Status: as telas próprias uma a uma (ordem, troca, tirar, adicionar); o repost do feed fica sempre no fim
-  const proprias = artePropria ? eff.slides : [];
   const gravarTelas = async (urls: string[], msg: string) => {
-    const patch: Record<string, unknown> = urls.length
-      ? { creative_url: urls[0], creative_slides: urls.length > 1 ? urls : [], creative_changed: true, updated_by: me?.id ?? null }
-      : { creative_url: null, creative_slides: [], creative_changed: false, updated_by: me?.id ?? null };
+    const patch: Record<string, unknown> = { creative_url: urls[0] ?? null, creative_slides: urls.length > 1 ? urls : [], updated_by: me?.id ?? null };
+    if (!ehMatriz) patch.creative_changed = urls.length > 0;   // sem telas, volta a ser só o repost do feed
     const { error } = await supabase.from('social_plan_items').update(patch).eq('id', item.id);
     showFlash(error ? error.message : msg);
     onChanged();
@@ -866,21 +866,21 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
           <div className="pv-stage-actions">
             {slidesArte.length ? <a href={slidesArte[lam] ?? slidesArte[0]} target="_blank" rel="noreferrer">{slidesArte.length > 1 ? `Abrir ${seq ? 'tela' : 'lâmina'} ${Math.min(lam, slidesArte.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a>
               : alvoDrive ? null : <span>Criativo ainda sem link</span>}
-            {ehMatriz && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{slidesArte.length ? 'Trocar arte' : 'Escolher do Drive'}</button>}
-            {!ehMatriz && artePropria && alvoDrive && <button onClick={() => setPicker('propria')}>{seq ? 'Trocar as telas' : 'Trocar versão'}</button>}
-            {!ehMatriz && artePropria && <button onClick={voltarArteFeed}>Voltar a usar a arte do feed</button>}
-            {!ehMatriz && !artePropria && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{seq ? 'Escolher as telas' : 'Usar outra versão'}</button>}
+            {ehMatriz && !seq && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{slidesArte.length ? 'Trocar arte' : 'Escolher do Drive'}</button>}
+            {!seq && artePropria && alvoDrive && <button onClick={() => setPicker('propria')}>Trocar versão</button>}
+            {!seq && artePropria && <button onClick={voltarArteFeed}>Voltar a usar a arte do feed</button>}
+            {!seq && !ehMatriz && !artePropria && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>Usar outra versão</button>}
             {!ehMatriz && !artePropria && !slidesArte.length && matriz && alvoFeed && <button onClick={() => setPicker('feed')}>Escolher arte do feed</button>}
             {ehMatriz && !seq && alvoDrive && <button onClick={() => setPicker('capa')}>{item.cover_url ? 'Trocar a capa' : 'Escolher a capa'}</button>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
-          {!ehMatriz && !(seq && artePropria) && <p className="pv-refdir">{artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).'
-            : seq ? 'Hoje é só o repost do post do feed. Para subir telas antes dele, use "Escolher as telas".' : 'Este destino usa a mesma arte do feed.'}</p>}
-          {seq && artePropria && (
+          {!ehMatriz && !seq && <p className="pv-refdir">{artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).' : 'Este destino usa a mesma arte do feed.'}</p>}
+          {seq && (
             <section className="sq" aria-label="Sequência do Story/Status, na ordem em que sobe">
               <header className="sq-h">
                 <div><b>Sequência {/Status/.test(ch?.name ?? '') ? 'do Status' : 'do Story'}</b>
-                  <span>{proprias.length} {proprias.length === 1 ? 'tela' : 'telas'}{telas.repost ? ' + repost do feed' : ''} · arraste para mudar a ordem</span></div>
+                  <span>{proprias.length ? `${proprias.length} ${proprias.length === 1 ? 'tela própria' : 'telas próprias'}${telas.repost ? ' + repost do feed' : ''} · arraste para mudar a ordem`
+                    : ehMatriz ? 'Adicione as telas na ordem em que vão subir' : 'Hoje é só o repost do feed. Adicione telas para subir antes dele.'}</span></div>
               </header>
               <ol className="sq-row">
                 {proprias.map((u, k) => {
@@ -907,13 +907,13 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
                     <button type="button" className="sq-art sq-add" onClick={() => { setTelaAlvo(null); setPicker('tela'); }}><b>+</b><span>Adicionar tela</span></button>
                   </li>
                 )}
-                {matriz?.creative_url && (
+                {!ehMatriz && matriz?.creative_url && (
                   <li className={`sq-card sq-feed ${telas.ligado ? '' : 'off'}`}>
                     <button type="button" className="sq-art" onClick={() => telas.repost && setLam(proprias.length)} title="Repost do post do feed">
                       {driveThumbOf(matriz.creative_url, 400) ? <img src={driveThumbOf(matriz.creative_url, 400)!} alt="" referrerPolicy="no-referrer" draggable={false} /> : <span className="sq-ph">feed</span>}
                       <span className="sq-n">feed</span>
                     </button>
-                    <label className="sq-switch"><input type="checkbox" checked={telas.ligado} onChange={alternarRepost} /><i aria-hidden /><span>{telas.ligado ? 'Repost no fim' : 'Sem repost'}</span></label>
+                    <label className="sq-switch" title={proprias.length ? '' : 'Sem tela própria, o Story/Status é o repost do feed'}><input type="checkbox" checked={telas.ligado} disabled={!proprias.length} onChange={alternarRepost} /><i aria-hidden /><span>{!proprias.length ? 'Repost do feed' : telas.ligado ? 'Repost no fim' : 'Sem repost'}</span></label>
                   </li>
                 )}
               </ol>

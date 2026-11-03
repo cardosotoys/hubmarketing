@@ -80,8 +80,9 @@ export const ehSequencia = (channelId: string | null | undefined, pieceType: str
 
 /** As telas do Story/Status na ordem em que sobem; a última é o repost do feed quando ele está ligado. */
 export function telasDaSequencia(item: SocialPlanItem, matriz: SocialPlanItem | undefined, proprias: string[]) {
-  const ligado = repostLigado(item.story_repost, matriz);
-  const repost = item.link_kind !== 'matriz' && item.creative_changed && ligado && matriz?.creative_url ? matriz.creative_url : null;
+  // sem tela própria, o Story/Status é o próprio repost do feed (não dá para desligar)
+  const ligado = proprias.length === 0 || repostLigado(item.story_repost, matriz);
+  const repost = item.link_kind !== 'matriz' && ligado && matriz?.creative_url ? matriz.creative_url : null;
   return { urls: repost ? [...proprias, repost] : proprias, repost: !!repost, ligado };
 }
 
