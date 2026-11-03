@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import InstaGrid from './InstaGrid';
-import { brShort, capaThumb, driveThumb, slug, type PreviewItem } from './shared';
+import { brShort, capaThumb, driveThumb, posDe, slug, type PreviewItem } from './shared';
 
 /* Prévia por rede: cada canal com a cara dele. Instagram = grid do perfil; as outras redes,
  * no formato em que o conteúdo realmente aparece (linha do tempo, canal, mural, conversa…). */
@@ -27,7 +27,7 @@ function Art({ p, ratio, className = '' }: { p: PreviewItem; ratio: string; clas
   return (
     <div className={`np-art ${className}`} style={{ aspectRatio: ratio }}>
       {img && !broken
-        ? <img src={img} alt={p.product} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+        ? <img src={img} alt={p.product} style={{ objectPosition: posDe(p.coverY) }} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
         : <span className="np-ph"><b>{p.product || p.title}</b><small>{p.creative ? 'criativo no Drive' : 'sem criativo ainda'}</small></span>}
     </div>
   );

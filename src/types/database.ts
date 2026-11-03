@@ -869,7 +869,8 @@ export interface SocialPlanItem {
   creative_slides?: string[] | null;   // carrossel: um link por lâmina (a 1ª é a capa = creative_url)
   creative_changed: boolean;
   story_repost?: boolean;
-  cover_url?: string | null;   // capa no grid do perfil: quadro do vídeo (Storage) ou imagem do Drive (0156)   // Story/Status com telas próprias: termina repostando o post do feed (0155)
+  cover_url?: string | null;
+  cover_y?: number | null;     // altura do corte 3:4 no grid, 0 = topo, 50 = centro, 100 = base (0156)   // capa no grid do perfil: quadro do vídeo (Storage) ou imagem do Drive (0156)   // Story/Status com telas próprias: termina repostando o post do feed (0155)
   mirror_facebook: boolean;
   archived: boolean;
   merged_into: string | null;

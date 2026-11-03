@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { driveTarget } from './DrivePlayer';
-import { addDays, addMonths, brShort, DOW, dowIndex, effective, thumbDe, monthName, pieceState, slug, todayISO, ymOf, type ChannelMap } from './shared';
+import { addDays, addMonths, brShort, DOW, dowIndex, effective, posDe, thumbDe, monthName, pieceState, slug, todayISO, ymOf, type ChannelMap } from './shared';
 
 /* Assuntos como mural de criativos: uma grade de artes por semana, do jeito que vão aparecer.
  * O que ainda não tem arte fica tracejado; a etiqueta diz o que falta. Clicar abre o assunto ao lado
@@ -53,6 +53,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
       return {
         t, its, sit, date: matriz?.pub_date ?? '', time: matriz?.pub_time?.slice(0, 5) ?? '',
         thumb: eff ? thumbDe(eff) : null,
+        pos: posDe(eff?.coverY),
         pasta: driveTarget(eff?.slides[0] ?? eff?.creative)?.kind === 'folder',
         slides: eff?.slides.length ?? 0,
         vertical: /Reels|Stories|Shorts|TikTok/.test(`${matriz?.piece_type} ${ch?.name ?? ''}`),
@@ -109,7 +110,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
                 return (
                   <button type="button" key={r.t.id} className={`coc-tile b-${slug(r.t.brand)} ${r.thumb ? '' : r.pasta ? 'folder' : 'empty'}`} aria-current={r.t.id === selectedId} onClick={() => onSelect(r.t.id)}>
                     <span className="coc-tile-art">
-                      {r.thumb ? <img src={r.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
+                      {r.thumb ? <img src={r.thumb} alt="" style={{ objectPosition: r.pos }} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
                         : r.pasta ? <span className="coc-tile-noart"><b>Pasta no Drive</b><small>escolha o arquivo final da arte</small></span>
                         : <span className="coc-tile-noart"><b>Sem arte</b><small>abrir e escolher do Drive</small></span>}
                       <span className="coc-tile-date"><b>{r.date.slice(8, 10)}</b>{DOW[dowIndex(r.date)].slice(0, 3)}{r.time ? ` · ${r.time}` : ''}</span>

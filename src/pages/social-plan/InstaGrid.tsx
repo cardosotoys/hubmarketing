@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { brShort, capaThumb, driveThumb, slug } from './shared';
+import { brShort, capaThumb, driveThumb, posDe, slug } from './shared';
 
 /* Grade do perfil do Instagram: 3 colunas, tiles 3:4, a mais nova primeiro (como no app),
  * ícone de Reels e de Carrossel no canto. A imagem é a prévia do criativo no Drive. */
@@ -7,7 +7,7 @@ import { brShort, capaThumb, driveThumb, slug } from './shared';
 export type GridTile = {
   id: string; date: string; time: string | null; account: string; kind: 'reels' | 'carrossel' | 'post';
   product: string; title: string; caption: string | null; creative: string | null; ready: boolean; status: string;
-  cover?: string | null;   // capa escolhida (Reels): é ela que aparece no grid
+  cover?: string | null; coverY?: number;   // capa escolhida (Reels): é ela que aparece no grid
 };
 
 const ACCOUNTS: { a: string; label: string }[] = [{ a: 'Playmi', label: 'Playmi' }, { a: 'Tópi', label: 'Tópi' }, { a: 'Cardoso', label: 'Cardoso' }];
@@ -32,7 +32,7 @@ function Tile({ t, onOpen }: { t: GridTile; onOpen?: (id: string) => void }) {
     <button type="button" className={`ig-tile b-${slug(t.account)} ${t.ready ? '' : 'pending'}`} onClick={() => onOpen?.(t.id)}
       title={`${brShort(t.date)}${t.time ? ' ' + t.time : ''} · ${t.title}`}>
       {img && !broken
-        ? <img src={img} alt={t.product} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+        ? <img src={img} alt={t.product} style={{ objectPosition: posDe(t.coverY) }} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
         : <span className="ig-ph"><b>{t.product || t.title}</b><small>{t.creative ? 'criativo no Drive' : 'sem criativo ainda'}</small></span>}
       <Icon kind={t.kind} />
       <span className="ig-date">{brShort(t.date)}</span>

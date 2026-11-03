@@ -4888,10 +4888,16 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 /* Capa do grid (como "Editar capa" do Instagram) */
 .cpk{width:min(760px,100%)}
 .cpk-body{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:20px;padding:18px 20px 20px;overflow:auto}
-.cpk-video{position:relative;aspect-ratio:9/16;background:#0B0F12;border-radius:14px;overflow:hidden;display:grid;place-items:center}
-.cpk-video video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-/* o grid mostra o miolo 3:4 de um vídeo 9:16: escurece o que fica de fora */
-.cpk-crop{position:absolute;left:0;right:0;top:50%;aspect-ratio:3/4;transform:translateY(-50%);box-shadow:0 0 0 999px rgba(6,12,15,.55);outline:2px solid #fff;outline-offset:-2px;pointer-events:none}
+.cpk-video{position:relative;min-height:240px;background:#0B0F12;border-radius:14px;overflow:hidden;display:grid;place-items:center}
+.cpk-media{position:relative;width:100%;overflow:hidden;cursor:ns-resize;touch-action:none;user-select:none}
+.cpk-media video,.cpk-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+/* a janela 3:4 do grid: escurece o que fica de fora; arrasta para cima e para baixo */
+.cpk-crop{position:absolute;left:0;right:0;box-shadow:0 0 0 999px rgba(6,12,15,.55);outline:2px solid #fff;outline-offset:-2px;pointer-events:none;display:grid;place-items:center}
+.cpk-crop i{font-style:normal;color:#fff;font-size:18px;width:30px;height:30px;border-radius:50%;background:rgba(10,37,48,.6);display:grid;place-items:center}
+.cpk-lbl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:var(--ink-2)}
+.cpk-prev{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.cpk-tile{position:relative;width:90px;aspect-ratio:3/4;border-radius:6px;overflow:hidden;background:var(--surf3)}
+.cpk-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cpk-load{color:#cfd8dc;font-size:13px;padding:16px;text-align:center}
 .cpk-side{display:flex;flex-direction:column;gap:12px;min-width:0}
 .cpk-hint{margin:0;font-size:13px;color:var(--ink-2)}

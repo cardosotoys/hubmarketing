@@ -65,11 +65,13 @@ export function effective(item: SocialPlanItem, matriz: SocialPlanItem | undefin
   const creative = src?.creative_url ?? null;
   // carrossel: todas as lâminas; peça simples: só o criativo
   const slides = src?.creative_slides?.length ? src.creative_slides : creative ? [creative] : [];
-  return { caption: item.link_kind === 'reaproveita' ? matriz?.caption ?? null : item.caption, creative, slides, cover: src?.cover_url ?? null };
+  return { caption: item.link_kind === 'reaproveita' ? matriz?.caption ?? null : item.caption, creative, slides, cover: src?.cover_url ?? null, coverY: src?.cover_y ?? 50 };
 }
 
 /** Miniatura que aparece no grid: a capa escolhida (como no Instagram) ou, sem capa, a 1ª lâmina/o criativo. */
 export const capaThumb = (url: string | null | undefined) => driveThumb(url) ?? (url && /^https?:/.test(url) ? url : null);
+/** Posição do corte no grid (object-position), escolhida junto com a capa. */
+export const posDe = (y: number | null | undefined) => `50% ${y ?? 50}%`;
 export const thumbDe = (eff: { cover?: string | null; slides: string[]; creative: string | null }) =>
   (eff.cover ? capaThumb(eff.cover) : null) ?? driveThumb(eff.slides[0] ?? eff.creative);
 
@@ -143,7 +145,7 @@ export function feedTiles(
       const kind: 'reels' | 'carrossel' | 'post' = x.piece_type === 'Reels' ? 'reels' : /carross/i.test(x.format) ? 'carrossel' : 'post';
       return {
         id: x.id, date: x.pub_date, time: x.pub_time ? x.pub_time.slice(0, 5) : null, account: chans.get(x.channel_id!)!.account,
-        kind, product: x.product, title: topic?.title || x.pauta, caption: eff.caption, creative: eff.creative, cover: eff.cover,
+        kind, product: x.product, title: topic?.title || x.pauta, caption: eff.caption, creative: eff.creative, cover: eff.cover, coverY: eff.coverY,
         ready: st.ready, status: st.label,
       };
     });
@@ -153,7 +155,7 @@ export function feedTiles(
 export type PreviewItem = {
   id: string; date: string; time: string | null; brand: string; account: string; channel: string; network: string;
   format: string; mirror: boolean; product: string; title: string; caption: string | null; creative: string | null;
-  cover?: string | null;
+  cover?: string | null; coverY?: number;
   cta: string; ready: boolean; status: string; grid: 'reels' | 'carrossel' | 'post';
 };
 export function previewItems(
@@ -172,7 +174,7 @@ export function previewItems(
     out.push({
       id: x.id, date: x.pub_date, time: x.pub_time ? x.pub_time.slice(0, 5) : null, brand: x.brand, account: ch.account,
       channel: ch.name, network: ch.network, format: ch.formats.length ? x.piece_type : '', mirror: x.mirror_facebook,
-      product: x.product, title: topic?.title || x.pauta, caption: eff.caption, creative: eff.creative, cover: eff.cover, cta: x.cta,
+      product: x.product, title: topic?.title || x.pauta, caption: eff.caption, creative: eff.creative, cover: eff.cover, coverY: eff.coverY, cta: x.cta,
       ready: st.ready, status: st.label, grid: x.piece_type === 'Reels' ? 'reels' : /carross/i.test(x.format) ? 'carrossel' : 'post',
     });
   });

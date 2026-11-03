@@ -866,7 +866,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
           )}
           {picker === 'capa' && alvoDrive && (
             <CapaPicker itemId={item.id} marca={alvoDrive.marca} pasta={alvoDrive.pasta}
-              video={vertical && /Reels|Shorts|TikTok/.test(`${item.piece_type} ${ch?.name ?? ''}`) ? eff.creative : null} atual={item.cover_url ?? null}
+              video={vertical && /Reels|Shorts|TikTok/.test(`${item.piece_type} ${ch?.name ?? ''}`) ? eff.creative : null} atual={item.cover_url ?? null} atualY={item.cover_y ?? null}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
               onSaved={(m) => { showFlash(m); onChanged(); }} onClose={() => setPicker(null)} />
           )}

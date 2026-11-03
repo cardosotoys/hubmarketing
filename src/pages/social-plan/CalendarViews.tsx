@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import {
-  KIND_LABEL, addDays, addMonths, brShort, dowIndex, effective, hhmm, mondayOf, monthName, pieceState, slug, thumbDe, todayISO, ymOf, parseYmd,
+  KIND_LABEL, addDays, addMonths, brShort, dowIndex, effective, hhmm, mondayOf, monthName, pieceState, slug, posDe, thumbDe, todayISO, ymOf, parseYmd,
   type ChannelMap,
 } from './shared';
 
@@ -24,7 +24,7 @@ function arteDe(x: SocialPlanItem, byTopic?: Map<string, SocialPlanItem[]>) {
   const sibs = x.topic_id && byTopic ? byTopic.get(x.topic_id) ?? [] : [];
   const matriz = sibs.find((s) => s.link_kind === 'matriz');
   const eff = effective(x, matriz);
-  return { thumb: thumbDe(eff), slides: eff.slides.length, matriz };
+  return { thumb: thumbDe(eff), pos: posDe(eff.coverY), slides: eff.slides.length, matriz };
 }
 const SIT_TONE: Record<string, string> = { ok: 'ok', sky: 'done', warn: 'warn', red: 'red', '': '' };
 
@@ -33,7 +33,7 @@ function PostCard({ x, chans, onOpen, hasComment, hl, setHl, byTopic, topicById 
   x: SocialPlanItem; chans: ChannelMap; onOpen: (id: string) => void; hasComment: Set<string>;
   hl: string | null; setHl: (id: string | null) => void; byTopic?: Map<string, SocialPlanItem[]>; topicById?: Map<string, SocialTopic>;
 }) {
-  const { thumb, slides, matriz } = arteDe(x, byTopic);
+  const { thumb, pos, slides, matriz } = arteDe(x, byTopic);
   const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
   const st = pieceState(x, matriz, x.topic_id ? topicById?.get(x.topic_id) : null, !!ch?.future);
   const vertical = /Reels|Shorts|TikTok/.test(`${x.piece_type} ${ch?.name ?? ''}`);
@@ -42,7 +42,7 @@ function PostCard({ x, chans, onOpen, hasComment, hl, setHl, byTopic, topicById 
     <button type="button" className={`cv-post b-${slug(x.brand)} ${thumb ? '' : 'noart'} ${dim}`} onClick={() => onOpen(x.id)}
       onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)} onFocus={() => setHl(x.topic_id)} onBlur={() => setHl(null)}>
       <span className="cv-art">
-        {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="cv-noart">Sem arte</span>}
+        {thumb ? <img src={thumb} alt="" style={{ objectPosition: pos }} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="cv-noart">Sem arte</span>}
         <span className="cv-time">{hhmm(x.pub_time) || '—'}</span>
         {vertical && thumb && <span className="cv-kind">▶</span>}
         {slides > 1 && <span className="cv-kind">{slides}</span>}
@@ -162,7 +162,7 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
                   {!out && (
                     <div className="cm-list">
                       {main.map((x) => {
-                        const { thumb, matriz } = arteDe(x, byTopic);
+                        const { thumb, pos, matriz } = arteDe(x, byTopic);
                         const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
                         const st = pieceState(x, matriz, x.topic_id ? topicById?.get(x.topic_id) : null, !!ch?.future);
                         return (
@@ -170,7 +170,7 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
                             title={`${x.product || x.pauta} · ${shortChan(x, chans)} · ${st.label}`}
                             onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
                             <span className={`cm-thumb ${thumb ? '' : 'noart'}`}>
-                              {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <i>{x.brand[0]}</i>}
+                              {thumb ? <img src={thumb} alt="" style={{ objectPosition: pos }} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <i>{x.brand[0]}</i>}
                             </span>
                             <span className="cm-txt">
                               <b>{hhmm(x.pub_time) || '—'}{hasComment.has(x.id) ? ' 💬' : ''}</b>
