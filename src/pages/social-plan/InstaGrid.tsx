@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { brShort, driveThumb, slug } from './shared';
+import { brShort, capaThumb, driveThumb, slug } from './shared';
 
 /* Grade do perfil do Instagram: 3 colunas, tiles 3:4, a mais nova primeiro (como no app),
  * ícone de Reels e de Carrossel no canto. A imagem é a prévia do criativo no Drive. */
@@ -7,6 +7,7 @@ import { brShort, driveThumb, slug } from './shared';
 export type GridTile = {
   id: string; date: string; time: string | null; account: string; kind: 'reels' | 'carrossel' | 'post';
   product: string; title: string; caption: string | null; creative: string | null; ready: boolean; status: string;
+  cover?: string | null;   // capa escolhida (Reels): é ela que aparece no grid
 };
 
 const ACCOUNTS: { a: string; label: string }[] = [{ a: 'Playmi', label: 'Playmi' }, { a: 'Tópi', label: 'Tópi' }, { a: 'Cardoso', label: 'Cardoso' }];
@@ -25,7 +26,7 @@ function Icon({ kind }: { kind: GridTile['kind'] }) {
 }
 
 function Tile({ t, onOpen }: { t: GridTile; onOpen?: (id: string) => void }) {
-  const img = driveThumb(t.creative);
+  const img = capaThumb(t.cover) ?? driveThumb(t.creative);
   const [broken, setBroken] = useState(false);
   return (
     <button type="button" className={`ig-tile b-${slug(t.account)} ${t.ready ? '' : 'pending'}`} onClick={() => onOpen?.(t.id)}

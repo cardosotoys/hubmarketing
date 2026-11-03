@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import { driveTarget } from './DrivePlayer';
-import { addDays, addMonths, brShort, DOW, dowIndex, driveThumb, effective, monthName, pieceState, slug, todayISO, ymOf, type ChannelMap } from './shared';
+import { addDays, addMonths, brShort, DOW, dowIndex, effective, thumbDe, monthName, pieceState, slug, todayISO, ymOf, type ChannelMap } from './shared';
 
 /* Assuntos como mural de criativos: uma grade de artes por semana, do jeito que vão aparecer.
  * O que ainda não tem arte fica tracejado; a etiqueta diz o que falta. Clicar abre o assunto ao lado
@@ -52,7 +52,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
       const ch = matriz?.channel_id ? chans.get(matriz.channel_id) : undefined;
       return {
         t, its, sit, date: matriz?.pub_date ?? '', time: matriz?.pub_time?.slice(0, 5) ?? '',
-        thumb: driveThumb(eff?.slides[0] ?? eff?.creative),
+        thumb: eff ? thumbDe(eff) : null,
         pasta: driveTarget(eff?.slides[0] ?? eff?.creative)?.kind === 'folder',
         slides: eff?.slides.length ?? 0,
         vertical: /Reels|Stories|Shorts|TikTok/.test(`${matriz?.piece_type} ${ch?.name ?? ''}`),

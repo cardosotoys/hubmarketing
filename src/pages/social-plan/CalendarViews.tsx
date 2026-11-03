@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import {
-  KIND_LABEL, addDays, addMonths, brShort, dowIndex, driveThumb, effective, hhmm, mondayOf, monthName, pieceState, slug, todayISO, ymOf, parseYmd,
+  KIND_LABEL, addDays, addMonths, brShort, dowIndex, effective, hhmm, mondayOf, monthName, pieceState, slug, thumbDe, todayISO, ymOf, parseYmd,
   type ChannelMap,
 } from './shared';
 
@@ -24,7 +24,7 @@ function arteDe(x: SocialPlanItem, byTopic?: Map<string, SocialPlanItem[]>) {
   const sibs = x.topic_id && byTopic ? byTopic.get(x.topic_id) ?? [] : [];
   const matriz = sibs.find((s) => s.link_kind === 'matriz');
   const eff = effective(x, matriz);
-  return { thumb: driveThumb(eff.slides[0] ?? eff.creative), slides: eff.slides.length, matriz };
+  return { thumb: thumbDe(eff), slides: eff.slides.length, matriz };
 }
 const SIT_TONE: Record<string, string> = { ok: 'ok', sky: 'done', warn: 'warn', red: 'red', '': '' };
 
@@ -105,12 +105,15 @@ function Pill({ x, chans, onOpen, hasComment, hl, setHl, compact }: {
   );
 }
 
-export function MonthView({ rows, chans, onOpen, hasComment, byTopic }: Props) {
+const TETO: Record<string, number> = { Playmi: 3, 'Tópi': 3, Cardoso: 2 };   // posts no feed do Instagram por semana
+
+export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById }: Props) {
   const months = [...new Set(rows.map((x) => ymOf(x.pub_date)))].sort();
   const hoje = ymOf(todayISO());
   const [ym, setYm] = useState(() => (months.includes(hoje) ? hoje : months[0] ?? hoje));
   const [hl, setHl] = useState<string | null>(null);
   const [dia, setDia] = useState<string | null>(null); // celular: o dia tocado abre a agenda embaixo
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());   // dias com o apoio aberto
   const first = `${ym}-01`;
   const start = addDays(first, -dowIndex(first));
   const [Y, M] = ym.split('-').map(Number);
@@ -119,13 +122,19 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic }: Props) {
   const doMes = rows.filter((x) => x.pub_date.startsWith(ym));
   const today = todayISO();
   const cells = Array.from({ length: total }, (_, i) => addDays(start, i));
+  const semanas = Array.from({ length: total / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
   // dia aberto na agenda do celular: o tocado, senão hoje (se for deste mês), senão o primeiro com peça
   const diaSel = dia && dia.startsWith(ym) ? dia : (today.startsWith(ym) ? today : doMes.map((x) => x.pub_date).sort()[0] ?? first);
   const doDia = rows.filter((x) => x.pub_date === diaSel).sort(byTime);
+  const principais = doMes.filter((x) => !isApoio(x, chans)).length;
+  const feedIG = (x: SocialPlanItem) => {
+    const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+    return ch?.network === 'Instagram' && !/Stor/i.test(x.piece_type) && !isApoio(x, chans) ? ch.account : null;
+  };
   return (
-    <div className="sp-month">
+    <div className="sp-month cm">
       <div className="sp-mhead">
-        <h2>{monthName(ym)}</h2><span>{doMes.length} publicações</span>
+        <h2>{monthName(ym)}</h2><span>{principais} posts · {doMes.length - principais} de apoio</span>
         <div className="sp-calnav">
           <button className="sp-ebtn" onClick={() => setYm(addMonths(ym, -1))}>‹ Mês anterior</button>
           <button className="sp-ebtn" onClick={() => setYm(hoje)} disabled={ym === hoje}>Hoje</button>
@@ -134,35 +143,67 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic }: Props) {
       </div>
       <div className="sp-dow">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d}>{d}</div>)}</div>
       <div className="sp-grid">
-        {cells.map((iso) => {
-          const its = rows.filter((x) => x.pub_date === iso).sort(byTime);
-          const out = !iso.startsWith(ym);
-          const cls = ['sp-day', dowIndex(iso) >= 5 ? 'wknd' : '', its.length ? '' : 'empty', out ? 'out' : '', iso === today ? 'today' : ''].filter(Boolean).join(' ');
-          return (
-            <div key={iso} className={`${cls}${diaSel === iso ? ' sel' : ''}`} onClick={() => { if (!out) setDia(iso); }}>
-              <div className="sp-dnum"><b>{parseYmd(iso).getDate()}</b>{its.length ? <span>{its.length}</span> : null}</div>
-              {!out && its.length > 0 && <span className="sp-mdots" aria-hidden>{its.slice(0, 4).map((x) => <i key={x.id} className={`b-${slug(x.brand)}`} />)}</span>}
-              {!out && (() => {
-                const main = its.filter((x) => !isApoio(x, chans));
-                const extra = its.length - main.length;
-                return (
-                  <div className="cv-mthumbs">
-                    {main.map((x) => {
-                      const { thumb } = arteDe(x, byTopic);
-                      return (
-                        <button type="button" key={x.id} className={`cv-mthumb b-${slug(x.brand)} ${thumb ? '' : 'noart'} ${hl && x.topic_id !== hl ? 'dim' : ''}`}
-                          title={`${hhmm(x.pub_time) || ''} ${x.product || x.pauta} · ${shortChan(x, chans)}`}
-                          onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
-                          {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span>{hhmm(x.pub_time)}</span>}
+        {semanas.map((sem) => {
+          // teto do Instagram nesta semana (conta a semana inteira, mesmo os dias do mês vizinho)
+          const conta = new Map<string, number>();
+          rows.filter((x) => x.pub_date >= sem[0] && x.pub_date <= sem[6]).forEach((x) => { const a = feedIG(x); if (a) conta.set(a, (conta.get(a) ?? 0) + 1); });
+          return [
+            ...sem.map((iso) => {
+              const its = rows.filter((x) => x.pub_date === iso).sort(byTime);
+              const out = !iso.startsWith(ym);
+              const main = its.filter((x) => !isApoio(x, chans));
+              const apoio = its.filter((x) => isApoio(x, chans));
+              const aberto = abertos.has(iso);
+              const cls = ['sp-day', dowIndex(iso) >= 5 ? 'wknd' : '', its.length ? '' : 'empty', out ? 'out' : '', iso === today ? 'today' : ''].filter(Boolean).join(' ');
+              return (
+                <div key={iso} className={`${cls}${diaSel === iso ? ' sel' : ''}`} onClick={() => { if (!out) setDia(iso); }}>
+                  <div className="sp-dnum"><b>{parseYmd(iso).getDate()}</b>{iso === today && <em className="cm-hoje">hoje</em>}</div>
+                  {!out && its.length > 0 && <span className="sp-mdots" aria-hidden>{its.slice(0, 4).map((x) => <i key={x.id} className={`b-${slug(x.brand)}`} />)}</span>}
+                  {!out && (
+                    <div className="cm-list">
+                      {main.map((x) => {
+                        const { thumb, matriz } = arteDe(x, byTopic);
+                        const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+                        const st = pieceState(x, matriz, x.topic_id ? topicById?.get(x.topic_id) : null, !!ch?.future);
+                        return (
+                          <button type="button" key={x.id} className={`cm-item b-${slug(x.brand)} t-${SIT_TONE[st.tone] || 'none'} ${hl && x.topic_id !== hl ? 'dim' : ''}`}
+                            title={`${x.product || x.pauta} · ${shortChan(x, chans)} · ${st.label}`}
+                            onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
+                            <span className={`cm-thumb ${thumb ? '' : 'noart'}`}>
+                              {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <i>{x.brand[0]}</i>}
+                            </span>
+                            <span className="cm-txt">
+                              <b>{hhmm(x.pub_time) || '—'}{hasComment.has(x.id) ? ' 💬' : ''}</b>
+                              <span>{x.product || x.pauta}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {apoio.length > 0 && (
+                        <button type="button" className="cm-apoio" aria-expanded={aberto}
+                          onClick={(e) => { e.stopPropagation(); setAbertos((s) => { const n = new Set(s); if (n.has(iso)) n.delete(iso); else n.add(iso); return n; }); }}>
+                          {aberto ? '−' : '+'} {apoio.length} Stories/Status
                         </button>
-                      );
-                    })}
-                    {extra > 0 && <span className="cv-mextra">+{extra} apoio</span>}
-                  </div>
-                );
-              })()}
-            </div>
-          );
+                      )}
+                      {aberto && apoio.map((x) => (
+                        <button type="button" key={x.id} className={`cm-apoio-i ${hl && x.topic_id !== hl ? 'dim' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
+                          <i className={`sp-dot b-${slug(x.brand)}`} /><b>{hhmm(x.pub_time) || '—'}</b> {shortChan(x, chans)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }),
+            <div key={`w${sem[0]}`} className="cm-week" aria-label="Posts no feed do Instagram nesta semana">
+              <span>Feed do Instagram na semana</span>
+              {Object.entries(TETO).map(([a, max]) => {
+                const n = conta.get(a) ?? 0;
+                return <b key={a} className={`b-${slug(a)} ${n > max ? 'over' : n === max ? 'full' : ''}`}>{a} {n}/{max}</b>;
+              })}
+            </div>,
+          ];
         })}
       </div>
       <div className="sp-magenda">

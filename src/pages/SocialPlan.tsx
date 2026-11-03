@@ -17,6 +17,7 @@ import MateriaisView from './social-plan/MateriaisView';
 import ComercialView from './social-plan/ComercialView';
 import { useCommercial } from './social-plan/useCommercial';
 import FinalTab from './social-plan/FinalTab';
+import CapaPicker from './social-plan/CapaPicker';
 import NetworkPreview from './social-plan/NetworkPreview';
 import StrategyView from './social-plan/StrategyView';
 import { MonthView, WeekView } from './social-plan/CalendarViews';
@@ -688,7 +689,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const lim = ch?.caption_limit ?? null;
   const [openCmts, setOpenCmts] = useState(focusComments);
   const [lam, setLam] = useState(0);   // lâmina aberta do carrossel
-  const [picker, setPicker] = useState<null | 'propria' | 'feed'>(null);
+  const [picker, setPicker] = useState<null | 'propria' | 'feed' | 'capa'>(null);
   // link de pasta (veio do plano antigo como material de referência) não é a arte da peça
   const pastaRef = driveTarget(eff.creative)?.kind === 'folder' ? eff.creative : null;
   const seq = ehSequencia(item.channel_id, item.piece_type);
@@ -846,6 +847,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
             {!ehMatriz && artePropria && <button onClick={voltarArteFeed}>Voltar a usar a arte do feed</button>}
             {!ehMatriz && !artePropria && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{seq ? 'Escolher as telas' : 'Usar outra versão'}</button>}
             {!ehMatriz && !artePropria && !slidesArte.length && matriz && alvoFeed && <button onClick={() => setPicker('feed')}>Escolher arte do feed</button>}
+            {ehMatriz && !seq && alvoDrive && <button onClick={() => setPicker('capa')}>{item.cover_url ? 'Trocar a capa' : 'Escolher a capa'}</button>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
           {!ehMatriz && <p className="pv-refdir">{seq && artePropria
@@ -861,6 +863,12 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
             <DrivePicker marca={alvoFeed.marca} pasta={alvoFeed.pasta} multiple={/carross/i.test(`${matriz?.format} ${matriz?.piece_type}`)}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: matriz?.pub_date ?? item.pub_date }}
               onClose={() => setPicker(null)} onPick={salvarArte} />
+          )}
+          {picker === 'capa' && alvoDrive && (
+            <CapaPicker itemId={item.id} marca={alvoDrive.marca} pasta={alvoDrive.pasta}
+              video={vertical && /Reels|Shorts|TikTok/.test(`${item.piece_type} ${ch?.name ?? ''}`) ? eff.creative : null} atual={item.cover_url ?? null}
+              hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
+              onSaved={(m) => { showFlash(m); onChanged(); }} onClose={() => setPicker(null)} />
           )}
           {picker === 'propria' && alvoDrive && (
             <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq} unidade={seq ? 'tela' : 'lâmina'}

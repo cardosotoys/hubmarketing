@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import InstaGrid from './InstaGrid';
-import { brShort, driveThumb, slug, type PreviewItem } from './shared';
+import { brShort, capaThumb, driveThumb, slug, type PreviewItem } from './shared';
 
 /* Prévia por rede: cada canal com a cara dele. Instagram = grid do perfil; as outras redes,
  * no formato em que o conteúdo realmente aparece (linha do tempo, canal, mural, conversa…). */
@@ -22,7 +22,7 @@ const newest = (a: PreviewItem, b: PreviewItem) => (b.date + (b.time ?? '')).loc
 const oldest = (a: PreviewItem, b: PreviewItem) => -newest(a, b);
 
 function Art({ p, ratio, className = '' }: { p: PreviewItem; ratio: string; className?: string }) {
-  const img = driveThumb(p.creative);
+  const img = capaThumb(p.cover) ?? driveThumb(p.creative);
   const [broken, setBroken] = useState(false);
   return (
     <div className={`np-art ${className}`} style={{ aspectRatio: ratio }}>

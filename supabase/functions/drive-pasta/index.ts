@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return json({ error: 'Entre no Hub para ver as pastas do Drive.' }, 401);
 
-    const { marca, pasta, folderId } = (await req.json()) as { marca?: string; pasta?: string; folderId?: string };
+    const { marca, pasta, folderId, arquivo } = (await req.json()) as { marca?: string; pasta?: string; folderId?: string; arquivo?: string };
     const rootId = marca ? RAIZ[marca] : undefined;
     if (!rootId) return json({ error: `Marca desconhecida: ${marca ?? '(vazia)'}` }, 400);
 
@@ -146,6 +146,16 @@ Deno.serve(async (req) => {
     if (!redes) return json({ error: `Não achei a pasta "Redes Sociais" dentro de ${marca} no Drive.`, pastas: [] }, 404);
     const canais = (await children(redes.id, true)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     const pastas = canais.map((f) => ({ id: f.id, nome: f.name }));
+
+    // o próprio arquivo (o vídeo, para escolher o quadro da capa no navegador); só de dentro de Redes Sociais da marca
+    if (arquivo) {
+      const f = await drive<DriveFile>(`files/${arquivo}`, { fields: 'id, name, mimeType, parents, size' });
+      if (!f.parents?.length || !(await insideBrand(f.parents[0], redes.id))) return json({ error: 'Esse arquivo não fica dentro de Redes Sociais da marca.' }, 403);
+      if (f.mimeType === FOLDER || f.mimeType.startsWith('application/vnd.google-apps')) return json({ error: 'Isso não é um arquivo de vídeo ou imagem.' }, 400);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${arquivo}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${await googleToken()}` } });
+      if (!res.ok) return json({ error: `O Drive não entregou o arquivo (${res.status}).` }, 502);
+      return new Response(res.body, { headers: { ...cors, 'Content-Type': 'application/octet-stream', 'X-Mime': f.mimeType, 'Access-Control-Expose-Headers': 'X-Mime' } });
+    }
 
     let alvo: { id: string; nome: string; caminho: string[] } | null = null;
     if (folderId) {
