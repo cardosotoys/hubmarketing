@@ -370,6 +370,11 @@ export default function Embalagens({
 
   const totalPlanned = tasks.reduce((acc, t) => acc + (t.budget ?? 0), 0);
   const thumb = useThumbs();
+  // cor da marca de cada produto (fundo da foto no cartão)
+  const [corMarca, setCorMarca] = useState<Record<string, string>>({});
+  useEffect(() => {
+    supabase.from('brands').select('id, color').then(({ data }) => setCorMarca(Object.fromEntries(((data as { id: string; color: string }[]) ?? []).map((b) => [b.id, b.color]))));
+  }, []);
   const hojeD = new Date(new Date().toDateString());
   const finalizadas = tasks.filter((t) => stagesById[t.stage_id]?.is_final).length;
   const atrasadas = tasks.filter((t) => t.due_date && !stagesById[t.stage_id]?.is_final && new Date(t.due_date + 'T00:00') < hojeD).length;
@@ -377,7 +382,7 @@ export default function Embalagens({
   return (
     <div className="page emb-page">
       {/* cabeçalho: o módulo, as trilhas e o retrato das etapas */}
-      <header className="emb-head">
+      <header className="emb-head emb-hero">
         <div className="emb-head-t">
           <h1>{moduleTitle}</h1>
           <p>Todas as embalagens de todos os SKUs. Cada embalagem é uma demanda com etapas, checklist e aprovação.</p>
@@ -522,7 +527,7 @@ export default function Embalagens({
                   const venceu = !!t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < hoje;
                   const titulo = limparTitulo(t.title, prod?.code);
                   return (
-                    <div className="emb-card">
+                    <div className="emb-card" style={{ ['--bc' as string]: (prod?.brand_id && corMarca[prod.brand_id]) || '#0a2530' }}>
                       <div className="emb-card-top">
                         <span className="emb-thumb">{prod?.image_url ? <img src={thumb(prod.image_url)} alt="" loading="lazy" decoding="async" /> : <i>{prod?.code ?? 'SKU'}</i>}</span>
                         <div className="emb-card-t">

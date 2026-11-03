@@ -5723,3 +5723,29 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .tc-pause{opacity:1;font-size:11px;padding:5px 9px}
 }
 .tc-search input,.tc-search input:focus{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;height:auto!important;color:#fff!important}
+
+/* ===================== Embalagens com a identidade Cardoso ===================== */
+.emb-page{--cardoso:#da3a2f;--universo:#0a2530;--ceu:#4cbdc7}
+.emb-hero{background:var(--universo);color:#fff;border-radius:28px;box-shadow:0 18px 40px -24px rgba(10,37,48,.8);position:relative;overflow:hidden}
+.emb-hero::after{content:'';position:absolute;right:-70px;top:-90px;width:260px;height:260px;border-radius:50%;border:30px solid rgba(76,189,199,.12);pointer-events:none}
+.emb-hero>*{position:relative;z-index:1}
+.emb-hero .emb-head-t h1{color:#fff}
+.emb-hero .emb-head-t p{color:rgba(255,255,255,.7)}
+.emb-hero .emb-tracks{background:rgba(255,255,255,.08)}
+.emb-hero .emb-tracks button{color:rgba(255,255,255,.8)}
+.emb-hero .emb-tracks button[aria-selected="true"]{background:var(--cardoso);color:#fff;box-shadow:0 10px 22px -10px rgba(218,58,47,.9)}
+.emb-hero .emb-stats>div{background:rgba(255,255,255,.08)}
+.emb-hero .emb-stats b{color:#fff}
+.emb-hero .emb-stats span{color:rgba(255,255,255,.65)}
+.emb-hero .emb-stats>div.red{background:var(--cardoso)}
+.emb-hero .emb-stats>div.red b,.emb-hero .emb-stats>div.red span{color:#fff}
+.emb-page .emb-tabs button[aria-current="true"]{background:var(--universo);color:#fff}
+/* colunas: faixa de cor em cima (céu nas etapas, verde na final) */
+.emb-page .board.rich .col{border-top:5px solid var(--ceu)}
+.emb-page .board.rich .col.col-final{border-top-color:#2FA36B}
+.emb-page .board.rich .col-head .n{background:var(--universo);color:#fff}
+/* cartão: foto no fundo da cor da marca, código escuro, prazo vencido como etiqueta vermelha */
+.emb-page .emb-thumb{background:color-mix(in srgb,var(--bc) 14%,#fff);border:0}
+.emb-page .emb-thumb img{mix-blend-mode:multiply}
+.emb-page .emb-card-t code{background:var(--universo)}
+.emb-page .emb-dates span.late{background:var(--cardoso);color:#fff;clip-path:polygon(8px 0,100% 0,100% 100%,8px 100%,0 50%);border-radius:4px 999px 999px 4px;padding-left:14px}
