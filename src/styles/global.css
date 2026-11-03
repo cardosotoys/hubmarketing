@@ -4946,3 +4946,5 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .cm-week b.full{background:#E7F5EE;color:#1E7A4E}
 .sp .cm-week b.over{background:#FDECEC;color:#C0392B}
 @media (max-width:760px){.sp .cm-list,.sp .cm-week{display:none}.sp .cm .sp-day{min-height:52px;padding:6px 2px}}
+.sp .cm .sp-grid,.sp .cm .sp-dow{grid-template-columns:repeat(7,minmax(0,1fr))}
+.sp .cm .sp-day{min-width:0;overflow:hidden}
