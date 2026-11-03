@@ -5149,12 +5149,17 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 @media (max-width:760px){
   .pd-head{grid-template-columns:1fr;grid-template-areas:"t" "n" "new";padding:18px 16px;border-radius:22px}
   .pd-head-t h1{font-size:22px}
-  .pd-head-n{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-  .pd-stat{min-width:0}
+  .pd-head-n{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none}
+  .pd-head-n::-webkit-scrollbar{display:none}
+  .pd-stat{flex:none;min-width:84px;padding:8px 12px;border-radius:14px}
+  .pd-stat b{font-size:18px}
   .pd-new{width:100%;padding:13px}
   .pd-ctrl{padding:12px;border-radius:20px}
-  .pd-search{flex-basis:100%}
-  .pd-brands{flex:1;overflow-x:auto}
+  .pd-ctrl-top{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"s v" "b b"}
+  .pd-search{grid-area:s;height:42px}
+  .pd-view{grid-area:v}
+  .pd-brands{grid-area:b;overflow-x:auto;scrollbar-width:none}
+  .pd-brands button{flex:1;justify-content:center;padding:8px 10px}
   .pd-filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
   .pd-filters::-webkit-scrollbar{display:none}
   .pd-sel select{max-width:170px}
