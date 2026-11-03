@@ -4836,3 +4836,6 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .cv-day{flex:0 0 72%;scroll-snap-align:start}
   .sp .cv-mthumbs{display:none}
 }
+.pv-stage-actions .pv-pick{background:#0A2530;color:#fff;border-color:#0A2530}
+.pv-refdir{margin:8px 0 0;font-size:12.5px;color:#4E636C;text-align:center}
+.pv-refdir a{color:inherit;font-weight:700}

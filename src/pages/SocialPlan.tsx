@@ -6,7 +6,8 @@ import Loading from '../components/Loading';
 import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactions';
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
 import { Linkify } from './social-plan/Brief';
-import { CreativeMedia, driveThumbOf } from './social-plan/DrivePlayer';
+import { CreativeMedia, driveTarget, driveThumbOf } from './social-plan/DrivePlayer';
+import DrivePicker, { driveFolderFor } from './social-plan/DrivePicker';
 import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
@@ -687,6 +688,22 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const lim = ch?.caption_limit ?? null;
   const [openCmts, setOpenCmts] = useState(focusComments);
   const [lam, setLam] = useState(0);   // lâmina aberta do carrossel
+  const [picker, setPicker] = useState(false);
+  // link de pasta (veio do plano antigo como material de referência) não é a arte da peça
+  const pastaRef = driveTarget(eff.creative)?.kind === 'folder' ? eff.creative : null;
+  const slidesArte = pastaRef ? [] : eff.slides;
+  const carrossel = /carross/i.test(`${item.format} ${item.piece_type}`) || eff.slides.length > 1;
+  const alvoDrive = item.channel_id ? driveFolderFor(item.channel_id, ch?.account, item.piece_type, carrossel) : null;
+  // quem guarda a arte: a própria peça (matriz ou adapta com criativo próprio) ou a matriz
+  const donoArte = item.link_kind === 'matriz' || (item.link_kind === 'adapta' && item.creative_changed) ? item : matriz ?? item;
+  const salvarArte = async (urls: string[]) => {
+    setPicker(false);
+    const patch: Record<string, unknown> = { creative_url: urls[0], updated_by: me?.id ?? null };
+    if (urls.length > 1 || (donoArte.creative_slides?.length ?? 0) > 0) patch.creative_slides = urls.length > 1 ? urls : [];
+    const { error } = await supabase.from('social_plan_items').update(patch).eq('id', donoArte.id);
+    showFlash(error ? error.message : donoArte.id === item.id ? 'arte ligada à peça' : 'arte ligada à matriz do assunto');
+    onChanged();
+  };
   const brandK = slug(item.brand);
   const titulo = topic?.title || item.pauta;
   const copyCaption = async () => {
@@ -719,7 +736,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
 
   const Media = ({ big }: { big?: boolean }) => (
     <div className={`pv-media b-${brandK} ${vertical ? 'v' : 'q'} ${big ? 'big' : ''}`}>
-      <CreativeMedia urls={eff.slides} vertical={vertical} title={titulo} still={!vertical} index={lam} onIndex={setLam} poster={(
+      <CreativeMedia urls={slidesArte} vertical={vertical} title={titulo} still={!vertical} index={lam} onIndex={setLam} poster={(
         <div className="pv-poster">
           <span>{item.brand}</span>
           <b>{brief.texto_arte || item.product || titulo}</b>
@@ -764,14 +781,14 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               <div className="pv-post">
                 <div className="pv-post-h"><i className={`b-${brandK}`}>{item.brand[0]}</i><b>{item.brand.toLowerCase()}</b><span>{ch?.name ?? item.network}</span></div>
                 <Media />
-                {eff.slides.length > 1 && (
-                  <div className="pv-post-dots" aria-hidden>{eff.slides.map((u, k) => <i key={u + k} className={k === Math.min(lam, eff.slides.length - 1) ? 'on' : ''} />)}</div>
+                {slidesArte.length > 1 && (
+                  <div className="pv-post-dots" aria-hidden>{slidesArte.map((u, k) => <i key={u + k} className={k === Math.min(lam, slidesArte.length - 1) ? 'on' : ''} />)}</div>
                 )}
                 <div className="pv-post-c">{eff.caption ? <p><b>{item.brand.toLowerCase()}</b> {eff.caption.split('\n').slice(0, 3).join(' ')}</p> : <p className="pv-dim">Sem legenda ainda.</p>}</div>
               </div>
-              {eff.slides.length > 1 && (
+              {slidesArte.length > 1 && (
                 <div className="pv-strip" role="tablist" aria-label="Lâminas do carrossel">
-                  {eff.slides.map((u, k) => {
+                  {slidesArte.map((u, k) => {
                     const th = driveThumbOf(u, 300);
                     return (
                       <button key={u + k} type="button" role="tab" aria-selected={k === lam} className={k === lam ? 'on' : ''} onClick={() => setLam(k)}>
@@ -785,9 +802,17 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
             </div>
           )}
           <div className="pv-stage-actions">
-            {eff.creative ? <a href={eff.slides[lam] ?? eff.creative} target="_blank" rel="noreferrer">{eff.slides.length > 1 ? `Abrir lâmina ${Math.min(lam, eff.slides.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a> : <span>Criativo ainda sem link</span>}
+            {slidesArte.length ? <a href={slidesArte[lam] ?? slidesArte[0]} target="_blank" rel="noreferrer">{slidesArte.length > 1 ? `Abrir lâmina ${Math.min(lam, slidesArte.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a>
+              : alvoDrive ? null : <span>Criativo ainda sem link</span>}
+            {alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker(true)}>{slidesArte.length ? 'Trocar arte' : 'Escolher do Drive'}</button>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
+          {pastaRef && <p className="pv-refdir">Pasta de referência do plano: <a href={pastaRef} target="_blank" rel="noreferrer">abrir ↗</a></p>}
+          {picker && alvoDrive && (
+            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel}
+              hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
+              onClose={() => setPicker(false)} onPick={salvarArte} />
+          )}
           {eff.caption && (
             <details className="pv-fullcap">
               <summary>Legenda completa {lim ? <small>{eff.caption.length}/{lim}</small> : null}</summary>
