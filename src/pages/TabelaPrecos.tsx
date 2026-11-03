@@ -46,6 +46,7 @@ export default function TabelaPrecos() {
   const [tabelas, setTabelas] = useState<PriceTable[]>([]);
   const [itens, setItens] = useState<PriceTableItem[]>([]);
   const [produtos, setProdutos] = useState<Product[]>([]);
+  const [marcas, setMarcas] = useState<{ id: string; label: string; color: string }[]>([]);
   const [pausas, setPausas] = useState<ProductSalePause[]>([]);
   const [tabelaId, setTabelaId] = useState('');
   const [busca, setBusca] = useState('');
@@ -58,12 +59,14 @@ export default function TabelaPrecos() {
   const thumb = useThumbs();
 
   const carregar = useCallback(async () => {
-    const [t, i, p, pa] = await Promise.all([
+    const [t, i, p, pa, mk] = await Promise.all([
       supabase.from('price_tables').select('*').is('vigente_ate', null).order('nome'),
       supabase.from('price_table_items').select('*'),
       supabase.from('products').select('*').order('code'),
       supabase.from('product_sale_pauses').select('*'),
+      supabase.from('brands').select('id, label, color'),
     ]);
+    setMarcas((mk.data as { id: string; label: string; color: string }[]) ?? []);
     const erroDeAlgum = t.error || i.error || p.error || pa.error;
     if (erroDeAlgum) setErro(erroDeAlgum.message);
     const tt = (t.data as PriceTable[]) ?? [];
@@ -188,98 +191,97 @@ export default function TabelaPrecos() {
     setCelula(null);
   };
 
+  const marcaDe = (id?: string | null) => marcas.find((m) => m.id === id);
+
   return (
-    <div className="page tp-page">
-      <header className="tp-top">
-        <div>
+    <div className="page tp-page tc-page">
+      {/* faixa escura (Azul Universo): título, busca e a região escolhida */}
+      <header className="tc-hero">
+        <div className="tc-hero-t">
           <h1>Tabela de Preços</h1>
-          <p>Preço de atacado por região e regime. Não aparece para o lojista na vitrine.</p>
+          <p>Atacado por região e regime. Não aparece para o lojista na vitrine.</p>
         </div>
-        <label className="pd-search tp-search">
+        <label className="tc-search">
           <span aria-hidden>⌕</span>
           <input placeholder="Buscar produto ou código" value={busca} onChange={(e) => setBusca(e.target.value)} />
           {busca && <button type="button" aria-label="Limpar busca" onClick={() => setBusca('')}>×</button>}
         </label>
+        <div className="tc-regs" role="tablist" aria-label="Região">
+          {tabelas.map((t) => (
+            <button type="button" role="tab" key={t.id} aria-selected={t.id === tabelaId} onClick={() => setTabelaId(t.id)} title={t.nome}>{curto(t.nome)}</button>
+          ))}
+        </div>
+        {tabela && (
+          <p className="tc-hero-info">
+            {curto(tabela.nome)} atende {tabela.ufs.join(', ') || 'nenhum estado'}
+            {tabela.simples === true && ' · só Simples'}{tabela.simples === false && ' · fora do Simples'}
+            {' · '}vigente desde {brDate(tabela.vigente_desde)}
+          </p>
+        )}
       </header>
 
       {erro && <div className="alert error" role="status">{erro}</div>}
 
-      <div className="tp-bar">
+      <div className="tc-bar">
         <div className="tp-filtros" role="tablist" aria-label="Filtro">
           <button type="button" role="tab" aria-selected={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos <b>{resumo.itens}</b></button>
           <button type="button" role="tab" aria-selected={filtro === 'pausados'} onClick={() => setFiltro('pausados')}>Pausados <b>{resumo.pausados}</b></button>
           <button type="button" role="tab" aria-selected={filtro === 'sem_produto'} onClick={() => setFiltro('sem_produto')}>Sem produto <b>{resumo.semProduto}</b></button>
         </div>
-        {tabela && (
-          <p className="tp-info">
-            {resumo.semPreco > 0 && <><b>{resumo.semPreco}</b> produtos do catálogo sem preço em {curto(tabela.nome)} · </>}
-            {curto(tabela.nome)} atende {tabela.ufs.join(', ') || 'nenhum estado'}
-            {tabela.simples === true && ', só Simples'}{tabela.simples === false && ', fora do Simples'}
-            {' · '}desde {brDate(tabela.vigente_desde)}
-          </p>
-        )}
+        {resumo.semPreco > 0 && <span className="tc-aviso"><b>{resumo.semPreco}</b> produtos do catálogo ainda sem preço nesta região</span>}
       </div>
 
-      <div className="tp-grid" style={{ ['--n' as string]: tabelas.length }}>
-        <div className="tp-row tp-hrow">
-          <span className="tp-prod-h">Produto</span>
-          {tabelas.map((t) => (
-            <button type="button" key={t.id} className={`tp-col-h ${t.id === tabelaId ? 'on' : ''}`} onClick={() => setTabelaId(t.id)} title={t.nome}>
-              {curto(t.nome)}
-            </button>
-          ))}
-        </div>
-
-        {grupos.map(([g, ls]) => (
-          <section key={g} className="tp-group">
-            <h3>{g}<span>{ls.length}</span></h3>
+      {grupos.map(([g, ls]) => (
+        <section key={g} className="tc-group">
+          <h2>{g}<span>{ls.length} {ls.length === 1 ? 'produto' : 'produtos'}</span></h2>
+          <div className="tc-grid">
             {ls.map((l) => {
               const precos = precoDe.get(l.codigo);
               const foto = l.produto?.image_url ? thumb(l.produto.image_url) : '';
+              const mk = marcaDe(l.produto?.brand_id);
+              const ed = celula && celula.codigo === l.codigo && celula.tid === tabelaId;
+              const outras = tabelas.filter((t) => t.id !== tabelaId);
               return (
-                <div key={l.codigo} className={`tp-row ${l.pausa ? 'paused' : ''}`}>
-                  <div className="tp-prod">
-                    <span className="tp-thumb">{foto ? <img src={foto} alt="" loading="lazy" decoding="async" /> : <i>{l.codigo}</i>}</span>
-                    <span className="tp-pn">
-                      <b>{l.produto?.name ?? l.descricao}</b>
-                      <small>
-                        <code>{l.codigo}</code>
-                        {l.qtd_caixa ? <span>caixa com {l.qtd_caixa}</span> : null}
-                        {l.pausa && <em>Pausado{l.pausa.ate ? ` até ${brDate(l.pausa.ate)}` : ''}{l.pausa.price_table_id === null ? ' em todas' : ''}</em>}
-                        {!l.produto && <em className="warn">fora do catálogo</em>}
-                      </small>
-                    </span>
-                    <span className="tp-rowacts">
-                      {l.pausa
-                        ? <button type="button" onClick={() => voltarAVender(l)}>Voltar a vender</button>
-                        : <button type="button" onClick={() => setPausando(l)}>Pausar</button>}
-                    </span>
+                <article key={l.codigo} className={`tc-card ${l.pausa ? 'paused' : ''}`} style={{ ['--bc' as string]: mk?.color ?? '#0a2530' }}>
+                  <div className="tc-photo">
+                    {foto ? <img src={foto} alt="" loading="lazy" decoding="async" /> : <span className="tc-nofoto">sem foto</span>}
+                    <span className="tc-code">{l.codigo}</span>
+                    {l.pausa && <span className="tc-paused">Pausado{l.pausa.ate ? ` até ${brDate(l.pausa.ate)}` : ''}</span>}
+                    <button type="button" className="tc-pause" onClick={() => (l.pausa ? voltarAVender(l) : setPausando(l))}>{l.pausa ? 'Voltar a vender' : 'Pausar'}</button>
                   </div>
-                  {tabelas.map((t) => {
-                    const it = precos?.get(t.id);
-                    const ed = celula && celula.codigo === l.codigo && celula.tid === t.id;
-                    return (
-                      <div key={t.id} className={`tp-cell ${t.id === tabelaId ? 'on' : ''}`} data-r={curto(t.nome)}>
-                        {!it ? <span className="tp-none">—</span> : ed ? (
-                          <input autoFocus inputMode="decimal" value={celula.valor} aria-label={`Preço em ${t.nome}`}
-                            onChange={(e) => setCelula({ ...celula, valor: e.target.value })}
-                            onKeyDown={(e) => { if (e.key === 'Enter') void salvarCelula(); if (e.key === 'Escape') setCelula(null); }}
-                            onBlur={() => void salvarCelula()} />
-                        ) : (
-                          <button type="button" title="Clique para mudar o preço" onClick={() => setCelula({ codigo: l.codigo, tid: t.id, valor: String(it.preco).replace('.', ',') })}>
-                            <b>{moeda(it.preco)}</b>
-                            {it.qtd_caixa ? <small>{moeda(it.preco * it.qtd_caixa)} a caixa</small> : null}
+                  <div className="tc-body">
+                    <span className="tc-brand"><i />{mk?.label ?? 'Fora do catálogo'}{l.qtd_caixa ? ` · caixa com ${l.qtd_caixa}` : ''}</span>
+                    <b className="tc-name">{l.produto?.name ?? l.descricao}</b>
+                    <div className="tc-price">
+                      {ed ? (
+                        <input autoFocus inputMode="decimal" value={celula.valor} aria-label="Preço unitário"
+                          onChange={(e) => setCelula({ ...celula, valor: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') void salvarCelula(); if (e.key === 'Escape') setCelula(null); }}
+                          onBlur={() => void salvarCelula()} />
+                      ) : (
+                        <button type="button" className="tc-tag" title="Clique para mudar o preço" onClick={() => setCelula({ codigo: l.codigo, tid: tabelaId, valor: String(l.preco).replace('.', ',') })}>
+                          {moeda(l.preco)}
+                        </button>
+                      )}
+                      {l.qtd_caixa ? <span className="tc-box">{moeda(l.preco * l.qtd_caixa)}<small>a caixa</small></span> : null}
+                    </div>
+                    <div className="tc-others">
+                      {outras.map((t) => {
+                        const it = precos?.get(t.id);
+                        return (
+                          <button type="button" key={t.id} title={`${t.nome}: ver e editar`} onClick={() => setTabelaId(t.id)}>
+                            <small>{curto(t.nome)}</small><b>{it ? moeda(it.preco) : '—'}</b>
                           </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </article>
               );
             })}
-          </section>
-        ))}
-      </div>
+          </div>
+        </section>
+      ))}
 
       {linhas.length === 0 && <EmptyState title="Nada aqui" hint="Nenhum item com esse filtro." />}
 
