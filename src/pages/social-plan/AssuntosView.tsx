@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
+import { driveTarget } from './DrivePlayer';
 import { addDays, addMonths, brShort, DOW, dowIndex, driveThumb, effective, monthName, pieceState, slug, todayISO, ymOf, type ChannelMap } from './shared';
 
 /* Assuntos como mural de criativos: uma grade de artes por semana, do jeito que vão aparecer.
@@ -32,7 +33,7 @@ function situacao(t: SocialTopic, its: SocialPlanItem[], chans: ChannelMap): { s
   return { sit: 'rascunho', matriz };
 }
 
-const segunda = (iso: string) => addDays(iso, -((dowIndex(iso) + 6) % 7));
+const segunda = (iso: string) => addDays(iso, -dowIndex(iso)); // DOW começa na segunda
 
 export default function AssuntosView({ topics, byTopic, chans, selectedId, onSelect, onBack, editor }: {
   topics: SocialTopic[];
@@ -52,6 +53,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
       return {
         t, its, sit, date: matriz?.pub_date ?? '', time: matriz?.pub_time?.slice(0, 5) ?? '',
         thumb: driveThumb(eff?.slides[0] ?? eff?.creative),
+        pasta: driveTarget(eff?.slides[0] ?? eff?.creative)?.kind === 'folder',
         slides: eff?.slides.length ?? 0,
         vertical: /Reels|Stories|Shorts|TikTok/.test(`${matriz?.piece_type} ${ch?.name ?? ''}`),
         onde: ch ? `${ch.name.replace('YouTube · playlist ', 'YouTube ').replace('WhatsApp · ', 'WhatsApp ')}${ch.formats.length && matriz ? ` ${matriz.piece_type}` : ''}` : matriz?.network ?? '',
@@ -105,9 +107,10 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
                 const sit = SIT[r.sit];
                 const outros = r.its.length - 1;
                 return (
-                  <button type="button" key={r.t.id} className={`coc-tile b-${slug(r.t.brand)} ${r.thumb ? '' : 'empty'}`} aria-current={r.t.id === selectedId} onClick={() => onSelect(r.t.id)}>
+                  <button type="button" key={r.t.id} className={`coc-tile b-${slug(r.t.brand)} ${r.thumb ? '' : r.pasta ? 'folder' : 'empty'}`} aria-current={r.t.id === selectedId} onClick={() => onSelect(r.t.id)}>
                     <span className="coc-tile-art">
                       {r.thumb ? <img src={r.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                        : r.pasta ? <span className="coc-tile-noart"><b>Pasta no Drive</b><small>escolha o arquivo final da arte</small></span>
                         : <span className="coc-tile-noart"><b>Sem arte</b><small>abrir e escolher do Drive</small></span>}
                       <span className="coc-tile-date"><b>{r.date.slice(8, 10)}</b>{DOW[dowIndex(r.date)].slice(0, 3)}{r.time ? ` · ${r.time}` : ''}</span>
                       {r.vertical && r.thumb && <span className="coc-tile-kind" aria-label="vídeo">▶</span>}

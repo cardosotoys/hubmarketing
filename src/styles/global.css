@@ -4771,3 +4771,4 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .coc-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .sp .coc-mural-wrap .coc-back{display:block;appearance:none;border:0;background:transparent;font:inherit;font-size:14px;font-weight:700;color:#0A2530;padding:4px 0 12px;cursor:pointer}
 }
+.sp .coc-tile.folder .coc-tile-noart b{color:var(--navy)}
