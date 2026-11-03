@@ -689,7 +689,9 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const lim = ch?.caption_limit ?? null;
   const [openCmts, setOpenCmts] = useState(focusComments);
   const [lam, setLam] = useState(0);   // lâmina aberta do carrossel
-  const [picker, setPicker] = useState<null | 'propria' | 'feed' | 'capa'>(null);
+  const [picker, setPicker] = useState<null | 'propria' | 'feed' | 'capa' | 'tela'>(null);
+  const [telaAlvo, setTelaAlvo] = useState<number | null>(null);   // tela que está sendo trocada (null = adicionar no fim)
+  const [arrastando, setArrastando] = useState<number | null>(null);
   // link de pasta (veio do plano antigo como material de referência) não é a arte da peça
   const pastaRef = driveTarget(eff.creative)?.kind === 'folder' ? eff.creative : null;
   const seq = ehSequencia(item.channel_id, item.piece_type);
@@ -712,6 +714,27 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
     const { error } = await supabase.from('social_plan_items').update(patch).eq('id', dono.id);
     showFlash(error ? error.message : dono.id !== item.id ? 'arte ligada ao feed (matriz)' : ehMatriz ? 'arte ligada à peça' : 'versão própria ligada a este destino');
     onChanged();
+  };
+  // Story/Status: as telas próprias uma a uma (ordem, troca, tirar, adicionar); o repost do feed fica sempre no fim
+  const proprias = artePropria ? eff.slides : [];
+  const gravarTelas = async (urls: string[], msg: string) => {
+    const patch: Record<string, unknown> = urls.length
+      ? { creative_url: urls[0], creative_slides: urls.length > 1 ? urls : [], creative_changed: true, updated_by: me?.id ?? null }
+      : { creative_url: null, creative_slides: [], creative_changed: false, updated_by: me?.id ?? null };
+    const { error } = await supabase.from('social_plan_items').update(patch).eq('id', item.id);
+    showFlash(error ? error.message : msg);
+    onChanged();
+  };
+  const moverTela = (de: number, para: number) => {
+    if (para < 0 || para >= proprias.length || de === para) return;
+    const n = [...proprias]; const [x] = n.splice(de, 1); n.splice(para, 0, x);
+    void gravarTelas(n, 'ordem das telas salva');
+  };
+  const escolherTela = (urls: string[]) => {
+    setPicker(null);
+    const n = [...proprias];
+    if (telaAlvo == null) n.push(...urls); else n.splice(telaAlvo, 1, ...urls);
+    void gravarTelas(n, telaAlvo == null ? (urls.length > 1 ? 'telas adicionadas' : 'tela adicionada') : 'tela trocada');
   };
   const alternarRepost = async () => {
     const { error } = await supabase.from('social_plan_items').update({ story_repost: item.story_repost === false, updated_by: me?.id ?? null }).eq('id', item.id);
@@ -854,6 +877,31 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
             ? `Sobe em sequência: ${eff.slides.length} ${eff.slides.length === 1 ? 'tela própria' : 'telas próprias'}${telas.repost ? ' e, no fim, o repost do post do feed' : ''}.`
             : artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).'
             : seq ? 'Hoje é só o repost do post do feed. Para subir telas antes dele, use "Escolher as telas".' : 'Este destino usa a mesma arte do feed.'}</p>}
+          {seq && artePropria && (
+            <div className="pv-telas" aria-label="Telas próprias, na ordem em que sobem">
+              {proprias.map((u, k) => {
+                const th = driveThumbOf(u, 300);
+                return (
+                  <div key={u + k} className={`pv-tela ${arrastando === k ? 'drag' : ''}`} draggable
+                    onDragStart={() => setArrastando(k)} onDragEnd={() => setArrastando(null)}
+                    onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (arrastando != null) moverTela(arrastando, k); setArrastando(null); }}>
+                    <button type="button" className="pv-tela-art" onClick={() => setLam(k)} title={`Ver a tela ${k + 1}`}>
+                      {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>link</span>}
+                      <b>{k + 1}</b>
+                    </button>
+                    <div className="pv-tela-acts">
+                      <button type="button" aria-label="Mover para antes" disabled={k === 0} onClick={() => moverTela(k, k - 1)}>←</button>
+                      <button type="button" aria-label="Mover para depois" disabled={k === proprias.length - 1} onClick={() => moverTela(k, k + 1)}>→</button>
+                      {alvoDrive && <button type="button" aria-label="Trocar esta tela" onClick={() => { setTelaAlvo(k); setPicker('tela'); }}>Trocar</button>}
+                      <button type="button" aria-label="Tirar esta tela" className="x" onClick={() => void gravarTelas(proprias.filter((_, j) => j !== k), 'tela tirada')}>×</button>
+                    </div>
+                  </div>
+                );
+              })}
+              {alvoDrive && <button type="button" className="pv-tela-add" onClick={() => { setTelaAlvo(null); setPicker('tela'); }}>+ Adicionar tela</button>}
+              {telas.repost && <div className="pv-tela fixo"><span className="pv-tela-art">{driveThumbOf(matriz?.creative_url, 300) ? <img src={driveThumbOf(matriz?.creative_url, 300)!} alt="" referrerPolicy="no-referrer" /> : null}<b>feed</b></span><small>repost do feed, sempre no fim</small></div>}
+            </div>
+          )}
           {seq && artePropria && matriz?.creative_url && (
             <label className="sp-check pv-repost"><input type="checkbox" checked={item.story_repost !== false} onChange={alternarRepost} />
               <span>Terminar com o repost do post do feed</span></label>
@@ -869,6 +917,12 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               video={vertical && /Reels|Shorts|TikTok/.test(`${item.piece_type} ${ch?.name ?? ''}`) ? eff.creative : null} atual={item.cover_url ?? null} atualY={item.cover_y ?? null}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
               onSaved={(m) => { showFlash(m); onChanged(); }} onClose={() => setPicker(null)} />
+          )}
+          {picker === 'tela' && alvoDrive && (
+            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={telaAlvo == null} unidade="tela"
+              outra={item.channel_id ? alternativaPara(item.channel_id, item.brand) : undefined}
+              hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
+              onClose={() => setPicker(null)} onPick={escolherTela} />
           )}
           {picker === 'propria' && alvoDrive && (
             <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq} outra={item.channel_id ? alternativaPara(item.channel_id, item.brand) : undefined} unidade={seq ? 'tela' : 'lâmina'}
