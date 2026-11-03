@@ -4875,3 +4875,12 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .pc-link-n{font-weight:700;color:var(--title);min-width:90px}
 .pc-link-s{font-size:12px;color:var(--muted);flex:1}
 .pc-link.off .pc-link-n{opacity:.5}
+
+/* Story/Status em sequência: telas próprias + repost do feed no fim */
+.sp .pv-story-bars{position:absolute;top:24px;left:26px;right:26px;display:flex;gap:4px;z-index:3;pointer-events:none}
+.sp .pv-story-bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.4)}
+.sp .pv-story-bars i.on{background:#fff}
+.sp .pv-strip.v{justify-content:center;margin-top:10px}
+.sp .pv-strip.v button{flex-basis:48px;aspect-ratio:9/16}
+.sp .pv-strip button b{text-transform:none}
+.sp .pv-repost{margin:6px 0 0;font-size:13px}

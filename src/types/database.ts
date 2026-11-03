@@ -868,6 +868,7 @@ export interface SocialPlanItem {
   creative_url: string | null;
   creative_slides?: string[] | null;   // carrossel: um link por lâmina (a 1ª é a capa = creative_url)
   creative_changed: boolean;
+  story_repost?: boolean;   // Story/Status com telas próprias: termina repostando o post do feed (0155)
   mirror_facebook: boolean;
   archived: boolean;
   merged_into: string | null;

@@ -4,7 +4,7 @@ import { normalizeUrl } from '../../lib/url';
 import type { Profile, SocialChannel, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
 import { BrandGuide, BriefEditor } from './Brief';
 import DrivePicker, { driveFolderFor } from './DrivePicker';
-import { DOW, KIND_LABEL, addDays, brShort, defaultPieceType, derive, dowIndex, driveThumb, todayISO, type ChannelMap, type Kind } from './shared';
+import { DOW, KIND_LABEL, addDays, brShort, defaultPieceType, derive, dowIndex, driveThumb, ehSequencia, todayISO, type ChannelMap, type Kind } from './shared';
 
 /* ================= Assunto + destinos =================
  * O assunto é a ideia (pauta, estratégia). Cada destino é uma linha de social_plan_items:
@@ -17,6 +17,7 @@ type Draft = {
   more: string[];   // carrossel: lâminas 2, 3… (a lâmina 1 é o creative_url)
   had?: boolean;    // já tinha lâminas gravadas (para poder limpar)
   creative_changed: boolean; mirror_facebook: boolean; origin?: string; status?: SocialPlanItem['status'];
+  story_repost: boolean; had_repost_off?: boolean;   // Story/Status: termina com o repost do feed (0155)
 };
 
 const BRANDS = ['Playmi', 'Tópi', 'Cardoso'];
@@ -34,6 +35,7 @@ function toDraft(x: SocialPlanItem): Draft {
     pub_date: x.pub_date, pub_time: x.pub_time ? x.pub_time.slice(0, 5) : '', link_kind: x.link_kind,
     caption: x.caption ?? '', creative_url: x.creative_url ?? '', more: (x.creative_slides ?? []).slice(1), had: (x.creative_slides?.length ?? 0) > 0, creative_changed: x.creative_changed,
     mirror_facebook: x.mirror_facebook, origin: x.origin, status: x.status,
+    story_repost: x.story_repost !== false, had_repost_off: x.story_repost === false,
   };
 }
 
@@ -62,7 +64,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
       const ds = items.map(toDraft);
       return [...ds.filter((d) => d.link_kind === 'matriz'), ...ds.filter((d) => d.link_kind !== 'matriz').sort((a, b) => (a.pub_date + a.pub_time).localeCompare(b.pub_date + b.pub_time))];
     }
-    return [{ key: newKey(), channel_id: 'pl-ig', piece_type: 'Feed', format: '', pub_date: todayISO(), pub_time: '', link_kind: 'matriz', caption: '', creative_url: '', more: [], creative_changed: false, mirror_facebook: true }];
+    return [{ key: newKey(), channel_id: 'pl-ig', piece_type: 'Feed', format: '', pub_date: todayISO(), pub_time: '', link_kind: 'matriz', caption: '', creative_url: '', more: [], creative_changed: false, mirror_facebook: true, story_repost: true }];
   });
   const [removed, setRemoved] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -93,7 +95,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
     return {
       channel_id, link_kind, pub_date, pub_time,
       piece_type: piece_type ?? (ch ? defaultPieceType(ch) : ''), format: '',
-      caption: link_kind === 'adapta' ? matriz?.caption ?? '' : '', creative_url: '', more: [], creative_changed: false,
+      caption: link_kind === 'adapta' ? matriz?.caption ?? '' : '', creative_url: '', more: [], creative_changed: false, story_repost: true,
       mirror_facebook: !!ch?.mirror && piece_type !== 'Stories',
     };
   };
@@ -167,6 +169,8 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
       const slides = (d.link_kind === 'matriz' || d.creative_changed) && d.more.some((u) => u.trim())
         ? [d.creative_url, ...d.more].map((u) => u.trim()).filter(Boolean).map(normalizeUrl) : [];
       if (slides.length || d.had) Object.assign(row, { creative_slides: slides });
+      // só manda a coluna quando sai do padrão (ou já tinha saído), para funcionar antes da 0155
+      if (!d.story_repost || d.had_repost_off) Object.assign(row, { story_repost: d.story_repost });
       const { error } = d.id
         ? await supabase.from('social_plan_items').update(row).eq('id', d.id)
         : await supabase.from('social_plan_items').insert(row);
@@ -211,6 +215,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
             const ch = chans.get(d.channel_id);
             const fmts = ch?.formats.length ? [...new Set([...ch.formats, d.piece_type].filter(Boolean))] : [];
             const herdada = matriz?.caption ?? '';
+            const w = ehSequencia(d.channel_id, d.piece_type) ? 'Tela' : 'Lâmina';
             return (
               <div key={d.key} className={`sp-dest ${d.link_kind === 'matriz' ? 'matriz' : ''}`}>
                 {(() => {
@@ -221,7 +226,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                   return (
                     <div className={`sp-dest-art ${thumb ? '' : 'empty'}`}>
                       {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span>{herda ? 'Usa a arte da matriz' : 'Sem arte'}</span>}
-                      {n > 0 && <em>{n + 1} lâminas</em>}
+                      {n > 0 && <em>{n + 1} {ehSequencia(d.channel_id, d.piece_type) ? 'telas' : 'lâminas'}{ehSequencia(d.channel_id, d.piece_type) && d.story_repost ? ' + feed' : ''}</em>}
                       <b>{ch ? `${ch.account === form.brand || ch.account === 'Cardoso' ? '' : ch.account + ' · '}${ch.name}` : 'Canal'} · {d.piece_type}</b>
                       <small>{d.pub_date ? `${DOW[dowIndex(d.pub_date)].slice(0, 3)} ${brShort(d.pub_date)}` : ''}{d.pub_time ? ` · ${d.pub_time}` : ''}</small>
                     </div>
@@ -265,24 +270,30 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                 )}
                 {d.link_kind !== 'matriz' && (
                   <label className="sp-check sp-artepropria"><input id={`cc-${d.key}`} type="checkbox" checked={d.creative_changed} onChange={(e) => updD(d.key, { creative_changed: e.target.checked })} />
-                    <span><b>Arte própria</b> — este destino usa outra versão (ex.: a arte de Story ou de Status), não a do feed{d.link_kind === 'reaproveita' ? '. A legenda continua a da matriz.' : '.'}</span></label>
+                    <span>{ehSequencia(d.channel_id, d.piece_type)
+                      ? <><b>Telas próprias</b> — sobe 2 ou 3 artes antes de repostar o post do feed</>
+                      : <><b>Arte própria</b> — este destino usa outra versão, não a do feed</>}{d.link_kind === 'reaproveita' ? '. A legenda continua a da matriz.' : '.'}</span></label>
+                )}
+                {d.link_kind !== 'matriz' && d.creative_changed && ehSequencia(d.channel_id, d.piece_type) && (
+                  <label className="sp-check sp-artepropria"><input id={`rp-${d.key}`} type="checkbox" checked={d.story_repost} onChange={(e) => updD(d.key, { story_repost: e.target.checked })} />
+                    <span>Terminar com o repost do post do feed</span></label>
                 )}
                     {(d.link_kind === 'matriz' || d.creative_changed) ? (
-                      (/carrossel/i.test(`${d.format} ${d.piece_type}`) || d.more.length > 0) ? (
-                        <div className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Lâminas do carrossel no Drive' : 'Lâminas adaptadas no Drive'} <small>um link por lâmina, na ordem</small></span>
+                      (/carrossel/i.test(`${d.format} ${d.piece_type}`) || d.more.length > 0 || (d.creative_changed && ehSequencia(d.channel_id, d.piece_type))) ? (
+                        <div className="sp-erow"><span>{ehSequencia(d.channel_id, d.piece_type) ? 'Telas do Story/Status no Drive' : d.link_kind === 'matriz' ? 'Lâminas do carrossel no Drive' : 'Lâminas adaptadas no Drive'} <small>um link por {ehSequencia(d.channel_id, d.piece_type) ? 'tela' : 'lâmina'}, na ordem</small></span>
                           <div className="sp-slides">
-                            <label className="sp-slide"><b>Lâmina 1 (capa)</b>
-                              <input id={`cr-${d.key}`} placeholder="Link da lâmina 1 no Drive" value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
+                            <label className="sp-slide"><b>{w} 1{w === 'Lâmina' ? ' (capa)' : ''}</b>
+                              <input id={`cr-${d.key}`} placeholder={`Link da ${w.toLowerCase()} 1 no Drive`} value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
                             {d.more.map((u, k) => (
-                              <label className="sp-slide" key={k}><b>Lâmina {k + 2}</b>
-                                <input id={`cr-${d.key}-${k}`} placeholder={`Link da lâmina ${k + 2} no Drive`} value={u}
+                              <label className="sp-slide" key={k}><b>{w} {k + 2}</b>
+                                <input id={`cr-${d.key}-${k}`} placeholder={`Link da ${w.toLowerCase()} ${k + 2} no Drive`} value={u}
                                   onChange={(e) => updD(d.key, { more: d.more.map((v, j) => (j === k ? e.target.value : v)) })} />
-                                <button type="button" aria-label={`Tirar lâmina ${k + 2}`} onClick={() => updD(d.key, { more: d.more.filter((_, j) => j !== k) })}>×</button>
+                                <button type="button" aria-label={`Tirar ${w.toLowerCase()} ${k + 2}`} onClick={() => updD(d.key, { more: d.more.filter((_, j) => j !== k) })}>×</button>
                               </label>
                             ))}
                             <div className="sp-drivebtns">
-                              <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [...d.more, ''] })}>+ Adicionar lâmina</button>
-                              {driveFolderFor(d.channel_id, ch?.account, d.piece_type, true) && <button type="button" className="sp-drivepick" onClick={() => setPicker({ key: d.key, multiple: true })}>Escolher lâminas do Drive</button>}
+                              <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [...d.more, ''] })}>+ Adicionar {w.toLowerCase()}</button>
+                              {driveFolderFor(d.channel_id, ch?.account, d.piece_type, true) && <button type="button" className="sp-drivepick" onClick={() => setPicker({ key: d.key, multiple: true })}>Escolher {w === 'Tela' ? 'telas' : 'lâminas'} do Drive</button>}
                             </div>
                           </div>
                         </div>

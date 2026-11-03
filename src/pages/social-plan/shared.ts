@@ -68,6 +68,15 @@ export function effective(item: SocialPlanItem, matriz: SocialPlanItem | undefin
   return { caption: item.link_kind === 'reaproveita' ? matriz?.caption ?? null : item.caption, creative, slides };
 }
 
+/** Story e Status saem em sequência: algumas telas próprias e, no fim, o repost do post do feed. */
+export const ehSequencia = (channelId: string | null | undefined, pieceType: string) => channelId === 'wa-st' || /Stor/i.test(pieceType);
+
+/** As telas do Story/Status na ordem em que sobem; a última é o repost do feed quando ele está ligado. */
+export function telasDaSequencia(item: SocialPlanItem, matriz: SocialPlanItem | undefined, proprias: string[]) {
+  const repost = item.link_kind !== 'matriz' && item.creative_changed && item.story_repost !== false && matriz?.creative_url ? matriz.creative_url : null;
+  return { urls: repost ? [...proprias, repost] : proprias, repost: !!repost };
+}
+
 /* ---------- Fase 2: duas etapas de aprovação ----------
  * Etapa 1 (pauta e legenda) = status. Etapa 2 (criativo final) = creative_status.
  * Quem herda da matriz é resolvido no banco (0110); aqui só se decide quem tem botão. */

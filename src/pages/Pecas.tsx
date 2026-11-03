@@ -102,7 +102,7 @@ function Card({ x, link }: { x: Peca; link: (id: string, mini?: boolean) => stri
       <div className={`pc-art ${vertical(p) ? 'v' : 'q'}`}>
         {capa && <img src={link(capa, true)} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
         <span className="pc-brand">{p.brand}</span>
-        {x.files.length > 1 && <span className="pc-count">{x.files.length} lâminas</span>}
+        {x.files.length > 1 && <span className="pc-count">{x.files.length} {vertical(p) ? 'telas' : 'lâminas'}</span>}
       </div>
       <div className="pc-b">
         <b className="pc-t">{p.product || p.title}</b>

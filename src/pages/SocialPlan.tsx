@@ -8,7 +8,7 @@ import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialP
 import { Linkify } from './social-plan/Brief';
 import { CreativeMedia, driveTarget, driveThumbOf } from './social-plan/DrivePlayer';
 import DrivePicker, { driveFolderFor } from './social-plan/DrivePicker';
-import { KIND_LABEL, destLabel, effective, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug } from './social-plan/shared';
+import { KIND_LABEL, destLabel, effective, ehSequencia, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug, telasDaSequencia } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
 import ApproverLens from './social-plan/ApproverLens';
@@ -691,8 +691,11 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const [picker, setPicker] = useState<null | 'propria' | 'feed'>(null);
   // link de pasta (veio do plano antigo como material de referência) não é a arte da peça
   const pastaRef = driveTarget(eff.creative)?.kind === 'folder' ? eff.creative : null;
-  const slidesArte = pastaRef ? [] : eff.slides;
-  const carrossel = /carross/i.test(`${item.format} ${item.piece_type}`) || ((item.link_kind === 'matriz' || item.creative_changed) && eff.slides.length > 1);
+  const seq = ehSequencia(item.channel_id, item.piece_type);
+  const carrossel = !seq && (/carross/i.test(`${item.format} ${item.piece_type}`) || ((item.link_kind === 'matriz' || item.creative_changed) && eff.slides.length > 1));
+  // Story/Status: as telas próprias e, no fim, o repost do feed
+  const telas = telasDaSequencia(item, matriz, pastaRef ? [] : eff.slides);
+  const slidesArte = seq ? telas.urls : pastaRef ? [] : eff.slides;
   const alvoDrive = item.channel_id ? driveFolderFor(item.channel_id, ch?.account, item.piece_type, carrossel) : null;
   const mch = matriz?.channel_id ? chans.get(matriz.channel_id) : undefined;
   const alvoFeed = matriz?.channel_id ? driveFolderFor(matriz.channel_id, mch?.account, matriz.piece_type, /carross/i.test(`${matriz.format} ${matriz.piece_type}`)) : null;
@@ -707,6 +710,11 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
     if (urls.length > 1 || (dono.creative_slides?.length ?? 0) > 0) patch.creative_slides = urls.length > 1 ? urls : [];
     const { error } = await supabase.from('social_plan_items').update(patch).eq('id', dono.id);
     showFlash(error ? error.message : dono.id !== item.id ? 'arte ligada ao feed (matriz)' : ehMatriz ? 'arte ligada à peça' : 'versão própria ligada a este destino');
+    onChanged();
+  };
+  const alternarRepost = async () => {
+    const { error } = await supabase.from('social_plan_items').update({ story_repost: item.story_repost === false, updated_by: me?.id ?? null }).eq('id', item.id);
+    showFlash(error ? (/story_repost/.test(error.message) ? 'Falta rodar o SQL 0155 no Supabase' : error.message) : item.story_repost === false ? 'o repost do feed volta no fim' : 'sem repost do feed no fim');
     onChanged();
   };
   const voltarArteFeed = async () => {
@@ -780,13 +788,31 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
           <div className="pv-phone v">
               <>
                 <Media big />
+                {slidesArte.length > 1 && (
+                  <div className="pv-story-bars" aria-hidden>{slidesArte.map((u, k) => <i key={u + k} className={k <= Math.min(lam, slidesArte.length - 1) ? 'on' : ''} />)}</div>
+                )}
                 <div className="pv-reel-ui">
                   <div className="pv-reel-who"><i className={`b-${brandK}`}>{item.brand[0]}</i><b>{item.brand.toLowerCase()}</b></div>
                   {eff.caption && <p>{eff.caption.split('\n')[0]}</p>}
                 </div>
               </>
           </div>
-          ) : (
+          ) : null}
+          {vertical && slidesArte.length > 1 && (
+            <div className="pv-strip v" role="tablist" aria-label="Telas do Story">
+              {slidesArte.map((u, k) => {
+                const th = driveThumbOf(u, 300);
+                const ehRepost = telas.repost && k === slidesArte.length - 1;
+                return (
+                  <button key={u + k} type="button" role="tab" aria-selected={k === lam} className={k === lam ? 'on' : ''} onClick={() => setLam(k)}>
+                    {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="ph">link</span>}
+                    <b>{ehRepost ? 'feed' : k + 1}</b>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {!vertical ? (
             /* feed, carrossel, LinkedIn: o post do tamanho certo, sem moldura de celular, e a tira de lâminas */
             <div className="pv-feed">
               <div className="pv-post">
@@ -811,18 +837,25 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
                 </div>
               )}
             </div>
-          )}
+          ) : null}
           <div className="pv-stage-actions">
-            {slidesArte.length ? <a href={slidesArte[lam] ?? slidesArte[0]} target="_blank" rel="noreferrer">{slidesArte.length > 1 ? `Abrir lâmina ${Math.min(lam, slidesArte.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a>
+            {slidesArte.length ? <a href={slidesArte[lam] ?? slidesArte[0]} target="_blank" rel="noreferrer">{slidesArte.length > 1 ? `Abrir ${seq ? 'tela' : 'lâmina'} ${Math.min(lam, slidesArte.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a>
               : alvoDrive ? null : <span>Criativo ainda sem link</span>}
             {ehMatriz && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{slidesArte.length ? 'Trocar arte' : 'Escolher do Drive'}</button>}
-            {!ehMatriz && artePropria && alvoDrive && <button onClick={() => setPicker('propria')}>Trocar versão</button>}
+            {!ehMatriz && artePropria && alvoDrive && <button onClick={() => setPicker('propria')}>{seq ? 'Trocar as telas' : 'Trocar versão'}</button>}
             {!ehMatriz && artePropria && <button onClick={voltarArteFeed}>Voltar a usar a arte do feed</button>}
-            {!ehMatriz && !artePropria && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>Usar outra versão</button>}
+            {!ehMatriz && !artePropria && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{seq ? 'Escolher as telas' : 'Usar outra versão'}</button>}
             {!ehMatriz && !artePropria && !slidesArte.length && matriz && alvoFeed && <button onClick={() => setPicker('feed')}>Escolher arte do feed</button>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
-          {!ehMatriz && <p className="pv-refdir">{artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).' : 'Este destino usa a mesma arte do feed.'}</p>}
+          {!ehMatriz && <p className="pv-refdir">{seq && artePropria
+            ? `Sobe em sequência: ${eff.slides.length} ${eff.slides.length === 1 ? 'tela própria' : 'telas próprias'}${telas.repost ? ' e, no fim, o repost do post do feed' : ''}.`
+            : artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).'
+            : seq ? 'Hoje é só o repost do post do feed. Para subir telas antes dele, use "Escolher as telas".' : 'Este destino usa a mesma arte do feed.'}</p>}
+          {seq && artePropria && matriz?.creative_url && (
+            <label className="sp-check pv-repost"><input type="checkbox" checked={item.story_repost !== false} onChange={alternarRepost} />
+              <span>Terminar com o repost do post do feed</span></label>
+          )}
           {pastaRef && <p className="pv-refdir">Pasta de referência do plano: <a href={pastaRef} target="_blank" rel="noreferrer">abrir ↗</a></p>}
           {picker === 'feed' && alvoFeed && (
             <DrivePicker marca={alvoFeed.marca} pasta={alvoFeed.pasta} multiple={/carross/i.test(`${matriz?.format} ${matriz?.piece_type}`)}
@@ -830,7 +863,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               onClose={() => setPicker(null)} onPick={salvarArte} />
           )}
           {picker === 'propria' && alvoDrive && (
-            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel}
+            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
               onClose={() => setPicker(null)} onPick={salvarArte} />
           )}
