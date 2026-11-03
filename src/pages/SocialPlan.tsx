@@ -890,7 +890,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
                       onDragStart={() => setArrastando(k)} onDragEnd={() => setArrastando(null)}
                       onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (arrastando != null) moverTela(arrastando, k); setArrastando(null); }}>
                       <button type="button" className="sq-art" onClick={() => setLam(k)} title={`Ver a tela ${k + 1}`}>
-                        {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" draggable={false} /> : <span className="sq-ph">sem prévia</span>}
+                        {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" draggable={false} onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="sq-ph">sem prévia</span>}
                         <span className="sq-n">{k + 1}</span>
                       </button>
                       <div className="sq-acts">
@@ -910,7 +910,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
                 {!ehMatriz && matriz?.creative_url && (
                   <li className={`sq-card sq-feed ${telas.ligado ? '' : 'off'}`}>
                     <button type="button" className="sq-art" onClick={() => telas.repost && setLam(proprias.length)} title="Repost do post do feed">
-                      {driveThumbOf(matriz.creative_url, 400) ? <img src={driveThumbOf(matriz.creative_url, 400)!} alt="" referrerPolicy="no-referrer" draggable={false} /> : <span className="sq-ph">feed</span>}
+                      {driveThumbOf(matriz.creative_url, 400) ? <img src={driveThumbOf(matriz.creative_url, 400)!} alt="" referrerPolicy="no-referrer" draggable={false} onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="sq-ph">feed</span>}
                       <span className="sq-n">feed</span>
                     </button>
                     <label className="sq-switch" title={proprias.length ? '' : 'Sem tela própria, o Story/Status é o repost do feed'}><input type="checkbox" checked={telas.ligado} disabled={!proprias.length} onChange={alternarRepost} /><i aria-hidden /><span>{!proprias.length ? 'Repost do feed' : telas.ligado ? 'Repost no fim' : 'Sem repost'}</span></label>
