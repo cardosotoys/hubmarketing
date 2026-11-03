@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { SocialPlanItem } from '../../types/database';
+import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import {
-  KIND_LABEL, addDays, addMonths, brShort, dowIndex, hhmm, mondayOf, monthName, slug, todayISO, ymOf, parseYmd,
+  KIND_LABEL, addDays, addMonths, brShort, dowIndex, driveThumb, effective, hhmm, mondayOf, monthName, pieceState, slug, todayISO, ymOf, parseYmd,
   type ChannelMap,
 } from './shared';
 
@@ -10,7 +10,67 @@ type Props = {
   chans: ChannelMap;
   onOpen: (id: string) => void;
   hasComment: Set<string>;
+  byTopic?: Map<string, SocialPlanItem[]>;
+  topicById?: Map<string, SocialTopic>;
 };
+
+/* Peça principal = vai para o feed/canal com arte própria; Stories, WhatsApp e reaproveitamentos são apoio. */
+const isApoio = (x: SocialPlanItem, chans: ChannelMap) => {
+  const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+  if (x.link_kind === 'matriz') return false;
+  return x.link_kind === 'reaproveita' || /Stor/i.test(x.piece_type) || ch?.network === 'WhatsApp';
+};
+function arteDe(x: SocialPlanItem, byTopic?: Map<string, SocialPlanItem[]>) {
+  const sibs = x.topic_id && byTopic ? byTopic.get(x.topic_id) ?? [] : [];
+  const matriz = sibs.find((s) => s.link_kind === 'matriz');
+  const eff = effective(x, matriz);
+  return { thumb: driveThumb(eff.slides[0] ?? eff.creative), slides: eff.slides.length, matriz };
+}
+const SIT_TONE: Record<string, string> = { ok: 'ok', sky: 'done', warn: 'warn', red: 'red', '': '' };
+
+/* Cartão de post no calendário: a arte em cima, hora, marca, título, onde sai e a situação. */
+function PostCard({ x, chans, onOpen, hasComment, hl, setHl, byTopic, topicById }: {
+  x: SocialPlanItem; chans: ChannelMap; onOpen: (id: string) => void; hasComment: Set<string>;
+  hl: string | null; setHl: (id: string | null) => void; byTopic?: Map<string, SocialPlanItem[]>; topicById?: Map<string, SocialTopic>;
+}) {
+  const { thumb, slides, matriz } = arteDe(x, byTopic);
+  const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+  const st = pieceState(x, matriz, x.topic_id ? topicById?.get(x.topic_id) : null, !!ch?.future);
+  const vertical = /Reels|Shorts|TikTok/.test(`${x.piece_type} ${ch?.name ?? ''}`);
+  const dim = hl && x.topic_id !== hl ? 'dim' : hl && x.topic_id === hl ? 'lit' : '';
+  return (
+    <button type="button" className={`cv-post b-${slug(x.brand)} ${thumb ? '' : 'noart'} ${dim}`} onClick={() => onOpen(x.id)}
+      onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)} onFocus={() => setHl(x.topic_id)} onBlur={() => setHl(null)}>
+      <span className="cv-art">
+        {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="cv-noart">Sem arte</span>}
+        <span className="cv-time">{hhmm(x.pub_time) || '—'}</span>
+        {vertical && thumb && <span className="cv-kind">▶</span>}
+        {slides > 1 && <span className="cv-kind">{slides}</span>}
+      </span>
+      <span className="cv-info">
+        <span className="cv-brand"><i className={`sp-dot b-${slug(x.brand)}`} />{x.brand}{hasComment.has(x.id) ? ' · 💬' : ''}</span>
+        <span className="cv-title">{x.product || x.pauta}</span>
+        <span className="cv-where">{shortChan(x, chans)}</span>
+        <span className={`coc-sit ${SIT_TONE[st.tone]}`}>{st.label}</span>
+      </span>
+    </button>
+  );
+}
+
+/* Linha de apoio (Stories, Status, reaproveitamento): miniatura pequena e uma linha. */
+function ApoioRow({ x, chans, onOpen, hl, setHl, byTopic }: {
+  x: SocialPlanItem; chans: ChannelMap; onOpen: (id: string) => void; hl: string | null; setHl: (id: string | null) => void; byTopic?: Map<string, SocialPlanItem[]>;
+}) {
+  const { thumb } = arteDe(x, byTopic);
+  const dim = hl && x.topic_id !== hl ? 'dim' : hl && x.topic_id === hl ? 'lit' : '';
+  return (
+    <button type="button" className={`cv-apoio b-${slug(x.brand)} ${dim}`} onClick={() => onOpen(x.id)}
+      onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
+      {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <i className={`sp-dot b-${slug(x.brand)}`} />}
+      <span><b>{hhmm(x.pub_time) || '—'}</b> {shortChan(x, chans)}<small>{x.product || x.pauta}</small></span>
+    </button>
+  );
+}
 
 const stMark = (s: SocialPlanItem['status']) => (s === 'aprovada' ? 'ok' : s === 'ajuste' ? 'aj' : '');
 const byTime = (a: SocialPlanItem, b: SocialPlanItem) =>
@@ -45,7 +105,7 @@ function Pill({ x, chans, onOpen, hasComment, hl, setHl, compact }: {
   );
 }
 
-export function MonthView({ rows, chans, onOpen, hasComment }: Props) {
+export function MonthView({ rows, chans, onOpen, hasComment, byTopic }: Props) {
   const months = [...new Set(rows.map((x) => ymOf(x.pub_date)))].sort();
   const hoje = ymOf(todayISO());
   const [ym, setYm] = useState(() => (months.includes(hoje) ? hoje : months[0] ?? hoje));
@@ -82,7 +142,25 @@ export function MonthView({ rows, chans, onOpen, hasComment }: Props) {
             <div key={iso} className={`${cls}${diaSel === iso ? ' sel' : ''}`} onClick={() => { if (!out) setDia(iso); }}>
               <div className="sp-dnum"><b>{parseYmd(iso).getDate()}</b>{its.length ? <span>{its.length}</span> : null}</div>
               {!out && its.length > 0 && <span className="sp-mdots" aria-hidden>{its.slice(0, 4).map((x) => <i key={x.id} className={`b-${slug(x.brand)}`} />)}</span>}
-              {!out && its.map((x) => <Pill key={x.id} x={x} chans={chans} onOpen={onOpen} hasComment={hasComment} hl={hl} setHl={setHl} compact />)}
+              {!out && (() => {
+                const main = its.filter((x) => !isApoio(x, chans));
+                const extra = its.length - main.length;
+                return (
+                  <div className="cv-mthumbs">
+                    {main.map((x) => {
+                      const { thumb } = arteDe(x, byTopic);
+                      return (
+                        <button type="button" key={x.id} className={`cv-mthumb b-${slug(x.brand)} ${thumb ? '' : 'noart'} ${hl && x.topic_id !== hl ? 'dim' : ''}`}
+                          title={`${hhmm(x.pub_time) || ''} ${x.product || x.pauta} · ${shortChan(x, chans)}`}
+                          onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
+                          {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>{hhmm(x.pub_time)}</span>}
+                        </button>
+                      );
+                    })}
+                    {extra > 0 && <span className="cv-mextra">+{extra} apoio</span>}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -96,31 +174,38 @@ export function MonthView({ rows, chans, onOpen, hasComment }: Props) {
   );
 }
 
-export function WeekView({ rows, chans, onOpen, hasComment }: Props) {
+export function WeekView({ rows, chans, onOpen, hasComment, byTopic, topicById }: Props) {
   const [mon, setMon] = useState(() => mondayOf(todayISO()));
   const [hl, setHl] = useState<string | null>(null);
   const today = todayISO();
   const days = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
-  const n = rows.filter((x) => x.pub_date >= days[0] && x.pub_date <= days[6]).length;
+  const naSemana = rows.filter((x) => x.pub_date >= days[0] && x.pub_date <= days[6]);
+  const principais = naSemana.filter((x) => !isApoio(x, chans));
+  const porMarca = ['Playmi', 'Tópi', 'Cardoso'].map((b) => ({ b, n: principais.filter((x) => x.brand === b).length }));
   return (
-    <div className="sp-month">
-      <div className="sp-mhead">
-        <h2>Semana de {brShort(days[0])} a {brShort(days[6])}</h2><span>{n} publicações</span>
-        <div className="sp-calnav">
-          <button className="sp-ebtn" onClick={() => setMon(addDays(mon, -7))}>‹ Semana anterior</button>
-          <button className="sp-ebtn" onClick={() => setMon(mondayOf(today))} disabled={mon === mondayOf(today)}>Hoje</button>
-          <button className="sp-ebtn" onClick={() => setMon(addDays(mon, 7))}>Próxima semana ›</button>
+    <div className="cv-week-wrap">
+      <div className="cv-head">
+        <div className="cv-head-t">
+          <button type="button" className="cv-arrow" aria-label="Semana anterior" onClick={() => setMon(addDays(mon, -7))}>‹</button>
+          <div><b>Semana de {brShort(days[0])} a {brShort(days[6])}</b>
+            <span>{principais.length} posts · {naSemana.length - principais.length} de apoio (Stories, WhatsApp)</span></div>
+          <button type="button" className="cv-arrow" aria-label="Próxima semana" onClick={() => setMon(addDays(mon, 7))}>›</button>
+          {mon !== mondayOf(today) && <button type="button" className="cv-today" onClick={() => setMon(mondayOf(today))}>Hoje</button>}
         </div>
+        <div className="cv-brands">{porMarca.map(({ b, n }) => <span key={b}><i className={`sp-dot b-${slug(b)}`} />{b} <b>{n}</b></span>)}</div>
       </div>
-      <div className="sp-week">
+      <div className="cv-week">
         {days.map((iso, i) => {
           const its = rows.filter((x) => x.pub_date === iso).sort(byTime);
+          const main = its.filter((x) => !isApoio(x, chans));
+          const apoio = its.filter((x) => isApoio(x, chans));
           return (
-            <div key={iso} className={`sp-wday ${iso === today ? 'today' : ''} ${i >= 5 ? 'wknd' : ''}`}>
-              <div className="sp-wdhead"><span>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][i]}</span><b>{parseYmd(iso).getDate()}</b></div>
-              {its.length ? its.map((x) => <Pill key={x.id} x={x} chans={chans} onOpen={onOpen} hasComment={hasComment} hl={hl} setHl={setHl} />)
-                : <span className="sp-wempty">Sem peças</span>}
-            </div>
+            <section key={iso} className={`cv-day ${iso === today ? 'today' : ''} ${i >= 5 ? 'wknd' : ''} ${its.length ? '' : 'free'}`}>
+              <header><span>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][i]}</span><b>{parseYmd(iso).getDate()}</b>{iso === today && <em>hoje</em>}</header>
+              {main.map((x) => <PostCard key={x.id} x={x} chans={chans} onOpen={onOpen} hasComment={hasComment} hl={hl} setHl={setHl} byTopic={byTopic} topicById={topicById} />)}
+              {apoio.length > 0 && <div className="cv-apoios">{apoio.map((x) => <ApoioRow key={x.id} x={x} chans={chans} onOpen={onOpen} hl={hl} setHl={setHl} byTopic={byTopic} />)}</div>}
+              {!its.length && <span className="cv-free">Livre</span>}
+            </section>
           );
         })}
       </div>

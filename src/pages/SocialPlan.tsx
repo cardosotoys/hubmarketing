@@ -397,8 +397,8 @@ export default function SocialPlan() {
               <button role="tab" aria-selected={calMode === 'mes'} onClick={() => setCalMode('mes')}>Mês</button>
             </div>
             {calMode === 'semana'
-              ? <WeekView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} />
-              : <MonthView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} />}
+              ? <WeekView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} byTopic={byTopic} topicById={topicById} />
+              : <MonthView rows={rows} chans={chans} onOpen={openItem} hasComment={commentItemIds} byTopic={byTopic} topicById={topicById} />}
           </>
         )}
         {view === 'assuntos' && (
