@@ -35,14 +35,16 @@ export function driveFolderFor(channelId: string, account: string | undefined, p
   return { marca, pasta: 'Instagram - Post' };
 }
 
-export default function DrivePicker({ marca, pasta, multiple, hints, onPick, onClose }: {
+export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose }: {
   marca: Marca;
   pasta: string;
   multiple?: boolean;                    // carrossel: várias lâminas, na ordem do clique
+  unidade?: 'lâmina' | 'tela';           // Story/Status chama de tela
   hints: { title?: string; product?: string; sku?: string; date?: string };
   onPick: (urls: string[]) => void;
   onClose: () => void;
 }) {
+  const un = unidade;
   const [nav, setNav] = useState<{ pasta?: string; folderId?: string }>({ pasta });
   const [data, setData] = useState<Resposta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -174,7 +176,7 @@ export default function DrivePicker({ marca, pasta, multiple, hints, onPick, onC
                           {!usado && i.alterado && <span>{i.alterado.slice(8, 10)}/{i.alterado.slice(5, 7)}</span>}
                         </span>
                       </button>
-                      {multiple && i.tipo === 'pasta' && <button type="button" className="dpk-all" onClick={() => usarPasta(i.id)}>Usar a pasta como lâminas</button>}
+                      {multiple && i.tipo === 'pasta' && <button type="button" className="dpk-all" onClick={() => usarPasta(i.id)}>Usar a pasta como {un}s</button>}
                     </li>
                   );
                 })}
@@ -184,8 +186,8 @@ export default function DrivePicker({ marca, pasta, multiple, hints, onPick, onC
 
         {multiple && (
           <div className="dpk-foot">
-            <span>{sel.length ? `${sel.length} lâmina${sel.length > 1 ? 's' : ''} na ordem do clique` : 'Clique nas lâminas na ordem em que vão aparecer'}</span>
-            <button type="button" className="dpk-ok" disabled={!sel.length} onClick={() => onPick(sel.map(fileUrl))}>Usar {sel.length || ''} lâmina{sel.length === 1 ? '' : 's'}</button>
+            <span>{sel.length ? `${sel.length} ${un}${sel.length > 1 ? 's' : ''} na ordem do clique` : `Clique nas ${un}s na ordem em que vão aparecer`}</span>
+            <button type="button" className="dpk-ok" disabled={!sel.length} onClick={() => onPick(sel.map(fileUrl))}>Usar {sel.length || ''} {un}{sel.length === 1 ? '' : 's'}</button>
           </div>
         )}
       </div>

@@ -863,7 +863,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               onClose={() => setPicker(null)} onPick={salvarArte} />
           )}
           {picker === 'propria' && alvoDrive && (
-            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq}
+            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq} unidade={seq ? 'tela' : 'lâmina'}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
               onClose={() => setPicker(null)} onPick={salvarArte} />
           )}

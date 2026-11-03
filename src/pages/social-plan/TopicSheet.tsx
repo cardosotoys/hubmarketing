@@ -385,7 +385,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
           const alvo = d && driveFolderFor(d.channel_id, chans.get(d.channel_id)?.account, d.piece_type, picker.multiple || /carrossel/i.test(d.format));
           if (!d || !alvo) return null;
           return (
-            <DrivePicker marca={alvo.marca} pasta={alvo.pasta} multiple={picker.multiple}
+            <DrivePicker marca={alvo.marca} pasta={alvo.pasta} multiple={picker.multiple} unidade={ehSequencia(d.channel_id, d.piece_type) ? 'tela' : 'lâmina'}
               hints={{ title: form.title, product: form.product, sku: form.sku, date: d.pub_date }}
               onClose={() => setPicker(null)}
               onPick={(urls) => {
