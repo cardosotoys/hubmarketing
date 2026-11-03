@@ -43,7 +43,7 @@ export function alternativaPara(channelId: string, brand: string): { marca: Marc
   return { marca, pasta: channelId === 'wa-st' ? 'Instagram - Story' : 'Instagram - Post' };
 }
 
-export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose }: {
+export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose, outra }: {
   marca: Marca;
   pasta: string;
   multiple?: boolean;                    // carrossel: várias lâminas, na ordem do clique
