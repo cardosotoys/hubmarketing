@@ -43,11 +43,26 @@ const b64url = (data: ArrayBuffer | string) => {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
+// a chave pode chegar sem as chaves { } das pontas, entre aspas ou em base64, conforme o jeito que foi colada no painel
+function lerChave(raw: string): { client_email: string; private_key: string } {
+  const t = raw.trim();
+  const semAspas = t.replace(/^(['"`])([\s\S]*)\1$/, '$2').trim();
+  const tentativas = [t, `{${t}}`, `{${t.replace(/,\s*$/, '')}}`, semAspas, `{${semAspas}}`];
+  try { tentativas.push(atob(t)); } catch { /* não é base64 */ }
+  for (const x of tentativas) {
+    try {
+      const o = JSON.parse(x);
+      if (o?.client_email && o?.private_key) return o;
+    } catch { /* tenta a próxima forma */ }
+  }
+  throw new Error(`O Secret GOOGLE_SERVICE_ACCOUNT_JSON não está no formato do arquivo JSON da conta de serviço (começa com "${t.slice(0, 1)}", ${t.length} caracteres). Cole o arquivo inteiro, do { ao }.`);
+}
+
 async function googleToken(): Promise<string> {
   if (cache && cache.exp > Date.now() + 60_000) return cache.token;
   const raw = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
   if (!raw) throw new Error('Falta o Secret GOOGLE_SERVICE_ACCOUNT_JSON no Supabase.');
-  const sa = JSON.parse(raw) as { client_email: string; private_key: string };
+  const sa = lerChave(raw);
   const pem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
   const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
   const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
