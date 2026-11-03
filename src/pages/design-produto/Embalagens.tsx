@@ -25,7 +25,7 @@ import {
   type Task,
 } from '../../types/database';
 
-type Tab = 'demandas' | 'calendario' | 'financeiro' | 'arquivos' | 'historico';
+type Tab = 'demandas' | 'calendario' | 'arquivos' | 'historico';
 
 /* "Embalagem — 3120 Boneco…" ou "Ref. 4024 - Trator agro" → só o nome; o código já aparece no selo */
 function limparTitulo(t: string, code?: string | null) {
@@ -368,7 +368,6 @@ export default function Embalagens({
     if (target) changeStage(taskId, target.id);
   }
 
-  const totalPlanned = tasks.reduce((acc, t) => acc + (t.budget ?? 0), 0);
   const thumb = useThumbs();
   // cor da marca de cada produto (fundo da foto no cartão)
   const [corMarca, setCorMarca] = useState<Record<string, string>>({});
@@ -402,7 +401,7 @@ export default function Embalagens({
 
       {/* Abas do módulo */}
       <nav className="emb-tabs" aria-label="Seções">
-        {([['demandas', 'Demandas'], ['calendario', 'Calendário'], ['financeiro', 'Financeiro'], ['arquivos', 'Arquivos'], ['historico', 'Histórico']] as [Tab, string][]).map(([key, label]) => (
+        {([['demandas', 'Demandas'], ['calendario', 'Calendário'], ['arquivos', 'Arquivos'], ['historico', 'Histórico']] as [Tab, string][]).map(([key, label]) => (
           <button type="button" key={key} aria-current={tab === key} onClick={() => setTab(key)}>{label}</button>
         ))}
       </nav>
@@ -612,69 +611,67 @@ export default function Embalagens({
           )}
         </div>
       ) : tab === 'calendario' ? (
-        <PackagingCalendar tasks={tasks} stagesById={stagesById} myId={profile?.id ?? null} onOpen={setEditingTask} />
-      ) : tab === 'financeiro' ? (
-        <div style={{ marginTop: 12 }}>
-          <div className="stat-grid">
-            <div className="stat-card">
-              <div className="stat-label">Orçamento planejado</div>
-              <div className="stat-num">{totalPlanned.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-              <div className="stat-trend">soma das demandas desta trilha</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Demandas</div>
-              <div className="stat-num">{tasks.length}</div>
-              <div className="stat-trend">{tasks.filter((t) => t.budget).length} com orçamento</div>
-            </div>
-          </div>
-          <table className="simple" style={{ marginTop: 10 }}>
-            <thead><tr><th>Demanda</th><th>SKU</th><th>Orçamento</th></tr></thead>
-            <tbody>
-              {tasks.filter((t) => t.budget).map((t) => {
-                const prod = t.product_id ? productsById[t.product_id] : null;
+        <PackagingCalendar tasks={tasks} stagesById={stagesById} myId={profile?.id ?? null} onOpen={setEditingTask}
+          foto={(t) => { const pr = t.product_id ? productsById[t.product_id] : null; return pr?.image_url ? thumb(pr.image_url) : ''; }}
+          codigo={(t) => (t.product_id ? productsById[t.product_id]?.code ?? null : null)} />
+      ) : tab === 'arquivos' ? (
+        <section className="emb-sec">
+          <header className="emb-sec-h"><h2>Arquivos</h2><span>{files.length} {files.length === 1 ? 'arquivo' : 'arquivos'} nas demandas desta trilha · para anexar, abra a demanda</span></header>
+          {files.length === 0 ? <div className="dp-empty"><b>Nenhum arquivo ainda</b><span>Os arquivos anexados nas demandas aparecem aqui.</span></div> : (
+            <div className="emb-files">
+              {files.map((f) => {
+                const t = tasks.find((x) => x.id === f.task_id);
+                const pr = t?.product_id ? productsById[t.product_id] : null;
+                const img = /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(f.url);
+                const ext = img ? '' : ((f.url.split('?')[0].split('.').pop() || '').length <= 4 ? f.url.split('?')[0].split('.').pop()!.toUpperCase() : 'LINK');
                 return (
-                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setEditingTask(t)}>
-                    <td data-label="Demanda">{t.title}</td>
-                    <td data-label="SKU" style={{ color: 'var(--text-faint)' }}>{prod ? prod.code : '—'}</td>
-                    <td data-label="Orçamento">{(t.budget ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                  </tr>
+                  <a key={f.id} href={f.url} target="_blank" rel="noreferrer" className="emb-file">
+                    <span className="emb-file-art">
+                      {img ? <img src={f.url} alt="" loading="lazy" /> : pr?.image_url ? <img className="prod" src={thumb(pr.image_url)} alt="" loading="lazy" /> : null}
+                      {!img && <em>{ext || 'LINK'}</em>}
+                    </span>
+                    <b>{f.name}</b>
+                    <small>{pr ? <code>{pr.code}</code> : null}{limparTitulo(f.task?.title ?? '', pr?.code)}</small>
+                  </a>
                 );
               })}
-            </tbody>
-          </table>
-          {tasks.filter((t) => t.budget).length === 0 && <div className="page-sub" style={{ marginTop: 8 }}>Nenhuma demanda com orçamento ainda (defina no campo Orçamento da demanda).</div>}
-        </div>
-      ) : tab === 'arquivos' ? (
-        <div style={{ marginTop: 12 }}>
-          {files.length === 0 ? (
-            <div className="locked-banner"><span className="ic">▤</span>Nenhum arquivo anexado às demandas desta trilha.</div>
-          ) : (
-            <div className="panel">
-              {files.map((f) => (
-                <div key={f.id} className="field-row">
-                  <a href={f.url} target="_blank" rel="noreferrer">{f.name}</a>
-                  <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>{f.task?.title ?? ''}</span>
-                </div>
-              ))}
             </div>
           )}
-          <div className="page-sub" style={{ marginTop: 8 }}>Anexe arquivos abrindo uma demanda → Arquivos.</div>
-        </div>
+        </section>
       ) : (
-        <div style={{ marginTop: 12 }}>
-          {activity.length === 0 ? (
-            <div className="locked-banner"><span className="ic">◷</span>Nenhuma atividade registrada ainda.</div>
-          ) : (
-            <div className="panel">
-              {activity.map((a) => (
-                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span><strong>{a.actor?.name ?? '—'}</strong> {a.action_text}{a.detail ? <span style={{ color: 'var(--text-faint)' }}> · {a.detail}</span> : ''}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('pt-BR')}</span>
-                </div>
-              ))}
+        <section className="emb-sec">
+          <header className="emb-sec-h"><h2>Histórico</h2><span>as últimas {activity.length} movimentações das demandas</span></header>
+          {activity.length === 0 ? <div className="dp-empty"><b>Nada registrado ainda</b><span>Comentários, aprovações e mudanças de etapa aparecem aqui.</span></div> : (
+            <div className="emb-hist">
+              {(() => {
+                const hoje = new Date().toDateString();
+                const ontem = new Date(Date.now() - 864e5).toDateString();
+                const dias = new Map<string, typeof activity>();
+                activity.forEach((a) => { const k = new Date(a.created_at).toDateString(); if (!dias.has(k)) dias.set(k, []); dias.get(k)!.push(a); });
+                return [...dias.entries()].map(([k, its]) => (
+                  <div key={k} className="emb-hist-day">
+                    <h3>{k === hoje ? 'Hoje' : k === ontem ? 'Ontem' : new Date(k).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}</h3>
+                    {its.map((a) => {
+                      const t = a.task_id ? tasks.find((x) => x.id === a.task_id) : undefined;
+                      const pr = t?.product_id ? productsById[t.product_id] : null;
+                      const txt = a.action_text.toLowerCase();
+                      const tom = /aprov/.test(txt) && !/corre/.test(txt) ? 'ok' : /corre/.test(txt) ? 'bad' : /coment|respond/.test(txt) ? 'talk' : /anex|arquivo|link/.test(txt) ? 'file' : '';
+                      const nome = a.actor?.name ?? '—';
+                      return (
+                        <button type="button" key={a.id} className={`emb-ev ${tom}`} onClick={() => t && setEditingTask(t)} disabled={!t}>
+                          <span className="emb-ev-av">{nome.split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase()}</span>
+                          <span className="emb-ev-t"><b>{nome.split(' ')[0]}</b> {a.action_text.charAt(0).toLowerCase() + a.action_text.slice(1)}
+                            {(t || a.detail) && <em>{pr ? <code>{pr.code}</code> : null}{limparTitulo(t?.title ?? a.detail ?? '', pr?.code)}</em>}</span>
+                          <time>{new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ));
+              })()}
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {showNew && (
@@ -862,136 +859,97 @@ function PackagingCalendar({
   stagesById,
   myId,
   onOpen,
+  foto,
+  codigo,
 }: {
   tasks: Task[];
   stagesById: Record<string, ProjectStage>;
   myId: string | null;
   onOpen: (t: Task) => void;
+  foto: (t: Task) => string;
+  codigo: (t: Task) => string | null;
 }) {
   // Mês exibido (offset em relação ao mês atual)
   const [monthOffset, setMonthOffset] = useState(0);
-  // 'meu' = só demandas onde sou responsável; 'todos' = todas da trilha
-  const [scope, setScope] = useState<'meu' | 'todos'>('meu');
+  // 'todos' = todas da trilha; 'meu' = só onde sou responsável
+  const [scope, setScope] = useState<'meu' | 'todos'>('todos');
   const visibleTasks = scope === 'meu' && myId ? tasks.filter((t) => t.assignee_id === myId) : tasks;
   const today = new Date();
   const base = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const year = base.getFullYear();
   const month = base.getMonth();
-  const firstWeekday = new Date(year, month, 1).getDay(); // 0=dom
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // semana começa na segunda
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayIso = new Date(today.toDateString());
 
-  type Ev = { task: Task; icon: string; label: string; color: string; bg: string };
+  type Ev = { task: Task; kind: 'meta' | 'prazo' | 'ok' | 'entregue' | 'late'; label: string };
   const eventsByDay: Record<number, Ev[]> = {};
-  function push(day: number, ev: Ev) {
-    (eventsByDay[day] = eventsByDay[day] ?? []).push(ev);
-  }
-  function dayOfIso(iso: string): number | null {
+  const push = (day: number, ev: Ev) => { (eventsByDay[day] = eventsByDay[day] ?? []).push(ev); };
+  const dayOfIso = (iso: string): number | null => {
     const d = new Date(iso + 'T00:00');
     return d.getFullYear() === year && d.getMonth() === month ? d.getDate() : null;
-  }
-
+  };
+  let nPrazo = 0, nLate = 0;
   visibleTasks.forEach((t) => {
     const isFinal = stagesById[t.stage_id]?.is_final;
-    if (t.target_date) {
-      const d = dayOfIso(t.target_date);
-      if (d) push(d, { task: t, icon: '🎯', label: t.title, color: 'var(--violet)', bg: 'var(--violet-dim)' });
-    }
+    const label = limparTitulo(t.title, codigo(t));
+    if (t.target_date) { const d = dayOfIso(t.target_date); if (d) push(d, { task: t, kind: 'meta', label }); }
     if (t.due_date) {
       const d = dayOfIso(t.due_date);
       if (d) {
-        const delivered = isFinal;
-        const deliveredOnTime = delivered && t.completed_at && t.due_date && new Date(t.completed_at) <= new Date(t.due_date + 'T23:59');
-        const overdue = !delivered && new Date(t.due_date + 'T00:00') < todayIso;
-        const icon = delivered ? '✓' : overdue ? '🔴' : '🏁';
-        const color = deliveredOnTime ? 'var(--green)' : delivered ? 'var(--blue)' : overdue ? 'var(--red)' : 'var(--text)';
-        const bg = deliveredOnTime ? 'var(--green-dim)' : delivered ? 'var(--blue-dim)' : overdue ? 'var(--red-dim)' : 'var(--surface-2)';
-        push(d, { task: t, icon, label: t.title, color, bg });
+        const onTime = isFinal && t.completed_at && new Date(t.completed_at) <= new Date(t.due_date + 'T23:59');
+        const late = !isFinal && new Date(t.due_date + 'T00:00') < todayIso;
+        nPrazo++; if (late) nLate++;
+        push(d, { task: t, kind: onTime ? 'ok' : isFinal ? 'entregue' : late ? 'late' : 'prazo', label });
       }
     }
   });
-
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
+  while (cells.length % 7) cells.push(null);
   const monthName = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const LEG: [Ev['kind'], string][] = [['meta', 'Meta'], ['prazo', 'Prazo final'], ['late', 'Atrasada'], ['ok', 'Entregue no prazo'], ['entregue', 'Entregue depois']];
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <button className="btn ghost sm" onClick={() => setMonthOffset((m) => m - 1)}>←</button>
-        <strong style={{ textTransform: 'capitalize', minWidth: 160, textAlign: 'center' }}>{monthName}</strong>
-        <button className="btn ghost sm" onClick={() => setMonthOffset((m) => m + 1)}>→</button>
-        <button className="btn ghost sm" onClick={() => setMonthOffset(0)}>Hoje</button>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <div className={`filter-chip${scope === 'meu' ? ' active' : ''}`} onClick={() => setScope('meu')}>👤 Meu</div>
-          <div className={`filter-chip${scope === 'todos' ? ' active' : ''}`} onClick={() => setScope('todos')}>🌐 Todos</div>
+    <section className="emb-sec">
+      <header className="emb-cal-h">
+        <div className="emb-cal-nav">
+          <button type="button" aria-label="Mês anterior" onClick={() => setMonthOffset((m) => m - 1)}>‹</button>
+          <h2>{monthName}</h2>
+          <button type="button" aria-label="Próximo mês" onClick={() => setMonthOffset((m) => m + 1)}>›</button>
+          {monthOffset !== 0 && <button type="button" className="hoje" onClick={() => setMonthOffset(0)}>Hoje</button>}
         </div>
-      </div>
-
-      {/* Legenda */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, marginBottom: 8 }}>
-        {[
-          { icon: '🎯', label: 'Meta', color: 'var(--violet)', bg: 'var(--violet-dim)' },
-          { icon: '🏁', label: 'Prazo final', color: 'var(--text)', bg: 'var(--surface-2)' },
-          { icon: '✓', label: 'Entregue no prazo/antes', color: 'var(--green)', bg: 'var(--green-dim)' },
-          { icon: '✓', label: 'Entregue', color: 'var(--blue)', bg: 'var(--blue-dim)' },
-          { icon: '🔴', label: 'Atrasada', color: 'var(--red)', bg: 'var(--red-dim)' },
-        ].map((l) => (
-          <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: l.bg, color: l.color, borderRadius: 999, padding: '2px 8px', fontWeight: 600 }}>
-            {l.icon} {l.label}
-          </span>
-        ))}
-      </div>
-
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(90px, 1fr))', gap: 4, minWidth: 700 }}>
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-            <div key={d} style={{ fontSize: 11, color: 'var(--text-faint)', textAlign: 'center', padding: '2px 0' }}>{d}</div>
-          ))}
-          {cells.map((day, i) => {
-            const isToday = day != null && year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
-            return (
-              <div key={i} style={{ minHeight: 78, border: '1px solid var(--border)', borderRadius: 6, padding: 4, background: day == null ? 'transparent' : 'var(--surface)', outline: isToday ? '2px solid var(--violet)' : 'none' }}>
-                {day != null && (
-                  <>
-                    <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 2 }}>{day}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {(eventsByDay[day] ?? []).map((ev, j) => (
-                        <div
-                          key={j}
-                          onClick={() => onOpen(ev.task)}
-                          title={`${ev.icon} ${ev.label}`}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 3,
-                            fontSize: 10,
-                            color: ev.color,
-                            background: ev.bg,
-                            borderLeft: `3px solid ${ev.color}`,
-                            borderRadius: 4,
-                            padding: '1px 4px',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          <span>{ev.icon}</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+        <span className="emb-cal-n">{nPrazo} prazos no mês{nLate ? <> · <b>{nLate} atrasados</b></> : null}</span>
+        <div className="pd-view" role="tablist" aria-label="Quem">
+          <button type="button" role="tab" aria-selected={scope === 'todos'} onClick={() => setScope('todos')}>Todos</button>
+          <button type="button" role="tab" aria-selected={scope === 'meu'} onClick={() => setScope('meu')}>Só os meus</button>
         </div>
+      </header>
+      <div className="emb-cal-leg">{LEG.map(([k, l]) => <span key={k} className={`k-${k}`}><i />{l}</span>)}</div>
+      <div className="emb-cal">
+        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => <div key={d} className="emb-cal-dow">{d}</div>)}
+        {cells.map((day, i) => {
+          const isToday = day != null && year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+          const evs = day != null ? eventsByDay[day] ?? [] : [];
+          return (
+            <div key={i} className={`emb-cal-d ${day == null ? 'out' : ''} ${isToday ? 'today' : ''} ${i % 7 >= 5 ? 'wknd' : ''}`}>
+              {day != null && <span className="emb-cal-num">{day}</span>}
+              {evs.slice(0, 4).map((ev, j) => {
+                const f = foto(ev.task);
+                return (
+                  <button type="button" key={j} className={`emb-cal-ev k-${ev.kind}`} onClick={() => onOpen(ev.task)} title={ev.label}>
+                    {f ? <img src={f} alt="" loading="lazy" /> : <i />}
+                    <span>{ev.label}</span>
+                  </button>
+                );
+              })}
+              {evs.length > 4 && <span className="emb-cal-more">+{evs.length - 4}</span>}
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }
 
