@@ -61,92 +61,60 @@ export default function DesignProduto() {
   });
 
   return (
-    <div className="page">
-      <h1 className="page-title">Design de Produto</h1>
-      <div className="page-sub">
-        Desenvolvimento de produto no modelo stage-gate: cada produto caminha pelas 9 fases (da estratégia ao
-        pós-lançamento), com portão de decisão em cada uma. Marketing e Embalagens rodam em paralelo; certificação
-        INMETRO e rotulagem são bloqueantes para o lançamento.
-      </div>
-
-      <div className="brand-tabs">
-        <div className={`brand-tab${brandFilter === 'all' ? ' active' : ''}`} onClick={() => setBrandFilter('all')}>
-          Todas as marcas
+    <div className="page dp-page">
+      <header className="pd-head">
+        <div className="pd-head-t">
+          <h1>Design de Produto</h1>
+          <p>Cada produto novo passa por 9 fases, da estratégia ao pós-lançamento, com uma decisão no fim de cada uma. Certificação INMETRO e rotulagem travam o lançamento.</p>
         </div>
-        {brands.map((b) => (
-          <div key={b.id} className={`brand-tab${brandFilter === b.key ? ' active' : ''}`} onClick={() => setBrandFilter(b.key)}>
-            <span className="sw" style={{ background: b.color }} />
-            {b.label}
-          </div>
-        ))}
-      </div>
-
-      <div className="filters-row">
-        <div className={`filter-chip${statusFilter === 'all' ? ' active' : ''}`} onClick={() => setStatusFilter('all')}>
-          Todos os status
+        <button type="button" className="pd-new" onClick={() => setShowNew(true)}>+ Novo produto</button>
+        <div className="pd-head-n">
+          <div className="pd-stat"><b>{filtered.length}</b><span>em desenvolvimento</span></div>
         </div>
-        {PRODUCT_DEV_STATUSES.map((s) => (
-          <div
-            key={s.key}
-            className={`filter-chip${statusFilter === s.key ? ' active' : ''}`}
-            onClick={() => setStatusFilter(s.key)}
-          >
-            {s.label}
-          </div>
-        ))}
-      </div>
+      </header>
 
-      <div className="section-head">
-        <h2>{filtered.length} produtos em desenvolvimento</h2>
-        <button className="btn" onClick={() => setShowNew(true)}>
-          + Novo produto
-        </button>
-      </div>
+      <section className="pd-ctrl">
+        <div className="pd-ctrl-top">
+          <div className="pd-brands" role="tablist" aria-label="Marca">
+            <button type="button" role="tab" aria-selected={brandFilter === 'all'} onClick={() => setBrandFilter('all')}>Todas</button>
+            {brands.map((b) => (
+              <button type="button" role="tab" key={b.id} aria-selected={brandFilter === b.key} onClick={() => setBrandFilter(b.key)}><i style={{ background: b.color }} />{b.label}</button>
+            ))}
+          </div>
+          <div className="pd-brands" role="tablist" aria-label="Situação">
+            <button type="button" role="tab" aria-selected={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todas</button>
+            {PRODUCT_DEV_STATUSES.map((s) => (
+              <button type="button" role="tab" key={s.key} aria-selected={statusFilter === s.key} onClick={() => setStatusFilter(s.key)}>{s.label}</button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {loading ? (
-        <div className="page-sub">Carregando…</div>
+        <p className="pd-count">Carregando…</p>
       ) : filtered.length === 0 ? (
-        <div className="locked-banner">
-          <span className="ic">◭</span>Nenhum produto em desenvolvimento ainda — crie o primeiro.
-        </div>
+        <div className="dp-empty"><b>Nenhum produto em desenvolvimento</b><span>Crie o primeiro em "+ Novo produto".</span></div>
       ) : (
-        <div className="project-grid">
+        <div className="dp-grid">
           {filtered.map((i) => {
             const phase = PRODUCT_DEV_PHASES.find((p) => p.n === i.current_phase);
             const certLabel = CERTIFICATION_STATUSES.find((c) => c.key === i.certification_status)?.label ?? '';
             return (
-              <Link key={i.id} to={`/design-produto/${i.id}/resumo`} className="project-card">
-                <div className="brand-strip" style={{ background: i.brand?.color }} />
-                <span className="pill" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-faint)' }}>
-                  {i.brand?.label ?? '—'}
-                </span>
-                <h3>{i.name}</h3>
-                <p>
-                  Fase {i.current_phase}/9 · {phase?.name ?? '—'}
-                </p>
-                <div className="progress-phases" style={{ margin: '8px 0' }}>
-                  {PRODUCT_DEV_PHASES.map((p) => (
-                    <i
-                      key={p.n}
-                      className={p.n < i.current_phase ? 'done' : p.n === i.current_phase ? 'current' : ''}
-                      title={`Fase ${p.n} — ${p.name}`}
-                    />
-                  ))}
+              <Link key={i.id} to={`/design-produto/${i.id}/resumo`} className="dp-card" style={{ ['--bc' as string]: i.brand?.color ?? '#0a2530' }}>
+                <span className="pd-brand"><i />{i.brand?.label ?? '—'}</span>
+                <b className="dp-name">{i.name}</b>
+                <span className="dp-phase">Fase {i.current_phase} de 9 · {phase?.name ?? '—'}</span>
+                <div className="dp-bar" aria-hidden>
+                  {PRODUCT_DEV_PHASES.map((p) => <i key={p.n} className={p.n < i.current_phase ? 'done' : p.n === i.current_phase ? 'now' : ''} title={`Fase ${p.n} — ${p.name}`} />)}
                 </div>
-                <div className="project-meta" style={{ flexWrap: 'wrap', gap: 6 }}>
-                  {i.age_range && <span className="tag" style={{ background: 'var(--surface-2)' }}>{i.age_range}</span>}
-                  {i.material && <span className="tag" style={{ background: 'var(--surface-2)' }}>{i.material}</span>}
-                  <span className="tag" style={{ background: 'var(--surface-2)', color: CERT_COLOR[i.certification_status] }}>
-                    {i.certification_status === 'aprovado' ? '✓' : '●'} Cert.: {certLabel}
-                  </span>
+                <div className="pd-meta">
+                  {i.age_range && <span>{i.age_range}</span>}
+                  {i.material && <span>{i.material}</span>}
+                  <span style={{ color: CERT_COLOR[i.certification_status] }}>Certificação: {certLabel}</span>
                 </div>
-                <div className="project-meta" style={{ marginTop: 6 }}>
-                  <span className={`prio ${i.priority}`}>{PRIORITY_LABELS[i.priority]}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                    {i.launch_target_date
-                      ? `🎯 ${new Date(i.launch_target_date + 'T00:00').toLocaleDateString('pt-BR')}`
-                      : 'sem data-alvo'}
-                  </span>
+                <div className="dp-foot">
+                  <span className={`kb-prio ${i.priority}`}><i />{PRIORITY_LABELS[i.priority]}</span>
+                  <span>{i.launch_target_date ? `Lançamento ${new Date(i.launch_target_date + 'T00:00').toLocaleDateString('pt-BR')}` : 'Sem data de lançamento'}</span>
                 </div>
               </Link>
             );

@@ -5529,3 +5529,48 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .td-f{grid-column:span 3}
 .td-f.d{grid-column:span 2}
 @media (max-width:760px){.td-form{grid-template-columns:repeat(2,minmax(0,1fr))}.td-f,.td-f.d{grid-column:span 1}.td-f.d:last-of-type{grid-column:1/-1}}
+
+/* ===================== Produtos · Tabela de Preços (redesign, lote 3) ===================== */
+.tp-page{display:flex;flex-direction:column;gap:14px}
+.tp-head{grid-template-areas:"t t" "n n"}
+.tp-tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface-2);overflow-x:auto;scrollbar-width:none;align-self:flex-start;max-width:100%}
+.tp-tabs button{appearance:none;flex:none;border:0;background:transparent;border-radius:999px;padding:9px 16px;font:inherit;font-size:13px;font-weight:700;color:var(--text-dim);cursor:pointer;white-space:nowrap}
+.tp-tabs button[aria-selected="true"]{background:var(--navy);color:#fff}
+.tp-info{margin:0;font-size:12.5px;color:var(--text-dim);line-height:1.5}
+.tp-info b{color:var(--text)}
+.tp-filter button{font-size:13px;padding:8px 14px}
+.tp-table th.num,.tp-table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tp-table td.num.strong{color:var(--text);font-weight:800}
+.tp-table tr.paused td{opacity:.6}
+.tp-st{display:inline-block;font-size:11.5px;font-weight:800;padding:3px 10px;border-radius:999px;background:#E7F5EE;color:#1E7A4E;white-space:nowrap}
+.tp-st.paused{background:#FFF4DE;color:#8A5A00}
+.tp-acts{text-align:right;white-space:nowrap}
+.tp-acts button{appearance:none;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px;margin-left:6px;font:inherit;font-size:12px;font-weight:700;color:var(--text-dim);cursor:pointer}
+.tp-acts button:hover{border-color:var(--navy);color:var(--text)}
+.tp-acts button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.tp-table tr.paused .tp-acts,.tp-table tr.paused td:nth-child(5){opacity:1}
+@media (max-width:760px){
+  .tp-table td{display:none}
+  .tp-table td.pd-tprod,.tp-table td.num.strong,.tp-table td.tp-acts{display:block}
+  .tp-table tr{display:grid!important;grid-template-columns:1fr auto;align-items:center;padding:8px 0}
+  .tp-table td.tp-acts{grid-column:1/-1;text-align:left;padding-top:2px}
+  .tp-table td.tp-acts button:first-child{margin-left:0}
+}
+
+/* ===================== Produtos · Design de Produto (redesign, lote 3) ===================== */
+.dp-page{display:flex;flex-direction:column;gap:14px}
+.dp-page .pd-ctrl-top{gap:8px}
+.dp-page .pd-brands{flex-wrap:wrap;border-radius:20px}
+.dp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.dp-card{display:flex;flex-direction:column;gap:8px;padding:18px;background:var(--surface);border-radius:22px;box-shadow:var(--shadow-sm);text-decoration:none;color:inherit;border-top:4px solid var(--bc);transition:transform .15s,box-shadow .15s}
+.dp-card:hover{transform:translateY(-3px);box-shadow:0 2px 4px rgba(10,37,48,.06),0 18px 34px -18px rgba(10,37,48,.45)}
+.dp-card .pd-brand i{background:var(--bc)}
+.dp-name{font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
+.dp-phase{font-size:12.5px;color:var(--text-dim)}
+.dp-bar{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.dp-bar i{height:6px;border-radius:999px;background:var(--surface-2)}
+.dp-bar i.done{background:var(--navy)}
+.dp-bar i.now{background:var(--accent)}
+.dp-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim)}
+.dp-empty{display:flex;flex-direction:column;gap:4px;padding:28px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);text-align:center;color:var(--text-dim);font-size:13px}
+.dp-empty b{font-size:15px;color:var(--text)}

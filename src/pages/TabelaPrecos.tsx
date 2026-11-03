@@ -153,93 +153,83 @@ export default function TabelaPrecos() {
   }
 
   return (
-    <div className="page">
-      <div className="rm-head">
-        <div>
-          <h1 className="page-title">Tabela de Preços</h1>
-          <div className="page-sub">
-            Preço de atacado por região e regime. Não aparece para o lojista na vitrine.
-          </div>
+    <div className="page tp-page">
+      <header className="pd-head tp-head">
+        <div className="pd-head-t">
+          <h1>Tabela de Preços</h1>
+          <p>Preço de atacado por região e regime. Não aparece para o lojista na vitrine.</p>
         </div>
-      </div>
+        <div className="pd-head-n">
+          {tabela && <>
+            <div className="pd-stat"><b>{resumo.itens}</b><span>itens com preço</span></div>
+            <div className={`pd-stat ${resumo.pausados ? 'pd-stat-warn' : ''}`}><b>{resumo.pausados}</b><span>pausados</span></div>
+            <div className="pd-stat"><b>{resumo.semProduto}</b><span>sem produto no catálogo</span></div>
+            <div className="pd-stat"><b>{resumo.semPreco}</b><span>produtos sem preço</span></div>
+          </>}
+        </div>
+      </header>
 
       {erro && <div className="alert error" role="status">{erro}</div>}
 
-      <div className="responsive-row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        {tabelas.map((t) => (
-          <button
-            key={t.id}
-            className={`btn${t.id === tabelaId ? ' primary' : ''}`}
-            onClick={() => setTabelaId(t.id)}
-          >
-            {t.nome}
-          </button>
-        ))}
-      </div>
-
-      {tabela && (
-        <div className="rm-kpis" style={{ marginBottom: 12 }}>
-          <div className="rm-kpi"><b>{resumo.itens}</b><span>itens com preço</span></div>
-          <div className="rm-kpi"><b>{resumo.pausados}</b><span>pausados</span></div>
-          <div className="rm-kpi"><b>{resumo.semProduto}</b><span>sem produto no catálogo</span></div>
-          <div className="rm-kpi"><b>{resumo.semPreco}</b><span>produtos sem preço</span></div>
+      <section className="pd-ctrl">
+        <div className="tp-tabs" role="tablist" aria-label="Tabela">
+          {tabelas.map((t) => (
+            <button type="button" role="tab" key={t.id} aria-selected={t.id === tabelaId} onClick={() => setTabelaId(t.id)}>{t.nome}</button>
+          ))}
         </div>
-      )}
+        {tabela && (
+          <p className="tp-info">
+            Atende <b>{tabela.ufs.join(', ') || 'nenhum estado'}</b>
+            {tabela.simples === true && ' · só optantes do Simples'}
+            {tabela.simples === false && ' · só quem não é do Simples'}
+            {' · '}vigente desde {brDate(tabela.vigente_desde)}
+            {tabela.origem && ` · de ${tabela.origem}`}
+          </p>
+        )}
+        <div className="pd-ctrl-top">
+          <label className="pd-search">
+            <span aria-hidden>⌕</span>
+            <input placeholder="Buscar por código ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            {busca && <button type="button" aria-label="Limpar busca" onClick={() => setBusca('')}>×</button>}
+          </label>
+          <div className="pd-view tp-filter" role="tablist" aria-label="Filtro">
+            <button type="button" role="tab" aria-selected={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos</button>
+            <button type="button" role="tab" aria-selected={filtro === 'pausados'} onClick={() => setFiltro('pausados')}>Pausados</button>
+            <button type="button" role="tab" aria-selected={filtro === 'sem_produto'} onClick={() => setFiltro('sem_produto')}>Sem produto</button>
+          </div>
+        </div>
+      </section>
 
-      {tabela && (
-        <p className="page-sub" style={{ marginBottom: 12 }}>
-          Atende <b>{tabela.ufs.join(', ') || 'nenhum estado'}</b>
-          {tabela.simples === true && ' · só optantes do Simples'}
-          {tabela.simples === false && ' · só quem não é do Simples'}
-          {' · '}vigente desde {brDate(tabela.vigente_desde)}
-          {tabela.origem && ` · de ${tabela.origem}`}
-        </p>
-      )}
-
-      <div className="responsive-row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        <input
-          placeholder="Buscar por código ou nome…"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          style={{ flex: 1, minWidth: 220 }}
-        />
-        <select value={filtro} onChange={(e) => setFiltro(e.target.value as Filtro)} style={{ width: 'auto' }}>
-          <option value="todos">Todos os itens</option>
-          <option value="pausados">Só pausados</option>
-          <option value="sem_produto">Só sem produto no catálogo</option>
-        </select>
-      </div>
-
-      <div className="table-wrap">
-        <table className="table">
+      <div className="pd-table-wrap">
+        <table className="pd-table tp-table">
           <thead>
             <tr>
-              <th>Código</th><th>Produto</th><th>Preço</th><th>Por caixa</th>
-              <th>Caixa fechada</th><th>Situação</th><th />
+              <th>Produto</th><th className="num">Preço</th><th className="num">Por caixa</th>
+              <th className="num">Caixa fechada</th><th>Situação</th><th />
             </tr>
           </thead>
           <tbody>
             {linhas.slice(0, 400).map((l) => (
-              <tr key={l.codigo} style={l.pausa ? { opacity: 0.55 } : undefined}>
-                <td className="mono">{l.codigo}</td>
-                <td>
-                  {l.produto?.name ?? l.descricao}
-                  {!l.produto && <span className="pill warn" style={{ marginLeft: 8 }}>sem produto</span>}
+              <tr key={l.codigo} className={l.pausa ? 'paused' : ''}>
+                <td className="pd-tprod">
+                  <span className="pd-tname">
+                    <b>{l.produto?.name ?? l.descricao}</b>
+                    <small><code>{l.codigo}</code>{!l.produto && <em className="rev">sem produto no catálogo</em>}</small>
+                  </span>
                 </td>
-                <td className="mono">{moeda(l.preco)}</td>
-                <td className="mono">{l.qtd_caixa ?? '—'}</td>
-                <td className="mono">{l.qtd_caixa ? moeda(l.preco * l.qtd_caixa) : '—'}</td>
+                <td className="num strong">{moeda(l.preco)}</td>
+                <td className="num">{l.qtd_caixa ?? '—'}</td>
+                <td className="num">{l.qtd_caixa ? moeda(l.preco * l.qtd_caixa) : '—'}</td>
                 <td>
                   {l.pausa
-                    ? <>pausado{l.pausa.ate ? ` até ${brDate(l.pausa.ate)}` : ' sem previsão'}
-                        {l.pausa.price_table_id === null ? ' (todas)' : ' (esta tabela)'}</>
-                    : 'à venda'}
+                    ? <span className="tp-st paused">Pausado{l.pausa.ate ? ` até ${brDate(l.pausa.ate)}` : ''}{l.pausa.price_table_id === null ? ' · todas' : ' · esta tabela'}</span>
+                    : <span className="tp-st">À venda</span>}
                 </td>
-                <td className="right" style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn ghost sm" onClick={() => setEditando(l)}>preço</button>
+                <td className="tp-acts">
+                  <button type="button" onClick={() => setEditando(l)}>Preço</button>
                   {l.pausa
-                    ? <button className="btn ghost sm" onClick={() => voltarAVender(l)}>voltar a vender</button>
-                    : <button className="btn ghost sm" onClick={() => setPausando(l)}>pausar</button>}
+                    ? <button type="button" className="on" onClick={() => voltarAVender(l)}>Voltar a vender</button>
+                    : <button type="button" onClick={() => setPausando(l)}>Pausar</button>}
                 </td>
               </tr>
             ))}
@@ -248,7 +238,7 @@ export default function TabelaPrecos() {
       </div>
 
       {linhas.length > 400 && (
-        <p className="page-sub">Mostrando os 400 primeiros de {linhas.length}. Use a busca para achar o resto.</p>
+        <p className="pd-count">Mostrando os 400 primeiros de {linhas.length}. Use a busca para achar o resto.</p>
       )}
       {linhas.length === 0 && <EmptyState title="Nada aqui" hint="Nenhum item com esse filtro." />}
 
