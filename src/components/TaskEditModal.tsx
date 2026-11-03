@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react';
-import Modal from './Modal';
+import { createPortal } from 'react-dom';
 import ProductCombobox from './ProductCombobox';
 import RichText from './RichText';
 import { supabase } from '../lib/supabaseClient';
@@ -61,7 +61,15 @@ export default function TaskEditModal({
   onSpawnDemandas?: (labels: string[]) => void | Promise<void>;
 }) {
   const thumb = useThumbs();
-  const commentsRef = useRef<HTMLDivElement>(null);
+  const commentsRef = useRef<HTMLElement>(null);
+  // tela cheia: trava a rolagem da página de trás e fecha no Esc
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(task.title);
   const [priority, setPriority] = useState<Priority>(task.priority);
@@ -259,29 +267,15 @@ export default function TaskEditModal({
   function renderChecklistRow(c: TaskChecklistItem) {
     const overdueItem = c.due_date && !c.done && new Date(c.due_date + 'T00:00') < new Date(new Date().toDateString());
     return (
-      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-        <input type="checkbox" checked={c.done} onChange={() => toggleChecklistItem(c)} style={{ width: 'auto' }} />
-        <span style={{ flex: 1, textDecoration: c.done ? 'line-through' : 'none', color: c.done ? 'var(--text-faint)' : 'var(--text)' }}>
-          {c.label}
-        </span>
-        {c.due_date && (
-          <span style={{ fontSize: 11, color: overdueItem ? 'var(--red)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-            {overdueItem ? '🔴 ' : '📅 '}
-            {new Date(c.due_date + 'T00:00').toLocaleDateString('pt-BR')}
-          </span>
-        )}
-        <button
-          type="button"
-          className="btn ghost sm"
-          title={c.is_gate ? 'Condicional (trava o avanço) — clique para tornar opcional' : 'Tornar condicional (trava o avanço)'}
-          onClick={() => toggleChecklistGate(c)}
-          style={{ color: c.is_gate ? 'var(--yellow)' : 'var(--text-faint)' }}
-        >
-          {c.is_gate ? '🔒' : '🔓'}
+      <div key={c.id} className={`td-ck ${c.done ? 'done' : ''}`}>
+        <button type="button" className="td-ck-box" role="checkbox" aria-checked={c.done} onClick={() => toggleChecklistItem(c)} aria-label={c.done ? 'Desmarcar' : 'Marcar como feito'} />
+        <span className="td-ck-l">{c.label}</span>
+        {c.due_date && <span className={`td-ck-d ${overdueItem ? 'late' : ''}`}>{new Date(c.due_date + 'T00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>}
+        <button type="button" className={`td-ck-gate ${c.is_gate ? 'on' : ''}`} onClick={() => toggleChecklistGate(c)}
+          title={c.is_gate ? 'Trava o avanço de etapa. Clique para tornar opcional' : 'Opcional. Clique para travar o avanço de etapa até concluir'}>
+          {c.is_gate ? 'Trava' : 'Opcional'}
         </button>
-        <button type="button" className="btn ghost sm" onClick={() => deleteChecklistItem(c.id)}>
-          ✕
-        </button>
+        <button type="button" className="td-ck-x" aria-label="Tirar item" onClick={() => deleteChecklistItem(c.id)}>×</button>
       </div>
     );
   }
@@ -543,135 +537,88 @@ export default function TaskEditModal({
   }
   // topo: mais recentes primeiro (vem da query). respostas: cronológicas (mais antigas primeiro).
   const topLevelComments = commentsByParent.get(null) ?? [];
+  const iniciais = (nome?: string | null) => (nome ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
   function renderComment(c: CommentRow, depth: number): ReactElement {
     const replies = [...(commentsByParent.get(c.id) ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const r = reactions.get(c.id) ?? { count: 0, mine: false };
+    const meu = c.author_id === actorId;
     return (
-      <div
-        key={c.id}
-        style={
-          depth > 0
-            ? { marginLeft: 14, borderLeft: '2px solid var(--border)', paddingLeft: 10, marginTop: 6 }
-            : undefined
-        }
-      >
-        <div className="comment">
-          <div className="comment-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="name">{c.author?.name ?? 'Alguém'}</span>
-            <span className="time">{new Date(c.created_at).toLocaleString('pt-BR')}{c.edited_at ? ' · editado' : ''}</span>
-            <button
-              type="button"
-              className="btn ghost sm"
-              style={{ marginLeft: 'auto' }}
-              onClick={() => {
-                setReplyTo({ id: c.id, author: c.author?.name ?? 'Alguém', preview: c.body });
-                commentInputRef.current?.focus();
-              }}
-            >
-              Responder
-            </button>
+      <div key={c.id} className={`td-msg ${depth > 0 ? 'reply' : ''}`}>
+        <span className={`td-av ${meu ? 'me' : ''}`}>{iniciais(c.author?.name)}</span>
+        <div className="td-msg-b">
+          <div className="td-msg-h">
+            <b>{c.author?.name ?? 'Alguém'}</b>
+            <time>{new Date(c.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}{c.edited_at ? ' · editado' : ''}</time>
           </div>
           {editingCommentId === c.id ? (
-            <div style={{ margin: '4px 0' }}>
-              <textarea rows={3} value={editingText} onChange={(e) => setEditingText(e.target.value)} style={{ width: '100%' }} autoFocus />
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button type="button" className="btn sm" onClick={() => saveCommentEdit(c.id)} disabled={!editingText.trim()}>Salvar</button>
-                <button type="button" className="btn ghost sm" onClick={() => { setEditingCommentId(null); setEditingText(''); }}>Cancelar</button>
+            <div className="td-msg-edit">
+              <textarea rows={3} value={editingText} onChange={(e) => setEditingText(e.target.value)} autoFocus />
+              <div>
+                <button type="button" className="td-btn prim sm" onClick={() => saveCommentEdit(c.id)} disabled={!editingText.trim()}>Salvar</button>
+                <button type="button" className="td-btn ghost sm" onClick={() => { setEditingCommentId(null); setEditingText(''); }}>Cancelar</button>
               </div>
             </div>
           ) : (
-            <div className="body" style={{ whiteSpace: 'pre-wrap' }}>
-              <RichText text={c.body} />
-            </div>
+            <div className="td-msg-t"><RichText text={c.body} /></div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-            {(() => {
-              const r = reactions.get(c.id) ?? { count: 0, mine: false };
-              return (
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  style={r.mine ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}
-                  onClick={() => likeComment(c.id)}
-                  title="Curtir / li"
-                >
-                  👍{r.count > 0 ? ` ${r.count}` : ''}
-                </button>
-              );
-            })()}
-            {c.author_id === actorId && editingCommentId !== c.id && (
-              <button type="button" className="btn ghost sm" onClick={() => { setEditingCommentId(c.id); setEditingText(c.body); }}>
-                Editar
-              </button>
-            )}
+          <div className="td-msg-a">
+            <button type="button" className={r.mine ? 'on' : ''} onClick={() => likeComment(c.id)} title="Curtir / li">{r.mine ? 'Curtiu' : 'Curtir'}{r.count > 0 ? ` · ${r.count}` : ''}</button>
+            <button type="button" onClick={() => { setReplyTo({ id: c.id, author: c.author?.name ?? 'Alguém', preview: c.body }); commentInputRef.current?.focus(); }}>Responder</button>
+            {meu && editingCommentId !== c.id && <button type="button" onClick={() => { setEditingCommentId(c.id); setEditingText(c.body); }}>Editar</button>}
           </div>
+          {replies.length > 0 && <div className="td-replies">{replies.map((x) => renderComment(x, depth + 1))}</div>}
         </div>
-        {replies.map((r) => renderComment(r, depth + 1))}
       </div>
     );
   }
 
-  return (
-    <Modal title="Editar demanda" onClose={onClose} wide>
-      {(task.updated_by || task.created_at) && (
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '-6px 0 12px 0' }}>
-          Última atualização: {updatedByName ?? 'ninguém ainda'} · {new Date(task.updated_at).toLocaleString('pt-BR')}
-        </p>
-      )}
-      <form onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label htmlFor="te-title">Título</label>
-          <input id="te-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+  return createPortal(
+    <div className="td" role="dialog" aria-label={`Demanda: ${title}`}>
+      <header className="td-head">
+        <button type="button" className="td-x" aria-label="Fechar" onClick={onClose}>×</button>
+        <div className="td-head-t">
+          <small>Demanda{currentStage ? ` · ${currentStage.name}` : ''}{(task.updated_by || task.created_at) ? ` · atualizada por ${updatedByName ?? 'ninguém ainda'} em ${new Date(task.updated_at).toLocaleDateString('pt-BR')}` : ''}</small>
+          <h2>{title || 'Sem título'}</h2>
         </div>
-        <div className="form-field">
-          <label htmlFor="te-notes">Notas</label>
-          <textarea id="te-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <div className="td-head-chips">
+          <span className={`td-chip prio-${priority}`}>{PRIORITY_LABELS[priority]}</span>
+          {overdue && <span className="td-chip late">Atrasada</span>}
+          {approvals.length > 0 && <span className="td-chip" style={{ color: APPROVAL_COLOR[apprState] }}>{APPROVAL_STATE_LABELS[apprState]}</span>}
         </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-stage">Estágio</label>
-            <select id="te-stage" value={stageId} onChange={(e) => setStageId(e.target.value)}>
-              {sortedStages.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-priority">Prioridade</label>
-            <select id="te-priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {PRIORITY_LABELS[p]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-budget">Orçamento</label>
-            <input id="te-budget" type="number" placeholder="R$" value={budget} onChange={(e) => setBudget(e.target.value)} />
-          </div>
+        <div className="td-head-acts">
+          <button type="button" className="td-btn ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" form="te-form" className="td-btn prim">Salvar</button>
         </div>
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-assignee">Responsável</label>
-            <select id="te-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-              <option value="">Sem responsável</option>
-              {activeProfiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {products && products.length > 0 && (
-            <div className="form-field" style={{ flex: 1 }}>
-              <label>Produto (embalagem)</label>
-              <ProductCombobox products={products} value={productId} onChange={setProductId} />
-            </div>
-          )}
-        </div>
+      </header>
 
+      <div className="td-body">
+        <div className="td-col">
+          <section className="td-card">
+            <h3>Detalhes</h3>
+            <form id="te-form" onSubmit={handleSubmit} className="td-form">
+              <label className="td-f full"><span>Título</span><input id="te-title" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+              <label className="td-f full"><span>Notas</span><textarea id="te-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+              <label className="td-f"><span>Etapa</span>
+                <select id="te-stage" value={stageId} onChange={(e) => setStageId(e.target.value)}>
+                  {sortedStages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select></label>
+              <label className="td-f"><span>Prioridade</span>
+                <select id="te-priority" value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+                  {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
+                </select></label>
+              <label className="td-f"><span>Responsável</span>
+                <select id="te-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+                  <option value="">Sem responsável</option>
+                  {activeProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select></label>
+              <label className="td-f"><span>Orçamento</span><input id="te-budget" type="number" placeholder="R$" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
+              <label className="td-f"><span>Início</span><input id="te-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+              <label className="td-f"><span>Meta</span><input id="te-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></label>
+              <label className="td-f"><span>Prazo final</span><input id="te-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
+              {products && products.length > 0 && (
+                <div className="td-f full"><span>Produto (embalagem)</span><ProductCombobox products={products} value={productId} onChange={setProductId} /></div>
+              )}
+              <div className="td-f full">
         {/* Imagem do produto vinculado (SKU) — direto na demanda */}
         {(() => {
           const sel = products?.find((p) => p.id === productId);
@@ -679,10 +626,10 @@ export default function TaskEditModal({
           // Dentro do módulo de embalagem só mostra o PRODUTO (a embalagem é o que se está criando,
           // e entra pelo upload de mockup abaixo). Fora dele, mostra produto + embalagem.
           const imgs = task.packaging_track
-            ? [{ url: thumb(sel.image_url), cap: '📦 Produto' }]
+            ? [{ url: thumb(sel.image_url), cap: 'Produto' }]
             : [
-                { url: thumb(sel.image_url), cap: '📦 Produto' },
-                { url: thumb(sel.packaging_image_url), cap: '🎁 Embalagem' },
+                { url: thumb(sel.image_url), cap: 'Produto' },
+                { url: thumb(sel.packaging_image_url), cap: 'Embalagem' },
               ];
           const hasAny = imgs.some((i) => i.url);
           return (
@@ -732,7 +679,7 @@ export default function TaskEditModal({
                   }}
                 >
                   Nenhuma imagem cadastrada para este SKU. Cadastre em <b>Produtos</b> → abra o produto{' '}
-                  <span style={{ fontFamily: 'monospace' }}>{sel.code}</span> → 📦 Imagem do produto / 🎁 Imagem da embalagem →
+                  <span style={{ fontFamily: 'monospace' }}>{sel.code}</span> → fotos do produto e da embalagem →
                   “Enviar imagem”.
                 </div>
               )}
@@ -746,7 +693,7 @@ export default function TaskEditModal({
             className="form-field"
             style={{ background: 'var(--yellow-dim)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}
           >
-            <label style={{ color: 'var(--yellow)' }}>✅ Embalagem aprovada — falta vincular o produto</label>
+            <label style={{ color: 'var(--yellow)' }}>Embalagem aprovada — falta vincular o produto</label>
             <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '2px 0 0' }}>
               Vincule um produto (SKU) no campo <b>“Produto (embalagem)”</b> acima para salvar o mockup da embalagem — o
               mockup é gravado no produto. Se ainda não existe, cadastre em <b>Produtos</b> e volte aqui pra vincular.
@@ -762,7 +709,7 @@ export default function TaskEditModal({
             const current = mockupUrl || sel.packaging_image_url;
             return (
               <div className="form-field" style={{ background: 'var(--green-dim)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}>
-                <label style={{ color: 'var(--green)' }}>✅ Embalagem aprovada — subir mockup da embalagem</label>
+                <label style={{ color: 'var(--green)' }}>Embalagem aprovada — subir mockup da embalagem</label>
                 <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '2px 0 8px' }}>
                   Vai direto pro produto <span style={{ fontFamily: 'monospace' }}>{sel.code}</span> e atualiza a lista de Produtos
                   automaticamente (mesmo registro vinculado).
@@ -810,354 +757,175 @@ export default function TaskEditModal({
             );
           })()}
 
-        <div className="responsive-row">
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-start">Início (start)</label>
-            <input id="te-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-target">🎯 Meta</label>
-            <input id="te-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
-          </div>
-          <div className="form-field" style={{ flex: 1 }}>
-            <label htmlFor="te-due">Prazo final</label>
-            <input id="te-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-          </div>
-        </div>
-
-        {overdue && (
-          <div className="form-field">
-            <label htmlFor="te-delay" style={{ color: 'var(--red)' }}>
-              🔴 Esta demanda está atrasada — por que não foi concluída no prazo?
-            </label>
-            <textarea
-              id="te-delay"
-              required
-              rows={2}
-              value={delayReason}
-              onChange={(e) => setDelayReason(e.target.value)}
-              placeholder="Explique o motivo do atraso — fica visível pra quem acompanha este projeto."
-              style={{ borderColor: 'var(--red)' }}
-            />
-          </div>
-        )}
-
-        {formError && (
-          <div className="banner error">
-            <span className="ic">✕</span>
-            <span>{formError}</span>
-          </div>
-        )}
-
-        {confirmingDelete ? (
-          <div className="banner error" style={{ alignItems: 'center' }}>
-            <span className="ic">⚠</span>
-            <span style={{ flex: 1 }}>Excluir esta demanda? Não dá pra desfazer.</span>
-            <button type="button" className="btn ghost sm" onClick={() => setConfirmingDelete(false)}>
-              Cancelar
-            </button>
-            <button type="button" className="btn sm" style={{ background: 'var(--red)' }} onClick={onDelete}>
-              Excluir
-            </button>
-          </div>
-        ) : (
-          <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
-            <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => setConfirmingDelete(true)}>
-              Excluir
-            </button>
-            <div className="responsive-row">
-              <button type="button" className="btn ghost" onClick={onClose}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn">
-                Salvar
-              </button>
-            </div>
-          </div>
-        )}
-      </form>
-
-      {/* Fluxo de aprovação — múltiplos decisores */}
-      <div className="panel" style={{ marginTop: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h4 style={{ margin: 0 }}>Aprovação</h4>
-          <span className="tag" style={{ background: 'var(--surface-2)', color: APPROVAL_COLOR[apprState] }}>
-            {APPROVAL_STATE_LABELS[apprState]}
-            {approvals.length > 0 ? ` · ${approvedCount}/${approvals.length} aprovaram` : ''}
-          </span>
-        </div>
-
-        {/* aprovadores atuais + decisão de cada um */}
-        {approvals.map((a) => {
-          const color = a.decision === 'aprovado' ? 'var(--green)' : a.decision === 'correcao' ? 'var(--red)' : 'var(--text-faint)';
-          const label = a.decision === 'aprovado' ? '✓ aprovou' : a.decision === 'correcao' ? '✕ pediu correção' : 'pendente';
-          return (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ flex: 1 }}>{a.approver?.name ?? '—'}</span>
-              <span className="tag" style={{ background: 'var(--surface-2)', color }}>{label}</span>
-              {canDecide(a) && a.decision !== 'aprovado' && (
-                <button type="button" className="btn ghost sm" style={{ color: 'var(--green)' }} onClick={() => decide(a, 'aprovado')}>Aprovar</button>
-              )}
-              {canDecide(a) && a.decision !== 'correcao' && (
-                <button type="button" className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => decide(a, 'correcao')}>Correção</button>
-              )}
-              <button type="button" className="btn ghost sm" title="Remover aprovador" onClick={() => removeApprover(a)}>✕</button>
-            </div>
-          );
-        })}
-
-        {allApproved && (
-          <button type="button" className="btn sm" style={{ background: 'var(--green)', marginTop: 8 }} onClick={approveAndAdvance}>
-            ✓ Todos aprovaram — avançar etapa
-          </button>
-        )}
-
-        {/* adicionar / pedir aprovação de várias pessoas */}
-        <div style={{ marginTop: 10 }}>
-          <label style={{ fontSize: 12, color: 'var(--text-faint)' }}>Pedir aprovação a (pode escolher vários):</label>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0' }}>
-            {activeProfiles.map((p) => {
-              const already = approvals.some((a) => a.approver_id === p.id);
-              const sel = selectedApprovers.includes(p.id);
-              return (
-                <span
-                  key={p.id}
-                  onClick={() => !already && toggleApprover(p.id)}
-                  className="pill"
-                  style={{
-                    cursor: already ? 'default' : 'pointer',
-                    opacity: already ? 0.4 : 1,
-                    background: sel ? 'var(--accent-dim)' : 'var(--surface-2)',
-                    color: sel ? 'var(--accent)' : 'var(--text-faint)',
-                    border: sel ? '1px solid var(--accent)' : '1px solid var(--border)',
-                  }}
-                >
-                  {sel ? '✓ ' : ''}{p.name}{already ? ' (já)' : ''}
-                </span>
-              );
-            })}
-          </div>
-          <div className="responsive-row">
-            <input placeholder="Observação (opcional)" value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} style={{ flex: 1 }} />
-            <button type="button" className="btn sm" onClick={requestApproval} disabled={!selectedApprovers.length}>
-              Solicitar aprovação{selectedApprovers.length > 0 ? ` (${selectedApprovers.length})` : ''}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Sub-etapas da etapa atual + checklist livre (item-gate = limitador de avanço) */}
-      <div className="panel">
-        <h4>Sub-etapas &amp; checklist</h4>
-        {pendingGates.length > 0 && (
-          <div className="banner" style={{ borderColor: 'var(--yellow)', marginBottom: 8 }}>
-            <span className="ic">🔒</span>
-            <span>
-              {pendingGates.length} item(ns) condicional(is) pendente(s) — a demanda não avança de etapa até concluí-los.
-            </span>
-          </div>
-        )}
-
-        {currentStageItems.length > 0 && (
-          <>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-faint)', margin: '2px 0 4px' }}>
-              Sub-etapas — {currentStage?.name ?? 'etapa atual'}
-            </div>
-            {currentStageItems.map(renderChecklistRow)}
-          </>
-        )}
-
-        {otherItems.length > 0 && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0 4px' }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-faint)', flex: 1 }}>
-                Checklist livre
               </div>
-              {onSpawnDemandas && (
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  title="Cria uma demanda individual pra cada item do checklist livre"
-                  onClick={() => {
-                    const labels = otherItems.map((c) => c.label).filter(Boolean);
-                    if (labels.length === 0) return;
-                    if (confirm(`Transformar ${labels.length} item(ns) do checklist em demandas individuais?`)) {
-                      onSpawnDemandas(labels);
-                    }
-                  }}
-                >
-                  ➔ Transformar em demandas ({otherItems.length})
-                </button>
+              {overdue && (
+                <label className="td-f full td-late"><span>Esta demanda está atrasada: por que não foi concluída no prazo?</span>
+                  <textarea id="te-delay" required rows={2} value={delayReason} onChange={(e) => setDelayReason(e.target.value)}
+                    placeholder="O motivo fica visível para quem acompanha este projeto." /></label>
               )}
-            </div>
-            {otherItems.map(renderChecklistRow)}
-          </>
-        )}
-
-        {checklist.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum item ainda.</p>}
-        <form onSubmit={addChecklistItem} className="responsive-row" style={{ marginTop: 8, alignItems: 'center' }}>
-          <input placeholder="Novo item do checklist" value={newChecklistLabel} onChange={(e) => setNewChecklistLabel(e.target.value)} style={{ flex: 1 }} />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-            <input type="checkbox" checked={newChecklistGate} onChange={(e) => setNewChecklistGate(e.target.checked)} style={{ width: 'auto' }} />
-            🔒 condicional
-          </label>
-          <button className="btn sm" type="submit">
-            Adicionar
-          </button>
-        </form>
-      </div>
-
-      <div className="panel">
-        <h4>Arquivos</h4>
-        {files.map((f, i) => {
-          const isImg = /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(f.url);
-          const href = fileHref(f);
-          return (
-            <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              {isImg && (
-                <a href={href} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-                  <img loading="lazy" decoding="async"
-                    src={href}
-                    alt={f.name}
-                    style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
-                  />
-                </a>
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <a href={href} target="_blank" rel="noreferrer" style={{ overflowWrap: 'anywhere' }}>
-                  <span style={{ color: 'var(--text-faint)', marginRight: 6 }}>📎 {i + 1}</span>
-                  {f.name}
-                </a>
+              {formError && <div className="td-err full">{formError}</div>}
+              <div className="td-f full td-delrow">
+                {confirmingDelete ? (
+                  <div className="td-del">
+                    <span>Excluir esta demanda? Não dá para desfazer.</span>
+                    <button type="button" className="td-btn ghost sm" onClick={() => setConfirmingDelete(false)}>Cancelar</button>
+                    <button type="button" className="td-btn danger sm" onClick={onDelete}>Excluir</button>
+                  </div>
+                ) : <button type="button" className="td-link danger" onClick={() => setConfirmingDelete(true)}>Excluir demanda</button>}
               </div>
-              <button className="btn ghost sm" onClick={() => deleteFile(f.id)} style={{ flexShrink: 0 }}>
-                ✕
-              </button>
-            </div>
-          );
-        })}
-        {files.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum arquivo anexado ainda.</p>}
+            </form>
+          </section>
 
-        {/* Upload real: sobe a imagem/arquivo pra validação */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,.pdf"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) uploadFile(f);
-            e.target.value = '';
-          }}
-        />
-        <div className="responsive-row" style={{ marginTop: 8, alignItems: 'center' }}>
-          <input placeholder="Nome (opcional)" value={fileName} onChange={(e) => setFileName(e.target.value)} style={{ flex: 1 }} />
-          <button type="button" className="btn sm" disabled={fileBusy} onClick={() => fileInputRef.current?.click()}>
-            {fileBusy ? 'Enviando…' : '⬆ Enviar imagem/arquivo'}
-          </button>
-        </div>
-        {fileMsg && <p style={{ fontSize: 12, color: fileMsg.includes('✓') ? 'var(--green)' : 'var(--red)', marginTop: 4 }}>{fileMsg}</p>}
+          {/* Sub-etapas da etapa atual + checklist livre (item que trava = limitador de avanço) */}
+          <section className="td-card">
+            <h3>Checklist <small>{checklist.filter((c) => c.done).length} de {checklist.length} feitos</small></h3>
+            {pendingGates.length > 0 && (
+              <div className="td-note warn">{pendingGates.length === 1 ? 'Um item que trava ainda está pendente' : `${pendingGates.length} itens que travam ainda estão pendentes`}: a demanda só avança de etapa depois deles.</div>
+            )}
+            {currentStageItems.length > 0 && (
+              <div className="td-ck-group"><h4>Sub-etapas de {currentStage?.name ?? 'etapa atual'}</h4>{currentStageItems.map(renderChecklistRow)}</div>
+            )}
+            {otherItems.length > 0 && (
+              <div className="td-ck-group">
+                <h4>Checklist livre
+                  {onSpawnDemandas && (
+                    <button type="button" className="td-link" title="Cria uma demanda individual para cada item do checklist livre"
+                      onClick={() => {
+                        const labels = otherItems.map((c) => c.label).filter(Boolean);
+                        if (labels.length === 0) return;
+                        if (confirm(`Transformar ${labels.length} item(ns) do checklist em demandas individuais?`)) onSpawnDemandas(labels);
+                      }}>Transformar em demandas ({otherItems.length})</button>
+                  )}
+                </h4>
+                {otherItems.map(renderChecklistRow)}
+              </div>
+            )}
+            {checklist.length === 0 && <p className="td-empty">Nenhum item ainda.</p>}
+            <form onSubmit={addChecklistItem} className="td-add">
+              <input placeholder="Novo item do checklist" value={newChecklistLabel} onChange={(e) => setNewChecklistLabel(e.target.value)} />
+              <label className={`td-ck-gate ${newChecklistGate ? 'on' : ''}`} title="Trava o avanço de etapa até concluir">
+                <input type="checkbox" checked={newChecklistGate} onChange={(e) => setNewChecklistGate(e.target.checked)} />{newChecklistGate ? 'Trava' : 'Opcional'}
+              </label>
+              <button className="td-btn prim sm" type="submit">Adicionar</button>
+            </form>
+          </section>
 
-        <form onSubmit={addFile} className="responsive-row" style={{ marginTop: 8 }}>
-          <input placeholder="Ou cole um link (Drive, etc.)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} style={{ flex: 2 }} />
-          <button className="btn ghost sm" type="submit">
-            Anexar link
-          </button>
-        </form>
-      </div>
-
-      <div className="panel" ref={commentsRef} style={focusComments ? { border: '1px solid var(--accent)' } : undefined}>
-        <h4>Comentários</h4>
-        {topLevelComments.map((c) => renderComment(c, 0))}
-        {comments.length === 0 && <p style={{ color: 'var(--text-faint)', fontSize: 12 }}>Nenhum comentário ainda.</p>}
-
-        <form onSubmit={addComment} style={{ marginTop: 8 }}>
-          <div className="form-field">
-            <label>Marcar pessoas</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {activeProfiles.map((p) => (
-                <span
-                  key={p.id}
-                  className="pill"
-                  onClick={() => toggleMention(p.id)}
-                  style={{
-                    cursor: 'pointer',
-                    background: mentionIds.includes(p.id) ? 'var(--accent-dim)' : 'var(--surface-2)',
-                    color: mentionIds.includes(p.id) ? 'var(--accent)' : 'var(--text-faint)',
-                    border: mentionIds.includes(p.id) ? '1px solid var(--accent)' : '1px solid var(--border)',
-                  }}
-                >
-                  @{p.name}
-                </span>
-              ))}
-            </div>
-          </div>
-          {files.length > 0 && (
-            <div className="form-field">
-              <label>Mencionar arquivo</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <section className="td-card">
+            <h3>Arquivos <small>{files.length || 'nenhum ainda'}</small></h3>
+            {files.length > 0 && (
+              <div className="td-files">
                 {files.map((f, i) => {
-                  const on = attachedFileIds.includes(f.id);
+                  const isImg = /\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?|$)/i.test(f.url);
+                  const href = fileHref(f);
                   return (
-                    <span
-                      key={f.id}
-                      className="pill"
-                      onClick={() => toggleFileRef(f.id)}
-                      title={f.name}
-                      style={{
-                        cursor: 'pointer',
-                        maxWidth: 220,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        background: on ? 'var(--violet-dim)' : 'var(--surface-2)',
-                        color: on ? 'var(--violet)' : 'var(--text-faint)',
-                        border: on ? '1px solid var(--violet)' : '1px solid var(--border)',
-                      }}
-                    >
-                      📎 {i + 1} · {f.name}
-                    </span>
+                    <div key={f.id} className="td-file">
+                      <a href={href} target="_blank" rel="noreferrer" className="td-file-art">
+                        {isImg ? <img loading="lazy" decoding="async" src={href} alt={f.name} /> : <span>{(f.url.split('?')[0].split('.').pop() || 'link').slice(0, 4).toUpperCase()}</span>}
+                        <em>{i + 1}</em>
+                      </a>
+                      <a href={href} target="_blank" rel="noreferrer" className="td-file-n">{f.name}</a>
+                      <button type="button" className="td-ck-x" aria-label="Tirar arquivo" onClick={() => deleteFile(f.id)}>×</button>
+                    </div>
                   );
                 })}
               </div>
+            )}
+            {/* Upload real: sobe a imagem/arquivo pra validação */}
+            <input ref={fileInputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
+            <div className="td-add">
+              <input placeholder="Nome do arquivo (opcional)" value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              <button type="button" className="td-btn prim sm" disabled={fileBusy} onClick={() => fileInputRef.current?.click()}>{fileBusy ? 'Enviando…' : 'Enviar arquivo'}</button>
             </div>
-          )}
-          {replyTo && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '6px 10px',
-                marginBottom: 6,
-                borderLeft: '2px solid var(--accent)',
-                background: 'var(--accent-dim)',
-                borderRadius: 6,
-                fontSize: 12,
-              }}
-            >
-              <span style={{ color: 'var(--text-dim)', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                Respondendo a <b>{replyTo.author}</b>: {replyTo.preview.replace(/@\S+/g, '').replace(/📎[^\n]*/g, '').trim().slice(0, 70) || '…'}
-              </span>
-              <button type="button" className="btn ghost sm" onClick={() => setReplyTo(null)} title="Cancelar resposta">
-                ✕
-              </button>
+            {fileMsg && <p className={`td-msgline ${fileMsg.includes('✓') ? 'ok' : 'bad'}`}>{fileMsg}</p>}
+            <form onSubmit={addFile} className="td-add">
+              <input placeholder="Ou cole um link (Drive, Acrobat…)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
+              <button className="td-btn ghost sm" type="submit">Anexar link</button>
+            </form>
+          </section>
+        </div>
+
+        <div className="td-col td-side">
+          {/* Fluxo de aprovação — múltiplos decisores */}
+          <section className="td-card">
+            <h3>Aprovação <small style={{ color: APPROVAL_COLOR[apprState] }}>{APPROVAL_STATE_LABELS[apprState]}{approvals.length > 0 ? ` · ${approvedCount} de ${approvals.length}` : ''}</small></h3>
+            {approvals.length > 0 && (
+              <div className="td-appr">
+                {approvals.map((a) => {
+                  const st = a.decision === 'aprovado' ? 'ok' : a.decision === 'correcao' ? 'bad' : '';
+                  return (
+                    <div key={a.id} className="td-appr-r">
+                      <span className="td-av sm">{iniciais(a.approver?.name)}</span>
+                      <span className="td-appr-n">{a.approver?.name ?? '—'}</span>
+                      <span className={`td-appr-s ${st}`}>{a.decision === 'aprovado' ? 'Aprovou' : a.decision === 'correcao' ? 'Pediu correção' : 'Pendente'}</span>
+                      {canDecide(a) && a.decision !== 'aprovado' && <button type="button" className="td-btn ok sm" onClick={() => decide(a, 'aprovado')}>Aprovar</button>}
+                      {canDecide(a) && a.decision !== 'correcao' && <button type="button" className="td-btn ghost sm" onClick={() => decide(a, 'correcao')}>Correção</button>}
+                      <button type="button" className="td-ck-x" title="Remover aprovador" onClick={() => removeApprover(a)}>×</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {allApproved && <button type="button" className="td-btn ok" onClick={approveAndAdvance}>Todos aprovaram: avançar etapa</button>}
+            <div className="td-pick">
+              <span>Pedir aprovação a</span>
+              <div className="td-people">
+                {activeProfiles.map((p) => {
+                  const already = approvals.some((a) => a.approver_id === p.id);
+                  const sel = selectedApprovers.includes(p.id);
+                  return (
+                    <button type="button" key={p.id} className={`td-person ${sel ? 'on' : ''}`} disabled={already} onClick={() => !already && toggleApprover(p.id)}>
+                      <span className="td-av xs">{iniciais(p.name)}</span>{p.name.split(' ')[0]}{already ? ' · já' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="td-add">
+                <input placeholder="Observação (opcional)" value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} />
+                <button type="button" className="td-btn prim sm" onClick={requestApproval} disabled={!selectedApprovers.length}>
+                  Pedir{selectedApprovers.length > 0 ? ` (${selectedApprovers.length})` : ''}
+                </button>
+              </div>
             </div>
-          )}
-          <div className="responsive-row">
-            <input
-              ref={commentInputRef}
-              placeholder={replyTo ? `Respondendo a ${replyTo.author}…` : 'Escrever um comentário… marque alguém ou um arquivo acima'}
-              value={commentBody}
-              onChange={(e) => setCommentBody(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button className="btn sm" type="submit">
-              {replyTo ? 'Responder' : 'Comentar'}
-            </button>
-          </div>
-        </form>
+          </section>
+
+          <section className={`td-card td-chat ${focusComments ? 'focus' : ''}`} ref={commentsRef}>
+            <h3>Conversa <small>{comments.length || 'nenhum comentário'}</small></h3>
+            <form onSubmit={addComment} className="td-compose">
+              {replyTo && (
+                <div className="td-replyto">
+                  <span>Respondendo a <b>{replyTo.author}</b>: {replyTo.preview.replace(/@\S+/g, '').replace(/📎[^\n]*/g, '').trim().slice(0, 70) || '…'}</span>
+                  <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancelar resposta">×</button>
+                </div>
+              )}
+              <div className="td-compose-row">
+                <input ref={commentInputRef} placeholder={replyTo ? `Responder a ${replyTo.author}…` : 'Escreva um comentário'} value={commentBody} onChange={(e) => setCommentBody(e.target.value)} />
+                <button className="td-btn prim sm" type="submit">{replyTo ? 'Responder' : 'Enviar'}</button>
+              </div>
+              <div className="td-people sm">
+                {activeProfiles.map((p) => (
+                  <button type="button" key={p.id} className={`td-person ${mentionIds.includes(p.id) ? 'on' : ''}`} onClick={() => toggleMention(p.id)}>@{p.name.split(' ')[0]}</button>
+                ))}
+                {files.map((f, i) => (
+                  <button type="button" key={f.id} title={f.name} className={`td-person file ${attachedFileIds.includes(f.id) ? 'on' : ''}`} onClick={() => toggleFileRef(f.id)}>Arquivo {i + 1}</button>
+                ))}
+              </div>
+            </form>
+            <div className="td-msgs">
+              {topLevelComments.map((c) => renderComment(c, 0))}
+              {comments.length === 0 && <p className="td-empty">Ninguém comentou ainda.</p>}
+            </div>
+          </section>
+        </div>
       </div>
-    </Modal>
+
+      {/* celular: salvar ao alcance do polegar */}
+      <div className="td-bar">
+        <button type="button" className="td-btn ghost" onClick={onClose}>Cancelar</button>
+        <button type="submit" form="te-form" className="td-btn prim">Salvar</button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
