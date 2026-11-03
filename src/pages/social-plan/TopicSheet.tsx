@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { normalizeUrl } from '../../lib/url';
 import type { Profile, SocialChannel, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
 import { BrandGuide, BriefEditor } from './Brief';
+import DrivePicker, { driveFolderFor } from './DrivePicker';
 import { KIND_LABEL, addDays, defaultPieceType, derive, todayISO, type ChannelMap, type Kind } from './shared';
 
 /* ================= Assunto + destinos =================
@@ -67,6 +68,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [add, setAdd] = useState({ channel_id: 'wa-st', link_kind: 'reaproveita' as Kind, pub_date: '', pub_time: '' });
+  const [picker, setPicker] = useState<{ key: string; multiple: boolean } | null>(null);
 
   const matriz = drafts.find((d) => d.link_kind === 'matriz');
   const upd = <K extends keyof TopicForm>(k: K, v: TopicForm[K]) => setForm((p) => ({ ...p, [k]: v }));
@@ -287,14 +289,20 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                                 <button type="button" aria-label={`Tirar lâmina ${k + 2}`} onClick={() => updD(d.key, { more: d.more.filter((_, j) => j !== k) })}>×</button>
                               </label>
                             ))}
-                            <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [...d.more, ''] })}>+ Adicionar lâmina</button>
+                            <div className="sp-drivebtns">
+                              <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [...d.more, ''] })}>+ Adicionar lâmina</button>
+                              {driveFolderFor(d.channel_id, ch?.account, d.piece_type, true) && <button type="button" className="sp-drivepick" onClick={() => setPicker({ key: d.key, multiple: true })}>Escolher lâminas do Drive</button>}
+                            </div>
                           </div>
                         </div>
                       ) : (
                         <>
                           <label className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Criativo no Drive' : 'Criativo adaptado no Drive'}</span>
                             <input id={`cr-${d.key}`} placeholder="Cole o link do arquivo ou da pasta no Drive" value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
-                          {d.piece_type !== 'Reels' && d.piece_type !== 'Stories' && <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [''] })}>+ É carrossel? Adicionar lâminas</button>}
+                          <div className="sp-drivebtns">
+                            {driveFolderFor(d.channel_id, ch?.account, d.piece_type, false) && <button type="button" className="sp-drivepick" onClick={() => setPicker({ key: d.key, multiple: false })}>Escolher do Drive</button>}
+                            {d.piece_type !== 'Reels' && d.piece_type !== 'Stories' && <button type="button" className="sp-addslide" onClick={() => updD(d.key, { more: [''] })}>+ É carrossel? Adicionar lâminas</button>}
+                          </div>
                         </>
                       )
                     ) : <p className="sp-inherit">↳ Usa o criativo da matriz.</p>}
@@ -331,6 +339,20 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
         </div>
         <p className="sp-inherit">O que reaproveita segue a aprovação da matriz. O que adapta tem a própria legenda aprovada{removed.length ? `. ${removed.length} destino(s) serão removidos ao salvar.` : '.'}</p>
 
+        {picker && (() => {
+          const d = drafts.find((x) => x.key === picker.key);
+          const alvo = d && driveFolderFor(d.channel_id, chans.get(d.channel_id)?.account, d.piece_type, picker.multiple || /carrossel/i.test(d.format));
+          if (!d || !alvo) return null;
+          return (
+            <DrivePicker marca={alvo.marca} pasta={alvo.pasta} multiple={picker.multiple}
+              hints={{ title: form.title, product: form.product, sku: form.sku, date: d.pub_date }}
+              onClose={() => setPicker(null)}
+              onPick={(urls) => {
+                updD(d.key, picker.multiple ? { creative_url: urls[0], more: urls.slice(1) } : { creative_url: urls[0] });
+                setPicker(null);
+              }} />
+          );
+        })()}
         {err && <div className="sp-err">{err}</div>}
         <div className="sp-edit-actions">
           <button className="sp-ebtn prim" onClick={save} disabled={saving}>{saving ? 'Salvando…' : topic ? 'Salvar assunto' : 'Criar assunto'}</button>
