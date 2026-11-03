@@ -270,7 +270,7 @@ export default function TabelaPrecos() {
                         const it = precos?.get(t.id);
                         return (
                           <button type="button" key={t.id} title={`${t.nome}: ver e editar`} onClick={() => setTabelaId(t.id)}>
-                            <small>{curto(t.nome)}</small><b>{it ? moeda(it.preco) : '—'}</b>
+                            <small>{curto(t.nome).replace('Sul e Sudeste', 'Sul/SE')}</small><b>{it ? moeda(it.preco) : '—'}</b>
                           </button>
                         );
                       })}

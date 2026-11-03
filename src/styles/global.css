@@ -5722,3 +5722,4 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .tc-others button{flex-direction:row;justify-content:space-between;width:100%;padding:3px 2px}
   .tc-pause{opacity:1;font-size:11px;padding:5px 9px}
 }
+.tc-search input,.tc-search input:focus{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;height:auto!important;color:#fff!important}
