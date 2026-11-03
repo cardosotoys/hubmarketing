@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { normalizeUrl } from '../../lib/url';
 import type { Profile, SocialChannel, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
 import { BrandGuide, BriefEditor } from './Brief';
-import DrivePicker, { driveFolderFor } from './DrivePicker';
+import DrivePicker, { alternativaPara, driveFolderFor } from './DrivePicker';
 import { DOW, KIND_LABEL, addDays, brShort, defaultPieceType, derive, dowIndex, driveThumb, ehSequencia, todayISO, type ChannelMap, type Kind } from './shared';
 
 /* ================= Assunto + destinos =================
@@ -385,7 +385,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
           const alvo = d && driveFolderFor(d.channel_id, chans.get(d.channel_id)?.account, d.piece_type, picker.multiple || /carrossel/i.test(d.format));
           if (!d || !alvo) return null;
           return (
-            <DrivePicker marca={alvo.marca} pasta={alvo.pasta} multiple={picker.multiple} unidade={ehSequencia(d.channel_id, d.piece_type) ? 'tela' : 'lâmina'}
+            <DrivePicker marca={alvo.marca} pasta={alvo.pasta} outra={alternativaPara(d.channel_id, form.brand)} multiple={picker.multiple} unidade={ehSequencia(d.channel_id, d.piece_type) ? 'tela' : 'lâmina'}
               hints={{ title: form.title, product: form.product, sku: form.sku, date: d.pub_date }}
               onClose={() => setPicker(null)}
               onPick={(urls) => {

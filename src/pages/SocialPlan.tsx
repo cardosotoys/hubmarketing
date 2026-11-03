@@ -7,7 +7,7 @@ import { fetchReactions, toggleReaction, type ReactionMap } from '../lib/reactio
 import type { Profile, SocialChannel, SocialPlanItem, SocialPlanComment, SocialPlanDeadline, SocialStrategyNote, SocialTopic } from '../types/database';
 import { Linkify } from './social-plan/Brief';
 import { CreativeMedia, driveTarget, driveThumbOf } from './social-plan/DrivePlayer';
-import DrivePicker, { driveFolderFor } from './social-plan/DrivePicker';
+import DrivePicker, { driveFolderFor, alternativaPara } from './social-plan/DrivePicker';
 import { KIND_LABEL, destLabel, effective, ehSequencia, previewItems, hhmm, inQueue1, inQueue2, ownGate1, ownGate2, pieceState, slug, telasDaSequencia } from './social-plan/shared';
 import { decide, gateOwner, setStage } from './social-plan/actions';
 import ApprovalView from './social-plan/ApprovalView';
@@ -871,7 +871,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               onSaved={(m) => { showFlash(m); onChanged(); }} onClose={() => setPicker(null)} />
           )}
           {picker === 'propria' && alvoDrive && (
-            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq} unidade={seq ? 'tela' : 'lâmina'}
+            <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel || seq} outra={item.channel_id ? alternativaPara(item.channel_id, item.brand) : undefined} unidade={seq ? 'tela' : 'lâmina'}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
               onClose={() => setPicker(null)} onPick={salvarArte} />
           )}

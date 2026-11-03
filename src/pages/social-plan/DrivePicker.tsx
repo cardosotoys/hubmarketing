@@ -35,6 +35,14 @@ export function driveFolderFor(channelId: string, account: string | undefined, p
   return { marca, pasta: 'Instagram - Post' };
 }
 
+/** Canais da Cardoso cuja pasta pode não existir ainda (WhatsApp, Google, Pinterest, LinkedIn): procura na pasta
+ *  da marca do assunto, onde a arte do feed/Story costuma estar. */
+export function alternativaPara(channelId: string, brand: string): { marca: Marca; pasta: string } | undefined {
+  if (!/^(wa-|cd-gmn|cd-pin|cd-li)/.test(channelId)) return undefined;
+  const marca = (brand === 'Playmi' || brand === 'Tópi' || brand === 'Cardoso') ? brand : 'Cardoso';
+  return { marca, pasta: channelId === 'wa-st' ? 'Instagram - Story' : 'Instagram - Post' };
+}
+
 export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose }: {
   marca: Marca;
   pasta: string;
@@ -43,8 +51,11 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   hints: { title?: string; product?: string; sku?: string; date?: string };
   onPick: (urls: string[]) => void;
   onClose: () => void;
+  outra?: { marca: Marca; pasta: string };   // se a pasta pedida não existir no Drive, abre esta (ex.: Status da Playmi → Story da Playmi)
 }) {
   const un = unidade;
+  const [m, setM] = useState<Marca>(marca);          // dá para procurar o criativo em outra marca
+  const [aviso, setAviso] = useState('');
   const [nav, setNav] = useState<{ pasta?: string; folderId?: string }>({ pasta });
   const [data, setData] = useState<Resposta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,15 +66,26 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    supabase.functions.invoke('drive-pasta', { body: { marca, ...nav } }).then(({ data: d, error }) => {
+    supabase.functions.invoke('drive-pasta', { body: { marca: m, ...nav } }).then(async ({ data: d, error }) => {
       if (!alive) return;
-      const r = (d ?? {}) as Resposta;
+      let r = (d ?? {}) as Resposta;
+      // erro da função: o motivo e a lista de pastas vêm no corpo da resposta
+      const ctx = (error as { context?: Response } | null)?.context;
+      if (error && ctx && typeof ctx.json === 'function') r = (await ctx.json().catch(() => ({}))) as Resposta;
+      if (!alive) return;
       if (error && !r.error) r.error = /not found|404/i.test(error.message) ? 'A função drive-pasta ainda não foi publicada no Supabase.' : error.message;
+      // a pasta do canal ainda não existe no Drive: abre a alternativa (uma vez)
+      if (r.error && nav.pasta && !nav.folderId && outra && !(outra.marca === m && outra.pasta === nav.pasta)) {
+        setAviso(`Ainda não existe a pasta "${nav.pasta}" em ${m}/Redes Sociais. Mostrando ${outra.marca} › ${outra.pasta}.`);
+        setM(outra.marca); setNav({ pasta: outra.pasta });
+        return;
+      }
       setData(r);
       setLoading(false);
     });
     return () => { alive = false; };
-  }, [marca, nav]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m, nav]);
 
   // o que já está ligado a alguma peça
   useEffect(() => {
@@ -115,7 +137,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   }, [data, q, chaves]);
 
   const usarPasta = async (folderId: string) => {
-    const { data: d } = await supabase.functions.invoke('drive-pasta', { body: { marca, folderId } });
+    const { data: d } = await supabase.functions.invoke('drive-pasta', { body: { marca: m, folderId } });
     const imgs = ((d as Resposta)?.itens ?? []).filter((i) => i.tipo !== 'pasta').sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
     if (imgs.length) onPick(imgs.map((i) => fileUrl(i.id)));
   };
@@ -131,11 +153,18 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
       <div className="dpk-box">
         <div className="dpk-head">
           <div>
-            <small>{marca} · Redes Sociais</small>
+            <small>{m} · Redes Sociais</small>
             <b>{caminho.join(' / ') || 'Escolha a pasta'}</b>
           </div>
           <button type="button" className="dpk-x" onClick={onClose} aria-label="Fechar">×</button>
         </div>
+        <div className="dpk-marcas" role="tablist" aria-label="Marca">
+          {(['Cardoso', 'Playmi', 'Tópi'] as Marca[]).map((x) => (
+            <button key={x} type="button" role="tab" aria-selected={x === m}
+              onClick={() => { if (x === m) return; setAviso(''); setM(x); setNav({ pasta: x === marca ? pasta : undefined }); }}>{x}</button>
+          ))}
+        </div>
+        {aviso && <p className="dpk-aviso">{aviso}</p>}
         {!!data?.pastas?.length && (
           <div className="dpk-chips" role="tablist">
             {data.pastas.map((p) => (
@@ -152,7 +181,8 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
 
         <div className="dpk-body">
           {loading ? <p className="dpk-msg">Lendo a pasta no Drive…</p>
-            : data?.error ? <p className="dpk-msg err">{data.error}</p>
+            : data?.error ? <p className="dpk-msg err">{data.error}{data.pastas?.length ? ' Escolha outra pasta ou outra marca acima.' : ''}</p>
+            : !data?.pasta ? <p className="dpk-msg">Escolha uma pasta acima.</p>
             : !itens.length ? <p className="dpk-msg">{q ? 'Nada com esse nome nesta pasta.' : 'Esta pasta ainda está vazia. Suba o material no Drive e abra de novo.'}</p>
             : (
               <ul className="dpk-grid">
