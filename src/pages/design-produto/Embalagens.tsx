@@ -623,12 +623,12 @@ export default function Embalagens({
                 const t = tasks.find((x) => x.id === f.task_id);
                 const pr = t?.product_id ? productsById[t.product_id] : null;
                 const img = /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(f.url);
-                const ext = img ? '' : ((f.url.split('?')[0].split('.').pop() || '').length <= 4 ? f.url.split('?')[0].split('.').pop()!.toUpperCase() : 'LINK');
+                const ext = img ? '' : /acrobat|adobe/i.test(f.url) ? 'Acrobat' : /drive\.google|docs\.google/i.test(f.url) ? 'Drive' : /\.pdf(\?|$)/i.test(f.url) ? 'PDF' : /figma/i.test(f.url) ? 'Figma' : 'Link';
                 return (
                   <a key={f.id} href={f.url} target="_blank" rel="noreferrer" className="emb-file">
                     <span className="emb-file-art">
                       {img ? <img src={f.url} alt="" loading="lazy" /> : pr?.image_url ? <img className="prod" src={thumb(pr.image_url)} alt="" loading="lazy" /> : null}
-                      {!img && <em>{ext || 'LINK'}</em>}
+                      {!img && <em>{ext}</em>}
                     </span>
                     <b>{f.name}</b>
                     <small>{pr ? <code>{pr.code}</code> : null}{limparTitulo(f.task?.title ?? '', pr?.code)}</small>
@@ -660,7 +660,7 @@ export default function Embalagens({
                       return (
                         <button type="button" key={a.id} className={`emb-ev ${tom}`} onClick={() => t && setEditingTask(t)} disabled={!t}>
                           <span className="emb-ev-av">{nome.split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase()}</span>
-                          <span className="emb-ev-t"><b>{nome.split(' ')[0]}</b> {a.action_text.charAt(0).toLowerCase() + a.action_text.slice(1)}
+                          <span className="emb-ev-t"><span><b>{nome.split(' ')[0]}</b> {a.action_text.charAt(0).toLowerCase() + a.action_text.slice(1)}</span>
                             {(t || a.detail) && <em>{pr ? <code>{pr.code}</code> : null}{limparTitulo(t?.title ?? a.detail ?? '', pr?.code)}</em>}</span>
                           <time>{new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time>
                         </button>
@@ -908,7 +908,8 @@ function PackagingCalendar({
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7) cells.push(null);
-  const monthName = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const mesNome = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const monthName = mesNome.charAt(0).toUpperCase() + mesNome.slice(1);
   const LEG: [Ev['kind'], string][] = [['meta', 'Meta'], ['prazo', 'Prazo final'], ['late', 'Atrasada'], ['ok', 'Entregue no prazo'], ['entregue', 'Entregue depois']];
 
   return (
