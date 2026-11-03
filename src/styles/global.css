@@ -5004,3 +5004,48 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .sq-switch input:checked+i{background:#2FA36B}
 .sp .sq-switch input:checked+i::after{transform:translateX(12px)}
 .sp .sq-switch input:focus-visible+i{outline:2px solid var(--navy);outline-offset:2px}
+
+/* ===================== Celular: Redes Sociais revisto para o polegar ===================== */
+@media (max-width:760px){
+  /* Central: números em 2×2 e cada peça compacta (situação embaixo do título, ações numa linha só) */
+  .sp .sp-central-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sp .sp-central-kpis .sp-kpi{width:auto;min-width:0;margin:0}
+  .sp .sp-central-kpis .sp-kpi b{font-size:24px}
+  .sp .sp-central-kpis .sp-kpi span{font-size:11.5px;line-height:1.3}
+  .sp .sp-crow:has(.sp-cwhen){display:grid;grid-template-columns:46px minmax(0,1fr);gap:4px 10px;align-items:start;padding:12px 0}
+  .sp .sp-crow:has(.sp-cwhen) .sp-cwhen{grid-row:1/3}
+  .sp .sp-crow:has(.sp-cwhen) .sp-cmain{min-width:0}
+  .sp .sp-crow:has(.sp-cwhen) .sp-state{grid-column:2;justify-self:start}
+  .sp .sp-crow:has(.sp-cwhen) .sp-cacts{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:6px;margin-top:4px}
+  .sp .sp-cacts .sp-ebtn{padding:9px 6px;font-size:12px;text-align:center;justify-content:center;white-space:nowrap}
+
+  /* Semana: lista de dias em pé; dia com post em 2 colunas, dia livre numa linha só */
+  .sp .cv-week{display:flex;flex-direction:column;overflow:visible;gap:10px;scroll-snap-type:none}
+  .sp .cv-day{flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-height:0;padding:10px}
+  .sp .cv-day>header,.sp .cv-day>.cv-apoios,.sp .cv-day>.cv-free{grid-column:1/-1}
+  .sp .cv-day.free{display:flex;align-items:center;gap:12px;padding:8px 12px}
+  .sp .cv-day.free>header{flex:none;margin:0}
+  .sp .cv-day.free .cv-free{margin:0;font-size:12.5px;color:var(--muted)}
+  .sp .cv-post .cv-info{padding:8px 10px 10px}
+
+  /* Mês: o selo "hoje" vira só o contorno; a agenda do dia usa a mesma linha com capa */
+  .sp .cm-hoje{display:none}
+  .sp .sp-magenda .cm-agenda{display:flex}
+  .sp .cm-agenda .cm-item{padding:6px 10px 6px 6px}
+  .sp .cm-agenda .cm-thumb{width:40px}
+  .sp .cm-agenda .cm-txt b{font-size:12.5px}.sp .cm-agenda .cm-txt span{font-size:13.5px;white-space:normal}
+
+  /* Peça aberta: arte → aprovação/agendamento → briefing (aprovar sem rolar o briefing inteiro) */
+  .sp .pv-body{display:flex!important;flex-direction:column}
+  .sp .pv-stage{order:1}
+  .sp .pv-side{order:2;border-top:0}
+  .sp .pv-doc{order:3;border-top:1px solid var(--line-2)}
+
+  /* Sequência do Story/Status: fila que desliza para o lado */
+  .sp .sq{margin-top:6px;padding:12px 0 12px 12px;border-radius:16px}
+  .sp .sq-h{padding-right:12px}
+  .sp .sq-row{display:flex;overflow-x:auto;gap:10px;padding:2px 12px 6px 2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .sp .sq-card{flex:0 0 96px;scroll-snap-align:start}
+  .sp .sq-acts{grid-template-columns:28px 1fr 28px}
+  .sp .sq-acts button{height:32px}
+}

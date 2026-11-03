@@ -823,7 +823,7 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
               </>
           </div>
           ) : null}
-          {vertical && slidesArte.length > 1 && (
+          {vertical && !seq && slidesArte.length > 1 && (
             <div className="pv-strip v" role="tablist" aria-label="Telas do Story">
               {slidesArte.map((u, k) => {
                 const th = driveThumbOf(u, 300);

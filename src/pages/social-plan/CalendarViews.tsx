@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlanItem, SocialTopic } from '../../types/database';
 import {
-  KIND_LABEL, addDays, addMonths, brShort, dowIndex, effective, hhmm, mondayOf, monthName, pieceState, slug, posDe, thumbDe, todayISO, ymOf, parseYmd,
+  addDays, addMonths, brShort, dowIndex, effective, hhmm, mondayOf, monthName, pieceState, slug, posDe, thumbDe, todayISO, ymOf, parseYmd,
   type ChannelMap,
 } from './shared';
 
@@ -72,7 +72,6 @@ function ApoioRow({ x, chans, onOpen, hl, setHl, byTopic }: {
   );
 }
 
-const stMark = (s: SocialPlanItem['status']) => (s === 'aprovada' ? 'ok' : s === 'ajuste' ? 'aj' : '');
 const byTime = (a: SocialPlanItem, b: SocialPlanItem) =>
   (a.pub_time ?? '99').localeCompare(b.pub_time ?? '99') || a.brand.localeCompare(b.brand);
 const shortChan = (x: SocialPlanItem, chans: ChannelMap) => {
@@ -81,29 +80,6 @@ const shortChan = (x: SocialPlanItem, chans: ChannelMap) => {
   const nome = ch.name.replace('WhatsApp · ', 'WA ').replace('YouTube · playlist ', 'YT ').replace(' · post nativo', '');
   return `${nome}${ch.formats.length && x.piece_type ? ' ' + x.piece_type : ''}${x.mirror_facebook ? ' + FB' : ''}`;
 };
-
-/* Pílula de uma peça no calendário. Passar o mouse acende os outros destinos do mesmo assunto. */
-function Pill({ x, chans, onOpen, hasComment, hl, setHl, compact }: {
-  x: SocialPlanItem; chans: ChannelMap; onOpen: (id: string) => void; hasComment: Set<string>;
-  hl: string | null; setHl: (id: string | null) => void; compact?: boolean;
-}) {
-  const s = stMark(x.status);
-  const dim = hl && x.topic_id !== hl ? 'dim' : hl && x.topic_id === hl ? 'lit' : '';
-  return (
-    <button type="button"
-      className={`sp-pill b-${slug(x.brand)} k-${x.link_kind} ${s ? 'st-' + s : ''} ${dim}`}
-      onClick={() => onOpen(x.id)}
-      onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}
-      onFocus={() => setHl(x.topic_id)} onBlur={() => setHl(null)}>
-      <div className="row">
-        <span className="sp-time">{hhmm(x.pub_time) || '—'}</span>
-        <b>{x.product || x.pauta}</b>
-        {s ? <span className={`sp-stt ${s}`} /> : null}
-      </div>
-      <i>{shortChan(x, chans)}{compact ? '' : ` · ${KIND_LABEL[x.link_kind]}`}{hasComment.has(x.id) ? ' · 💬' : ''}</i>
-    </button>
-  );
-}
 
 const TETO: Record<string, number> = { Playmi: 3, 'Tópi': 3, Cardoso: 2 };   // posts no feed do Instagram por semana
 
@@ -127,6 +103,25 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
   const diaSel = dia && dia.startsWith(ym) ? dia : (today.startsWith(ym) ? today : doMes.map((x) => x.pub_date).sort()[0] ?? first);
   const doDia = rows.filter((x) => x.pub_date === diaSel).sort(byTime);
   const principais = doMes.filter((x) => !isApoio(x, chans)).length;
+  // uma peça do mês: capa 3:4, hora, título e a cor da situação (na grade e na agenda do celular)
+  const item = (x: SocialPlanItem) => {
+                        const { thumb, pos, matriz } = arteDe(x, byTopic);
+                        const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
+                        const st = pieceState(x, matriz, x.topic_id ? topicById?.get(x.topic_id) : null, !!ch?.future);
+                        return (
+                          <button type="button" key={x.id} className={`cm-item b-${slug(x.brand)} t-${SIT_TONE[st.tone] || 'none'} ${hl && x.topic_id !== hl ? 'dim' : ''}`}
+                            title={`${x.product || x.pauta} · ${shortChan(x, chans)} · ${st.label}`}
+                            onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
+                            <span className={`cm-thumb ${thumb ? '' : 'noart'}`}>
+                              {thumb ? <img src={thumb} alt="" style={{ objectPosition: pos }} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <i>{x.brand[0]}</i>}
+                            </span>
+                            <span className="cm-txt">
+                              <b>{hhmm(x.pub_time) || '—'}{hasComment.has(x.id) ? ' 💬' : ''}</b>
+                              <span>{x.product || x.pauta}</span>
+                            </span>
+                          </button>
+                        );
+  };
   const feedIG = (x: SocialPlanItem) => {
     const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
     return ch?.network === 'Instagram' && !/Stor/i.test(x.piece_type) && !isApoio(x, chans) ? ch.account : null;
@@ -168,24 +163,7 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
                   {!out && its.length > 0 && <span className="sp-mdots" aria-hidden>{its.slice(0, 4).map((x) => <i key={x.id} className={`b-${slug(x.brand)}`} />)}</span>}
                   {!out && (
                     <div className="cm-list">
-                      {main.map((x) => {
-                        const { thumb, pos, matriz } = arteDe(x, byTopic);
-                        const ch = x.channel_id ? chans.get(x.channel_id) : undefined;
-                        const st = pieceState(x, matriz, x.topic_id ? topicById?.get(x.topic_id) : null, !!ch?.future);
-                        return (
-                          <button type="button" key={x.id} className={`cm-item b-${slug(x.brand)} t-${SIT_TONE[st.tone] || 'none'} ${hl && x.topic_id !== hl ? 'dim' : ''}`}
-                            title={`${x.product || x.pauta} · ${shortChan(x, chans)} · ${st.label}`}
-                            onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
-                            <span className={`cm-thumb ${thumb ? '' : 'noart'}`}>
-                              {thumb ? <img src={thumb} alt="" style={{ objectPosition: pos }} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <i>{x.brand[0]}</i>}
-                            </span>
-                            <span className="cm-txt">
-                              <b>{hhmm(x.pub_time) || '—'}{hasComment.has(x.id) ? ' 💬' : ''}</b>
-                              <span>{x.product || x.pauta}</span>
-                            </span>
-                          </button>
-                        );
-                      })}
+                      {main.map((x) => item(x))}
                       {apoio.length > 0 && (
                         <button type="button" className="cm-apoio" aria-expanded={aberto}
                           onClick={(e) => { e.stopPropagation(); setAbertos((s) => { const n = new Set(s); if (n.has(iso)) n.delete(iso); else n.add(iso); return n; }); }}>
@@ -208,7 +186,7 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
       </div>
       <div className="sp-magenda">
         <h3>{['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'][dowIndex(diaSel)]}, {brShort(diaSel)}</h3>
-        {doDia.length ? doDia.map((x) => <Pill key={x.id} x={x} chans={chans} onOpen={onOpen} hasComment={hasComment} hl={null} setHl={() => {}} />)
+        {doDia.length ? <div className="cm-list cm-agenda">{doDia.map((x) => item(x))}</div>
           : <span className="sp-wempty">Nada sai neste dia.</span>}
       </div>
     </div>
