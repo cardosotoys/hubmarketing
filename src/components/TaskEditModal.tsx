@@ -612,9 +612,9 @@ export default function TaskEditModal({
                   {activeProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select></label>
               <label className="td-f"><span>Orçamento</span><input id="te-budget" type="number" placeholder="R$" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
-              <label className="td-f"><span>Início</span><input id="te-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
-              <label className="td-f"><span>Meta</span><input id="te-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></label>
-              <label className="td-f"><span>Prazo final</span><input id="te-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
+              <label className="td-f d"><span>Início</span><input id="te-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+              <label className="td-f d"><span>Meta</span><input id="te-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></label>
+              <label className="td-f d"><span>Prazo final</span><input id="te-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
               {products && products.length > 0 && (
                 <div className="td-f full"><span>Produto (embalagem)</span><ProductCombobox products={products} value={productId} onChange={setProductId} /></div>
               )}

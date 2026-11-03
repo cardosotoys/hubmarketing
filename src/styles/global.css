@@ -5525,3 +5525,7 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .td-bar .td-btn{flex:1;padding:14px}
   .td-bar .td-btn.prim{flex:2}
 }
+.td-form{grid-template-columns:repeat(6,minmax(0,1fr))}
+.td-f{grid-column:span 3}
+.td-f.d{grid-column:span 2}
+@media (max-width:760px){.td-form{grid-template-columns:repeat(2,minmax(0,1fr))}.td-f,.td-f.d{grid-column:span 1}.td-f.d:last-of-type{grid-column:1/-1}}
