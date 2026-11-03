@@ -31,6 +31,13 @@ export default function Produtos() {
   const [ageFilter, setAgeFilter] = useState('all');
   const [sizeFilter, setSizeFilter] = useState('all');
   const [licensedFilter, setLicensedFilter] = useState<'all' | 'licensed' | 'own'>('all');
+  const [reviewOnly, setReviewOnly] = useState(false);
+  // grade (fotos) ou lista (tabela); lembra a escolha neste aparelho
+  const [view, setView] = useState<'grade' | 'lista'>(() => {
+    try { return localStorage.getItem('produtos:view') === 'lista' ? 'lista' : 'grade'; } catch { return 'grade'; }
+  });
+  const trocarView = (v: 'grade' | 'lista') => { setView(v); try { localStorage.setItem('produtos:view', v); } catch { /* sem armazenamento */ } };
+  const [porMarca, setPorMarca] = useState<Record<string, number>>({});
   const [sort, setSort] = useState<'code' | 'name' | 'brand' | 'line' | 'category' | 'age'>('code');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -58,7 +65,7 @@ export default function Produtos() {
     const [brandsRes, stagesRes, optRes, reviewRes] = await Promise.all([
       supabase.from('brands').select('*'),
       supabase.from('stages').select('*'),
-      supabase.from('products').select('line, toy_category, age_range, dimensions, product_length_mm, product_width_mm, product_height_mm'),
+      supabase.from('products').select('brand_id, line, toy_category, age_range, dimensions, product_length_mm, product_width_mm, product_height_mm'),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('needs_review', true),
     ]);
     setBrands((brandsRes.data as Brand[]) ?? []);
@@ -69,6 +76,9 @@ export default function Produtos() {
     setToyCategories(uniq(rows.map((r) => r.toy_category)));
     setAgeRanges(uniq(rows.map((r) => r.age_range)));
     setSizes(uniq(rows.map(sizeLabel)));
+    const cont: Record<string, number> = {};
+    rows.forEach((r) => { if (r.brand_id) cont[r.brand_id] = (cont[r.brand_id] ?? 0) + 1; });
+    setPorMarca(cont);
     setReviewCount(reviewRes.count ?? 0);
   }, []);
 
@@ -88,6 +98,7 @@ export default function Produtos() {
     if (sizeFilter !== 'all') q = q.eq('dimensions', sizeFilter);
     if (licensedFilter === 'licensed') q = q.eq('licensed', true);
     if (licensedFilter === 'own') q = q.eq('licensed', false);
+    if (reviewOnly) q = q.eq('needs_review', true);
     const col = sort === 'name' ? 'name' : sort === 'brand' ? 'brand_id' : sort === 'line' ? 'line' : sort === 'category' ? 'toy_category' : sort === 'age' ? 'age_range' : 'code';
     q = q.order(col, { ascending: true });
     const from = page * PAGE_SIZE;
@@ -109,7 +120,7 @@ export default function Produtos() {
       setPackagingTasks([]);
     }
     setLoading(false);
-  }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, sort, page, brands]);
+  }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, reviewOnly, sort, page, brands]);
 
   const stagesById = useMemo(() => Object.fromEntries(stages.map((s) => [s.id, s])), [stages]);
 
@@ -151,7 +162,7 @@ export default function Produtos() {
   // volta pra primeira página quando qualquer filtro/ordenção muda
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, sort]);
+  }, [debouncedSearch, brandFilter, lineFilter, categoryFilter, ageFilter, sizeFilter, licensedFilter, reviewOnly, sort]);
 
   const sorted = products; // já vem paginado/filtrado/ordenado do servidor
   // Edita produtos: todos, menos assistentes — a não ser que o assistente tenha sido
@@ -164,93 +175,86 @@ export default function Produtos() {
     profile?.role === 'diretoria' || profile?.role === 'administrador' || profile?.can_edit_products === true;
   const thumb = useThumbs();
 
+  const filtrosAtivos = [lineFilter, categoryFilter, ageFilter, sizeFilter].filter((f) => f !== 'all').length + (licensedFilter !== 'all' ? 1 : 0) + (reviewOnly ? 1 : 0);
+  const limpar = () => { setLineFilter('all'); setCategoryFilter('all'); setAgeFilter('all'); setSizeFilter('all'); setLicensedFilter('all'); setReviewOnly(false); setSearch(''); };
+  const totalGeral = Object.values(porMarca).reduce((a, b) => a + b, 0);
+  const abrir = (p: ProductWithBrand) => { if (canEdit) setEditing(p); };
+
   return (
-    <div className="page">
-      <h1 className="page-title">Banco de Produtos</h1>
-      <div className="page-sub">Catálogo central — Cardoso, Playmi, Tópi e linhas licenciadas. Clique numa linha para editar.</div>
+    <div className="page pd-page">
+      {/* cabeçalho: o catálogo em números e a ação principal */}
+      <header className="pd-head">
+        <div className="pd-head-t">
+          <h1>Banco de Produtos</h1>
+          <p>Catálogo central de Cardoso, Playmi e Tópi, incluindo as linhas licenciadas.</p>
+        </div>
+        <div className="pd-head-n">
+          <div className="pd-stat"><b>{totalGeral || total}</b><span>produtos</span></div>
+          {brands.map((b) => porMarca[b.id] ? (
+            <div key={b.id} className="pd-stat"><b>{porMarca[b.id]}</b><span><i style={{ background: b.color }} />{b.label}</span></div>
+          ) : null)}
+          {reviewCount > 0 && (
+            <button type="button" className={`pd-stat pd-stat-warn ${reviewOnly ? 'on' : ''}`} onClick={() => setReviewOnly((v) => !v)}
+              title="Vieram da extração automática do catálogo PDF: faixa etária, dimensões ou linha podem estar incompletas">
+              <b>{reviewCount}</b><span>para revisar</span>
+            </button>
+          )}
+        </div>
+        {canEdit && <button type="button" className="pd-new" onClick={() => setShowNew(true)}>+ Novo produto</button>}
+      </header>
+
       {canEdit && <ThumbsTool />}
 
-      {reviewCount > 0 && (
-        <div className="banner soon">
-          <span className="ic">◐</span>
-          <span>
-            {reviewCount} produtos vieram da extração automática do catálogo PDF e estão marcados{' '}
-            <b>"revisar"</b> — faixa etária, dimensões ou linha podem estar incompletas. Confira e ajuste
-            quando puder.
-          </span>
-        </div>
-      )}
-
-      <div className="brand-tabs">
-        <div className={`brand-tab${brandFilter === 'all' ? ' active' : ''}`} onClick={() => setBrandFilter('all')}>
-          Todas as marcas
-        </div>
-        {brands.map((b) => (
-          <div
-            key={b.id}
-            className={`brand-tab${brandFilter === b.key ? ' active' : ''}`}
-            onClick={() => setBrandFilter(b.key)}
-          >
-            <span className="sw" style={{ background: b.color }} />
-            {b.label}
+      {/* busca, marca e filtros */}
+      <section className="pd-ctrl">
+        <div className="pd-ctrl-top">
+          <label className="pd-search">
+            <span aria-hidden>⌕</span>
+            <input placeholder="Buscar por nome ou código" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {search && <button type="button" aria-label="Limpar busca" onClick={() => setSearch('')}>×</button>}
+          </label>
+          <div className="pd-brands" role="tablist" aria-label="Marca">
+            <button type="button" role="tab" aria-selected={brandFilter === 'all'} onClick={() => setBrandFilter('all')}>Todas</button>
+            {brands.map((b) => (
+              <button type="button" role="tab" key={b.id} aria-selected={brandFilter === b.key} onClick={() => setBrandFilter(b.key)}>
+                <i style={{ background: b.color }} />{b.label}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+          <div className="pd-view" role="tablist" aria-label="Visualização">
+            <button type="button" role="tab" aria-selected={view === 'grade'} onClick={() => trocarView('grade')} title="Grade de fotos">▦</button>
+            <button type="button" role="tab" aria-selected={view === 'lista'} onClick={() => trocarView('lista')} title="Lista">☰</button>
+          </div>
+        </div>
+        <div className="pd-filters">
+          <PdSelect value={lineFilter} onChange={setLineFilter} all="Linha" options={lines} />
+          <PdSelect value={categoryFilter} onChange={setCategoryFilter} all="Categoria" options={toyCategories} />
+          <PdSelect value={ageFilter} onChange={setAgeFilter} all="Idade" options={ageRanges} />
+          <PdSelect value={sizeFilter} onChange={setSizeFilter} all="Tamanho" options={sizes} />
+          <label className={`pd-sel ${licensedFilter !== 'all' ? 'on' : ''}`}>
+            <select value={licensedFilter} onChange={(e) => setLicensedFilter(e.target.value as typeof licensedFilter)}>
+              <option value="all">Licença</option>
+              <option value="licensed">Só licenciados</option>
+              <option value="own">Só marca própria</option>
+            </select>
+          </label>
+          {filtrosAtivos > 0 && <button type="button" className="pd-clear" onClick={limpar}>Limpar {filtrosAtivos > 1 ? `${filtrosAtivos} filtros` : 'filtro'}</button>}
+          <label className="pd-sel pd-sort">
+            <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+              <option value="code">Ordenar por código</option>
+              <option value="name">Ordenar por nome</option>
+              <option value="brand">Ordenar por marca</option>
+              <option value="line">Ordenar por linha</option>
+              <option value="category">Ordenar por categoria</option>
+              <option value="age">Ordenar por idade</option>
+            </select>
+          </label>
+        </div>
+      </section>
 
-      <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
-        <select className="chip-select" value={lineFilter} onChange={(e) => setLineFilter(e.target.value)}>
-          <option value="all">Todas as linhas</option>
-          {lines.map((l) => (
-            <option key={l} value={l}>{l}</option>
-          ))}
-        </select>
-        <select className="chip-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="all">Todas as categorias</option>
-          {toyCategories.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <select className="chip-select" value={ageFilter} onChange={(e) => setAgeFilter(e.target.value)}>
-          <option value="all">Todas as idades</option>
-          {ageRanges.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
-        <select className="chip-select" value={sizeFilter} onChange={(e) => setSizeFilter(e.target.value)}>
-          <option value="all">Todos os tamanhos</option>
-          {sizes.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select className="chip-select" value={licensedFilter} onChange={(e) => setLicensedFilter(e.target.value as typeof licensedFilter)}>
-          <option value="all">Licenciados e próprios</option>
-          <option value="licensed">Só licenciados</option>
-          <option value="own">Só marca própria</option>
-        </select>
-        <select className="chip-select" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-          <option value="code">Ordenar: código</option>
-          <option value="name">Ordenar: nome (A-Z)</option>
-          <option value="brand">Ordenar: marca</option>
-          <option value="line">Ordenar: linha</option>
-          <option value="category">Ordenar: categoria</option>
-          <option value="age">Ordenar: faixa etária</option>
-        </select>
-        <input
-          className="chip-select"
-          placeholder="Buscar por nome ou código…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ minWidth: 220, flex: 1 }}
-        />
-      </div>
-
-      <div className="section-head">
-        <h2>{total} produtos</h2>
-        {canEdit && (
-          <button className="btn" onClick={() => setShowNew(true)}>
-            + Novo produto
-          </button>
-        )}
+      <div className="pd-count">
+        <b>{total}</b> {total === 1 ? 'produto' : 'produtos'}{filtrosAtivos || search || brandFilter !== 'all' ? ' com os filtros' : ''}
+        {total > PAGE_SIZE && <span> · mostrando {page * PAGE_SIZE + 1}–{Math.min(total, (page + 1) * PAGE_SIZE)}</span>}
       </div>
 
       {loading ? (
@@ -259,127 +263,109 @@ export default function Produtos() {
         <EmptyState
           icon="📦"
           title="Nenhum produto encontrado"
-          hint="Nenhum produto bate com a busca/filtros atuais. Ajuste ou limpe os filtros."
+          hint="Nenhum produto bate com a busca ou os filtros. Ajuste ou limpe os filtros."
           action={canEdit ? { label: '+ Novo produto', onClick: () => setShowNew(true) } : undefined}
         />
+      ) : view === 'grade' ? (
+        <div className="pd-grid">
+          {sorted.map((p) => {
+            const pkg = packagingByProduct.get(p.id);
+            const pkgStage = pkg && stagesById[pkg.stage_id];
+            const foto = p.image_url ? thumb(p.image_url) : '';
+            const emb = p.packaging_image_url ? thumb(p.packaging_image_url) : '';
+            return (
+              <article key={p.id} className={`pd-card ${canEdit ? 'click' : ''}`} onClick={() => abrir(p)}
+                style={{ ['--bc' as string]: p.brand?.color ?? '#0a2530' }}>
+                <div className="pd-photo">
+                  {foto ? <img className="a" src={foto} alt="" loading="lazy" decoding="async" /> : <span className="pd-nofoto">sem foto</span>}
+                  {emb && <img className="b" src={emb} alt="" loading="lazy" decoding="async" />}
+                  <span className="pd-code">{p.code}</span>
+                  <span className="pd-flags">
+                    {p.needs_review && <i className="rev" title="Revisar: veio da extração automática">revisar</i>}
+                    {p.licensed && <i className="lic" title="Linha licenciada">licenciado</i>}
+                    {p.inmetro_number && <i className="inm" title={`INMETRO ${p.inmetro_number}`}>INMETRO</i>}
+                  </span>
+                </div>
+                <div className="pd-body">
+                  <span className="pd-brand"><i />{p.brand?.label}{p.line ? ` · ${p.line}` : ''}</span>
+                  <b className="pd-name">{p.name}</b>
+                  <span className="pd-meta">
+                    {p.age_range && <span>{p.age_range}</span>}
+                    {p.toy_category && <span>{p.toy_category}</span>}
+                  </span>
+                  {pkg && (
+                    <Link to="/design-produto/embalagens" className={`pd-pkg ${pkgStage?.is_final ? 'ok' : ''}`} onClick={(e) => e.stopPropagation()}
+                      title={`Embalagem · Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}>
+                      Embalagem · {pkgStage?.name ?? '—'}
+                    </Link>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
       ) : (
-        <table className="simple">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Produto</th>
-              <th>Linha</th>
-              <th>Categoria</th>
-              <th>Marca</th>
-              <th>Faixa etária</th>
-              <th>Tamanho</th>
-              <th>Embalagem</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p) => {
-              const pkg = packagingByProduct.get(p.id);
-              const pkgStage = pkg && stagesById[pkg.stage_id];
-              return (
-                <tr
-                  key={p.id}
-                  onClick={() => canEdit && setEditing(p)}
-                  onMouseEnter={(e) =>
-                    (p.image_url || p.packaging_image_url) &&
-                    setPreview({ url: thumb(p.image_url), packaging: thumb(p.packaging_image_url), code: p.code, name: p.name, x: e.clientX, y: e.clientY })
-                  }
-                  onMouseMove={(e) => setPreview((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
-                  onMouseLeave={() => setPreview(null)}
-                  style={canEdit ? { cursor: 'pointer' } : undefined}
-                >
-                  <td className="mono" data-label="Código">
-                    {p.code}
-                  </td>
-                  <td data-label="Produto">
-                    {p.image_url && (
-                      <img loading="lazy" decoding="async"
-                        src={thumb(p.image_url)}
-                        alt=""
-                        style={{ width: 26, height: 26, borderRadius: 5, objectFit: 'cover', verticalAlign: 'middle', marginRight: 8, border: '1px solid var(--border)' }}
-                      />
-                    )}
-                    {p.name}
-                    {p.licensed && (
-                      <span className="pill" style={{ marginLeft: 6 }}>
-                        licenciado
-                      </span>
-                    )}
-                    {p.inmetro_number && (
-                      <span className="pill" style={{ marginLeft: 6, background: 'var(--green-dim)', color: 'var(--green)' }} title={`INMETRO ${p.inmetro_number}`}>
-                        🏅 INMETRO
-                      </span>
-                    )}
-                  </td>
-                  <td data-label="Linha">{p.line || '—'}</td>
-                  <td data-label="Categoria">{p.toy_category || '—'}</td>
-                  <td data-label="Marca">
-                    <span
-                      className="pill"
-                      style={{ background: 'transparent', border: '1px solid var(--border)', color: p.brand?.color }}
-                    >
-                      {p.brand?.label}
-                    </span>
-                  </td>
-                  <td data-label="Faixa etária">{p.age_range || '—'}</td>
-                  <td className="mono" data-label="Tamanho">
-                    {sizeLabel(p) || '—'}
-                  </td>
-                  <td data-label="Embalagem" onClick={(e) => e.stopPropagation()}>
-                    {pkg ? (
-                      <Link
-                        to="/design-produto/embalagens"
-                        className="pill"
-                        style={{
-                          background: pkgStage?.is_final ? 'var(--green-dim)' : 'var(--violet-dim)',
-                          color: pkgStage?.is_final ? 'var(--green)' : 'var(--violet)',
-                        }}
-                        title={`Embalagem · Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}
-                      >
-                        {pkgStage?.name ?? '—'}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td data-label="Revisão">
-                    {p.needs_review && (
-                      <span className="pill" style={{ background: 'var(--yellow-dim)', color: 'var(--yellow)' }}>
-                        revisar
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {sorted.length === 0 && (
+        <div className="pd-table-wrap">
+          <table className="pd-table">
+            <thead>
               <tr>
-                <td colSpan={9} style={{ color: 'var(--text-faint)' }}>
-                  Nenhum produto encontrado para esse filtro.
-                </td>
+                <th>Produto</th>
+                <th>Linha</th>
+                <th>Categoria</th>
+                <th>Idade</th>
+                <th>Tamanho</th>
+                <th>Embalagem</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sorted.map((p) => {
+                const pkg = packagingByProduct.get(p.id);
+                const pkgStage = pkg && stagesById[pkg.stage_id];
+                return (
+                  <tr
+                    key={p.id}
+                    className={canEdit ? 'click' : ''}
+                    onClick={() => abrir(p)}
+                    onMouseEnter={(e) =>
+                      (p.image_url || p.packaging_image_url) &&
+                      setPreview({ url: thumb(p.image_url), packaging: thumb(p.packaging_image_url), code: p.code, name: p.name, x: e.clientX, y: e.clientY })
+                    }
+                    onMouseMove={(e) => setPreview((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+                    onMouseLeave={() => setPreview(null)}
+                  >
+                    <td className="pd-tprod">
+                      <span className="pd-tthumb">{p.image_url && <img loading="lazy" decoding="async" src={thumb(p.image_url)} alt="" />}</span>
+                      <span className="pd-tname">
+                        <b>{p.name}</b>
+                        <small><code>{p.code}</code><i style={{ background: p.brand?.color }} />{p.brand?.label}
+                          {p.licensed && <em>licenciado</em>}{p.inmetro_number && <em className="inm">INMETRO</em>}{p.needs_review && <em className="rev">revisar</em>}</small>
+                      </span>
+                    </td>
+                    <td>{p.line || '—'}</td>
+                    <td>{p.toy_category || '—'}</td>
+                    <td>{p.age_range || '—'}</td>
+                    <td className="mono">{sizeLabel(p) || '—'}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {pkg ? (
+                        <Link to="/design-produto/embalagens" className={`pd-pkg ${pkgStage?.is_final ? 'ok' : ''}`} title={`Embalagem · Prioridade: ${PRIORITY_LABELS[pkg.priority]}`}>
+                          {pkgStage?.name ?? '—'}
+                        </Link>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {!loading && total > PAGE_SIZE && (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', marginTop: 14 }}>
-          <button className="btn ghost sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-            ← Anterior
-          </button>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
-            Página {page + 1} de {Math.max(1, Math.ceil(total / PAGE_SIZE))}
-          </span>
-          <button className="btn ghost sm" disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((p) => p + 1)}>
-            Próxima →
-          </button>
-        </div>
+        <nav className="pd-pager" aria-label="Páginas">
+          <button type="button" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>← Anterior</button>
+          <span>Página <b>{page + 1}</b> de {Math.max(1, Math.ceil(total / PAGE_SIZE))}</span>
+          <button type="button" disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((p) => p + 1)}>Próxima →</button>
+        </nav>
       )}
 
       {showNew && profile && (
@@ -448,6 +434,18 @@ export default function Produtos() {
         </div>
       )}
     </div>
+  );
+}
+
+/* Filtro em pílula: mostra o nome do filtro quando está em "todos" e o valor escolhido quando está ativo. */
+function PdSelect({ value, onChange, all, options }: { value: string; onChange: (v: string) => void; all: string; options: string[] }) {
+  return (
+    <label className={`pd-sel ${value !== 'all' ? 'on' : ''}`}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={all}>
+        <option value="all">{all}</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
   );
 }
 
