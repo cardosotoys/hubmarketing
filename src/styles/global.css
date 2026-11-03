@@ -4968,3 +4968,39 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .sp .pv-tela-acts button:disabled{opacity:.35;cursor:default}
 .sp .pv-tela-acts button.x{color:#C0392B}
 .sp .pv-tela-add{appearance:none;width:56px;aspect-ratio:9/16;border:1.5px dashed rgba(10,37,48,.3);border-radius:9px;background:transparent;font:inherit;font-size:11px;font-weight:700;color:var(--ink-2);cursor:pointer;padding:4px;line-height:1.2}
+/* ---------- Sequência do Story/Status (substitui o editor pequeno de telas) ---------- */
+.sp .pv-telas{display:none}
+.sp .sq{width:100%;margin:14px 0 4px;padding:14px 14px 16px;background:var(--card);border-radius:18px;box-shadow:0 1px 2px rgba(10,37,48,.05),0 12px 28px -18px rgba(10,37,48,.4)}
+.sp .sq-h{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.sp .sq-h b{display:block;font-size:14px;font-weight:800;color:var(--title)}
+.sp .sq-h span{font-size:12px;color:var(--muted)}
+.sp .sq-row{list-style:none;margin:0;padding:2px 2px 4px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px}
+.sp .sq-card{position:relative;display:flex;flex-direction:column;gap:8px;cursor:grab;transition:opacity .15s,transform .15s}
+.sp .sq-card.drag{opacity:.35;transform:scale(.97)}
+.sp .sq-art{appearance:none;position:relative;display:block;width:100%;aspect-ratio:9/16;border:0;padding:0;border-radius:14px;overflow:hidden;background:#E3E7E9;cursor:pointer;box-shadow:0 1px 2px rgba(10,37,48,.08),0 8px 18px -12px rgba(10,37,48,.45);transition:box-shadow .15s}
+.sp .sq-card.on .sq-art{box-shadow:0 0 0 3px var(--navy),0 8px 18px -12px rgba(10,37,48,.45)}
+.sp .sq-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sp .sq-ph{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;color:var(--muted)}
+.sp .sq-n{position:absolute;left:8px;top:8px;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:rgba(10,37,48,.78);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;backdrop-filter:blur(4px)}
+.sp .sq-x{appearance:none;position:absolute;right:6px;top:6px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:#C0392B;font-size:17px;line-height:1;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.18);opacity:0;transition:opacity .15s}
+.sp .sq-card:hover .sq-x,.sp .sq-card:focus-within .sq-x{opacity:1}
+@media (hover:none){.sp .sq-x{opacity:1}}
+.sp .sq-acts{display:grid;grid-template-columns:30px 1fr 30px;gap:4px}
+.sp .sq-acts button{appearance:none;height:30px;border:1px solid var(--line);background:var(--surf2);border-radius:9px;font:inherit;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer}
+.sp .sq-acts button:hover:not(:disabled){border-color:var(--navy)}
+.sp .sq-acts button:disabled{opacity:.3;cursor:default}
+.sp .sq-acts .sq-troca{font-size:12px}
+.sp .sq-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;box-shadow:none;outline:2px dashed rgba(10,37,48,.22);outline-offset:-2px;color:var(--ink-2)}
+.sp .sq-add:hover{outline-color:var(--navy);color:var(--navy)}
+.sp .sq-add b{font-size:26px;font-weight:600;line-height:1}
+.sp .sq-add span{font-size:12px;font-weight:700}
+.sp .sq-feed{cursor:default}
+.sp .sq-feed .sq-art{outline:2px dashed rgba(10,37,48,.25);outline-offset:3px}
+.sp .sq-feed.off .sq-art{opacity:.35;filter:grayscale(.7)}
+.sp .sq-switch{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;user-select:none}
+.sp .sq-switch input{position:absolute;opacity:0;pointer-events:none}
+.sp .sq-switch i{position:relative;flex:none;width:30px;height:18px;border-radius:999px;background:#CDD3D6;transition:background .15s}
+.sp .sq-switch i::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.sp .sq-switch input:checked+i{background:#2FA36B}
+.sp .sq-switch input:checked+i::after{transform:translateX(12px)}
+.sp .sq-switch input:focus-visible+i{outline:2px solid var(--navy);outline-offset:2px}

@@ -737,8 +737,9 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
     void gravarTelas(n, telaAlvo == null ? (urls.length > 1 ? 'telas adicionadas' : 'tela adicionada') : 'tela trocada');
   };
   const alternarRepost = async () => {
-    const { error } = await supabase.from('social_plan_items').update({ story_repost: item.story_repost === false, updated_by: me?.id ?? null }).eq('id', item.id);
-    showFlash(error ? (/story_repost/.test(error.message) ? 'Falta rodar o SQL 0155 no Supabase' : error.message) : item.story_repost === false ? 'o repost do feed volta no fim' : 'sem repost do feed no fim');
+    const novo = !telas.ligado;
+    const { error } = await supabase.from('social_plan_items').update({ story_repost: novo, updated_by: me?.id ?? null }).eq('id', item.id);
+    showFlash(error ? (/story_repost/.test(error.message) ? 'Falta rodar o SQL 0158 no Supabase' : error.message) : novo ? 'o repost do feed entra no fim' : 'sem repost do feed');
     onChanged();
   };
   const voltarArteFeed = async () => {
@@ -873,38 +874,50 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
             {ehMatriz && !seq && alvoDrive && <button onClick={() => setPicker('capa')}>{item.cover_url ? 'Trocar a capa' : 'Escolher a capa'}</button>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
-          {!ehMatriz && <p className="pv-refdir">{seq && artePropria
-            ? `Sobe em sequência: ${eff.slides.length} ${eff.slides.length === 1 ? 'tela própria' : 'telas próprias'}${telas.repost ? ' e, no fim, o repost do post do feed' : ''}.`
-            : artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).'
+          {!ehMatriz && !(seq && artePropria) && <p className="pv-refdir">{artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).'
             : seq ? 'Hoje é só o repost do post do feed. Para subir telas antes dele, use "Escolher as telas".' : 'Este destino usa a mesma arte do feed.'}</p>}
           {seq && artePropria && (
-            <div className="pv-telas" aria-label="Telas próprias, na ordem em que sobem">
-              {proprias.map((u, k) => {
-                const th = driveThumbOf(u, 300);
-                return (
-                  <div key={u + k} className={`pv-tela ${arrastando === k ? 'drag' : ''}`} draggable
-                    onDragStart={() => setArrastando(k)} onDragEnd={() => setArrastando(null)}
-                    onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (arrastando != null) moverTela(arrastando, k); setArrastando(null); }}>
-                    <button type="button" className="pv-tela-art" onClick={() => setLam(k)} title={`Ver a tela ${k + 1}`}>
-                      {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>link</span>}
-                      <b>{k + 1}</b>
+            <section className="sq" aria-label="Sequência do Story/Status, na ordem em que sobe">
+              <header className="sq-h">
+                <div><b>Sequência {/Status/.test(ch?.name ?? '') ? 'do Status' : 'do Story'}</b>
+                  <span>{proprias.length} {proprias.length === 1 ? 'tela' : 'telas'}{telas.repost ? ' + repost do feed' : ''} · arraste para mudar a ordem</span></div>
+              </header>
+              <ol className="sq-row">
+                {proprias.map((u, k) => {
+                  const th = driveThumbOf(u, 400);
+                  return (
+                    <li key={u + k} className={`sq-card ${arrastando === k ? 'drag' : ''} ${lam === k ? 'on' : ''}`} draggable
+                      onDragStart={() => setArrastando(k)} onDragEnd={() => setArrastando(null)}
+                      onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (arrastando != null) moverTela(arrastando, k); setArrastando(null); }}>
+                      <button type="button" className="sq-art" onClick={() => setLam(k)} title={`Ver a tela ${k + 1}`}>
+                        {th ? <img src={th} alt="" loading="lazy" referrerPolicy="no-referrer" draggable={false} /> : <span className="sq-ph">sem prévia</span>}
+                        <span className="sq-n">{k + 1}</span>
+                      </button>
+                      <div className="sq-acts">
+                        <button type="button" aria-label="Mover para antes" disabled={k === 0} onClick={() => moverTela(k, k - 1)}>‹</button>
+                        {alvoDrive && <button type="button" className="sq-troca" onClick={() => { setTelaAlvo(k); setPicker('tela'); }}>Trocar</button>}
+                        <button type="button" aria-label="Mover para depois" disabled={k === proprias.length - 1} onClick={() => moverTela(k, k + 1)}>›</button>
+                      </div>
+                      <button type="button" className="sq-x" aria-label={`Tirar a tela ${k + 1}`} onClick={() => void gravarTelas(proprias.filter((_, j) => j !== k), 'tela tirada')}>×</button>
+                    </li>
+                  );
+                })}
+                {alvoDrive && (
+                  <li className="sq-card">
+                    <button type="button" className="sq-art sq-add" onClick={() => { setTelaAlvo(null); setPicker('tela'); }}><b>+</b><span>Adicionar tela</span></button>
+                  </li>
+                )}
+                {matriz?.creative_url && (
+                  <li className={`sq-card sq-feed ${telas.ligado ? '' : 'off'}`}>
+                    <button type="button" className="sq-art" onClick={() => telas.repost && setLam(proprias.length)} title="Repost do post do feed">
+                      {driveThumbOf(matriz.creative_url, 400) ? <img src={driveThumbOf(matriz.creative_url, 400)!} alt="" referrerPolicy="no-referrer" draggable={false} /> : <span className="sq-ph">feed</span>}
+                      <span className="sq-n">feed</span>
                     </button>
-                    <div className="pv-tela-acts">
-                      <button type="button" aria-label="Mover para antes" disabled={k === 0} onClick={() => moverTela(k, k - 1)}>←</button>
-                      <button type="button" aria-label="Mover para depois" disabled={k === proprias.length - 1} onClick={() => moverTela(k, k + 1)}>→</button>
-                      {alvoDrive && <button type="button" aria-label="Trocar esta tela" onClick={() => { setTelaAlvo(k); setPicker('tela'); }}>Trocar</button>}
-                      <button type="button" aria-label="Tirar esta tela" className="x" onClick={() => void gravarTelas(proprias.filter((_, j) => j !== k), 'tela tirada')}>×</button>
-                    </div>
-                  </div>
-                );
-              })}
-              {alvoDrive && <button type="button" className="pv-tela-add" onClick={() => { setTelaAlvo(null); setPicker('tela'); }}>+ Adicionar tela</button>}
-              {telas.repost && <div className="pv-tela fixo"><span className="pv-tela-art">{driveThumbOf(matriz?.creative_url, 300) ? <img src={driveThumbOf(matriz?.creative_url, 300)!} alt="" referrerPolicy="no-referrer" /> : null}<b>feed</b></span><small>repost do feed, sempre no fim</small></div>}
-            </div>
-          )}
-          {seq && artePropria && matriz?.creative_url && (
-            <label className="sp-check pv-repost"><input type="checkbox" checked={item.story_repost !== false} onChange={alternarRepost} />
-              <span>Terminar com o repost do post do feed</span></label>
+                    <label className="sq-switch"><input type="checkbox" checked={telas.ligado} onChange={alternarRepost} /><i aria-hidden /><span>{telas.ligado ? 'Repost no fim' : 'Sem repost'}</span></label>
+                  </li>
+                )}
+              </ol>
+            </section>
           )}
           {pastaRef && <p className="pv-refdir">Pasta de referência do plano: <a href={pastaRef} target="_blank" rel="noreferrer">abrir ↗</a></p>}
           {picker === 'feed' && alvoFeed && (

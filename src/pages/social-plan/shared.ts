@@ -80,9 +80,16 @@ export const ehSequencia = (channelId: string | null | undefined, pieceType: str
 
 /** As telas do Story/Status na ordem em que sobem; a última é o repost do feed quando ele está ligado. */
 export function telasDaSequencia(item: SocialPlanItem, matriz: SocialPlanItem | undefined, proprias: string[]) {
-  const repost = item.link_kind !== 'matriz' && item.creative_changed && item.story_repost !== false && matriz?.creative_url ? matriz.creative_url : null;
-  return { urls: repost ? [...proprias, repost] : proprias, repost: !!repost };
+  const ligado = repostLigado(item.story_repost, matriz);
+  const repost = item.link_kind !== 'matriz' && item.creative_changed && ligado && matriz?.creative_url ? matriz.creative_url : null;
+  return { urls: repost ? [...proprias, repost] : proprias, repost: !!repost, ligado };
 }
+
+/** Feed em carrossel não costuma ter repost no Story/Status; post único e Reels, sim. Sem escolha gravada (null), vale isso. */
+export const feedEmCarrossel = (matriz: { format: string; piece_type: string; creative_slides?: string[] | null } | undefined) =>
+  !!matriz && (/carross/i.test(`${matriz.format} ${matriz.piece_type}`) || (matriz.creative_slides?.length ?? 0) > 1);
+export const repostLigado = (escolha: boolean | null | undefined, matriz: Parameters<typeof feedEmCarrossel>[0]) =>
+  escolha ?? !feedEmCarrossel(matriz);
 
 /* ---------- Fase 2: duas etapas de aprovação ----------
  * Etapa 1 (pauta e legenda) = status. Etapa 2 (criativo final) = creative_status.

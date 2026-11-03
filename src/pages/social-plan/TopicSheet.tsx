@@ -4,7 +4,7 @@ import { normalizeUrl } from '../../lib/url';
 import type { Profile, SocialChannel, SocialPlanItem, SocialStrategyNote, SocialTopic } from '../../types/database';
 import { BrandGuide, BriefEditor } from './Brief';
 import DrivePicker, { alternativaPara, driveFolderFor } from './DrivePicker';
-import { DOW, KIND_LABEL, addDays, brShort, defaultPieceType, derive, dowIndex, driveThumb, ehSequencia, todayISO, type ChannelMap, type Kind } from './shared';
+import { DOW, KIND_LABEL, addDays, brShort, defaultPieceType, derive, dowIndex, driveThumb, ehSequencia, repostLigado, todayISO, type ChannelMap, type Kind } from './shared';
 
 /* ================= Assunto + destinos =================
  * O assunto é a ideia (pauta, estratégia). Cada destino é uma linha de social_plan_items:
@@ -17,7 +17,7 @@ type Draft = {
   more: string[];   // carrossel: lâminas 2, 3… (a lâmina 1 é o creative_url)
   had?: boolean;    // já tinha lâminas gravadas (para poder limpar)
   creative_changed: boolean; mirror_facebook: boolean; origin?: string; status?: SocialPlanItem['status'];
-  story_repost: boolean; had_repost_off?: boolean;   // Story/Status: termina com o repost do feed (0155)
+  story_repost: boolean | null; had_repost?: boolean;   // Story/Status: termina com o repost do feed; null = automático (0158)
 };
 
 const BRANDS = ['Playmi', 'Tópi', 'Cardoso'];
@@ -35,7 +35,7 @@ function toDraft(x: SocialPlanItem): Draft {
     pub_date: x.pub_date, pub_time: x.pub_time ? x.pub_time.slice(0, 5) : '', link_kind: x.link_kind,
     caption: x.caption ?? '', creative_url: x.creative_url ?? '', more: (x.creative_slides ?? []).slice(1), had: (x.creative_slides?.length ?? 0) > 0, creative_changed: x.creative_changed,
     mirror_facebook: x.mirror_facebook, origin: x.origin, status: x.status,
-    story_repost: x.story_repost !== false, had_repost_off: x.story_repost === false,
+    story_repost: x.story_repost ?? null, had_repost: x.story_repost != null,
   };
 }
 
@@ -64,7 +64,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
       const ds = items.map(toDraft);
       return [...ds.filter((d) => d.link_kind === 'matriz'), ...ds.filter((d) => d.link_kind !== 'matriz').sort((a, b) => (a.pub_date + a.pub_time).localeCompare(b.pub_date + b.pub_time))];
     }
-    return [{ key: newKey(), channel_id: 'pl-ig', piece_type: 'Feed', format: '', pub_date: todayISO(), pub_time: '', link_kind: 'matriz', caption: '', creative_url: '', more: [], creative_changed: false, mirror_facebook: true, story_repost: true }];
+    return [{ key: newKey(), channel_id: 'pl-ig', piece_type: 'Feed', format: '', pub_date: todayISO(), pub_time: '', link_kind: 'matriz', caption: '', creative_url: '', more: [], creative_changed: false, mirror_facebook: true, story_repost: null }];
   });
   const [removed, setRemoved] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -74,6 +74,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
   const [pautaOpen, setPautaOpen] = useState(!topic);
 
   const matriz = drafts.find((d) => d.link_kind === 'matriz');
+  const matrizFmt = matriz ? { format: matriz.format, piece_type: matriz.piece_type, creative_slides: matriz.more.length ? [matriz.creative_url, ...matriz.more] : [] } : undefined;
   const upd = <K extends keyof TopicForm>(k: K, v: TopicForm[K]) => setForm((p) => ({ ...p, [k]: v }));
   const updD = (key: string, patch: Partial<Draft>) => setDrafts((ds) => ds.map((d) => (d.key === key ? { ...d, ...patch } : d)));
 
@@ -95,7 +96,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
     return {
       channel_id, link_kind, pub_date, pub_time,
       piece_type: piece_type ?? (ch ? defaultPieceType(ch) : ''), format: '',
-      caption: link_kind === 'adapta' ? matriz?.caption ?? '' : '', creative_url: '', more: [], creative_changed: false, story_repost: true,
+      caption: link_kind === 'adapta' ? matriz?.caption ?? '' : '', creative_url: '', more: [], creative_changed: false, story_repost: null,
       mirror_facebook: !!ch?.mirror && piece_type !== 'Stories',
     };
   };
@@ -170,7 +171,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
         ? [d.creative_url, ...d.more].map((u) => u.trim()).filter(Boolean).map(normalizeUrl) : [];
       if (slides.length || d.had) Object.assign(row, { creative_slides: slides });
       // só manda a coluna quando sai do padrão (ou já tinha saído), para funcionar antes da 0155
-      if (!d.story_repost || d.had_repost_off) Object.assign(row, { story_repost: d.story_repost });
+      if (d.story_repost != null || d.had_repost) Object.assign(row, { story_repost: d.story_repost });
       const { error } = d.id
         ? await supabase.from('social_plan_items').update(row).eq('id', d.id)
         : await supabase.from('social_plan_items').insert(row);
@@ -226,7 +227,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                   return (
                     <div className={`sp-dest-art ${thumb ? '' : 'empty'}`}>
                       {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span>{herda ? 'Usa a arte da matriz' : 'Sem arte'}</span>}
-                      {n > 0 && <em>{n + 1} {ehSequencia(d.channel_id, d.piece_type) ? 'telas' : 'lâminas'}{ehSequencia(d.channel_id, d.piece_type) && d.story_repost ? ' + feed' : ''}</em>}
+                      {n > 0 && <em>{n + 1} {ehSequencia(d.channel_id, d.piece_type) ? 'telas' : 'lâminas'}{ehSequencia(d.channel_id, d.piece_type) && repostLigado(d.story_repost, matrizFmt) ? ' + feed' : ''}</em>}
                       <b>{ch ? `${ch.account === form.brand || ch.account === 'Cardoso' ? '' : ch.account + ' · '}${ch.name}` : 'Canal'} · {d.piece_type}</b>
                       <small>{d.pub_date ? `${DOW[dowIndex(d.pub_date)].slice(0, 3)} ${brShort(d.pub_date)}` : ''}{d.pub_time ? ` · ${d.pub_time}` : ''}</small>
                     </div>
@@ -275,7 +276,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                       : <><b>Arte própria</b> — este destino usa outra versão, não a do feed</>}{d.link_kind === 'reaproveita' ? '. A legenda continua a da matriz.' : '.'}</span></label>
                 )}
                 {d.link_kind !== 'matriz' && d.creative_changed && ehSequencia(d.channel_id, d.piece_type) && (
-                  <label className="sp-check sp-artepropria"><input id={`rp-${d.key}`} type="checkbox" checked={d.story_repost} onChange={(e) => updD(d.key, { story_repost: e.target.checked })} />
+                  <label className="sp-check sp-artepropria"><input id={`rp-${d.key}`} type="checkbox" checked={repostLigado(d.story_repost, matrizFmt)} onChange={(e) => updD(d.key, { story_repost: e.target.checked })} />
                     <span>Terminar com o repost do post do feed</span></label>
                 )}
                     {(d.link_kind === 'matriz' || d.creative_changed) ? (
