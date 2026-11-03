@@ -1,6 +1,6 @@
 import { useState, type DragEvent, type FormEvent, type ReactNode } from 'react';
 import { useIsMobile } from '../hooks/useIsMobile';
-import type { Priority, Profile } from '../types/database';
+import { PRIORITY_LABELS, type Priority, type Profile } from '../types/database';
 
 function initialsFor(profilesById: Record<string, Profile>, id: string | null) {
   if (!id || !profilesById[id]) return '?';
@@ -32,6 +32,8 @@ export default function KanbanBoard<T extends KanbanItem>({
   onCreate,
   onEdit,
   renderExtra,
+  rich = false,
+  terminalLabel,
 }: {
   tasks: T[];
   profilesById: Record<string, Profile>;
@@ -43,6 +45,9 @@ export default function KanbanBoard<T extends KanbanItem>({
   onCreate?: (title: string) => void;
   onEdit?: (task: T) => void;
   renderExtra?: (task: T) => ReactNode;
+  /* cartão rico (Embalagens): o conteúdo inteiro vem do renderExtra; o rodapé mostra a prioridade como ponto */
+  rich?: boolean;
+  terminalLabel?: (stage: T['stage']) => boolean;   // coluna final ganha o tom de concluído
 }) {
   const activeStages = stages;
   const firstStageKey = activeStages[0]?.key;
@@ -90,7 +95,7 @@ export default function KanbanBoard<T extends KanbanItem>({
   function renderCard(t: T, draggable: boolean) {
     return (
       <div
-        className={`task-card${draggingId === t.id ? ' dragging' : ''}`}
+        className={`task-card${rich ? ' rich' : ''}${draggingId === t.id ? ' dragging' : ''}`}
         key={t.id}
         draggable={draggable}
         onDragStart={(e) => handleDragStart(e, t.id)}
@@ -101,13 +106,15 @@ export default function KanbanBoard<T extends KanbanItem>({
         onClick={() => onEdit?.(t)}
         style={onEdit ? { cursor: 'pointer' } : undefined}
       >
-        <div className="t">{t.title}</div>
-        {isOverdue(t, terminalStages) && (
+        {!rich && <div className="t">{t.title}</div>}
+        {!rich && isOverdue(t, terminalStages) && (
           <div style={{ fontSize: 10, color: 'var(--red)', fontWeight: 700, marginBottom: 6 }}>🔴 atrasada</div>
         )}
         {renderExtra?.(t)}
         <div className="task-foot">
-          <span className={`prio ${t.priority as Priority}`}>{t.priority}</span>
+          {rich
+            ? <span className={`kb-prio ${t.priority}`}><i />{PRIORITY_LABELS[t.priority as Priority] ?? t.priority}</span>
+            : <span className={`prio ${t.priority as Priority}`}>{t.priority}</span>}
           {editable && onStageChange ? (
             <select
               className="stage-select"
@@ -151,7 +158,7 @@ export default function KanbanBoard<T extends KanbanItem>({
 
   if (isMobile) {
     return (
-      <div className="board-mobile">
+      <div className={`board-mobile${rich ? ' rich' : ''}`}>
         {activeStages.map(({ key, label }) => {
           const items = tasks.filter((t) => t.stage === key);
           const open = openStage === key;
@@ -183,12 +190,12 @@ export default function KanbanBoard<T extends KanbanItem>({
   }
 
   return (
-    <div className={`board${cols === 4 ? ' cols4' : ''}`}>
+    <div className={`board${cols === 4 ? ' cols4' : ''}${rich ? ' rich' : ''}`}>
       {activeStages.map(({ key, label }) => {
         const items = tasks.filter((t) => t.stage === key);
         return (
           <div
-            className={`col${dragOverStage === key ? ' col-dragover' : ''}`}
+            className={`col${dragOverStage === key ? ' col-dragover' : ''}${terminalLabel?.(key) ? ' col-final' : ''}`}
             key={String(key)}
             onDragOver={(e) => handleDragOver(e, key)}
             onDragLeave={() => setDragOverStage((s) => (s === key ? null : s))}

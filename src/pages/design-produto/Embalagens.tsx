@@ -9,6 +9,7 @@ import EmptyState from '../../components/EmptyState';
 import Modal from '../../components/Modal';
 import ProductCombobox from '../../components/ProductCombobox';
 import { materializeSubsteps } from '../../lib/substeps';
+import { useThumbs } from '../../lib/thumbs';
 import {
   PACKAGING_TRACKS,
   PRIORITIES,
@@ -25,6 +26,17 @@ import {
 } from '../../types/database';
 
 type Tab = 'demandas' | 'calendario' | 'financeiro' | 'arquivos' | 'historico';
+
+/* "Embalagem — 3120 Boneco…" ou "Ref. 4024 - Trator agro" → só o nome; o código já aparece no selo */
+function limparTitulo(t: string, code?: string | null) {
+  let x = t.replace(/^\s*embalagem\s*[—–-]\s*/i, '').replace(/^\s*ref\.?\s*[\d\s/]+\s*[—–-]\s*/i, '');
+  if (code && x.startsWith(code + ' ')) x = x.slice(code.length + 1);
+  return x.trim() || t;
+}
+const dataCurta = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${d}/${m}${Number(y) !== new Date().getFullYear() ? `/${y.slice(2)}` : ''}`;
+};
 
 export default function Embalagens({
   tracks = PACKAGING_TRACKS,
@@ -357,39 +369,38 @@ export default function Embalagens({
   }
 
   const totalPlanned = tasks.reduce((acc, t) => acc + (t.budget ?? 0), 0);
+  const thumb = useThumbs();
+  const hojeD = new Date(new Date().toDateString());
+  const finalizadas = tasks.filter((t) => stagesById[t.stage_id]?.is_final).length;
+  const atrasadas = tasks.filter((t) => t.due_date && !stagesById[t.stage_id]?.is_final && new Date(t.due_date + 'T00:00') < hojeD).length;
 
   return (
-    <div className="page">
-      <h1 className="page-title">{moduleTitle}</h1>
-      <div className="page-sub">
-        Módulo independente com todas as embalagens de todos os SKUs, em duas trilhas. Cada embalagem é uma demanda
-        com etapas editáveis, checklist com gate e aprovação por menção.
-      </div>
-
-      {/* Trilhas — "Geral" (todas) é a visão principal; Criação/Melhoria ao lado */}
-      <div className="filters-row">
-        <div
-          className={`filter-chip${isGeral ? ' active' : ''}`}
-          onClick={() => { setTrack('geral'); setFStage('all'); }}
-          title="Todas as demandas de embalagem (todas as trilhas)"
-        >
-          Geral
+    <div className="page emb-page">
+      {/* cabeçalho: o módulo, as trilhas e o retrato das etapas */}
+      <header className="emb-head">
+        <div className="emb-head-t">
+          <h1>{moduleTitle}</h1>
+          <p>Todas as embalagens de todos os SKUs. Cada embalagem é uma demanda com etapas, checklist e aprovação.</p>
         </div>
-        {tracks.map((t) => (
-          <div key={t.key} className={`filter-chip${track === t.key ? ' active' : ''}`} onClick={() => { setTrack(t.key); setFStage('all'); }} title={t.hint}>
-            {t.label}
-          </div>
-        ))}
-      </div>
+        <div className="emb-tracks" role="tablist" aria-label="Trilha">
+          <button type="button" role="tab" aria-selected={isGeral} onClick={() => { setTrack('geral'); setFStage('all'); }} title="Todas as demandas de embalagem (todas as trilhas)">Geral</button>
+          {tracks.map((t) => (
+            <button type="button" role="tab" key={t.key} aria-selected={track === t.key} onClick={() => { setTrack(t.key); setFStage('all'); }} title={t.hint}>{t.label}</button>
+          ))}
+        </div>
+        <div className="emb-stats">
+          <div><b>{tasks.length}</b><span>demandas</span></div>
+          <div className={atrasadas ? 'red' : ''}><b>{atrasadas}</b><span>com prazo vencido</span></div>
+          <div><b>{finalizadas}</b><span>finalizadas</span></div>
+        </div>
+      </header>
 
       {/* Abas do módulo */}
-      <div className="detail-tabs" style={{ marginTop: 8 }}>
+      <nav className="emb-tabs" aria-label="Seções">
         {([['demandas', 'Demandas'], ['calendario', 'Calendário'], ['financeiro', 'Financeiro'], ['arquivos', 'Arquivos'], ['historico', 'Histórico']] as [Tab, string][]).map(([key, label]) => (
-          <div key={key} className={`dtab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
-            {label}
-          </div>
+          <button type="button" key={key} aria-current={tab === key} onClick={() => setTab(key)}>{label}</button>
         ))}
-      </div>
+      </nav>
 
       {stageError && (
         <div className="banner error" style={{ marginTop: 10 }}>
@@ -404,51 +415,58 @@ export default function Embalagens({
         <div style={{ marginTop: 10 }}>
           {/* Ações. Em "Geral" mantém Kanban/Lista (etapas idênticas nas trilhas), mas criar demanda
               e editar etapas são por-trilha — só aparecem em Criação/Melhoria. */}
-          <div className="filters-row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
-            {!isGeral && <button className="btn sm" onClick={() => setShowNew(true)}>+ Nova demanda</button>}
-            <div className={`filter-chip${view === 'kanban' ? ' active' : ''}`} onClick={() => setView('kanban')}>Kanban</div>
-            <div className={`filter-chip${view === 'lista' ? ' active' : ''}`} onClick={() => setView('lista')}>Lista</div>
-            {!isGeral && <div className="filter-chip" onClick={() => setManagingStages((v) => !v)}>⚙ Etapas</div>}
-          </div>
-
-          {/* Filtros — logo acima do board (colados na estrutura das etapas) */}
-          <div className="filters-row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <input placeholder="Buscar por título, SKU, código…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 220, flex: 1 }} />
-            <select className="chip-select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-              <option value="all">Responsável: todos</option>
-              <option value="none">Sem responsável</option>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <select className="chip-select" value={fPriority} onChange={(e) => setFPriority(e.target.value)}>
-              <option value="all">Prioridade: todas</option>
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
-              ))}
-            </select>
-            <select className="chip-select" value={fStage} onChange={(e) => setFStage(e.target.value)}>
-              <option value="all">Etapa: todas</option>
-              {sortedStages.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <select className="chip-select" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-              <option value="recent">Ordenar: posição</option>
-              <option value="title">Ordenar: título (A-Z)</option>
-              <option value="priority">Ordenar: prioridade</option>
-              <option value="prazo">🏁 Prazo: mais próximo primeiro</option>
-              <option value="prazo_desc">🏁 Prazo: mais distante primeiro</option>
-              <option value="meta">🎯 Meta: mais próxima primeiro</option>
-              <option value="meta_desc">🎯 Meta: mais distante primeiro</option>
-              <option value="assignee">Ordenar: responsável</option>
-              <option value="stage">Ordenar: etapa</option>
-            </select>
-            <label className="filter-chip" style={{ cursor: 'pointer' }}>
-              <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} style={{ width: 'auto', marginRight: 6 }} />
-              Ocultar finalizadas
+          <section className="emb-ctrl">
+            <label className="pd-search emb-search">
+              <span aria-hidden>⌕</span>
+              <input placeholder="Buscar por título, SKU ou código" value={search} onChange={(e) => setSearch(e.target.value)} />
+              {search && <button type="button" aria-label="Limpar busca" onClick={() => setSearch('')}>×</button>}
             </label>
-          </div>
+            <div className="pd-filters emb-filters">
+              <label className={`pd-sel ${fAssignee !== 'all' ? 'on' : ''}`}>
+                <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} aria-label="Responsável">
+                  <option value="all">Responsável</option>
+                  <option value="none">Sem responsável</option>
+                  {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+              <label className={`pd-sel ${fPriority !== 'all' ? 'on' : ''}`}>
+                <select value={fPriority} onChange={(e) => setFPriority(e.target.value)} aria-label="Prioridade">
+                  <option value="all">Prioridade</option>
+                  {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
+                </select>
+              </label>
+              <label className={`pd-sel ${fStage !== 'all' ? 'on' : ''}`}>
+                <select value={fStage} onChange={(e) => setFStage(e.target.value)} aria-label="Etapa">
+                  <option value="all">Etapa</option>
+                  {sortedStages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              <label className="pd-sel">
+                <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Ordenar">
+                  <option value="recent">Ordenar por posição</option>
+                  <option value="title">Ordenar por título</option>
+                  <option value="priority">Ordenar por prioridade</option>
+                  <option value="prazo">Prazo mais próximo primeiro</option>
+                  <option value="prazo_desc">Prazo mais distante primeiro</option>
+                  <option value="meta">Meta mais próxima primeiro</option>
+                  <option value="meta_desc">Meta mais distante primeiro</option>
+                  <option value="assignee">Ordenar por responsável</option>
+                  <option value="stage">Ordenar por etapa</option>
+                </select>
+              </label>
+              <label className={`emb-check ${hideDone ? 'on' : ''}`}>
+                <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} />Ocultar finalizadas
+              </label>
+            </div>
+            <div className="emb-acts">
+              <div className="pd-view" role="tablist" aria-label="Visualização">
+                <button type="button" role="tab" aria-selected={view === 'kanban'} onClick={() => setView('kanban')}>Quadro</button>
+                <button type="button" role="tab" aria-selected={view === 'lista'} onClick={() => setView('lista')}>Lista</button>
+              </div>
+              {!isGeral && <button type="button" className="emb-ghost" onClick={() => setManagingStages((v) => !v)}>Etapas</button>}
+              {!isGeral && <button type="button" className="pd-new" onClick={() => setShowNew(true)}>+ Nova demanda</button>}
+            </div>
+          </section>
 
           {!isGeral && managingStages && (
             <div className="panel" style={{ marginTop: 10 }}>
@@ -487,6 +505,8 @@ export default function Embalagens({
                 tasks={kanbanTasks}
                 profilesById={profilesById}
                 editable
+                rich
+                terminalLabel={(k) => kanbanTerminal.includes(k)}
                 cols={kanbanStages.length <= 5 ? 5 : 6}
                 stages={kanbanStages}
                 terminalStages={kanbanTerminal}
@@ -498,20 +518,24 @@ export default function Embalagens({
                   if (!t) return null;
                   const prod = t.product_id ? productsById[t.product_id] : null;
                   const isFinal = stagesById[t.stage_id]?.is_final;
-                  const overduePrazo = t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < new Date(new Date().toDateString());
+                  const hoje = new Date(new Date().toDateString());
+                  const venceu = !!t.due_date && !isFinal && new Date(t.due_date + 'T00:00') < hoje;
+                  const titulo = limparTitulo(t.title, prod?.code);
                   return (
-                    <div style={{ marginBottom: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {prod && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>SKU {prod.code}</div>}
-                      <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
-                        {t.target_date && (
-                          <span style={{ color: 'var(--violet)' }}>🎯 {new Date(t.target_date + 'T00:00').toLocaleDateString('pt-BR')}</span>
-                        )}
-                        {t.due_date && (
-                          <span style={{ color: overduePrazo ? 'var(--red)' : 'var(--text-faint)', fontWeight: overduePrazo ? 700 : 400 }}>
-                            🏁 {new Date(t.due_date + 'T00:00').toLocaleDateString('pt-BR')}
-                          </span>
-                        )}
+                    <div className="emb-card">
+                      <div className="emb-card-top">
+                        <span className="emb-thumb">{prod?.image_url ? <img src={thumb(prod.image_url)} alt="" loading="lazy" decoding="async" /> : <i>{prod?.code ?? 'SKU'}</i>}</span>
+                        <div className="emb-card-t">
+                          {prod && <code>{prod.code}</code>}
+                          <b>{titulo}</b>
+                        </div>
                       </div>
+                      {(t.due_date || t.target_date) && (
+                        <div className="emb-dates">
+                          {t.due_date && <span className={venceu ? 'late' : isFinal ? 'done' : ''}>{venceu ? 'Venceu' : 'Prazo'} {dataCurta(t.due_date)}</span>}
+                          {t.target_date && <span className="meta">Meta {dataCurta(t.target_date)}</span>}
+                        </div>
+                      )}
                     </div>
                   );
                 }}
