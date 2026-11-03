@@ -61,7 +61,7 @@ export default function ApprovalView({ live, byTopic, topicById, chans, meId, ca
   const sibs = cur.topic_id ? byTopic.get(cur.topic_id) ?? [] : [];
   const matriz = sibs.find((x) => x.link_kind === 'matriz');
   const topic = cur.topic_id ? topicById.get(cur.topic_id) ?? null : null;
-  const leva = sibs.filter((x) => x.id !== cur.id && (x.link_kind === 'reaproveita' || (gate === 2 && cur.link_kind === 'matriz' && x.link_kind === 'adapta' && !x.creative_changed)));
+  const leva = sibs.filter((x) => x.id !== cur.id && ((x.link_kind === 'reaproveita' && (gate === 1 || !x.creative_changed)) || (gate === 2 && cur.link_kind === 'matriz' && x.link_kind === 'adapta' && !x.creative_changed)));
   const creative = cur.creative_url;
   const lim = cur.channel_id ? chans.get(cur.channel_id)?.caption_limit : null;
   const cap = cur.caption ?? '';

@@ -104,7 +104,7 @@ export default function ApproverLens({ live, byTopic, topicById, chans, meId, ca
   const ch = cur.channel_id ? chans.get(cur.channel_id) : undefined;
   const sibs = cur.topic_id ? byTopic.get(cur.topic_id) ?? [] : [];
   // o que sai junto com esta decisão: o próprio post, o espelho no Facebook e os reaproveitamentos
-  const juntos = sibs.filter((x) => x.id !== cur.id && (x.link_kind === 'reaproveita' || (gate === 2 && cur.link_kind === 'matriz' && x.link_kind === 'adapta' && !x.creative_changed)));
+  const juntos = sibs.filter((x) => x.id !== cur.id && ((x.link_kind === 'reaproveita' && (gate === 1 || !x.creative_changed)) || (gate === 2 && cur.link_kind === 'matriz' && x.link_kind === 'adapta' && !x.creative_changed)));
   const onde = [cur, ...juntos].sort((a, b) => when(a).localeCompare(when(b)));
   const rede = (x: SocialPlanItem) => {
     const c = x.channel_id ? chans.get(x.channel_id) : undefined;

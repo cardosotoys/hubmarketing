@@ -158,13 +158,13 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
         pauta: form.title, product: form.product, sku: form.sku, week_theme: form.front,
         objective: form.objective, cta: form.cta, media_use: form.media_use,
         caption: d.link_kind === 'reaproveita' ? null : d.caption || null,
-        creative_url: d.link_kind === 'matriz' || (d.link_kind === 'adapta' && d.creative_changed) ? (d.creative_url ? normalizeUrl(d.creative_url) : null) : null,
-        creative_changed: d.link_kind === 'adapta' && d.creative_changed,
+        creative_url: d.link_kind === 'matriz' || d.creative_changed ? (d.creative_url ? normalizeUrl(d.creative_url) : null) : null,
+        creative_changed: d.link_kind !== 'matriz' && d.creative_changed,
         mirror_facebook: !!ch?.mirror && d.mirror_facebook,
         updated_by: me?.id ?? null,
       };
       // lâminas do carrossel: só manda a coluna quando há lâminas (ou havia), para funcionar antes da migration 0128
-      const slides = (d.link_kind === 'matriz' || (d.link_kind === 'adapta' && d.creative_changed)) && d.more.some((u) => u.trim())
+      const slides = (d.link_kind === 'matriz' || d.creative_changed) && d.more.some((u) => u.trim())
         ? [d.creative_url, ...d.more].map((u) => u.trim()).filter(Boolean).map(normalizeUrl) : [];
       if (slides.length || d.had) Object.assign(row, { creative_slides: slides });
       const { error } = d.id
@@ -214,7 +214,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
             return (
               <div key={d.key} className={`sp-dest ${d.link_kind === 'matriz' ? 'matriz' : ''}`}>
                 {(() => {
-                  const herda = d.link_kind === 'reaproveita' || (d.link_kind === 'adapta' && !d.creative_changed);
+                  const herda = d.link_kind !== 'matriz' && !d.creative_changed;
                   const src = herda ? matriz?.creative_url : d.creative_url;
                   const thumb = driveThumb(src);
                   const n = herda ? 0 : d.more.filter(Boolean).length;
@@ -258,12 +258,15 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                 </div>
                 {ch?.mirror && <label className="sp-check"><input id={`m-${d.key}`} type="checkbox" checked={d.mirror_facebook} onChange={(e) => updD(d.key, { mirror_facebook: e.target.checked })} /> Espelhar no {ch.mirror} (mesma peça, mesmo horário)</label>}
                 {d.link_kind === 'reaproveita' ? (
-                  <p className="sp-inherit">↳ Usa a legenda e o criativo da matriz.{herdada ? ` “${herdada.slice(0, 110)}${herdada.length > 110 ? '…' : ''}”` : ' A matriz ainda não tem legenda.'}</p>
+                  <p className="sp-inherit">↳ Usa a legenda da matriz.{herdada ? ` “${herdada.slice(0, 110)}${herdada.length > 110 ? '…' : ''}”` : ' A matriz ainda não tem legenda.'}</p>
                 ) : (
-                  <>
                     <label className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Legenda' : 'Legenda própria'} {counter(d.caption, d.channel_id)}</span>
                       <textarea id={`c-${d.key}`} rows={4} value={d.caption} onChange={(e) => updD(d.key, { caption: e.target.value })} /></label>
-                    {d.link_kind === 'adapta' && <label className="sp-check"><input id={`cc-${d.key}`} type="checkbox" checked={d.creative_changed} onChange={(e) => updD(d.key, { creative_changed: e.target.checked })} /> O criativo também muda (recorte, versão, nova arte)</label>}
+                )}
+                {d.link_kind !== 'matriz' && (
+                  <label className="sp-check sp-artepropria"><input id={`cc-${d.key}`} type="checkbox" checked={d.creative_changed} onChange={(e) => updD(d.key, { creative_changed: e.target.checked })} />
+                    <span><b>Arte própria</b> — este destino usa outra versão (ex.: a arte de Story ou de Status), não a do feed{d.link_kind === 'reaproveita' ? '. A legenda continua a da matriz.' : '.'}</span></label>
+                )}
                     {(d.link_kind === 'matriz' || d.creative_changed) ? (
                       (/carrossel/i.test(`${d.format} ${d.piece_type}`) || d.more.length > 0) ? (
                         <div className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Lâminas do carrossel no Drive' : 'Lâminas adaptadas no Drive'} <small>um link por lâmina, na ordem</small></span>
@@ -285,7 +288,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                         </div>
                       ) : (
                         <>
-                          <label className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Criativo no Drive' : 'Criativo adaptado no Drive'}</span>
+                          <label className="sp-erow"><span>{d.link_kind === 'matriz' ? 'Criativo no Drive' : 'Arte própria deste destino no Drive'}</span>
                             <input id={`cr-${d.key}`} placeholder="Cole o link do arquivo ou da pasta no Drive" value={d.creative_url} onChange={(e) => updD(d.key, { creative_url: e.target.value })} /></label>
                           <div className="sp-drivebtns">
                             {driveFolderFor(d.channel_id, ch?.account, d.piece_type, false) && <button type="button" className="sp-drivepick" onClick={() => setPicker({ key: d.key, multiple: false })}>Escolher do Drive</button>}
@@ -293,9 +296,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                           </div>
                         </>
                       )
-                    ) : <p className="sp-inherit">↳ Usa o criativo da matriz.</p>}
-                  </>
-                )}
+                    ) : <p className="sp-inherit">↳ Usa a arte da matriz (a mesma do feed).</p>}
               </div>
             );
           })}

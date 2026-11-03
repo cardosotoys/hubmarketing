@@ -688,20 +688,31 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
   const lim = ch?.caption_limit ?? null;
   const [openCmts, setOpenCmts] = useState(focusComments);
   const [lam, setLam] = useState(0);   // lâmina aberta do carrossel
-  const [picker, setPicker] = useState(false);
+  const [picker, setPicker] = useState<null | 'propria' | 'feed'>(null);
   // link de pasta (veio do plano antigo como material de referência) não é a arte da peça
   const pastaRef = driveTarget(eff.creative)?.kind === 'folder' ? eff.creative : null;
   const slidesArte = pastaRef ? [] : eff.slides;
-  const carrossel = /carross/i.test(`${item.format} ${item.piece_type}`) || eff.slides.length > 1;
+  const carrossel = /carross/i.test(`${item.format} ${item.piece_type}`) || ((item.link_kind === 'matriz' || item.creative_changed) && eff.slides.length > 1);
   const alvoDrive = item.channel_id ? driveFolderFor(item.channel_id, ch?.account, item.piece_type, carrossel) : null;
-  // quem guarda a arte: a própria peça (matriz ou adapta com criativo próprio) ou a matriz
-  const donoArte = item.link_kind === 'matriz' || (item.link_kind === 'adapta' && item.creative_changed) ? item : matriz ?? item;
+  const mch = matriz?.channel_id ? chans.get(matriz.channel_id) : undefined;
+  const alvoFeed = matriz?.channel_id ? driveFolderFor(matriz.channel_id, mch?.account, matriz.piece_type, /carross/i.test(`${matriz.format} ${matriz.piece_type}`)) : null;
+  const ehMatriz = item.link_kind === 'matriz';
+  const artePropria = !ehMatriz && item.creative_changed;
+  // 'propria': a arte fica nesta peça (matriz, ou Story/Status com outra versão); 'feed': a arte vai para a matriz
   const salvarArte = async (urls: string[]) => {
-    setPicker(false);
+    const modo = picker; setPicker(null);
+    const dono = modo === 'feed' && matriz ? matriz : item;
     const patch: Record<string, unknown> = { creative_url: urls[0], updated_by: me?.id ?? null };
-    if (urls.length > 1 || (donoArte.creative_slides?.length ?? 0) > 0) patch.creative_slides = urls.length > 1 ? urls : [];
-    const { error } = await supabase.from('social_plan_items').update(patch).eq('id', donoArte.id);
-    showFlash(error ? error.message : donoArte.id === item.id ? 'arte ligada à peça' : 'arte ligada à matriz do assunto');
+    if (dono.id === item.id && !ehMatriz) patch.creative_changed = true;
+    if (urls.length > 1 || (dono.creative_slides?.length ?? 0) > 0) patch.creative_slides = urls.length > 1 ? urls : [];
+    const { error } = await supabase.from('social_plan_items').update(patch).eq('id', dono.id);
+    showFlash(error ? error.message : dono.id !== item.id ? 'arte ligada ao feed (matriz)' : ehMatriz ? 'arte ligada à peça' : 'versão própria ligada a este destino');
+    onChanged();
+  };
+  const voltarArteFeed = async () => {
+    const { error } = await supabase.from('social_plan_items')
+      .update({ creative_changed: false, creative_url: null, creative_slides: [], updated_by: me?.id ?? null }).eq('id', item.id);
+    showFlash(error ? error.message : 'voltou a usar a arte do feed');
     onChanged();
   };
   const brandK = slug(item.brand);
@@ -804,14 +815,24 @@ export function DetailSheet({ item, siblings, topic, chans, me, profiles, approv
           <div className="pv-stage-actions">
             {slidesArte.length ? <a href={slidesArte[lam] ?? slidesArte[0]} target="_blank" rel="noreferrer">{slidesArte.length > 1 ? `Abrir lâmina ${Math.min(lam, slidesArte.length - 1) + 1} no Drive ↗` : 'Abrir criativo no Drive ↗'}</a>
               : alvoDrive ? null : <span>Criativo ainda sem link</span>}
-            {alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker(true)}>{slidesArte.length ? 'Trocar arte' : 'Escolher do Drive'}</button>}
+            {ehMatriz && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>{slidesArte.length ? 'Trocar arte' : 'Escolher do Drive'}</button>}
+            {!ehMatriz && artePropria && alvoDrive && <button onClick={() => setPicker('propria')}>Trocar versão</button>}
+            {!ehMatriz && artePropria && <button onClick={voltarArteFeed}>Voltar a usar a arte do feed</button>}
+            {!ehMatriz && !artePropria && alvoDrive && <button className={slidesArte.length ? '' : 'pv-pick'} onClick={() => setPicker('propria')}>Usar outra versão</button>}
+            {!ehMatriz && !artePropria && !slidesArte.length && matriz && alvoFeed && <button onClick={() => setPicker('feed')}>Escolher arte do feed</button>}
             {eff.caption && <button onClick={copyCaption}>Copiar legenda</button>}
           </div>
+          {!ehMatriz && <p className="pv-refdir">{artePropria ? 'Este destino usa uma versão própria da arte (a legenda segue a matriz).' : 'Este destino usa a mesma arte do feed.'}</p>}
           {pastaRef && <p className="pv-refdir">Pasta de referência do plano: <a href={pastaRef} target="_blank" rel="noreferrer">abrir ↗</a></p>}
-          {picker && alvoDrive && (
+          {picker === 'feed' && alvoFeed && (
+            <DrivePicker marca={alvoFeed.marca} pasta={alvoFeed.pasta} multiple={/carross/i.test(`${matriz?.format} ${matriz?.piece_type}`)}
+              hints={{ title: titulo, product: item.product, sku: item.sku, date: matriz?.pub_date ?? item.pub_date }}
+              onClose={() => setPicker(null)} onPick={salvarArte} />
+          )}
+          {picker === 'propria' && alvoDrive && (
             <DrivePicker marca={alvoDrive.marca} pasta={alvoDrive.pasta} multiple={carrossel}
               hints={{ title: titulo, product: item.product, sku: item.sku, date: item.pub_date }}
-              onClose={() => setPicker(false)} onPick={salvarArte} />
+              onClose={() => setPicker(null)} onPick={salvarArte} />
           )}
           {eff.caption && (
             <details className="pv-fullcap">

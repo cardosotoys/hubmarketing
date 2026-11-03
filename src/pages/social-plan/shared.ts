@@ -60,7 +60,8 @@ export function defaultPieceType(ch: SocialChannel) {
 
 /** Legenda e criativo que valem para a peça: reaproveita herda da matriz; adapta herda o criativo se não mudou. */
 export function effective(item: SocialPlanItem, matriz: SocialPlanItem | undefined) {
-  const src = item.link_kind === 'reaproveita' || (item.link_kind === 'adapta' && !item.creative_changed) ? matriz : item;
+  // arte: a própria quando é matriz ou quando o destino tem versão própria (Story/Status com outra arte); senão, a da matriz
+  const src = item.link_kind === 'matriz' || item.creative_changed ? item : matriz;
   const creative = src?.creative_url ?? null;
   // carrossel: todas as lâminas; peça simples: só o criativo
   const slides = src?.creative_slides?.length ? src.creative_slides : creative ? [creative] : [];
@@ -71,7 +72,7 @@ export function effective(item: SocialPlanItem, matriz: SocialPlanItem | undefin
  * Etapa 1 (pauta e legenda) = status. Etapa 2 (criativo final) = creative_status.
  * Quem herda da matriz é resolvido no banco (0110); aqui só se decide quem tem botão. */
 export const ownGate1 = (x: SocialPlanItem) => x.link_kind !== 'reaproveita';
-export const ownGate2 = (x: SocialPlanItem) => x.link_kind === 'matriz' || (x.link_kind === 'adapta' && x.creative_changed);
+export const ownGate2 = (x: SocialPlanItem) => x.link_kind === 'matriz' || x.creative_changed;
 export const licBlocked = (t: { licensed: boolean; licensor_ok: boolean } | null | undefined) => !!t?.licensed && !t.licensor_ok;
 
 export type Tone = 'ok' | 'sky' | 'warn' | 'red' | '';
