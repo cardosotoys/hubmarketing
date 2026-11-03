@@ -118,6 +118,7 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic, topicById 
                             <span className="cm-txt">
                               <b>{hhmm(x.pub_time) || '—'}{hasComment.has(x.id) ? ' 💬' : ''}</b>
                               <span>{x.product || x.pauta}</span>
+                              <i className="cm-ch">{shortChan(x, chans)} · {st.label}</i>
                             </span>
                           </button>
                         );

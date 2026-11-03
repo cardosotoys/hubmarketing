@@ -5020,10 +5020,10 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .sp-cacts .sp-ebtn{padding:9px 6px;font-size:12px;text-align:center;justify-content:center;white-space:nowrap}
 
   /* Semana: lista de dias em pé; dia com post em 2 colunas, dia livre numa linha só */
-  .sp .cv-week{display:flex;flex-direction:column;overflow:visible;gap:10px;scroll-snap-type:none}
+  .sp .cv-week{display:flex;flex-direction:column;align-items:stretch;overflow:visible;gap:10px;scroll-snap-type:none}
   .sp .cv-day{flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-height:0;padding:10px}
   .sp .cv-day>header,.sp .cv-day>.cv-apoios,.sp .cv-day>.cv-free{grid-column:1/-1}
-  .sp .cv-day.free{display:flex;align-items:center;gap:12px;padding:8px 12px}
+  .sp .cv-day.free{display:flex;flex-direction:row;align-items:center;gap:12px;padding:8px 12px;background:transparent;border:1px dashed var(--line)}
   .sp .cv-day.free>header{flex:none;margin:0}
   .sp .cv-day.free .cv-free{margin:0;font-size:12.5px;color:var(--muted)}
   .sp .cv-post .cv-info{padding:8px 10px 10px}
@@ -5049,3 +5049,5 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
   .sp .sq-acts{grid-template-columns:28px 1fr 28px}
   .sp .sq-acts button{height:32px}
 }
+.sp .cm-ch{display:none}
+@media (max-width:760px){.sp .cm-agenda .cm-ch{display:block;font-style:normal;font-size:11.5px;color:var(--muted);margin-top:2px}}
