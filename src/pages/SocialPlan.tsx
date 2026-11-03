@@ -411,11 +411,11 @@ export default function SocialPlan() {
 
         {(view === 'cal' || view === 'assuntos') && (
           <div className="sp-legend">
-            <span><i className="sw k-matriz" />Matriz: a peça principal do assunto</span>
-            <span><i className="sw k-reaproveita" />Reaproveita: mesma legenda e criativo</span>
-            <span><i className="sw k-adapta" />Adapta: legenda própria</span>
-            <span><i style={{ background: '#EAF6F0', border: '1px solid #2E9E6B' }} />Aprovada</span>
-            <span><i style={{ background: '#FDF5E4', border: '1px solid #E0A02B' }} />Com ajuste</span>
+            <span><i style={{ background: '#FCE9E7' }} />Falta arte ou com ajuste</span>
+            <span><i style={{ background: '#FDF3E1' }} />Em aprovação</span>
+            <span><i style={{ background: '#E7F5EE' }} />Pronto para agendar</span>
+            <span><i style={{ background: '#E6EEF1' }} />Agendado ou publicado</span>
+            <span><i style={{ background: 'transparent', border: '1.5px dashed rgba(10,37,48,.3)' }} />Sem arte ainda</span>
           </div>
         )}
       </main>

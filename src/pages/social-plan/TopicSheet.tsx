@@ -220,7 +220,7 @@ export default function TopicSheet({ topic, items, channels, chans, me, isPriv, 
                   const n = herda ? 0 : d.more.filter(Boolean).length;
                   return (
                     <div className={`sp-dest-art ${thumb ? '' : 'empty'}`}>
-                      {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>{herda ? 'Usa a arte da matriz' : 'Sem arte'}</span>}
+                      {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span>{herda ? 'Usa a arte da matriz' : 'Sem arte'}</span>}
                       {n > 0 && <em>{n + 1} lâminas</em>}
                       <b>{ch ? `${ch.account === form.brand || ch.account === 'Cardoso' ? '' : ch.account + ' · '}${ch.name}` : 'Canal'} · {d.piece_type}</b>
                       <small>{d.pub_date ? `${DOW[dowIndex(d.pub_date)].slice(0, 3)} ${brShort(d.pub_date)}` : ''}{d.pub_time ? ` · ${d.pub_time}` : ''}</small>

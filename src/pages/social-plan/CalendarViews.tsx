@@ -42,7 +42,7 @@ function PostCard({ x, chans, onOpen, hasComment, hl, setHl, byTopic, topicById 
     <button type="button" className={`cv-post b-${slug(x.brand)} ${thumb ? '' : 'noart'} ${dim}`} onClick={() => onOpen(x.id)}
       onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)} onFocus={() => setHl(x.topic_id)} onBlur={() => setHl(null)}>
       <span className="cv-art">
-        {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="cv-noart">Sem arte</span>}
+        {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="cv-noart">Sem arte</span>}
         <span className="cv-time">{hhmm(x.pub_time) || '—'}</span>
         {vertical && thumb && <span className="cv-kind">▶</span>}
         {slides > 1 && <span className="cv-kind">{slides}</span>}
@@ -66,7 +66,7 @@ function ApoioRow({ x, chans, onOpen, hl, setHl, byTopic }: {
   return (
     <button type="button" className={`cv-apoio b-${slug(x.brand)} ${dim}`} onClick={() => onOpen(x.id)}
       onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
-      {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <i className={`sp-dot b-${slug(x.brand)}`} />}
+      {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <i className={`sp-dot b-${slug(x.brand)}`} />}
       <span><b>{hhmm(x.pub_time) || '—'}</b> {shortChan(x, chans)}<small>{x.product || x.pauta}</small></span>
     </button>
   );
@@ -153,7 +153,7 @@ export function MonthView({ rows, chans, onOpen, hasComment, byTopic }: Props) {
                         <button type="button" key={x.id} className={`cv-mthumb b-${slug(x.brand)} ${thumb ? '' : 'noart'} ${hl && x.topic_id !== hl ? 'dim' : ''}`}
                           title={`${hhmm(x.pub_time) || ''} ${x.product || x.pauta} · ${shortChan(x, chans)}`}
                           onClick={(e) => { e.stopPropagation(); onOpen(x.id); }} onMouseEnter={() => setHl(x.topic_id)} onMouseLeave={() => setHl(null)}>
-                          {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span>{hhmm(x.pub_time)}</span>}
+                          {thumb ? <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span>{hhmm(x.pub_time)}</span>}
                         </button>
                       );
                     })}

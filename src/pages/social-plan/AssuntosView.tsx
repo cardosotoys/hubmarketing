@@ -109,7 +109,7 @@ export default function AssuntosView({ topics, byTopic, chans, selectedId, onSel
                 return (
                   <button type="button" key={r.t.id} className={`coc-tile b-${slug(r.t.brand)} ${r.thumb ? '' : r.pasta ? 'folder' : 'empty'}`} aria-current={r.t.id === selectedId} onClick={() => onSelect(r.t.id)}>
                     <span className="coc-tile-art">
-                      {r.thumb ? <img src={r.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                      {r.thumb ? <img src={r.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
                         : r.pasta ? <span className="coc-tile-noart"><b>Pasta no Drive</b><small>escolha o arquivo final da arte</small></span>
                         : <span className="coc-tile-noart"><b>Sem arte</b><small>abrir e escolher do Drive</small></span>}
                       <span className="coc-tile-date"><b>{r.date.slice(8, 10)}</b>{DOW[dowIndex(r.date)].slice(0, 3)}{r.time ? ` · ${r.time}` : ''}</span>
