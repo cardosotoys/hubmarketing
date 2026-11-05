@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
+import { Ic, Sv } from './Icones';
 import {
   brl, cachePublico, driveId, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
-  type BlackFicha as Ficha,
+  type BlackFicha as Ficha, type BlackItem,
 } from './api';
 
 /* /black/p/:codigo — a ficha que o QR da live abre.
@@ -27,6 +28,16 @@ export default function BlackFicha() {
   const [toast, setToast] = useState('');
   const [cart, setCart] = useState(lerCarrinho());
   const fecha = useFaltam(cfg?.fecha_em);
+  const [params] = useSearchParams();
+  const daLive = params.has('live');
+  // preços do catálogo, para a barra "Seu pedido" mostrar o total do carrinho inteiro
+  const [precos, setPrecos] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!token || !cfg?.aberto) return;
+    supabase.rpc('black_catalogo', { p_token: token }).then(({ data }) => {
+      if (Array.isArray(data)) setPrecos(Object.fromEntries((data as BlackItem[]).filter((i) => i.preco_peca != null).map((i) => [i.codigo, i.caixa * (i.preco_peca ?? 0)])));
+    });
+  }, [token, cfg?.aberto]);
 
   useEffect(() => {
     if (carregando) return;
@@ -83,7 +94,7 @@ export default function BlackFicha() {
         <div className="cb-media">
           <div className="cb-stage">
             {!atual ? <span className="cb-hi" style={{ color: 'var(--ink3)' }}>{f.codigo}</span>
-              : atual.tipo === 'video' ? <video key={atual.src} src={atual.src} controls playsInline preload="metadata" poster={atual.thumb} />
+              : atual.tipo === 'video' ? <><video key={atual.src} src={atual.src} controls playsInline preload="metadata" poster={atual.thumb} /><span className="vb">Vídeo do produto</span></>
               : <img src={atual.src} alt={atual.nome} />}
           </div>
           {midias.length > 1 && (
@@ -98,7 +109,7 @@ export default function BlackFicha() {
         </div>
 
         <div className="cb-info">
-          <span className="cb-live-chip">● Cardoso Black</span>
+          <span className="cb-live-chip">● {daLive ? 'Visto agora na live' : 'Cardoso Black'}</span>
           <span className="cd">{f.codigo} · {f.familia}</span>
           <h1>{f.nome}</h1>
           {!sessao ? <LoginCurto entrar={entrar} />
@@ -131,12 +142,17 @@ export default function BlackFicha() {
           <Materiais f={f} midias={midias} />
         </div>
       </div>
-      {sessao && aberto && (
-        <div className="cb-mbar">
-          <div><span>Seu pedido</span><b>{Object.values(cart).reduce((a, b) => a + b, 0)} caixas</b></div>
-          <Link className="cb-btn dk" to="/black/pedido">Ver pedido</Link>
-        </div>
-      )}
+      {sessao && aberto && (() => {
+        const total = Object.entries(cart).reduce((t, [c, q]) => t + (precos[c] ?? 0) * q, 0);
+        const minimo = cfg?.pedido_minimo ?? 2500;
+        return (
+          <div className="cb-fbar"><div className="cb-wrap">
+            <div><small>Seu pedido</small><b>{brl(total)}</b>
+              <em className={total >= minimo ? 'ok' : ''}>{total >= minimo ? 'mínimo atingido' : `faltam ${brl(minimo - total)} para o mínimo`}</em></div>
+            <Link className="cb-btn dk" to="/black/pedido">Ver pedido ›</Link>
+          </div></div>
+        );
+      })()}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
     </Shell>
   );
@@ -153,9 +169,9 @@ function Materiais({ f, midias }: { f: Ficha; midias: Midia[] }) {
   return (
     <div className="cb-card cb-mats">
       <h4>Materiais para a sua loja</h4>
-      {fotos.map((m) => <a key={m.src} href={m.src} target="_blank" rel="noreferrer">{m.nome}<em>Abrir</em></a>)}
-      {f.descricao && <button type="button" onClick={copiar}>Descrição pronta para o anúncio<em>{copiado ? 'Copiada' : 'Copiar'}</em></button>}
-      {outros.map((m) => { const id = driveId(m.link); return id ? <a key={m.link} href={midia(id)} target="_blank" rel="noreferrer">{m.nome}<em>Abrir</em></a> : null; })}
+      {fotos.map((m) => <a key={m.src} href={m.src} target="_blank" rel="noreferrer"><span className="mi"><Ic n="star" /></span><span className="nm">{m.nome === 'Produto' ? 'Foto do produto' : m.nome === 'Embalagem' ? 'Foto da embalagem' : m.nome}</span><em>Baixar</em></a>)}
+      {f.descricao && <button type="button" onClick={copiar}><span className="mi"><Ic n="receipt" /></span><span className="nm">Descrição pronta para o anúncio</span><em>{copiado ? 'Copiada' : 'Copiar'}</em></button>}
+      {outros.map((m) => { const id = driveId(m.link); return id ? <a key={m.link} href={midia(id)} target="_blank" rel="noreferrer"><span className="mi">{m.tipo === 'kit' ? <Ic n="store" /> : <Sv.db />}</span><span className="nm">{m.nome}</span><em>Baixar</em></a> : null; })}
     </div>
   );
 }

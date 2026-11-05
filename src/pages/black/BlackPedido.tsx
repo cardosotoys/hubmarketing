@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
+import { Ic, Sv } from './Icones';
 import {
-  brl, ERRO_LOGIN, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
+  brl, diaMes, ERRO_LOGIN, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
   type BlackItem, type BlackPedido as Pedido, type Carrinho,
 } from './api';
 
@@ -20,7 +21,7 @@ export default function BlackPedido() {
   const clock = cfg ? (abre && abre.ms > 0 ? { label: 'abre em', value: abre.texto } : fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : { label: 'pedidos', value: 'encerrados' }) : null;
 
   if (!cfg || carregando) return <Shell sub="Pedidos somente por esta página" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
-  if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} /></Shell>;
+  if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} ate={diaMes(cfg.fecha_em)} /></Shell>;
 
   const antes = abre !== null && abre.ms > 0;
   const depois = fecha !== null && fecha.ms <= 0;
@@ -43,14 +44,16 @@ export default function BlackPedido() {
   );
 }
 
-function Login({ entrar }: { entrar: (c: string, s: string) => Promise<string | null> }) {
+function Login({ entrar, ate }: { entrar: (c: string, s: string, manter?: boolean) => Promise<string | null>; ate: string }) {
   const [cnpj, setCnpj] = useState('');
   const [senha, setSenha] = useState('');
+  const [manter, setManter] = useState(true);
+  const [esqueci, setEsqueci] = useState(false);
   const [erro, setErro] = useState('');
   const [indo, setIndo] = useState(false);
   async function ir(e: FormEvent) {
     e.preventDefault(); setErro(''); setIndo(true);
-    const r = await entrar(cnpj, senha);
+    const r = await entrar(cnpj, senha, manter);
     setIndo(false);
     if (r) setErro(ERRO_LOGIN[r] ?? ERRO_LOGIN.senha);
   }
@@ -65,9 +68,11 @@ function Login({ entrar }: { entrar: (c: string, s: string) => Promise<string | 
           <input id="cb-lc" inputMode="numeric" autoComplete="username" placeholder="00.000.000/0000-00" value={cnpj} onChange={(e) => setCnpj(maskCnpj(e.target.value))} /></div>
         <div className="cb-field"><label htmlFor="cb-ls">Senha</label>
           <input id="cb-ls" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} /></div>
+        <label className="cb-check"><input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} /><span>Manter conectado neste aparelho até {ate}</span></label>
         {erro && <div className="cb-alert err">{erro}</div>}
         <button className="cb-btn full" type="submit" disabled={indo || cnpj.replace(/\D/g, '').length !== 14 || !senha}>{indo ? 'Entrando…' : 'Entrar'}</button>
-        <div className="cb-note">Esqueceu a senha? Peça um novo link ao seu representante.</div>
+        <button type="button" className="cb-link" style={{ justifySelf: 'start' }} onClick={() => setEsqueci(!esqueci)}>Esqueci minha senha</button>
+        {esqueci && <div className="cb-alert">Peça ao seu representante um link para criar uma nova senha. Ele gera o link na hora.</div>}
         <div className="cb-note">Ainda não tem cadastro? <Link to="/black">Faça o pré-cadastro</Link></div>
       </div>
     </form>
@@ -78,10 +83,11 @@ function Espera({ alvo, sessao: canal }: { alvo: string; sessao: string }) {
   const f = useFaltam(alvo);
   return (
     <div className="cb-card cb-pad cb-narrow cb-res">
+      <div className="bd" style={{ ['--c' as string]: 'var(--navy)' }}><Ic n="calendar" /></div>
       <h2>Os pedidos abrem na live</h2>
-      <p>A lista de produtos e os preços da Cardoso Black aparecem aqui na abertura, em {new Date(alvo).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.</p>
+      <p>A lista de produtos e os preços da Cardoso Black aparecem aqui na abertura, em {fmtData(alvo).replace(', ', ', às ')}.</p>
       {f && <div className="cb-cnt"><div><b>{f.d}</b><small>dias</small></div><div><b>{String(f.h).padStart(2, '0')}</b><small>horas</small></div><div><b>{String(f.m).padStart(2, '0')}</b><small>min</small></div></div>}
-      {canal && <a className="cb-btn wa full" href={canal} target="_blank" rel="noreferrer">Acompanhar pelo canal Cardoso Black</a>}
+      {canal && <a className="cb-wab" href={canal} target="_blank" rel="noreferrer"><Sv.wa />Acompanhar pelo canal Cardoso Black</a>}
       <div className="cb-note">Você já está conectado neste aparelho.</div>
     </div>
   );
@@ -139,12 +145,16 @@ function Loja(p: LojaProps) {
   if (etapa === 'enviado' && enviado) {
     return (
       <div className="cb-card cb-pad cb-narrow cb-res">
-        <div className="bd" style={{ ['--c' as string]: 'var(--teal)' }}>✓</div>
+        <div className="bd" style={{ ['--c' as string]: 'var(--teal)' }}><Ic n="check" /></div>
         <h2>Pedido enviado</h2>
         <div><span className="cb-btn dk sm" style={{ cursor: 'default' }}>{enviado.numero}</span></div>
         <p>{enviado.caixas} caixas · {enviado.pecas.toLocaleString('pt-BR')} peças · <b>{brl(enviado.total)}</b></p>
         <div className="cb-fre">{enviado.frete}</div>
-        <div className="cb-alert">{p.representante ? `${p.representante}, seu representante, ` : 'Seu representante '}entrará em contato para confirmar o pedido.</div>
+        <div className="cb-tline" style={{ textAlign: 'left', boxShadow: 'inset 0 0 0 1.5px var(--line)' }}>
+          <div className="ok"><i>✓</i><div>Pedido enviado<span>número {enviado.numero}, já está com a Cardoso</span></div></div>
+          <div className="now"><i>2</i><div>Confirmação<span>{p.representante ? `${p.representante}, seu representante, entra em contato` : 'seu representante entra em contato'}</span></div></div>
+          <div><i>3</i><div>Faturamento e entrega<span>pelo fluxo normal da Cardoso</span></div></div>
+        </div>
         <div className="cb-row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="cb-btn gh sm" type="button" onClick={() => window.print()}>Imprimir ou salvar PDF</button>
           <button className="cb-btn sm" type="button" onClick={() => { setEtapa('loja'); setAba('produtos'); }}>Fazer outro pedido</button>
@@ -173,7 +183,7 @@ function Loja(p: LojaProps) {
           {pedidos.length === 0 && <div className="cb-card cb-pad cb-note">Nenhum pedido enviado ainda.</div>}
           {pedidos.map((x) => (
             <div key={x.numero} className="cb-card cb-ped">
-              <div className="h"><b>{x.numero}</b><span className={`cb-st ${x.status}`}>{x.status === 'recebido' ? 'Recebido' : x.status === 'confirmado' ? 'Confirmado' : 'Cancelado'}</span>
+              <div className="h"><b>{x.numero}</b><span className={`cb-st ${x.status}`}><i />{x.status === 'recebido' ? 'Recebido' : x.status === 'confirmado' ? 'Confirmado' : 'Cancelado'}</span>
                 <span style={{ marginLeft: 'auto', fontWeight: 800 }}>{brl(Number(x.total))}</span></div>
               <small style={{ color: 'var(--ink3)' }}>{fmtData(x.criado_em)} · {x.caixas} caixas</small>
               {x.itens?.map((it) => <div key={it.codigo} className="cb-it" style={{ padding: '5px 0' }}><span>{it.nome}<small>{it.caixas} cx × {it.pecas_caixa} pç · {brl(Number(it.preco_peca))}/pç</small></span><b>{brl(Number(it.total))}</b></div>)}
@@ -196,7 +206,7 @@ function Loja(p: LojaProps) {
                 return (
                   <article key={i.codigo} className={`cb-pc${q ? ' in' : ''}`}>
                     <Link className="im" to={`/black/p/${i.codigo}`}>
-                      {i.imagem ? <img src={i.imagem} alt="" loading="lazy" /> : <span className="ph">{i.codigo}</span>}
+                      {i.imagem ? <img src={i.imagem} alt="" loading="lazy" /> : <span className="ph"><Ic n="star" /></span>}
                       {esg && <span className="esg">Esgotado</span>}
                     </Link>
                     <div className="bd">
@@ -292,7 +302,7 @@ function Revisao(p: LojaProps & {
         <div className={`cb-fre${p.freteOk ? ' ok' : ''}`} style={{ marginTop: 8 }}>{p.frete}</div>
       </div>
       <div className="cb-card cb-pad cb-form">
-        <h3 style={{ fontSize: 19 }}>Dados do pedido</h3>
+        <h3 style={{ fontSize: 19 }}>Comprador</h3>
         <dl className="cb-kv">
           <dt>Loja</dt><dd>{p.razao}</dd><dt>CNPJ</dt><dd>{maskCnpj(p.cnpj)}</dd>
           <dt>E-mail</dt><dd>{p.email}</dd><dt>WhatsApp</dt><dd>{p.celular}</dd>
