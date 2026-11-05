@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
 import {
-  brl, cachePublico, driveId, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
+  brl, cachePublico, driveId, midiaRapida, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
   type BlackFicha as Ficha, type BlackItem,
 } from './api';
 
@@ -14,7 +14,8 @@ import {
  * e, para quem entrou com CNPJ e senha (e a Black já abriu), o preço e o botão "Adicionar ao pedido".
  * O carrinho é o mesmo da página de pedido (fica neste aparelho). */
 
-type Midia = { tipo: 'img' | 'video'; src: string; thumb: string; nome: string };
+/** src/thumb: cópia rápida (CDN); reserva/thumbReserva: a função black-midia, usada se a cópia ainda não existe; baixar: original */
+type Midia = { tipo: 'img' | 'video'; src: string; reserva?: string; thumb: string; thumbReserva?: string; baixar: string; nome: string };
 
 const mm = (v: (number | null)[]) => (v.every((x) => x) ? `${v.map((x) => (Number(x) / 10).toLocaleString('pt-BR')).join(' × ')} cm` : '');
 const kg = (v: number | null) => (v ? `${Number(v).toLocaleString('pt-BR')} kg` : '');
@@ -28,6 +29,10 @@ export default function BlackFicha() {
   const [proporcao, setProporcao] = useState(9 / 16); // Reels; troca sozinho se o vídeo for deitado (16:9)
   const [falhou, setFalhou] = useState<Set<string>>(new Set());
   const marcarFalha = (src: string) => { setFalhou((f) => new Set(f).add(src)); setSel(0); };
+  // urls rápidas que ainda não existem no CDN: passa para a reserva (a função), e só some se a reserva falhar também
+  const [reserva, setReserva] = useState<Set<string>>(new Set());
+  const usar = (u: string, r?: string) => (r && reserva.has(u) ? r : u);
+  const errou = (u: string, r: string | undefined, src: string) => { if (r && !reserva.has(u)) setReserva((x) => new Set(x).add(u)); else marcarFalha(src); };
   const [qtd, setQtd] = useState(1);
   const [toast, setToast] = useState('');
   const [cart, setCart] = useState(lerCarrinho());
@@ -51,18 +56,21 @@ export default function BlackFicha() {
   const midias = useMemo<Midia[]>(() => {
     if (!f) return [];
     const m: Midia[] = [];
-    if (f.imagem) m.push({ tipo: 'img', src: f.imagem, thumb: f.imagem, nome: 'Produto' });
-    if (f.embalagem) m.push({ tipo: 'img', src: f.embalagem, thumb: f.embalagem, nome: 'Embalagem' });
+    if (f.imagem) m.push({ tipo: 'img', src: f.imagem, thumb: f.imagem, baixar: f.imagem, nome: 'Produto' });
+    if (f.embalagem) m.push({ tipo: 'img', src: f.embalagem, thumb: f.embalagem, baixar: f.embalagem, nome: 'Embalagem' });
     for (const x of f.materiais) {
       const id = driveId(x.link);
-      if (x.tipo === 'video' && id) m.push({ tipo: 'video', src: midia(id), thumb: midia(id, true), nome: x.nome });
-      else if (x.tipo === 'foto' && (x.cache || id)) {
-        const src = x.cache ? cachePublico(x.cache) : midia(id!);
-        m.push({ tipo: 'img', src, thumb: x.cache ? src : midia(id!, true), nome: x.nome });
+      if (x.tipo === 'video' && id) {
+        m.push({ tipo: 'video', src: midiaRapida('o', id), reserva: midia(id), thumb: midiaRapida('t', id), thumbReserva: midia(id, 'miniatura'), baixar: midia(id), nome: x.nome });
+      } else if (x.tipo === 'foto' && x.cache) {
+        const src = cachePublico(x.cache);
+        m.push({ tipo: 'img', src, thumb: src, baixar: src, nome: x.nome });
+      } else if (x.tipo === 'foto' && id) {
+        m.push({ tipo: 'img', src: midiaRapida('i', id), reserva: midia(id, 'exibir'), thumb: midiaRapida('t', id), thumbReserva: midia(id, 'miniatura'), baixar: midia(id), nome: x.nome });
       }
     }
-    // foto primeiro (abre na hora); o vídeo vem logo depois, marcado com ▶
-    return [...m.filter((x) => x.tipo !== 'video'), ...m.filter((x) => x.tipo === 'video')].filter((x) => !falhou.has(x.src));
+    // vídeo primeiro: começa sozinho, sem som e em loop, com a capa aparecendo enquanto carrega
+    return [...m.filter((x) => x.tipo === 'video'), ...m.filter((x) => x.tipo !== 'video')].filter((x) => !falhou.has(x.src));
   }, [f, falhou]);
 
   const capa = midias.find((x) => x.tipo === 'img')?.thumb;
@@ -94,21 +102,21 @@ export default function BlackFicha() {
   ] as [string, string][]).filter(([, v]) => v && String(v).trim());
 
   return (
-    <Shell sub="Ficha do produto · Cardoso Black" clock={clock}>
+    <Shell sub="Ficha do produto" clock={clock} unico>
       <div className="cb-fi">
         <div className="cb-media">
           <div className={`cb-stage${atual?.tipo === 'video' ? ` v${proporcao < 1 ? ' vp' : ''}` : ''}`}
             style={atual?.tipo === 'video' ? ({ aspectRatio: String(proporcao), ...(capa ? { '--fundo': `url("${capa}")` } : {}) } as React.CSSProperties) : undefined}>
             {!atual ? <span className="cb-hi" style={{ color: 'var(--ink3)' }}>{f.codigo}</span>
-              : atual.tipo === 'video' ? <><video key={atual.src} src={atual.src} controls playsInline preload="metadata" onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setProporcao(v.videoWidth / v.videoHeight); }} onError={() => marcarFalha(atual.src)} /><span className="vb">Vídeo do produto</span></>
-              : <img key={atual.src} src={atual.src} alt={atual.nome} onError={() => marcarFalha(atual.src)} />}
-            {atual && <a className="dl" href={atual.src} target="_blank" rel="noreferrer" download aria-label={atual.tipo === 'video' ? 'Baixar este vídeo' : 'Baixar esta imagem'}>{atual.tipo === 'video' ? 'Baixar vídeo' : 'Baixar imagem'}</a>}
+              : atual.tipo === 'video' ? <><video key={atual.src} src={usar(atual.src, atual.reserva)} poster={usar(atual.thumb, atual.thumbReserva)} autoPlay muted loop controls playsInline preload="auto" onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setProporcao(v.videoWidth / v.videoHeight); }} onError={() => errou(atual.src, atual.reserva, atual.src)} /><span className="vb">Vídeo do produto</span></>
+              : <img key={atual.src} src={usar(atual.src, atual.reserva)} alt={atual.nome} decoding="async" fetchPriority="high" onError={() => errou(atual.src, atual.reserva, atual.src)} />}
+            {atual && <a className="dl" href={atual.baixar} target="_blank" rel="noreferrer" download aria-label={atual.tipo === 'video' ? 'Baixar este vídeo' : 'Baixar esta imagem'}>{atual.tipo === 'video' ? 'Baixar vídeo' : 'Baixar imagem'}</a>}
           </div>
           {midias.length > 1 && (
             <div className="cb-thumbs">
               {midias.map((m, i) => (
                 <button key={m.src} type="button" className={i === sel ? 'on' : ''} onClick={() => setSel(i)} aria-label={m.nome}>
-                  {m.tipo === 'video' ? <video className="vt" src={`${m.src}#t=0.5`} muted playsInline preload="metadata" tabIndex={-1} /> : <img src={m.thumb} alt="" loading="lazy" onError={() => marcarFalha(m.src)} />}{m.tipo === 'video' && <span className="pl">▶</span>}
+                  <img src={usar(m.thumb, m.thumbReserva)} alt="" loading="lazy" onError={(e) => { if (m.tipo !== 'video') errou(m.thumb, m.thumbReserva, m.src); else if (!reserva.has(m.thumb)) setReserva((x) => new Set(x).add(m.thumb)); else e.currentTarget.style.visibility = 'hidden'; }} />{m.tipo === 'video' && <span className="pl">▶</span>}
                 </button>
               ))}
             </div>
@@ -132,7 +140,7 @@ export default function BlackFicha() {
                       <span className="q">{qtd}<small>caixa{qtd > 1 ? 's' : ''}</small></span>
                       <button type="button" className="p" aria-label="Mais" disabled={noCarrinho + qtd >= max} onClick={() => setQtd(qtd + 1)}>+</button>
                     </div>
-                    <button className="cb-btn" type="button" onClick={adicionar} disabled={noCarrinho + qtd > max}>Adicionar ao pedido</button>
+                    <button className="cb-btn cb-pulsa" type="button" onClick={adicionar} disabled={noCarrinho + qtd > max}>Adicionar ao pedido</button>
                   </div>
                 )}
                 {noCarrinho > 0 && <div className="cb-alert ok">{noCarrinho} caixa{noCarrinho > 1 ? 's' : ''} deste produto no seu pedido. <Link to="/black/pedido?v=carrinho">Ver carrinho</Link></div>}

@@ -474,3 +474,92 @@
 .cb-stage.v { max-height: none; }
 .cb-stage.vp { width: auto; height: min(80vh, 760px); max-width: 100%; }
 .cb-stage.v video { object-fit: contain; }
+/* cabeçalho único (ficha aberta pelo QR) */
+.cb-hd1 { background: var(--navy); color: #fff; position: sticky; top: 0; z-index: 15; }
+.cb-hd1 .cb-wrap { display: flex; align-items: center; gap: 10px; min-height: 64px; padding-top: 8px; padding-bottom: 8px; }
+.cb-hd1 .wm { height: 24px; display: block; }
+.cb-hd1 .bk { font-family: var(--tit); font-weight: 900; font-size: 19px; background: var(--red); padding: 1px 8px 2px; border-radius: 6px; line-height: 1.2; }
+.cb-hd1 .sb { color: #9FB3BA; font-weight: 700; font-size: 13px; padding-left: 12px; margin-left: 4px; border-left: 1px solid var(--navy2); }
+.cb-hd1 .cb-clock { margin-left: auto; width: auto; display: block; padding: 5px 12px; }
+.cb-hd1 .cb-clock b { font-size: 16px; }
+@media (max-width: 640px) {
+  .cb-hd1 .cb-wrap { min-height: 56px; }
+  .cb-hd1 .wm { height: 20px; } .cb-hd1 .bk { font-size: 16px; } .cb-hd1 .sb { display: none; }
+  .cb-hd1 .cb-clock small { font-size: 9px; } .cb-hd1 .cb-clock b { font-size: 14px; }
+}
+/* pulso leve no "Adicionar ao pedido": um anel que se abre a cada 2,8 s, sem mexer no botão */
+.cb-pulsa:not(:disabled) { animation: cb-pulsa 2.8s ease-out infinite; }
+@keyframes cb-pulsa { 0% { box-shadow: 0 0 0 0 rgba(218,58,47,.42); } 55%, 100% { box-shadow: 0 0 0 12px rgba(218,58,47,0); } }
+.cb-pulsa:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cb-pulsa { animation: none !important; } }
+
+/* ============ módulo interno · layout do onboarding aprovado (Sistema interno) ============ */
+.cbx-app { --bn: #0A2530; --bn2: #12384A; --br: #DA3A2F; --bt: #1F7F88; --bline: #DCE3E6; --bink3: #7C8A90; --bink2: #4E636C;
+  display: flex; flex-direction: column; gap: 14px; font-family: 'CB Figtree', 'Figtree', system-ui, sans-serif; }
+.cbx-side { position: sticky; top: 16px; background: var(--bn); color: #fff; border-radius: 18px; padding: 16px 10px 12px; display: flex; flex-direction: column; gap: 3px; min-height: calc(100vh - 140px); }
+.cbx-side .lo { display: flex; align-items: center; gap: 8px; padding: 2px 8px 14px; font-family: 'redonda', 'Redonda', 'CB Figtree', system-ui, sans-serif; font-weight: 900; font-size: 16px; }
+.cbx-side .lo img { height: 26px; }
+.cbx-side .lo span { background: var(--br); border-radius: 5px; padding: 0 6px 1px; }
+.cbx-side .gp { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: #6F8790; font-weight: 800; padding: 12px 10px 4px; }
+.cbx-side > button { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: #C9D3D7; font-weight: 700; font-size: 13.5px; background: none; border: 0; text-align: left; font-family: inherit; cursor: pointer; }
+.cbx-side > button:hover { background: var(--bn2); color: #fff; }
+.cbx-side > button.on { background: var(--br); color: #fff; }
+.cbx-side > button .ic { width: 16px; height: 16px; display: grid; place-items: center; flex: none; }
+.cbx-side > button .ic .bi { width: 16px; height: 16px; }
+.cbx-side > button em { margin-left: auto; font-style: normal; background: #F2B84B; color: var(--bn); border-radius: 999px; padding: 0 7px; font-size: 11.5px; font-weight: 900; }
+.cbx-side .lk { margin-top: auto; display: grid; gap: 2px; padding-top: 14px; }
+.cbx-side .lk a, .cbx-side .lk button { color: #9FB3BA; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 8px; text-decoration: none; background: none; border: 0; text-align: left; font-family: inherit; cursor: pointer; }
+.cbx-side .lk button { background: var(--br); color: #fff; text-align: center; margin-bottom: 4px; padding: 8px 10px; border-radius: 999px; }
+.cbx-side .lk a:hover { color: #fff; background: var(--bn2); }
+.cbx-side .us { font-size: 11.5px; color: #9FB3BA; padding: 10px 10px 2px; border-top: 1px solid var(--bn2); margin-top: 8px; }
+.cbx-side .us b { display: block; color: #fff; font-size: 12.5px; }
+.cbx-mtabs { display: none; }
+.cbx-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.cbx-ht { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 40px; }
+.cbx-ht h2 { margin: 0; font-family: 'redonda', 'Redonda', 'CB Figtree', system-ui, sans-serif; font-weight: 900; font-size: 26px; letter-spacing: -.01em; color: var(--text); }
+.cbx-ht .ex { background: #FFF4E0; color: #7a5200; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 800; }
+.cbx-ht .r { margin-left: auto; display: flex; gap: 6px; }
+/* painéis: título em Figtree (como no onboarding), sem a Redonda pesada */
+.cbx-app .cbx-box { border-radius: 14px; box-shadow: 0 1px 2px rgba(10,37,48,.05); padding: 16px 18px; }
+.cbx-app .cbx-box h3 { font-family: 'CB Figtree', 'Figtree', system-ui, sans-serif; font-weight: 800; font-size: 16px; letter-spacing: 0; margin: 0 0 12px; }
+.cbx-app .cbx-hrow h3 { margin: 0; }
+.cbx-app .cbx-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cbx-app .cbx-kpis2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cbx-app .cbx-kpi { border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(10,37,48,.05); border-left: 4px solid var(--c, var(--bn)); }
+.cbx-app .cbx-kpis2 .cbx-kpi { background: var(--surface); box-shadow: none; border-top: 1px solid var(--bline); border-right: 1px solid var(--bline); border-bottom: 1px solid var(--bline); }
+.cbx-app .cbx-kpi small { font-size: 11px; color: var(--bink3); }
+.cbx-app .cbx-kpi b { font-family: 'redonda', 'Redonda', 'CB Figtree', system-ui, sans-serif; font-weight: 900; font-size: 24px; line-height: 1.15; white-space: nowrap; }
+.cbx-app .cbx-fu { grid-template-columns: 150px 1fr 70px; font-size: 13.5px; }
+.cbx-app .cbx-fu i { height: 24px; border-radius: 7px; background: #E7ECEE; }
+.cbx-app .cbx-fu b { font-family: 'redonda', 'Redonda', 'CB Figtree', system-ui, sans-serif; font-weight: 900; font-size: 19px; }
+.cbx-app .cbx-br { grid-template-columns: 150px 1fr 60px; font-weight: 700; color: var(--text); }
+.cbx-app .cbx-br i { background: #E7ECEE; }
+.cbx-app .cbx-br b { text-align: right; font-weight: 800; }
+.cbx-pres { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--bline); align-items: center; }
+/* filtros e tabelas */
+.cbx-app .cbx-pill { border: 1.5px solid var(--bline); padding: 5px 12px; font-size: 12.5px; color: var(--bink2); }
+.cbx-app .cbx-pill.on { background: var(--bn); border-color: var(--bn); color: #fff; }
+.cbx-app .cbx-bar input[type='search'], .cbx-app .cbx-bar select { border: 1.5px solid var(--bline); padding: 6px 12px; font-size: 13px; }
+.cbx-app .cbx-bar input[type='search'] { margin-left: auto; }
+.cbx-app .cbx-scroll { background: var(--surface); border-radius: 14px; box-shadow: 0 1px 2px rgba(10,37,48,.05); }
+.cbx-app .cbx-table { font-size: 13px; }
+.cbx-app .cbx-table th { font-size: 10.5px; color: var(--bink3); padding: 10px 12px; background: #FBFCFC; border-bottom: 1px solid var(--bline); }
+.cbx-app .cbx-table td { padding: 10px 12px; border-bottom: 1px solid var(--bline); }
+.cbx-app .cbx-table tr:last-child td { border-bottom: 0; }
+.cbx-app .cbx-table td b { font-weight: 800; }
+.cbx-app .cbx-table td small { font-size: 11.5px; color: var(--bink3); }
+.cbx-app .cbx-st.aprovado, .cbx-app .cbx-st.confirmado, .cbx-app .cbx-st.inscrito { background: #E3F5F6; color: var(--bt); }
+.cbx-app .cbx-st.analise, .cbx-app .cbx-st.recebido { background: #FFF4E0; color: #8a5d00; }
+.cbx-app .cbx-st.recusado, .cbx-app .cbx-st.cancelado { background: #E7ECEE; color: var(--bink2); }
+.cbx-app .cbx-st.falta { background: #FBE9E7; color: #C22F25; }
+.cbx-app .cbx-chips span { background: #F9F8F8; font-size: 10.5px; font-weight: 800; color: var(--bink2); }
+[data-theme='dark'] .cbx-app .cbx-table th { background: var(--surface-2); }
+[data-theme='dark'] .cbx-app .cbx-fu i, [data-theme='dark'] .cbx-app .cbx-br i { background: var(--surface-3); }
+@media (max-width: 1100px) { .cbx-app .cbx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* no celular o menu lateral vira gaveta: as abas aparecem também no topo da página */
+@media (max-width: 880px) {
+  .cbx-mtabs { display: flex; gap: 4px; background: #0A2530; border-radius: 999px; padding: 5px; overflow-x: auto; scrollbar-width: none; }
+  .cbx-mtabs button { border: 0; background: none; color: #C9D3D7; border-radius: 999px; padding: 7px 13px; font-weight: 800; font-size: 13px; white-space: nowrap; cursor: pointer; font-family: inherit; }
+  .cbx-mtabs button.on { background: #DA3A2F; color: #fff; }
+}
+@media print { .cbx-side, .cbx-mtabs, .cbx-ht .r { display: none !important; } .cbx-app { display: block; } }

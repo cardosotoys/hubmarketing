@@ -91,8 +91,16 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/marcas', label: 'Marcas', icon: 'brand', moduleKey: 'marcas' },
           { to: '/brand', label: 'Brand Center', icon: 'design', moduleKey: 'brand' },
           { to: '/reunioes', label: 'Reuniões', icon: 'calendar', moduleKey: 'reunioes', grantOnly: true },
-          // Cardoso Black (e-commerce): Diretoria/Adm veem; demais só com liberação em Configurações
-          { to: '/cardoso-black', label: 'Cardoso Black', icon: 'campanhas', moduleKey: 'cardoso-black', hiddenByDefault: true },
+        ],
+      },
+      {
+        // módulo avulso: o painel ao lado do rail vira o menu navy da Black (Sidebar → BlackNav)
+        key: 'cardoso-black',
+        label: 'Cardoso Black',
+        icon: 'black',
+        items: [
+          // Diretoria/Adm veem; demais só com liberação em Configurações
+          { to: '/cardoso-black', label: 'Cardoso Black', icon: 'black', moduleKey: 'cardoso-black', hiddenByDefault: true },
         ],
       },
       {

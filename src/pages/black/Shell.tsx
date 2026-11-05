@@ -3,8 +3,10 @@ import './black.css';
 import { useRedonda } from './fonte';
 
 /* Moldura das páginas públicas: cabeçalho padrão da Cardoso + faixa navy com o título. */
-export default function Shell({ sub, clock, children, wide = true, faixa = true }: {
+export default function Shell({ sub, clock, children, wide = true, faixa = true, unico = false }: {
   sub: string;
+  /** um cabeçalho só (marca + Black + relógio), para páginas abertas pelo QR, como a ficha */
+  unico?: boolean;
   faixa?: boolean;
   clock?: { label: string; value: string } | null;
   children: ReactNode;
@@ -21,6 +23,16 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true 
   }, []);
   return (
     <div className="cb">
+      {unico ? (
+        <header className="cb-hd1">
+          <div className="cb-wrap">
+            <img className="wm" src="/black/cardoso-branco.png" alt="Cardoso" />
+            <span className="bk">Black</span>
+            <span className="sb">{sub}</span>
+            {clock && <div className="cb-clock"><small>{clock.label}</small><b>{clock.value}</b></div>}
+          </div>
+        </header>
+      ) : <>
       <header className="cb-hd">
         <div className="cb-wrap">
           <img className="wm" src="/black/cardoso-branco.png" alt="Cardoso" />
@@ -37,6 +49,7 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true 
           {clock && <div className="cb-clock"><small>{clock.label}</small><b>{clock.value}</b></div>}
         </div>
       </div>}
+      </>}
       <main className="cb-main"><div className="cb-wrap" style={wide ? undefined : { maxWidth: 640 }}>{children}</div></main>
       <footer className="cb-foot">Cardoso Toys · Cardoso Black 2026 · exclusivo para lojas de e-commerce</footer>
     </div>
