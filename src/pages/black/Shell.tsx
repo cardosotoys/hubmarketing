@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import './black.css';
+import { useRedonda } from './fonte';
 
 /* Moldura das páginas públicas: cabeçalho padrão da Cardoso + faixa navy com o título. */
 export default function Shell({ sub, clock, children, wide = true, faixa = true }: {
@@ -9,6 +10,7 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true 
   children: ReactNode;
   wide?: boolean;
 }) {
+  useRedonda();
   useEffect(() => {
     const t = document.title;
     document.title = 'Cardoso Black · Cardoso Toys';

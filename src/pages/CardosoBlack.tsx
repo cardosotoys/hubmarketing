@@ -5,6 +5,7 @@ import Loading from '../components/Loading';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import './black/black.css';
+import { useRedonda } from './black/fonte';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -86,6 +87,7 @@ type Aba = 'resumo' | 'inscritos' | 'pedidos' | 'produtos' | 'carteira' | 'links
 const ABAS: [Aba, string][] = [['resumo', 'Medição'], ['inscritos', 'Inscritos'], ['pedidos', 'Pedidos'], ['produtos', 'Produtos da Black'], ['carteira', 'Carteira'], ['links', 'Links'], ['ajustes', 'Ajustes']];
 
 export default function CardosoBlack() {
+  useRedonda();
   const [aba, setAba] = useState<Aba>('resumo');
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [ins, setIns] = useState<Inscrito[]>([]);
