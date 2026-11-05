@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
 import {
   brl, diaMes, ERRO_LOGIN, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
-  type BlackItem, type BlackPedido as Pedido, type Carrinho,
+  type BlackConfig, type BlackItem, type BlackPedido as Pedido, type BlackSessao, type Carrinho,
 } from './api';
 
-/* /black/pedido — o único lugar onde o pedido da Black acontece.
- * Entra com CNPJ e senha; antes da abertura mostra a contagem; aberto, monta por caixa;
- * revisa e envia. O banco confere tudo de novo (preço, estoque, mínimo, prazo). */
+/* /black/pedido — a loja da Cardoso Black, no formato de um checkout:
+ *   Produtos       vitrine por família, com o resumo do carrinho ao lado
+ *   Carrinho       itens, quantidades, remover, total, mínimo e frete (?v=carrinho)
+ *   Finalizar      etapas Carrinho → Dados e entrega → Confirmação
+ *   Meus pedidos   pedidos enviados, com o andamento de cada um
+ *   Minha conta    dados da loja, live, canal e representante
+ * O banco confere tudo de novo no envio (preço, estoque, mínimo, prazo). */
+
+type View = 'produtos' | 'carrinho' | 'finalizar' | 'pedidos' | 'conta';
+const VIEWS: View[] = ['produtos', 'carrinho', 'finalizar', 'pedidos', 'conta'];
 
 export default function BlackPedido() {
   const { cfg } = useConfig();
@@ -29,20 +36,7 @@ export default function BlackPedido() {
   const depois = !previa && fecha !== null && fecha.ms <= 0;
   return (
     <Shell sub={`Pedido somente por esta página · caixa fechada · mínimo de ${brl(cfg.pedido_minimo)}`} clock={clock}>
-      <div className="cb-who" style={{ margin: '-24px -20px 18px', borderRadius: 0 }}>
-        <div className="cb-wrap">
-          <span className="cb-av" style={{ background: 'var(--pink)', color: 'var(--red)' }}>{(sessao.fantasia || sessao.razao_social)[0]}</span>
-          <b>{sessao.fantasia || sessao.razao_social}</b>
-          <span className="tg">{sessao.cidade}/{sessao.uf}</span>
-          {sessao.representante && <span className="tg">Rep. {sessao.representante}</span>}
-          <button type="button" className="cb-link" onClick={sair}>Sair</button>
-        </div>
-      </div>
-      {previa && <div className="cb-alert warn" style={{ marginBottom: 14 }}><b>Prévia da equipe.</b> Esta é a visão do cliente com a loja de demonstração: preços e carrinho funcionam, mas o pedido não é enviado e nada entra na medição.</div>}
-      {antes ? <Espera alvo={cfg.abre_em} sessao={sessao.canal_link} />
-        : <Loja token={token} uf={sessao.uf} cidade={sessao.cidade} comprador={sessao.comprador} email={sessao.email}
-            celular={sessao.celular} representante={sessao.representante} razao={sessao.razao_social} cnpj={sessao.cnpj}
-            minimo={cfg.pedido_minimo} limiteFrete={cfg.frete_gratis_sp_rj} encerrado={depois} />}
+      <Loja token={token} sessao={sessao} cfg={cfg} antes={antes} encerrado={depois} previa={previa} sair={sair} />
     </Shell>
   );
 }
@@ -97,19 +91,26 @@ function Espera({ alvo, sessao: canal }: { alvo: string; sessao: string }) {
 }
 
 type LojaProps = {
-  token: string; uf: string; cidade: string; comprador: string; email: string; celular: string; representante: string;
-  razao: string; cnpj: string; minimo: number; limiteFrete: number; encerrado: boolean;
+  token: string; sessao: BlackSessao; cfg: BlackConfig; antes: boolean; encerrado: boolean; previa: boolean; sair: () => void;
 };
+type Enviado = { numero: string; caixas: number; pecas: number; total: number; frete: string };
+type Linha = { it: BlackItem; q: number };
 
 function Loja(p: LojaProps) {
-  const [aba, setAba] = useState<'produtos' | 'pedidos'>(p.encerrado ? 'pedidos' : 'produtos');
+  const { sessao, cfg } = p;
+  const [params, setParams] = useSearchParams();
+  const vParam = params.get('v') as View | null;
+  const view: View = vParam && VIEWS.includes(vParam) ? vParam : p.encerrado ? 'pedidos' : 'produtos';
+  const ir = useCallback((v: View) => {
+    setParams(v === 'produtos' ? {} : { v }); window.scrollTo(0, 0);
+  }, [setParams]);
+
   const [itens, setItens] = useState<BlackItem[]>([]);
   const [cart, setCart] = useState<Carrinho>(lerCarrinho());
   const [fam, setFam] = useState('Todas');
   const [busca, setBusca] = useState('');
-  const [etapa, setEtapa] = useState<'loja' | 'revisao' | 'enviado'>('loja');
   const [toast, setToast] = useState('');
-  const [enviado, setEnviado] = useState<{ numero: string; caixas: number; pecas: number; total: number; frete: string } | null>(null);
+  const [enviado, setEnviado] = useState<Enviado | null>(null);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
 
   const carregar = useCallback(async () => {
@@ -117,8 +118,8 @@ function Loja(p: LojaProps) {
       supabase.rpc('black_catalogo', { p_token: p.token }),
       supabase.rpc('black_meus_pedidos', { p_token: p.token }),
     ]);
-    setItens((c.data as BlackItem[]) ?? []);
-    setPedidos((m.data as Pedido[]) ?? []);
+    setItens(Array.isArray(c.data) ? (c.data as BlackItem[]) : []);
+    setPedidos(Array.isArray(m.data) ? (m.data as Pedido[]) : []);
   }, [p.token]);
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { gravarCarrinho(cart); }, [cart]);
@@ -130,11 +131,12 @@ function Loja(p: LojaProps) {
   }, []);
 
   const porCod = useMemo(() => Object.fromEntries(itens.map((i) => [i.codigo, i])), [itens]);
-  const linhas = Object.entries(cart).filter(([c, q]) => q > 0 && porCod[c]?.preco_peca != null).map(([c, q]) => ({ it: porCod[c], q }));
+  const linhas: Linha[] = Object.entries(cart).filter(([c, q]) => q > 0 && porCod[c]?.preco_peca != null).map(([c, q]) => ({ it: porCod[c], q }));
   const total = linhas.reduce((s, l) => s + l.q * l.it.caixa * (l.it.preco_peca ?? 0), 0);
   const caixas = linhas.reduce((s, l) => s + l.q, 0);
-  const ok = total >= p.minimo;
-  const [freteT, freteOk] = freteTexto(p.uf, p.cidade, total, p.limiteFrete);
+  const pecas = linhas.reduce((s, l) => s + l.q * l.it.caixa, 0);
+  const ok = total >= cfg.pedido_minimo;
+  const [freteT, freteOk] = freteTexto(sessao.uf, sessao.cidade, total, cfg.frete_gratis_sp_rj);
   const familias = ['Todas', ...new Set(itens.map((i) => i.familia).filter(Boolean))];
   const vis = itens.filter((i) => (fam === 'Todas' || i.familia === fam)
     && (!busca.trim() || `${i.codigo} ${i.nome}`.toLowerCase().includes(busca.trim().toLowerCase())));
@@ -144,56 +146,31 @@ function Loja(p: LojaProps) {
     const n = Math.max(0, Math.min(max, (x[c] ?? 0) + d));
     const y = { ...x }; if (n) y[c] = n; else delete y[c]; return y;
   });
-
-  if (etapa === 'enviado' && enviado) {
-    return (
-      <div className="cb-card cb-pad cb-narrow cb-res">
-        <div className="bd" style={{ ['--c' as string]: 'var(--teal)' }}><Ic n="check" /></div>
-        <h2>Pedido enviado</h2>
-        <div><span className="cb-btn dk sm" style={{ cursor: 'default' }}>{enviado.numero}</span></div>
-        <p>{enviado.caixas} caixas · {enviado.pecas.toLocaleString('pt-BR')} peças · <b>{brl(enviado.total)}</b></p>
-        <div className="cb-fre">{enviado.frete}</div>
-        <div className="cb-tline" style={{ textAlign: 'left', boxShadow: 'inset 0 0 0 1.5px var(--line)' }}>
-          <div className="ok"><i>✓</i><div>Pedido enviado<span>número {enviado.numero}, já está com a Cardoso</span></div></div>
-          <div className="now"><i>2</i><div>Confirmação<span>{p.representante ? `${p.representante}, seu representante, entra em contato` : 'seu representante entra em contato'}</span></div></div>
-          <div><i>3</i><div>Faturamento e entrega<span>pelo fluxo normal da Cardoso</span></div></div>
-        </div>
-        <div className="cb-row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="cb-btn gh sm" type="button" onClick={() => window.print()}>Imprimir ou salvar PDF</button>
-          <button className="cb-btn sm" type="button" onClick={() => { setEtapa('loja'); setAba('produtos'); }}>Fazer outro pedido</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (etapa === 'revisao') {
-    return <Revisao {...p} linhas={linhas} total={total} caixas={caixas} frete={freteT} freteOk={freteOk}
-      voltar={() => setEtapa('loja')}
-      onEnviado={(r) => { setEnviado(r); setCart({}); setEtapa('enviado'); carregar(); window.scrollTo(0, 0); }}
-      onAjuste={(msg) => { setCart(lerCarrinho()); setToast(msg); setEtapa('loja'); carregar(); }} />;
-  }
+  const remover = (c: string) => setCart((x) => { const y = { ...x }; delete y[c]; return y; });
+  const podeComprar = !p.antes && !p.encerrado;
+  const resumo = { total, caixas, pecas, minimo: cfg.pedido_minimo, ok, frete: freteT, freteOk };
 
   return (
     <>
-      <div className="cb-tabs" role="tablist">
-        <button role="tab" className={aba === 'produtos' ? 'on' : ''} onClick={() => setAba('produtos')} disabled={p.encerrado}>Produtos</button>
-        <button role="tab" className={aba === 'pedidos' ? 'on' : ''} onClick={() => setAba('pedidos')}>Meus pedidos{pedidos.length ? ` (${pedidos.length})` : ''}</button>
-      </div>
-      {p.encerrado && <div className="cb-alert warn" style={{ marginTop: 14 }}>A Cardoso Black terminou. Os pedidos foram aceitos até 15/11, às 23h59.</div>}
-
-      {aba === 'pedidos' ? (
-        <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
-          {pedidos.length === 0 && <div className="cb-card cb-pad cb-note">Nenhum pedido enviado ainda.</div>}
-          {pedidos.map((x) => (
-            <div key={x.numero} className="cb-card cb-ped">
-              <div className="h"><b>{x.numero}</b><span className={`cb-st ${x.status}`}><i />{x.status === 'recebido' ? 'Recebido' : x.status === 'confirmado' ? 'Confirmado' : 'Cancelado'}</span>
-                <span style={{ marginLeft: 'auto', fontWeight: 800 }}>{brl(Number(x.total))}</span></div>
-              <small style={{ color: 'var(--ink3)' }}>{fmtData(x.criado_em)} · {x.caixas} caixas</small>
-              {x.itens?.map((it) => <div key={it.codigo} className="cb-it" style={{ padding: '5px 0' }}><span>{it.nome}<small>{it.caixas} cx × {it.pecas_caixa} pç · {brl(Number(it.preco_peca))}/pç</small></span><b>{brl(Number(it.total))}</b></div>)}
-            </div>
-          ))}
+      <nav className="cb-snav" aria-label="Loja">
+        <div className="cb-snav-l">
+          <span className="cb-av" style={{ background: 'var(--pink)', color: 'var(--red)' }}>{(sessao.fantasia || sessao.razao_social)[0]}</span>
+          <div className="who"><b>{sessao.fantasia || sessao.razao_social}</b><small>{sessao.cidade}/{sessao.uf}{sessao.representante ? ` · Rep. ${sessao.representante}` : ''}</small></div>
         </div>
-      ) : (
+        <div className="cb-snav-r">
+          <button type="button" className={view === 'produtos' ? 'on' : ''} aria-label="Produtos" onClick={() => ir('produtos')}><Ic n="store" /><span>Produtos</span></button>
+          <button type="button" className={view === 'pedidos' ? 'on' : ''} aria-label="Meus pedidos" onClick={() => ir('pedidos')}><Ic n="receipt" /><span>Meus pedidos{pedidos.length ? ` (${pedidos.length})` : ''}</span></button>
+          <button type="button" className={view === 'conta' ? 'on' : ''} aria-label="Minha conta" onClick={() => ir('conta')}><Ic n="users" /><span>Minha conta</span></button>
+          <button type="button" className={`cart${view === 'carrinho' || view === 'finalizar' ? ' on' : ''}`} onClick={() => ir('carrinho')} aria-label={`Carrinho, ${caixas} caixas`}>
+            <Ic n="cart" /><span className="n">{caixas}</span><span className="v">{brl(total)}</span>
+          </button>
+        </div>
+      </nav>
+
+      {p.previa && <div className="cb-alert warn" style={{ marginBottom: 14 }}><b>Prévia da equipe.</b> Esta é a visão do cliente com a loja de demonstração: preços e carrinho funcionam, mas o pedido não é enviado e nada entra na medição.</div>}
+      {p.encerrado && <div className="cb-alert warn" style={{ marginBottom: 14 }}>A Cardoso Black terminou. Os pedidos foram aceitos até {fmtData(cfg.fecha_em).replace(', ', ', às ')}.</div>}
+
+      {view === 'produtos' && (p.antes ? <Espera alvo={cfg.abre_em} sessao={sessao.canal_link} /> : (
         <>
           <div className="cb-tools">
             <input className="cb-search" type="search" placeholder="Buscar por nome ou código" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -203,7 +180,7 @@ function Loja(p: LojaProps) {
           </div>
           <div className="cb-shop">
             <div className="cb-prods">
-              {vis.length === 0 && <div className="cb-note" style={{ gridColumn: '1/-1' }}>Nenhum produto com essa busca.</div>}
+              {vis.length === 0 && <div className="cb-note" style={{ gridColumn: '1/-1' }}>{itens.length ? 'Nenhum produto com essa busca.' : <><span className="cb-spin" /> Carregando produtos…</>}</div>}
               {vis.map((i) => {
                 const q = cart[i.codigo] ?? 0; const esg = i.disponivel === 0;
                 return (
@@ -211,48 +188,126 @@ function Loja(p: LojaProps) {
                     <Link className="im" to={`/black/p/${i.codigo}`}>
                       {i.imagem ? <img src={i.imagem} alt="" loading="lazy" /> : <span className="ph"><Ic n="star" /></span>}
                       {esg && <span className="esg">Esgotado</span>}
+                      <span className="vf">Ver ficha</span>
                     </Link>
                     <div className="bd">
                       <span className="cd">{i.codigo} · {i.familia}</span>
                       <h3>{i.nome}</h3>
                       {i.preco_peca != null && <div className="pr"><b>{brl(i.preco_peca)}</b><span>por peça</span></div>}
                       <div className="bx">Caixa com {i.caixa}{i.preco_peca != null ? ` · ${brl(i.preco_peca * i.caixa)}` : ''}{i.disponivel != null && !esg ? ` · ${i.disponivel} cx disp.` : ''}</div>
-                      <div className="cb-stp">
-                        <button type="button" aria-label="Retirar uma caixa" disabled={!q} onClick={() => mudar(i.codigo, -1)}>−</button>
-                        <span className="q">{q}<small>caixa{q === 1 ? '' : 's'}</small></span>
-                        <button type="button" className="p" aria-label="Adicionar uma caixa" disabled={esg || p.encerrado || (i.disponivel != null && q >= i.disponivel)} onClick={() => mudar(i.codigo, 1)}>+</button>
-                      </div>
+                      <Stepper q={q} menos={() => mudar(i.codigo, -1)} mais={() => mudar(i.codigo, 1)} maisOff={esg || !podeComprar || (i.disponivel != null && q >= i.disponivel)} />
                     </div>
                   </article>
                 );
               })}
             </div>
             <aside className="cb-card cb-cart">
-              <div className="ct"><b>Seu pedido</b><span>{caixas} cx</span></div>
+              <div className="ct"><b>Seu carrinho</b><span>{caixas} cx</span></div>
               {linhas.length === 0 ? <div className="ce">Escolha as caixas na lista.</div>
                 : linhas.map((l) => <div key={l.it.codigo} className="ln"><b>{l.it.nome}</b><b>{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b><small>{l.q} cx × {l.it.caixa} pç</small></div>)}
-              <Resumo total={total} minimo={p.minimo} ok={ok} frete={freteT} freteOk={freteOk} revisar={() => { setEtapa('revisao'); window.scrollTo(0, 0); }} />
+              <Resumo {...resumo} botao="Ir para o carrinho" acao={() => ir('carrinho')} desligado={!linhas.length} />
             </aside>
           </div>
           <div className="cb-mbar">
-            <div><b>{brl(total)}</b><span>{ok ? `${caixas} caixas · mínimo atingido` : `${caixas} caixas · faltam ${brl(p.minimo - total)}`}</span><div className="cb-bar"><i style={{ width: `${Math.min(100, (total / p.minimo) * 100)}%` }} /></div></div>
-            <button className="cb-btn" type="button" disabled={!ok} onClick={() => { setEtapa('revisao'); window.scrollTo(0, 0); }}>Revisar</button>
+            <div><b>{brl(total)}</b><span>{ok ? `${caixas} caixas · mínimo atingido` : `${caixas} caixas · faltam ${brl(cfg.pedido_minimo - total)}`}</span><div className="cb-bar"><i style={{ width: `${Math.min(100, (total / cfg.pedido_minimo) * 100)}%` }} /></div></div>
+            <button className="cb-btn" type="button" disabled={!linhas.length} onClick={() => ir('carrinho')}><Ic n="cart" />Carrinho</button>
           </div>
         </>
+      ))}
+
+      {view === 'carrinho' && (
+        <>
+          <Etapas atual={1} />
+          {linhas.length === 0 ? (
+            <div className="cb-card cb-pad cb-narrow cb-res">
+              <div className="bd" style={{ ['--c' as string]: 'var(--navy)' }}><Ic n="cart" /></div>
+              <h2>Seu carrinho está vazio</h2>
+              <p>Escolha os produtos por caixa fechada na lista ou pela ficha do QR durante a live.</p>
+              <button className="cb-btn" type="button" onClick={() => ir('produtos')}>Ver produtos</button>
+            </div>
+          ) : (
+            <div className="cb-co">
+              <div className="cb-card cb-cl">
+                <div className="hd"><h3>Carrinho</h3><span>{caixas} caixa{caixas > 1 ? 's' : ''} · {pecas.toLocaleString('pt-BR')} peças</span></div>
+                {linhas.map((l) => (
+                  <div key={l.it.codigo} className="row">
+                    <Link className="im" to={`/black/p/${l.it.codigo}`}>{l.it.imagem ? <img src={l.it.imagem} alt="" /> : <Ic n="star" />}</Link>
+                    <div className="nf">
+                      <span className="cd">{l.it.codigo} · {l.it.familia}</span>
+                      <b>{l.it.nome}</b>
+                      <small>{brl(l.it.preco_peca ?? 0)}/peça · caixa com {l.it.caixa} = {brl((l.it.preco_peca ?? 0) * l.it.caixa)}</small>
+                      <button type="button" className="cb-link rm" onClick={() => remover(l.it.codigo)}>Remover</button>
+                    </div>
+                    <Stepper q={l.q} menos={() => mudar(l.it.codigo, -1)} mais={() => mudar(l.it.codigo, 1)} maisOff={!podeComprar || (l.it.disponivel != null && l.q >= l.it.disponivel)} />
+                    <b className="st">{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b>
+                  </div>
+                ))}
+                <div className="ft"><button type="button" className="cb-link" onClick={() => ir('produtos')}>‹ Continuar escolhendo</button></div>
+              </div>
+              <aside className="cb-card cb-cart fixo">
+                <div className="ct"><b>Resumo</b><span>{caixas} cx</span></div>
+                <Resumo {...resumo} botao="Continuar" acao={() => ir('finalizar')} desligado={!ok || !podeComprar} />
+              </aside>
+            </div>
+          )}
+        </>
       )}
+
+      {view === 'finalizar' && (enviado ? (
+        <>
+          <Etapas atual={3} />
+          <Confirmacao enviado={enviado} representante={sessao.representante} outro={() => { setEnviado(null); ir('produtos'); }} pedidos={() => { setEnviado(null); ir('pedidos'); }} />
+        </>
+      ) : linhas.length === 0 ? (
+        <div className="cb-card cb-pad cb-narrow cb-res"><h2>Seu carrinho está vazio</h2><button className="cb-btn" type="button" onClick={() => ir('produtos')}>Ver produtos</button></div>
+      ) : (
+        <>
+          <Etapas atual={2} />
+          <Finalizar token={p.token} sessao={sessao} linhas={linhas} {...resumo}
+            voltar={() => ir('carrinho')}
+            onEnviado={(r) => { setEnviado(r); setCart({}); carregar(); window.scrollTo(0, 0); }}
+            onAjuste={(msg) => { setCart(lerCarrinho()); setToast(msg); ir('carrinho'); carregar(); }} />
+        </>
+      ))}
+
+      {view === 'pedidos' && <MeusPedidos pedidos={pedidos} representante={sessao.representante} comprar={podeComprar ? () => ir('produtos') : null} />}
+
+      {view === 'conta' && <MinhaConta sessao={sessao} cfg={cfg} sair={p.sair} />}
+
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
     </>
   );
 }
 
-function Resumo({ total, minimo, ok, frete, freteOk, revisar }: { total: number; minimo: number; ok: boolean; frete: string; freteOk: boolean; revisar: () => void }) {
+function Stepper({ q, menos, mais, maisOff }: { q: number; menos: () => void; mais: () => void; maisOff: boolean }) {
+  return (
+    <div className="cb-stp">
+      <button type="button" aria-label="Retirar uma caixa" disabled={!q} onClick={menos}>−</button>
+      <span className="q">{q}<small>caixa{q === 1 ? '' : 's'}</small></span>
+      <button type="button" className="p" aria-label="Adicionar uma caixa" disabled={maisOff} onClick={mais}>+</button>
+    </div>
+  );
+}
+
+function Etapas({ atual }: { atual: 1 | 2 | 3 }) {
+  const E = ['Carrinho', 'Dados e entrega', 'Confirmação'];
+  return (
+    <ol className="cb-etapas">
+      {E.map((e, i) => <li key={e} className={i + 1 < atual ? 'ok' : i + 1 === atual ? 'on' : ''}><i>{i + 1 < atual ? '✓' : i + 1}</i><span>{e}</span></li>)}
+    </ol>
+  );
+}
+
+type ResumoProps = { total: number; caixas: number; pecas: number; minimo: number; ok: boolean; frete: string; freteOk: boolean };
+function Resumo({ total, minimo, ok, frete, freteOk, pecas, botao, acao, desligado }: ResumoProps & { botao: string; acao: () => void; desligado: boolean }) {
   return (
     <div className="cb-sum">
+      {pecas > 0 && <div className="cb-sl"><span>Peças</span><b>{pecas.toLocaleString('pt-BR')}</b></div>}
       <div className="cb-tot"><span>Total</span><b>{brl(total)}</b></div>
       <div className="cb-bar"><i style={{ width: `${Math.min(100, (total / minimo) * 100)}%` }} /></div>
       <div className={`cb-hint${ok ? ' ok' : ''}`}>{ok ? 'Pedido mínimo atingido' : `Faltam ${brl(minimo - total)} para o mínimo de ${brl(minimo)}`}</div>
       <div className={`cb-fre${freteOk ? ' ok' : ''}`}>{frete}</div>
-      <button className="cb-btn full" type="button" disabled={!ok} onClick={revisar}>Revisar pedido</button>
+      <button className="cb-btn full" type="button" disabled={desligado} onClick={acao}>{botao}</button>
     </div>
   );
 }
@@ -268,11 +323,11 @@ const ERRO_PEDIDO = (r: { erro: string; codigo?: string; disponivel?: number; mi
   produto: `${nome(r.codigo ?? '')} não está mais disponível. Retirei do pedido.`,
 } as Record<string, string>)[r.erro] ?? 'Não consegui enviar agora. Tente de novo.';
 
-function Revisao(p: LojaProps & {
-  linhas: { it: BlackItem; q: number }[]; total: number; caixas: number; frete: string; freteOk: boolean;
-  voltar: () => void; onEnviado: (r: { numero: string; caixas: number; pecas: number; total: number; frete: string }) => void; onAjuste: (m: string) => void;
+function Finalizar(p: ResumoProps & {
+  token: string; sessao: BlackSessao; linhas: Linha[];
+  voltar: () => void; onEnviado: (r: Enviado) => void; onAjuste: (m: string) => void;
 }) {
-  const [comprador, setComprador] = useState(p.comprador);
+  const [comprador, setComprador] = useState(p.sessao.comprador);
   const [obs, setObs] = useState('');
   const [aceite, setAceite] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -284,7 +339,7 @@ function Revisao(p: LojaProps & {
     });
     setEnviando(false);
     if (error || !data) { setErro('Não consegui enviar agora. Tente de novo.'); return; }
-    const r = data as { erro?: string; codigo?: string; disponivel?: number; minimo?: number; numero: string; caixas: number; pecas: number; total: number; frete: string };
+    const r = data as { erro?: string; codigo?: string; disponivel?: number; minimo?: number } & Enviado;
     if (r.erro) {
       const nome = (c: string) => p.linhas.find((l) => l.it.codigo === c)?.it.nome ?? c;
       const msg = ERRO_PEDIDO(r as { erro: string }, nome);
@@ -297,28 +352,135 @@ function Revisao(p: LojaProps & {
     }
     p.onEnviado(r);
   }
+  const s = p.sessao;
   return (
-    <div className="cb-rev">
-      <div className="cb-card cb-pad">
-        <h3 style={{ fontSize: 19, marginBottom: 6 }}>Itens</h3>
-        {p.linhas.map((l) => <div key={l.it.codigo} className="cb-it"><span>{l.it.nome}<small>{l.q} cx × {l.it.caixa} pç · {brl(l.it.preco_peca ?? 0)}/pç</small></span><b>{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b></div>)}
-        <div className="cb-tot" style={{ marginTop: 10 }}><span>Total</span><b>{brl(p.total)}</b></div>
-        <div className={`cb-fre${p.freteOk ? ' ok' : ''}`} style={{ marginTop: 8 }}>{p.frete}</div>
+    <div className="cb-co">
+      <div style={{ display: 'grid', gap: 16 }}>
+        <div className="cb-card cb-pad cb-form">
+          <h3 style={{ fontSize: 19 }}>Dados do comprador</h3>
+          <dl className="cb-kv">
+            <dt>Loja</dt><dd>{s.razao_social}</dd><dt>CNPJ</dt><dd>{maskCnpj(s.cnpj)}</dd>
+            <dt>E-mail</dt><dd>{s.email}</dd><dt>WhatsApp</dt><dd>{s.celular}</dd>
+            {s.representante && <><dt>Representante</dt><dd>{s.representante}</dd></>}
+          </dl>
+          <div className="cb-field"><label>Comprador</label><input value={comprador} onChange={(e) => setComprador(e.target.value)} /></div>
+        </div>
+        <div className="cb-card cb-pad cb-form">
+          <h3 style={{ fontSize: 19 }}>Entrega</h3>
+          <div className="cb-buy" style={{ boxShadow: 'inset 0 0 0 1.5px var(--line)' }}><span className="ic"><Ic n="rocket" /></span><span><b>{s.cidade}/{s.uf}</b> · endereço do cadastro da loja na Cardoso<br />{p.frete}</span></div>
+          <div className="cb-field"><label>Observação (opcional)</label><textarea rows={3} placeholder="Ex.: horário de recebimento, informação para o representante" value={obs} onChange={(e) => setObs(e.target.value)} /></div>
+        </div>
       </div>
+      <aside className="cb-card cb-cart fixo">
+        <div className="ct"><b>Seu pedido</b><span>{p.caixas} cx</span></div>
+        {p.linhas.map((l) => <div key={l.it.codigo} className="ln"><b>{l.it.nome}</b><b>{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b><small>{l.q} cx × {l.it.caixa} pç · {brl(l.it.preco_peca ?? 0)}/pç</small></div>)}
+        <div className="cb-sum">
+          <div className="cb-tot"><span>Total</span><b>{brl(p.total)}</b></div>
+          <div className={`cb-fre${p.freteOk ? ' ok' : ''}`}>{p.frete}</div>
+          <label className="cb-check"><input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
+            <span>Estou de acordo: pedido por caixa fechada, sujeito à confirmação do representante.</span></label>
+          {erro && <div className="cb-alert err">{erro}</div>}
+          <button className="cb-btn full" type="button" disabled={!aceite || enviando || !p.ok} onClick={enviar}>{enviando ? 'Enviando…' : 'Enviar pedido'}</button>
+          <button className="cb-btn gh full" type="button" onClick={p.voltar}>Voltar ao carrinho</button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Confirmacao({ enviado, representante, outro, pedidos }: { enviado: Enviado; representante: string; outro: () => void; pedidos: () => void }) {
+  return (
+    <div className="cb-card cb-pad cb-narrow cb-res">
+      <div className="bd" style={{ ['--c' as string]: 'var(--teal)' }}><Ic n="check" /></div>
+      <h2>Pedido enviado</h2>
+      <div><span className="cb-btn dk sm" style={{ cursor: 'default' }}>{enviado.numero}</span></div>
+      <p>{enviado.caixas} caixas · {enviado.pecas.toLocaleString('pt-BR')} peças · <b>{brl(enviado.total)}</b></p>
+      <div className="cb-fre">{enviado.frete}</div>
+      <Andamento status="recebido" representante={representante} />
+      <div className="cb-row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button className="cb-btn gh sm" type="button" onClick={() => window.print()}>Imprimir ou salvar PDF</button>
+        <button className="cb-btn gh sm" type="button" onClick={pedidos}>Meus pedidos</button>
+        <button className="cb-btn sm" type="button" onClick={outro}>Fazer outro pedido</button>
+      </div>
+    </div>
+  );
+}
+
+function Andamento({ status, representante }: { status: string; representante: string }) {
+  if (status === 'cancelado') return <div className="cb-alert err" style={{ textAlign: 'left' }}>Pedido cancelado. Fale com {representante || 'o seu representante'} para mais informações.</div>;
+  const conf = status === 'confirmado';
+  return (
+    <div className="cb-tline" style={{ textAlign: 'left', boxShadow: 'inset 0 0 0 1.5px var(--line)' }}>
+      <div className="ok"><i>✓</i><div>Pedido enviado<span>já está com a Cardoso</span></div></div>
+      <div className={conf ? 'ok' : 'now'}><i>{conf ? '✓' : 2}</i><div>{conf ? 'Confirmado' : 'Aguardando confirmação'}<span>{representante ? `${representante}, seu representante` : 'seu representante'}{conf ? ' confirmou o pedido' : ' entra em contato'}</span></div></div>
+      <div className={conf ? 'now' : ''}><i>3</i><div>Faturamento e entrega<span>pelo fluxo normal da Cardoso</span></div></div>
+    </div>
+  );
+}
+
+function MeusPedidos({ pedidos, representante, comprar }: { pedidos: Pedido[]; representante: string; comprar: (() => void) | null }) {
+  const [aberto, setAberto] = useState<string | null>(pedidos[0]?.numero ?? null);
+  if (!pedidos.length) return (
+    <div className="cb-card cb-pad cb-narrow cb-res">
+      <div className="bd" style={{ ['--c' as string]: 'var(--navy)' }}><Ic n="receipt" /></div>
+      <h2>Nenhum pedido ainda</h2>
+      <p>Os pedidos enviados aparecem aqui, com o andamento de cada um.</p>
+      {comprar && <button className="cb-btn" type="button" onClick={comprar}>Ver produtos</button>}
+    </div>
+  );
+  const ST: Record<string, string> = { recebido: 'Aguardando confirmação', confirmado: 'Confirmado', cancelado: 'Cancelado' };
+  return (
+    <div style={{ display: 'grid', gap: 12, maxWidth: 820, margin: '0 auto' }}>
+      <h2 className="cb-h2">Meus pedidos</h2>
+      {pedidos.map((x) => {
+        const on = aberto === x.numero;
+        return (
+          <div key={x.numero} className="cb-card cb-ped">
+            <button type="button" className="h" onClick={() => setAberto(on ? null : x.numero)} aria-expanded={on}>
+              <b>{x.numero}</b><span className={`cb-st ${x.status}`}><i />{ST[x.status] ?? x.status}</span>
+              <small>{fmtData(x.criado_em)} · {x.caixas} caixas</small>
+              <span className="tt">{brl(Number(x.total))}</span><span className="ch">{on ? '−' : '+'}</span>
+            </button>
+            {on && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {x.itens?.map((it) => <div key={it.codigo} className="cb-it"><span>{it.nome}<small>{it.caixas} cx × {it.pecas_caixa} pç · {brl(Number(it.preco_peca))}/pç</small></span><b>{brl(Number(it.total))}</b></div>)}
+                <Andamento status={x.status} representante={representante} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MinhaConta({ sessao: s, cfg, sair }: { sessao: BlackSessao; cfg: BlackConfig; sair: () => void }) {
+  return (
+    <div className="cb-co" style={{ maxWidth: 980, margin: '0 auto' }}>
       <div className="cb-card cb-pad cb-form">
-        <h3 style={{ fontSize: 19 }}>Comprador</h3>
+        <h3 style={{ fontSize: 19 }}>Minha conta</h3>
         <dl className="cb-kv">
-          <dt>Loja</dt><dd>{p.razao}</dd><dt>CNPJ</dt><dd>{maskCnpj(p.cnpj)}</dd>
-          <dt>E-mail</dt><dd>{p.email}</dd><dt>WhatsApp</dt><dd>{p.celular}</dd>
-          {p.representante && <><dt>Representante</dt><dd>{p.representante}</dd></>}
+          <dt>Loja</dt><dd>{s.fantasia || s.razao_social}</dd>
+          <dt>Razão social</dt><dd>{s.razao_social}</dd>
+          <dt>CNPJ</dt><dd>{maskCnpj(s.cnpj)}</dd>
+          <dt>Cidade/UF</dt><dd>{s.cidade}/{s.uf}</dd>
+          <dt>Comprador</dt><dd>{s.comprador}</dd>
+          <dt>E-mail</dt><dd>{s.email}</dd>
+          <dt>WhatsApp</dt><dd>{s.celular}</dd>
         </dl>
-        <div className="cb-field"><label>Comprador</label><input value={comprador} onChange={(e) => setComprador(e.target.value)} /></div>
-        <div className="cb-field"><label>Observação (opcional)</label><textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
-        <label className="cb-check"><input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
-          <span>Estou de acordo: pedido por caixa fechada, sujeito à confirmação do representante.</span></label>
-        {erro && <div className="cb-alert err">{erro}</div>}
-        <button className="cb-btn full" type="button" disabled={!aceite || enviando} onClick={enviar}>{enviando ? 'Enviando…' : 'Enviar pedido'}</button>
-        <button className="cb-btn gh full" type="button" onClick={p.voltar}>Voltar e alterar</button>
+        <div className="cb-alert">Para alterar algum dado ou criar uma nova senha, fale com {s.representante ? <b>{s.representante}</b> : 'o seu representante'}.</div>
+        <button className="cb-btn gh" type="button" onClick={sair}>Sair desta conta</button>
+      </div>
+      <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+        <div className="cb-lvc">
+          <div className="dt"><b>{new Date(cfg.abre_em).toLocaleDateString('pt-BR', { day: 'numeric', timeZone: 'America/Sao_Paulo' })}</b><small>{new Date(cfg.abre_em).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '').toUpperCase()}</small></div>
+          <div className="l1">Live da Cardoso Black</div>
+          <div className="l2">{cfg.live_data}</div>
+          <div className="l3"><span>Pedidos até {fmtData(cfg.fecha_em)}</span></div>
+        </div>
+        {s.live_link && <a className="cb-btn dk full" href={s.live_link} target="_blank" rel="noreferrer"><Ic n="laptop" />Entrar na live</a>}
+        {s.canal_link && <a className="cb-wab" href={s.canal_link} target="_blank" rel="noreferrer"><Sv.wa />Canal Cardoso Black no WhatsApp</a>}
+        <div className="cb-buy"><span className="ic"><Ic n="coins" /></span><span><b>Condições:</b> caixa fechada · mínimo de {brl(cfg.pedido_minimo)} · frete grátis em SP capital e em SP/RJ acima de {brl(cfg.frete_gratis_sp_rj)}.</span></div>
       </div>
     </div>
   );
