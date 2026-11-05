@@ -1,6 +1,6 @@
 /* Cardoso Black — páginas públicas (/black, /black/pedido, /black/p/:codigo, /black/senha) e módulo interno.
  * Identidade Cardoso: coral #DA3A2F, vinho #6A151F, navy #0A2530, azul #4CBDC7. Títulos em Redonda
- * (quando a fonte licenciada estiver em /black/fonts) e textos em Figtree. */
+ * (Adobe Fonts, projeto web da Cardoso, carregado por fonte.ts) e textos em Figtree. */
 
 @font-face { font-family: 'CB Figtree'; src: url('/black/fonts/figtree.woff2') format('woff2'); font-weight: 300 900; font-display: swap; }
 @font-face { font-family: 'Redonda'; src: url('/black/fonts/redonda-900.woff2') format('woff2'); font-weight: 900; font-display: swap; }
@@ -10,7 +10,7 @@
   --red: #DA3A2F; --red2: #C22F25; --wine: #6A151F; --navy: #0A2530; --navy2: #12384A; --sky: #4CBDC7;
   --teal: #1F7F88; --mint: #E3F5F6; --pink: #FBE9E7; --off: #F6F4F3; --grey: #E7ECEE; --line: #DCE3E6;
   --ink2: #4E636C; --ink3: #7C8A90; --gold: #F2B84B; --wa: #25D366;
-  --tit: 'Redonda', 'CB Figtree', 'Figtree', system-ui, sans-serif;
+  --tit: 'redonda', 'Redonda', 'CB Figtree', 'Figtree', system-ui, sans-serif;
   min-height: 100vh; min-height: 100dvh; background: var(--off); color: var(--navy);
   font-family: 'CB Figtree', 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.45;
   display: flex; flex-direction: column;
@@ -353,7 +353,7 @@
 .cb-fbar em.ok { color: var(--teal); }
 .cb-fbar .cb-btn { margin-left: auto; }
 /* módulo interno · alinhado ao onboarding */
-.cbx-top h1, .cbx-box h3 { font-family: 'Redonda', 'CB Figtree', 'Figtree', system-ui, sans-serif; }
+.cbx-top h1, .cbx-box h3 { font-family: 'redonda', 'Redonda', 'CB Figtree', 'Figtree', system-ui, sans-serif; }
 .cbx-top h1 { font-weight: 900; }
 .cbx-box h3 { font-weight: 900; font-size: 16px; }
 .cbx-st { display: inline-flex; align-items: center; gap: 6px; }
