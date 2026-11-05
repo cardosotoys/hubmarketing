@@ -24,6 +24,8 @@ export default function BlackFicha() {
   const { token, sessao, carregando, entrar } = useSessao();
   const [f, setF] = useState<Ficha | null | undefined>(undefined);
   const [sel, setSel] = useState(0);
+  const [falhou, setFalhou] = useState<Set<string>>(new Set());
+  const marcarFalha = (src: string) => { setFalhou((f) => new Set(f).add(src)); setSel(0); };
   const [qtd, setQtd] = useState(1);
   const [toast, setToast] = useState('');
   const [cart, setCart] = useState(lerCarrinho());
@@ -58,8 +60,9 @@ export default function BlackFicha() {
       }
     }
     // vídeo primeiro: é o que mais ajuda quem está assistindo à live
-    return [...m.filter((x) => x.tipo === 'video'), ...m.filter((x) => x.tipo !== 'video')];
-  }, [f]);
+    // foto primeiro (abre na hora); o vídeo vem logo depois, marcado com ▶
+    return [...m.filter((x) => x.tipo !== 'video'), ...m.filter((x) => x.tipo === 'video')].filter((x) => !falhou.has(x.src));
+  }, [f, falhou]);
 
   const clock = fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : null;
   if (f === undefined || carregando) return <Shell sub="Ficha do produto" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
@@ -94,14 +97,15 @@ export default function BlackFicha() {
         <div className="cb-media">
           <div className="cb-stage">
             {!atual ? <span className="cb-hi" style={{ color: 'var(--ink3)' }}>{f.codigo}</span>
-              : atual.tipo === 'video' ? <><video key={atual.src} src={atual.src} controls playsInline preload="metadata" poster={atual.thumb} /><span className="vb">Vídeo do produto</span></>
-              : <img src={atual.src} alt={atual.nome} />}
+              : atual.tipo === 'video' ? <><video key={atual.src} src={atual.src} controls playsInline preload="metadata" poster={atual.thumb} onError={() => marcarFalha(atual.src)} /><span className="vb">Vídeo do produto</span></>
+              : <img key={atual.src} src={atual.src} alt={atual.nome} onError={() => marcarFalha(atual.src)} />}
+            {atual && <a className="dl" href={atual.src} target="_blank" rel="noreferrer" download aria-label={atual.tipo === 'video' ? 'Baixar este vídeo' : 'Baixar esta imagem'}>{atual.tipo === 'video' ? 'Baixar vídeo' : 'Baixar imagem'}</a>}
           </div>
           {midias.length > 1 && (
             <div className="cb-thumbs">
               {midias.map((m, i) => (
                 <button key={m.src} type="button" className={i === sel ? 'on' : ''} onClick={() => setSel(i)} aria-label={m.nome}>
-                  <img src={m.thumb} alt="" loading="lazy" onError={(e) => { const b = e.currentTarget.parentElement; if (b) b.style.display = 'none'; }} />{m.tipo === 'video' && <span className="pl">▶</span>}
+                  {m.tipo === 'video' ? <span className="vt" /> : <img src={m.thumb} alt="" loading="lazy" onError={() => marcarFalha(m.src)} />}{m.tipo === 'video' && <span className="pl">▶</span>}
                 </button>
               ))}
             </div>
@@ -158,20 +162,18 @@ export default function BlackFicha() {
   );
 }
 
-function Materiais({ f, midias }: { f: Ficha; midias: Midia[] }) {
+function Materiais({ f }: { f: Ficha; midias: Midia[] }) {
   const [copiado, setCopiado] = useState(false);
-  const fotos = midias.filter((m) => m.tipo === 'img');
   const outros = f.materiais.filter((m) => m.tipo === 'kit' || m.tipo === 'documento');
-  if (!fotos.length && !outros.length && !f.descricao) return null;
+  if (!outros.length && !f.descricao) return null;
   async function copiar() {
     try { await navigator.clipboard.writeText(`${f.nome}\n\n${f.descricao}${f.diferenciais?.length ? `\n\n• ${f.diferenciais.join('\n• ')}` : ''}`); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* sem permissão */ }
   }
   return (
     <div className="cb-card cb-mats">
       <h4>Materiais para a sua loja</h4>
-      {fotos.map((m) => <a key={m.src} href={m.src} target="_blank" rel="noreferrer"><span className="mi"><Ic n="star" /></span><span className="nm">{m.nome === 'Produto' ? 'Foto do produto' : m.nome === 'Embalagem' ? 'Foto da embalagem' : m.nome}</span><em>Baixar</em></a>)}
       {f.descricao && <button type="button" onClick={copiar}><span className="mi"><Ic n="receipt" /></span><span className="nm">Descrição pronta para o anúncio</span><em>{copiado ? 'Copiada' : 'Copiar'}</em></button>}
-      {outros.map((m) => { const id = driveId(m.link); return id ? <a key={m.link} href={midia(id)} target="_blank" rel="noreferrer"><span className="mi">{m.tipo === 'kit' ? <Ic n="store" /> : <Sv.db />}</span><span className="nm">{m.nome}</span><em>Baixar</em></a> : null; })}
+      {outros.map((m, i) => { const id = driveId(m.link); return id ? <a key={m.link} href={midia(id)} target="_blank" rel="noreferrer"><span className="mi">{m.tipo === 'kit' ? <Ic n="store" /> : <Sv.db />}</span><span className="nm">{m.tipo === 'kit' ? `Kit para e-commerce${outros.filter((x) => x.tipo === 'kit').length > 1 ? ` ${i + 1}` : ''}` : 'Documento do produto'}</span><em>Baixar</em></a> : null; })}
     </div>
   );
 }

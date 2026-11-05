@@ -71,13 +71,6 @@ async function googleToken(): Promise<string> {
   return cache.token;
 }
 
-async function drive(path: string, params: Record<string, string>) {
-  const token = await googleToken();
-  const qs = new URLSearchParams({ supportsAllDrives: 'true', ...params });
-  return fetch(`https://www.googleapis.com/drive/v3/${path}?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
-}
-
-
 async function drive(path: string, params: Record<string, string>, extra: Record<string, string> = {}) {
   const token = await googleToken();
   const qs = new URLSearchParams({ supportsAllDrives: 'true', ...params });
