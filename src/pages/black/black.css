@@ -474,3 +474,21 @@
 .cb-stage.v { max-height: none; }
 .cb-stage.vp { width: auto; height: min(80vh, 760px); max-width: 100%; }
 .cb-stage.v video { object-fit: contain; }
+/* cabeçalho único (ficha aberta pelo QR) */
+.cb-hd1 { background: var(--navy); color: #fff; position: sticky; top: 0; z-index: 15; }
+.cb-hd1 .cb-wrap { display: flex; align-items: center; gap: 10px; min-height: 64px; padding-top: 8px; padding-bottom: 8px; }
+.cb-hd1 .wm { height: 24px; display: block; }
+.cb-hd1 .bk { font-family: var(--tit); font-weight: 900; font-size: 19px; background: var(--red); padding: 1px 8px 2px; border-radius: 6px; line-height: 1.2; }
+.cb-hd1 .sb { color: #9FB3BA; font-weight: 700; font-size: 13px; padding-left: 12px; margin-left: 4px; border-left: 1px solid var(--navy2); }
+.cb-hd1 .cb-clock { margin-left: auto; width: auto; display: block; padding: 5px 12px; }
+.cb-hd1 .cb-clock b { font-size: 16px; }
+@media (max-width: 640px) {
+  .cb-hd1 .cb-wrap { min-height: 56px; }
+  .cb-hd1 .wm { height: 20px; } .cb-hd1 .bk { font-size: 16px; } .cb-hd1 .sb { display: none; }
+  .cb-hd1 .cb-clock small { font-size: 9px; } .cb-hd1 .cb-clock b { font-size: 14px; }
+}
+/* pulso leve no "Adicionar ao pedido": um anel que se abre a cada 2,8 s, sem mexer no botão */
+.cb-pulsa:not(:disabled) { animation: cb-pulsa 2.8s ease-out infinite; }
+@keyframes cb-pulsa { 0% { box-shadow: 0 0 0 0 rgba(218,58,47,.42); } 55%, 100% { box-shadow: 0 0 0 12px rgba(218,58,47,0); } }
+.cb-pulsa:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cb-pulsa { animation: none !important; } }

@@ -5,8 +5,13 @@
 // black_midia_liberada confirma que ele é material LIBERADO (banco de materiais) de um produto ativo da Black.
 // Assim nenhum arquivo do Drive precisa ficar "qualquer pessoa com o link".
 //
-// GET ?id=<id do arquivo>                  → o arquivo para exibir (imagem ou vídeo, com Range para o player)
-// GET ?id=<id do arquivo>&modo=miniatura   → a miniatura do Drive
+// GET ?id=<id do arquivo>                  → o arquivo original (imagem ou vídeo, com Range para o player)
+// GET ?id=<id do arquivo>&modo=miniatura   → miniatura do Drive (400 px) · também serve de capa do vídeo
+// GET ?id=<id do arquivo>&modo=exibir      → imagem leve para a galeria (1600 px)
+// GET ?id=<id do arquivo>&modo=preparar    → guarda as três versões no Storage e responde { ok }
+//
+// Velocidade: cada arquivo servido fica copiado no bucket público black-midia (o/, i/, t/ + id do Drive).
+// A ficha tenta primeiro a cópia (CDN do Supabase, abre na hora) e só cai aqui quando ela ainda não existe.
 //
 // Publicar com "Verify JWT" desligado: a página usa o endereço direto em <img> e <video>.
 
@@ -14,7 +19,49 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const FOLDER = 'application/vnd.google-apps.folder';
+const BUCKET = 'black-midia';
+const TAM = { t: 400, i: 1600 } as const;
+
+// ---------- cópia no Storage ----------
+const publico = (k: string) => `${supabaseUrl}/storage/v1/object/public/${BUCKET}/${k}`;
+async function existe(k: string) {
+  try { const r = await fetch(publico(k), { method: 'HEAD' }); return r.ok; } catch { return false; }
+}
+async function guardar(k: string, body: BodyInit, tipo: string) {
+  if (!serviceKey) return false;
+  const r = await fetch(`${supabaseUrl}/storage/v1/object/${BUCKET}/${k}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey, 'Content-Type': tipo, 'x-upsert': 'true', 'cache-control': 'max-age=31536000' },
+    body, duplex: 'half',
+  } as RequestInit);
+  if (!r.ok) console.error('storage', k, r.status, await r.text());
+  return r.ok;
+}
+// guarda o que ainda não está no bucket: original (o/), imagem leve (i/, só fotos) e miniatura (t/)
+async function preparar(id: string, meta: { mimeType: string; thumbnailLink?: string }) {
+  const feito: Record<string, boolean> = {};
+  const token = await googleToken();
+  for (const [k, px] of [['t', TAM.t], ['i', TAM.i]] as const) {
+    if (k === 'i' && !String(meta.mimeType).startsWith('image/')) continue;
+    if (await existe(`${k}/${id}`)) { feito[k] = true; continue; }
+    if (!meta.thumbnailLink) continue;
+    const r = await fetch(String(meta.thumbnailLink).replace(/=s\d+$/, `=s${px}`), { headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) feito[k] = await guardar(`${k}/${id}`, await r.arrayBuffer(), r.headers.get('Content-Type') ?? 'image/jpeg');
+  }
+  if (await existe(`o/${id}`)) feito.o = true;
+  else {
+    const r = await drive(`files/${id}`, { alt: 'media' });
+    if (r.ok && r.body) feito.o = await guardar(`o/${id}`, r.body, meta.mimeType ?? 'application/octet-stream');
+  }
+  return feito;
+}
+const emCurso = new Set<string>();
+const depois = (p: Promise<unknown>) => {
+  const rt = (globalThis as unknown as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (rt) rt.waitUntil(p.catch((e) => console.error(e))); else p.catch((e) => console.error(e));
+};
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges, Content-Length' };
 const texto = (msg: string, status: number) =>
@@ -82,7 +129,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const id = url.searchParams.get('id') ?? '';
-    const miniatura = url.searchParams.get('modo') === 'miniatura';
+    const modo = url.searchParams.get('modo') ?? '';
 
     const sb = createClient(supabaseUrl, anonKey);
     const { data: pode, error } = await sb.rpc('black_midia_liberada', { p_file: id });
@@ -94,9 +141,17 @@ Deno.serve(async (req) => {
     if (!metaRes.ok) return texto(`O Drive não entregou o arquivo: ${meta.error?.message ?? metaRes.status}`, 502);
     if (meta.mimeType === FOLDER) return texto('Isso é uma pasta.', 400);
 
-    if (miniatura) {
+    if (modo === 'preparar') {
+      const feito = await preparar(id, meta);
+      return new Response(JSON.stringify({ ok: true, ...feito }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+    // depois de responder, deixa a cópia pronta para a próxima visita
+    if (!emCurso.has(id)) { emCurso.add(id); depois(preparar(id, meta).finally(() => emCurso.delete(id))); }
+
+    if (modo === 'miniatura' || (modo === 'exibir' && meta.thumbnailLink)) {
       if (!meta.thumbnailLink) return texto('Sem miniatura.', 404);
-      const thumb = await fetch(String(meta.thumbnailLink).replace(/=s\d+$/, '=s800'), { headers: { Authorization: `Bearer ${await googleToken()}` } });
+      const px = modo === 'exibir' ? TAM.i : TAM.t;
+      const thumb = await fetch(String(meta.thumbnailLink).replace(/=s\d+$/, `=s${px}`), { headers: { Authorization: `Bearer ${await googleToken()}` } });
       if (!thumb.ok) return texto('Sem miniatura.', 404);
       return new Response(thumb.body, { headers: { ...cors, 'Content-Type': thumb.headers.get('Content-Type') ?? 'image/jpeg', 'Cache-Control': 'public, max-age=86400' } });
     }
@@ -110,7 +165,7 @@ Deno.serve(async (req) => {
       'Content-Type': meta.mimeType ?? 'application/octet-stream',
       'Content-Disposition': 'inline',
       'Accept-Ranges': 'bytes',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'public, max-age=86400',
     };
     for (const h of ['Content-Range', 'Content-Length']) { const v = arq.headers.get(h); if (v) headers[h] = v; }
     return new Response(arq.body, { status: arq.status === 206 ? 206 : 200, headers });

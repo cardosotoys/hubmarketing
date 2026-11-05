@@ -51,7 +51,10 @@ export const maskFone = (v: string) => {
 };
 export const driveId = (url: string) =>
   url.match(/\/d\/([\w-]{20,})/)?.[1] ?? url.match(/[?&]id=([\w-]{20,})/)?.[1] ?? url.match(/^([\w-]{25,})$/)?.[1] ?? null;
-export const midia = (id: string, mini = false) => `${FN_MIDIA}?id=${encodeURIComponent(id)}${mini ? '&modo=miniatura' : ''}`;
+export const midia = (id: string, modo: boolean | 'miniatura' | 'exibir' | 'preparar' = false) =>
+  `${FN_MIDIA}?id=${encodeURIComponent(id)}${modo ? `&modo=${modo === true ? 'miniatura' : modo}` : ''}`;
+/** cópia no Storage público (CDN): o = original, i = imagem 1600 px, t = miniatura 400 px. A black-midia cria na 1ª visita. */
+export const midiaRapida = (k: 'o' | 'i' | 't', id: string) => `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/black-midia/${k}/${id}`;
 export const cachePublico = (path: string) => supabase.storage.from('library-cache').getPublicUrl(path).data.publicUrl;
 
 /* localStorage pode não existir (modo privado, navegador embutido do WhatsApp): tudo em try/catch */
