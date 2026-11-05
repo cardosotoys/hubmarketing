@@ -723,7 +723,7 @@ function MidiasProduto({ prod, onClose }: { prod: Prod; onClose: () => void }) {
           </div>
         </div>
       </Modal>
-      {drive && <DrivePicker marca={marcaDe(prod)} pasta="Material Finalizado" multiple unidade="arquivo"
+      {drive && <DrivePicker marca={marcaDe(prod)} pasta="Material Finalizado" produto={prod.code} multiple unidade="arquivo"
         hints={{ product: prod.name, sku: prod.code }} onPick={adicionar} onClose={() => setDrive(false)} />}
     </>
   );

@@ -7,7 +7,11 @@
 // em vez de copiar e colar link. A leitura é feita pela conta de serviço hub-drive (Leitor no Drive compartilhado), com a
 // chave no Secret GOOGLE_SERVICE_ACCOUNT_JSON. Só lê: não cria, não move, não apaga nada no Drive.
 //
-// Segurança: só atende usuário logado no Hub, e só abre pastas que ficam dentro das três pastas de marca abaixo.
+// Também abre a pasta de cada produto (Cardoso Black → Mídias): { produto: '0301' } procura a pasta "REF. 0301 - …"
+// dentro de Cardoso/Produtos e já abre em "04. Material Visual"; { produto, folderId } navega dentro dela.
+//
+// Segurança: só atende usuário logado no Hub, e só abre pastas que ficam dentro das três pastas de marca abaixo
+// (Redes Sociais) ou dentro da pasta do produto pedido.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -129,6 +133,65 @@ async function insideBrand(folderId: string, rootId: string): Promise<string[] |
   return null;
 }
 
+const itemDe = (f: DriveFile) => ({
+  id: f.id, nome: f.name, tipo: f.mimeType === FOLDER ? 'pasta' : f.mimeType.startsWith('video/') ? 'video' : f.mimeType.startsWith('image/') ? 'imagem' : 'outro',
+  mime: f.mimeType, alterado: f.modifiedTime ?? null, criado: f.createdTime ?? null,
+  miniatura: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+$/, '=s400') : null,
+  largura: f.imageMediaMetadata?.width ?? f.videoMediaMetadata?.width ?? null,
+  altura: f.imageMediaMetadata?.height ?? f.videoMediaMetadata?.height ?? null,
+  duracao: f.videoMediaMetadata?.durationMillis ? Math.round(Number(f.videoMediaMetadata.durationMillis) / 1000) : null,
+});
+
+// ---------- pasta do produto: CARDOSO / Cardoso / Produtos / REF. <código> - … / 04. Material Visual ----------
+let produtosCache: { id: string; exp: number } | null = null;
+async function pastaProdutos(): Promise<string> {
+  if (produtosCache && produtosCache.exp > Date.now()) return produtosCache.id;
+  const p = (await children(RAIZ.Cardoso, true)).find((f) => norm(f.name) === 'produtos');
+  if (!p) throw new Error('Não achei a pasta "Produtos" dentro de Cardoso no Drive.');
+  produtosCache = { id: p.id, exp: Date.now() + 10 * 60_000 };
+  return p.id;
+}
+const numRef = (s: string) => s.match(/ref\.?\s*0*(\d{2,6})/i)?.[1] ?? null;
+
+async function acharProduto(codigo: string, raiz: string): Promise<DriveFile | null> {
+  const alvo = codigo.replace(/\D/g, '').replace(/^0+/, '');
+  if (!alvo) return null;
+  // procura pelas pastas com o número no nome (o Drive procura por palavra) e confere se ficam dentro de Produtos
+  const variantes = [...new Set([alvo, alvo.padStart(4, '0')])];
+  for (const v of variantes) {
+    const r = await drive<{ files: DriveFile[] }>('files', {
+      q: `mimeType = '${FOLDER}' and name contains '${v}' and trashed = false`,
+      corpora: 'allDrives', includeItemsFromAllDrives: 'true', pageSize: '50', fields: 'files(id, name, parents)',
+    });
+    for (const f of r.files) {
+      if (numRef(f.name) !== alvo) continue;
+      if (f.parents?.length && (f.parents[0] === raiz || await insideBrand(f.parents[0], raiz))) return f;
+    }
+  }
+  // plano B: a pasta pode estar direto em Produtos com outro formato de nome
+  const direto = (await children(raiz, true)).find((f) => numRef(f.name) === alvo);
+  return direto ?? null;
+}
+
+async function pastaDoProduto(codigo: string, folderId?: string) {
+  const raiz = await pastaProdutos();
+  const prod = await acharProduto(codigo, raiz);
+  if (!prod) return json({ error: `Não achei a pasta "REF. ${codigo}" em Cardoso/Produtos no Drive.`, pastas: [] }, 404);
+  const subs = (await children(prod.id, true)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+  const pastas = subs.map((f) => ({ id: f.id, nome: f.name }));
+  let alvo: { id: string; nome: string; caminho: string[] };
+  if (folderId) {
+    const caminho = folderId === prod.id ? [] : await insideBrand(folderId, prod.id);
+    if (!caminho) return json({ error: 'Essa pasta não fica dentro da pasta do produto.', pastas }, 403);
+    alvo = { id: folderId, nome: caminho[caminho.length - 1] ?? prod.name, caminho: caminho.length ? caminho : [prod.name] };
+  } else {
+    const mv = subs.find((f) => /material visual/.test(norm(f.name)));
+    alvo = mv ? { id: mv.id, nome: mv.name, caminho: [mv.name] } : { id: prod.id, nome: prod.name, caminho: [prod.name] };
+  }
+  const itens = (await children(alvo.id)).map(itemDe);
+  return json({ pastas, pasta: alvo, itens, produto: { id: prod.id, nome: prod.name } });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
@@ -138,7 +201,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return json({ error: 'Entre no Hub para ver as pastas do Drive.' }, 401);
 
-    const { marca, pasta, folderId, arquivo } = (await req.json()) as { marca?: string; pasta?: string; folderId?: string; arquivo?: string };
+    const { marca, pasta, folderId, arquivo, produto } = (await req.json()) as { marca?: string; pasta?: string; folderId?: string; arquivo?: string; produto?: string };
+    if (produto) return await pastaDoProduto(String(produto), folderId);
     const rootId = marca ? RAIZ[marca] : undefined;
     if (!rootId) return json({ error: `Marca desconhecida: ${marca ?? '(vazia)'}` }, 400);
 
