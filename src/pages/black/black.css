@@ -376,6 +376,80 @@
   .cbx-top .cbx-acts, .cbx .tp-tabs, .cbx-noprint, .cbx-hrow .btn { display: none !important; }
   .cbx-box, .cbx-kpi { box-shadow: none !important; border: 1px solid #ddd; break-inside: avoid; }
 }
+
+/* ===== loja em formato de checkout ===== */
+.cb-snav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: 16px; padding: 10px 12px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(10,37,48,.05), 0 8px 20px rgba(10,37,48,.06); }
+.cb-snav-l { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cb-snav-l .who b { display: block; font-size: 14.5px; line-height: 1.2; }
+.cb-snav-l .who small { color: var(--ink3); font-size: 12px; font-weight: 600; }
+.cb-snav-r { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cb-snav-r button { border: 0; background: none; border-radius: 999px; padding: 9px 14px; font-weight: 800; font-size: 13.5px; color: var(--ink2); display: inline-flex; align-items: center; gap: 7px; }
+.cb-snav-r button .bi { width: 17px; height: 17px; }
+.cb-snav-r button.on { background: var(--off); color: var(--navy); }
+.cb-snav-r button.cart { background: var(--navy); color: #fff; padding: 9px 16px; }
+.cb-snav-r button.cart.on { background: var(--red); color: #fff; }
+.cb-snav-r button.cart .n { background: var(--red); border-radius: 999px; padding: 0 8px; font-size: 12px; line-height: 20px; }
+.cb-snav-r button.cart.on .n { background: #fff; color: var(--red); }
+.cb-snav-r button.cart .v { font-family: var(--tit); font-weight: 900; }
+@media (max-width: 760px) {
+  .cb-snav-r { margin-left: 0; width: 100%; justify-content: space-between; }
+  .cb-snav-r button { padding: 8px 10px; font-size: 12.5px; }
+  .cb-snav-r button:not(.cart) span { display: none; }
+  .cb-snav-r button:not(.cart) .bi { width: 20px; height: 20px; }
+}
+.cb-etapas { list-style: none; display: flex; gap: 8px; padding: 0; margin: 0 0 16px; justify-content: center; flex-wrap: wrap; }
+.cb-etapas li { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13.5px; color: var(--ink3); }
+.cb-etapas li + li::before { content: ''; width: 36px; height: 2px; background: var(--line); margin-right: 4px; }
+.cb-etapas i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12.5px; background: var(--grey); color: var(--ink2); }
+.cb-etapas li.on { color: var(--navy); }
+.cb-etapas li.on i { background: var(--red); color: #fff; }
+.cb-etapas li.ok { color: var(--teal); }
+.cb-etapas li.ok i { background: var(--teal); color: #fff; }
+@media (max-width: 560px) { .cb-etapas li + li::before { width: 14px; } .cb-etapas li span { font-size: 12px; } }
+.cb-co { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .cb-co { grid-template-columns: 1fr 360px; } }
+.cb-cl { overflow: hidden; }
+.cb-cl .hd { display: flex; align-items: baseline; gap: 10px; padding: 16px 18px 10px; }
+.cb-cl .hd h3 { font-size: 19px; }
+.cb-cl .hd span { color: var(--ink3); font-size: 13px; font-weight: 700; }
+.cb-cl .row { display: grid; grid-template-columns: 72px 1fr auto auto; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); }
+.cb-cl .row .im { width: 72px; height: 72px; border-radius: 12px; background: var(--off); display: grid; place-items: center; overflow: hidden; color: var(--red); font-size: 26px; }
+.cb-cl .row .im img { width: 100%; height: 100%; object-fit: contain; }
+.cb-cl .row .nf { min-width: 0; display: grid; gap: 1px; }
+.cb-cl .row .nf .cd { font-size: 11.5px; color: var(--ink3); font-weight: 700; }
+.cb-cl .row .nf b { font-size: 15px; }
+.cb-cl .row .nf small { color: var(--ink2); font-size: 12.5px; }
+.cb-cl .row .rm { justify-self: start; font-size: 12px; color: var(--red2); margin-top: 3px; }
+.cb-cl .row .cb-stp { width: 150px; }
+.cb-cl .row .st { font-family: var(--tit); font-size: 17px; min-width: 104px; text-align: right; }
+.cb-cl .ft { padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .cb-cl .row { grid-template-columns: 60px 1fr; }
+  .cb-cl .row .im { width: 60px; height: 60px; }
+  .cb-cl .row .cb-stp { grid-column: 1 / 2; width: auto; grid-column: 2; }
+  .cb-cl .row .st { grid-column: 2; text-align: left; }
+}
+.cb-sl { display: flex; justify-content: space-between; font-size: 13.5px; color: var(--ink2); font-weight: 700; }
+.cb-h2 { font-size: 22px; margin: 0 0 4px; }
+.cb-ped .h { width: 100%; border: 0; background: none; padding: 0; text-align: left; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; }
+.cb-ped .h small { color: var(--ink3); font-weight: 600; font-size: 12.5px; }
+.cb-ped .h .tt { margin-left: auto; font-family: var(--tit); font-weight: 900; font-size: 17px; }
+.cb-ped .h .ch { width: 26px; height: 26px; border-radius: 50%; background: var(--off); display: grid; place-items: center; font-weight: 900; }
+.cb-pc .im { position: relative; }
+.cb-pc .im .vf { position: absolute; right: 8px; bottom: 8px; background: rgba(10,37,48,.82); color: #fff; font-size: 11.5px; font-weight: 800; border-radius: 999px; padding: 3px 9px; opacity: 0; transition: opacity .15s; }
+.cb-pc .im:hover .vf { opacity: 1; }
+@media (hover: none) { .cb-pc .im .vf { opacity: 1; } }
+.cb-btn .bi { width: 18px; height: 18px; }
+@media print { .cb-snav, .cb-etapas, .cb-mbar, .cb-fbar { display: none !important; } }
+.cb-cart.fixo { display: block !important; }
+@media (max-width: 899px) { .cb-cart.fixo { position: static; } }
+@media (max-width: 560px) {
+  .cb-etapas { flex-wrap: nowrap; gap: 4px; }
+  .cb-etapas li { gap: 5px; }
+  .cb-etapas li + li::before { width: 10px; margin-right: 2px; }
+  .cb-etapas li span { font-size: 11.5px; }
+  .cb-etapas i { width: 22px; height: 22px; font-size: 11px; }
+}
 .cbx-mid { display: grid; gap: 8px; }
 .cbx-mid .it { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; background: var(--surface-2); border-radius: 12px; padding: 8px 10px; }
 .cbx-mid .it img, .cbx-mid .it .ic { width: 52px; height: 52px; border-radius: 10px; object-fit: contain; background: var(--surface); display: grid; place-items: center; font-size: 20px; }
