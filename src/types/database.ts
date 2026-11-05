@@ -67,6 +67,7 @@ export const MODULE_KEYS = [
   'perfil',
   'trade-marketing',
   'reunioes',
+  'cardoso-black',
   // módulos novos (estrutura vazia — implementação futura)
   'aprovacoes',
   'pesquisa-mercado',
@@ -105,6 +106,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   perfil: 'Perfil',
   'trade-marketing': 'Trade Marketing',
   reunioes: 'Reuniões',
+  'cardoso-black': 'Cardoso Black',
   aprovacoes: 'Aprovações',
   'pesquisa-mercado': 'Pesquisa de Mercado',
   concorrentes: 'Concorrentes',
