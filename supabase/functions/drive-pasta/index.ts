@@ -8,7 +8,7 @@
 // chave no Secret GOOGLE_SERVICE_ACCOUNT_JSON. Só lê: não cria, não move, não apaga nada no Drive.
 //
 // Também abre a pasta de cada produto (Cardoso Black → Mídias): { produto: '0301' } procura a pasta "REF. 0301 - …"
-// dentro de Cardoso/Produtos e já abre em "04. Material Visual"; { produto, folderId } navega dentro dela.
+// na pasta Produtos do Drive compartilhado e já abre em "04. Material Visual"; { produto, folderId } navega dentro dela.
 //
 // Segurança: só atende usuário logado no Hub, e só abre pastas que ficam dentro das três pastas de marca abaixo
 // (Redes Sociais) ou dentro da pasta do produto pedido.
@@ -142,41 +142,24 @@ const itemDe = (f: DriveFile) => ({
   duracao: f.videoMediaMetadata?.durationMillis ? Math.round(Number(f.videoMediaMetadata.durationMillis) / 1000) : null,
 });
 
-// ---------- pasta do produto: CARDOSO / Cardoso / Produtos / REF. <código> - … / 04. Material Visual ----------
-let produtosCache: { id: string; exp: number } | null = null;
-async function pastaProdutos(): Promise<string> {
-  if (produtosCache && produtosCache.exp > Date.now()) return produtosCache.id;
-  const p = (await children(RAIZ.Cardoso, true)).find((f) => norm(f.name) === 'produtos');
-  if (!p) throw new Error('Não achei a pasta "Produtos" dentro de Cardoso no Drive.');
-  produtosCache = { id: p.id, exp: Date.now() + 10 * 60_000 };
-  return p.id;
-}
+// ---------- pasta do produto: pasta "Produtos" do Drive compartilhado (uma pasta "REF. <código> - …" por produto) ----------
+// As pastas de REF ficam todas direto nesta pasta; o Hub só aceita pastas que são filhas dela.
+const PRODUTOS = '11Y4hP06QVavCZug_E-x7L01t6CM_WVyv';
 const numRef = (s: string) => s.match(/ref\.?\s*0*(\d{2,6})/i)?.[1] ?? null;
+let refsCache: { lista: DriveFile[]; exp: number } | null = null;
 
-async function acharProduto(codigo: string, raiz: string): Promise<DriveFile | null> {
+async function acharProduto(codigo: string): Promise<DriveFile | null> {
   const alvo = codigo.replace(/\D/g, '').replace(/^0+/, '');
   if (!alvo) return null;
-  // procura pelas pastas com o número no nome (o Drive procura por palavra) e confere se ficam dentro de Produtos
-  const variantes = [...new Set([alvo, alvo.padStart(4, '0')])];
-  for (const v of variantes) {
-    const r = await drive<{ files: DriveFile[] }>('files', {
-      q: `mimeType = '${FOLDER}' and name contains '${v}' and trashed = false`,
-      corpora: 'allDrives', includeItemsFromAllDrives: 'true', pageSize: '50', fields: 'files(id, name, parents)',
-    });
-    for (const f of r.files) {
-      if (numRef(f.name) !== alvo) continue;
-      if (f.parents?.length && (f.parents[0] === raiz || await insideBrand(f.parents[0], raiz))) return f;
-    }
-  }
-  // plano B: a pasta pode estar direto em Produtos com outro formato de nome
-  const direto = (await children(raiz, true)).find((f) => numRef(f.name) === alvo);
-  return direto ?? null;
+  if (!refsCache || refsCache.exp < Date.now()) refsCache = { lista: await children(PRODUTOS, true), exp: Date.now() + 5 * 60_000 };
+  const achados = refsCache.lista.filter((f) => numRef(f.name) === alvo);
+  // se houver mais de uma, prefere a que começa com "REF"
+  return achados.find((f) => /^\s*ref/i.test(f.name)) ?? achados[0] ?? null;
 }
 
 async function pastaDoProduto(codigo: string, folderId?: string) {
-  const raiz = await pastaProdutos();
-  const prod = await acharProduto(codigo, raiz);
-  if (!prod) return json({ error: `Não achei a pasta "REF. ${codigo}" em Cardoso/Produtos no Drive.`, pastas: [] }, 404);
+  const prod = await acharProduto(codigo);
+  if (!prod) return json({ error: `Não achei a pasta "REF. ${codigo}" na pasta de Produtos do Drive.`, pastas: [] }, 404);
   const subs = (await children(prod.id, true)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
   const pastas = subs.map((f) => ({ id: f.id, nome: f.name }));
   let alvo: { id: string; nome: string; caminho: string[] };
@@ -188,7 +171,7 @@ async function pastaDoProduto(codigo: string, folderId?: string) {
     const mv = subs.find((f) => /material visual/.test(norm(f.name)));
     alvo = mv ? { id: mv.id, nome: mv.name, caminho: [mv.name] } : { id: prod.id, nome: prod.name, caminho: [prod.name] };
   }
-  const itens = (await children(alvo.id)).map(itemDe);
+  const itens = (await children(alvo.id)).filter((f) => !/^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(f.name) && !f.name.startsWith('.')).map(itemDe);
   return json({ pastas, pasta: alvo, itens, produto: { id: prod.id, nome: prod.name } });
 }
 
