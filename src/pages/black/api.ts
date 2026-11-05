@@ -13,7 +13,7 @@ export type BlackConfig = {
 };
 export type BlackSessao = {
   cnpj: string; razao_social: string; fantasia: string; cidade: string; uf: string; representante: string;
-  comprador: string; email: string; celular: string; canal_link: string; live_link: string;
+  comprador: string; email: string; celular: string; canal_link: string; live_link: string; previa?: boolean;
 };
 export type BlackItem = {
   codigo: string; ordem: number; nome: string; familia: string; caixa: number; preco_peca: number | null;

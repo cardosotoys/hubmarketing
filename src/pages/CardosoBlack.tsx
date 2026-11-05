@@ -100,12 +100,13 @@ export default function CardosoBlack() {
   const [mats, setMats] = useState<Record<string, number>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [avisoPrevia, setAvisoPrevia] = useState('');
 
   const carregar = useCallback(async () => {
     try {
       const [c, i, p, it, b, pr, ca, ev, m] = await Promise.all([
         supabase.from('black_config').select('*').eq('id', 1).maybeSingle(),
-        paginar<Inscrito>((a, z) => supabase.from('black_inscritos').select('*').order('criado_em', { ascending: false }).range(a, z)),
+        paginar<Inscrito>((a, z) => supabase.from('black_inscritos').select('*').neq('origem', 'previa').order('criado_em', { ascending: false }).range(a, z)),
         paginar<Pedido>((a, z) => supabase.from('black_pedidos').select('*').order('criado_em', { ascending: false }).range(a, z)),
         paginar<Item>((a, z) => supabase.from('black_pedido_itens').select('*').range(a, z)),
         supabase.from('black_produtos').select('*').order('ordem'),
@@ -126,6 +127,20 @@ export default function CardosoBlack() {
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
+  // prévia da equipe: entra na página de pedido como a loja de demonstração (não envia pedido)
+  async function verComoCliente() {
+    const aba = window.open('about:blank', '_blank');
+    const { data, error } = await supabase.rpc('black_previa_entrar');
+    const tok = (data as { token?: string } | null)?.token;
+    if (error || !tok) {
+      aba?.close();
+      setAvisoPrevia(error?.message.includes('black_previa_entrar') ? 'Para usar a prévia, rode o SQL 0164_black_previa_equipe.sql no Supabase.' : `Não consegui abrir a prévia: ${error?.message ?? 'sem resposta'}`);
+      return;
+    }
+    try { localStorage.setItem('cb-token', JSON.stringify(tok)); sessionStorage.removeItem('cb-token'); } catch { /* sem armazenamento */ }
+    if (aba) aba.location.href = '/black/pedido'; else window.location.href = '/black/pedido';
+  }
+
   const porCodigo = useMemo(() => Object.fromEntries(prods.map((p) => [p.code, p])), [prods]);
 
   if (carregando) return <Loading />;
@@ -139,6 +154,7 @@ export default function CardosoBlack() {
           <p>Pré-cadastro, pedidos e medição da Black com os clientes de e-commerce · pedidos de {cfg ? dt(cfg.abre_em) : '—'} a {cfg ? dt(cfg.fecha_em) : '—'}</p>
         </div>
         <div className="cbx-acts">
+          <button className="btn" type="button" onClick={verComoCliente}>Ver como cliente</button>
           <a className="btn ghost" href="/black" target="_blank" rel="noreferrer">Abrir pré-cadastro</a>
           <a className="btn ghost" href="/black/pedido" target="_blank" rel="noreferrer">Abrir página de pedido</a>
           <button className="btn" type="button" onClick={carregar}>Atualizar</button>
@@ -147,6 +163,7 @@ export default function CardosoBlack() {
       <div className="tp-tabs" role="tablist">
         {ABAS.map(([k, l]) => <button key={k} role="tab" aria-selected={aba === k} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn} em análise` : ''}</button>)}
       </div>
+      {avisoPrevia && <div className="alert">{avisoPrevia}</div>}
       {erro && <div className="alert">{erro}</div>}
       {!erro && cfg && (
         <>

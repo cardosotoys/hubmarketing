@@ -33,11 +33,11 @@ export default function BlackFicha() {
   // preços do catálogo, para a barra "Seu pedido" mostrar o total do carrinho inteiro
   const [precos, setPrecos] = useState<Record<string, number>>({});
   useEffect(() => {
-    if (!token || !cfg?.aberto) return;
+    if (!token || !(cfg?.aberto || sessao?.previa)) return;
     supabase.rpc('black_catalogo', { p_token: token }).then(({ data }) => {
       if (Array.isArray(data)) setPrecos(Object.fromEntries((data as BlackItem[]).filter((i) => i.preco_peca != null).map((i) => [i.codigo, i.caixa * (i.preco_peca ?? 0)])));
     });
-  }, [token, cfg?.aberto]);
+  }, [token, cfg?.aberto, sessao?.previa]);
 
   useEffect(() => {
     if (carregando) return;
@@ -66,7 +66,7 @@ export default function BlackFicha() {
   if (f === null) return <Shell sub="Ficha do produto"><div className="cb-card cb-pad cb-narrow cb-res"><h2>Produto não encontrado</h2><p>Este produto não faz parte da Cardoso Black.</p><Link className="cb-btn dk" to="/black/pedido">Ir para a página de pedido</Link></div></Shell>;
 
   const atual = midias[sel];
-  const aberto = !!cfg?.aberto;
+  const aberto = !!cfg?.aberto || !!sessao?.previa;
   const noCarrinho = cart[f.codigo] ?? 0;
   const max = f.disponivel ?? 9999;
 
