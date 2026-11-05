@@ -7,6 +7,8 @@ import EmptyState from '../components/EmptyState';
 import DrivePicker, { type DriveItem } from './social-plan/DrivePicker';
 import './black/black.css';
 import { useRedonda } from './black/fonte';
+import { Ic, type IconeMarca } from './black/Icones';
+import { driveId, midia } from './black/api';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -86,11 +88,13 @@ async function paginar<T>(q: (from: number, to: number) => PromiseLike<{ data: T
 }
 
 type Aba = 'resumo' | 'inscritos' | 'pedidos' | 'produtos' | 'carteira' | 'links' | 'ajustes';
-const ABAS: [Aba, string][] = [['resumo', 'Medição'], ['inscritos', 'Inscritos'], ['pedidos', 'Pedidos'], ['produtos', 'Produtos da Black'], ['carteira', 'Carteira'], ['links', 'Links'], ['ajustes', 'Ajustes']];
+// menu na ordem do onboarding aprovado (Carteira → Inscritos → Pedidos → Medição) + a operação
+const ABAS: [Aba, string, IconeMarca, 1 | 2][] = [['carteira', 'Carteira', 'store', 1], ['inscritos', 'Inscritos', 'users', 1], ['pedidos', 'Pedidos', 'cart', 1], ['resumo', 'Medição', 'target', 1],
+  ['produtos', 'Produtos da Black', 'tag', 2], ['links', 'Links e QR', 'marketing', 2], ['ajustes', 'Ajustes', 'bolt', 2]];
 
 export default function CardosoBlack() {
   useRedonda();
-  const [aba, setAba] = useState<Aba>('resumo');
+  const [aba, setAba] = useState<Aba>('resumo'); // abre na Medição
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [ins, setIns] = useState<Inscrito[]>([]);
   const [peds, setPeds] = useState<Pedido[]>([]);
@@ -148,36 +152,50 @@ export default function CardosoBlack() {
   if (carregando) return <Loading />;
   const nAn = ins.filter((x) => x.status === 'analise').length;
 
+  const titulo = ABAS.find((x) => x[0] === aba)?.[1] ?? '';
+  const item = ([k, l, ic]: (typeof ABAS)[number]) => (
+    <button key={k} type="button" className={aba === k ? 'on' : ''} aria-current={aba === k ? 'page' : undefined} onClick={() => setAba(k)}>
+      <span className="ic"><Ic n={ic} /></span>{l}{k === 'inscritos' && nAn > 0 && <em>{nAn}</em>}
+    </button>
+  );
+
   return (
-    <div className="page cbx">
-      <div className="cbx-top">
-        <div>
-          <h1>Cardoso Black</h1>
-          <p>Pré-cadastro, pedidos e medição da Black com os clientes de e-commerce · pedidos de {cfg ? dt(cfg.abre_em) : '—'} a {cfg ? dt(cfg.fecha_em) : '—'}</p>
+    <div className="page cbx cbx-app">
+      <aside className="cbx-side" aria-label="Cardoso Black">
+        <div className="lo"><img src="/black/simbolo-branco.svg" alt="" />Cardoso <span>Black</span></div>
+        <span className="gp">Cardoso Black</span>
+        {ABAS.filter((x) => x[3] === 1).map(item)}
+        <span className="gp">Operação</span>
+        {ABAS.filter((x) => x[3] === 2).map(item)}
+        <div className="lk">
+          <button type="button" onClick={verComoCliente}>Ver como cliente</button>
+          <a href="/black" target="_blank" rel="noreferrer">Pré-cadastro ↗</a>
+          <a href="/black/pedido" target="_blank" rel="noreferrer">Página de pedido ↗</a>
         </div>
-        <div className="cbx-acts">
-          <button className="btn" type="button" onClick={verComoCliente}>Ver como cliente</button>
-          <a className="btn ghost" href="/black" target="_blank" rel="noreferrer">Abrir pré-cadastro</a>
-          <a className="btn ghost" href="/black/pedido" target="_blank" rel="noreferrer">Abrir página de pedido</a>
-          <button className="btn" type="button" onClick={carregar}>Atualizar</button>
+        <div className="us"><b>Pedidos</b>{cfg ? `${dt(cfg.abre_em)} a ${dt(cfg.fecha_em)}` : '—'}</div>
+      </aside>
+      <nav className="cbx-mtabs" aria-label="Cardoso Black">{ABAS.map(([k, l]) => <button key={k} type="button" className={aba === k ? 'on' : ''} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn}` : ''}</button>)}</nav>
+      <div className="cbx-main">
+        <div className="cbx-ht">
+          <h2>{titulo}</h2>
+          {aba === 'resumo' && <span className="ex">atualizado agora</span>}
+          {aba === 'pedidos' && cfg && <span className="ex">{dt(cfg.abre_em)} a {dt(cfg.fecha_em)}</span>}
+          <div className="r"><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
         </div>
+        {avisoPrevia && <div className="alert">{avisoPrevia}</div>}
+        {erro && <div className="alert">{erro}</div>}
+        {!erro && cfg && (
+          <>
+            {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
+            {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
+            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
+            {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
+            {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
+            {aba === 'links' && <Links cart={cart} ins={ins} bps={bps} porCodigo={porCodigo} />}
+            {aba === 'ajustes' && <Ajustes cfg={cfg} recarregar={carregar} />}
+          </>
+        )}
       </div>
-      <div className="tp-tabs" role="tablist">
-        {ABAS.map(([k, l]) => <button key={k} role="tab" aria-selected={aba === k} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn} em análise` : ''}</button>)}
-      </div>
-      {avisoPrevia && <div className="alert">{avisoPrevia}</div>}
-      {erro && <div className="alert">{erro}</div>}
-      {!erro && cfg && (
-        <>
-          {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
-          {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
-          {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
-          {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
-          {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
-          {aba === 'links' && <Links cart={cart} ins={ins} bps={bps} porCodigo={porCodigo} />}
-          {aba === 'ajustes' && <Ajustes cfg={cfg} recarregar={carregar} />}
-        </>
-      )}
     </div>
   );
 }
@@ -218,15 +236,11 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '—');
   return (
     <>
-      <div className="cbx-kpis">
-        <Kpi l="Valor em pedidos" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedidos" v={int(val.length)} /><Kpi l="Pedido médio" v={brl0(val.length ? tv / val.length : 0)} c="#0A2530" />
-        <Kpi l="Compraram / aprovados" v={pct(lojas, ap)} c="#1F7F88" /><Kpi l="Presença" v={pres != null ? pct(pres, ap) : '—'} c="#4CBDC7" /><Kpi l="Em análise" v={int(ins.filter((x) => x.status === 'analise').length)} c="#F2B84B" />
-      </div>
       <div className="cbx-box">
         <div className="cbx-hrow"><h3>Funil da Cardoso Black</h3><button className="btn ghost sm" type="button" onClick={() => window.print()}>Relatório em PDF</button></div>
         <div className="cbx-funil">{F.map(([l, v, c]) => <div key={l} className="cbx-fu" style={{ ['--c' as string]: c }}><span>{l}</span><i><u style={{ width: `${(v / mx) * 100}%` }} /></i><b>{int(v)}</b></div>)}</div>
-        <div className="cbx-acts cbx-noprint" style={{ marginTop: 12, alignItems: 'center' }}>
-          <span className="cbx-hint">Presentes na live (relatório de presença do Meet ou do Zoom):</span>
+        <div className="cbx-acts cbx-noprint cbx-pres">
+          <span className="cbx-hint">Presentes na live (relatório do Meet ou do Zoom)</span>
           <input className="cbx-in" inputMode="numeric" style={{ width: 110 }} value={presTxt} placeholder="nº de lojas" onChange={(e) => setPresTxt(e.target.value)} />
           <button className="btn sm" type="button" onClick={salvarPresentes}>Salvar</button>
           {aviso && <span className="cbx-hint">{aviso}</span>}
@@ -234,9 +248,18 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
       </div>
       <div className="cbx-two">
         <div className="cbx-box"><h3>Inscritos por canal de venda</h3><Barras dados={top(canais)} cor="#0A2530" /></div>
+        <div className="cbx-box"><h3>Resultado</h3>
+          <div className="cbx-kpis cbx-kpis2">
+            <Kpi l="Valor" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedido médio" v={brl0(val.length ? tv / val.length : 0)} c="#0A2530" />
+            <Kpi l="Compraram / aprovados" v={pct(lojas, ap)} c="#1F7F88" /><Kpi l="Presença" v={pres != null ? pct(pres, ap) : '—'} c="#4CBDC7" />
+            <Kpi l="Pedidos" v={int(val.length)} c="#7C8A90" /><Kpi l="Em análise" v={int(ins.filter((x) => x.status === 'analise').length)} c="#F2B84B" />
+          </div>
+        </div>
+      </div>
+      <div className="cbx-box"><h3>Produtos mais abertos pelo QR na live</h3><Barras dados={top(fi, 10)} cor="#DA3A2F" /></div>
+      <div className="cbx-two">
         <div className="cbx-box"><h3>Valor por representante</h3><Barras dados={top(porRep, 10)} fmt={brl0} cor="#1F7F88" /></div>
         <div className="cbx-box"><h3>Produtos mais pedidos (caixas)</h3><Barras dados={top(cx, 10)} cor="#0A2530" /></div>
-        <div className="cbx-box"><h3>Fichas mais abertas pelo QR na live</h3><Barras dados={top(fi, 10)} cor="#DA3A2F" /></div>
       </div>
     </>
   );
@@ -483,6 +506,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
           <button className="btn ghost" onClick={adicionar}>Adicionar um produto</button>
         </div>
       </div>
+      <PrepararMidias bps={bps} porCodigo={porCodigo} />
       <div className="cbx-box">
         <h3>Estoque do Guarani</h3>
         <p className="cbx-hint">Disponível na Black = saldo do Guarani em caixas − pedidos da Black ainda não lançados no Guarani, limitado pela cota da Black (se preenchida). Pedidos de fora da Black já saem do saldo do Guarani. <b>Confirme o pedido aqui quando ele for lançado no Guarani.</b></p>
@@ -576,7 +600,7 @@ function Carteira({ cart, ins, recarregar }: { cart: Cart[]; ins: Inscrito[]; re
       <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
         <table className="cbx-table">
           <thead><tr><th>Cliente</th><th>UF</th><th>Representante</th><th>Grupo</th><th>Situação</th><th>Pré-cadastro</th></tr></thead>
-          <tbody>{vis.slice(0, 300).map((c) => <tr key={c.id}><td><b>{c.razao_social}</b>{c.cnpj && <small>{cnpjFmt(c.cnpj)}</small>}</td><td>{c.uf}</td><td>{c.representante}</td><td>{c.grupo === '(sem grupo)' ? '' : c.grupo}</td><td>{c.situacao}</td><td>{inscritos.has(c.id) ? <span className="cbx-st inscrito">Inscrito</span> : <span className="cbx-st recusado">Falta</span>}</td></tr>)}</tbody>
+          <tbody>{vis.slice(0, 300).map((c) => <tr key={c.id}><td><b>{c.razao_social}</b>{c.cnpj && <small>{cnpjFmt(c.cnpj)}</small>}</td><td>{c.uf}</td><td>{c.representante}</td><td>{c.grupo === '(sem grupo)' ? '' : c.grupo}</td><td>{c.situacao}</td><td>{inscritos.has(c.id) ? <span className="cbx-st inscrito">Inscrito</span> : <span className="cbx-st falta">Falta</span>}</td></tr>)}</tbody>
         </table>
         {vis.length > 300 && <p className="cbx-hint" style={{ padding: 12 }}>Mostrando 300 de {int(vis.length)}. Use a busca ou o filtro de representante.</p>}
       </div>
@@ -734,5 +758,41 @@ function MidiasProduto({ prod, matriz, onClose }: { prod: Prod; matriz: Prod | n
       {drive && <DrivePicker marca={marcaDe(prod)} pasta="Material Finalizado" produto={prod.code} matriz={matriz?.code} multiple unidade="arquivo"
         hints={{ product: prod.name, sku: prod.code }} onPick={adicionar} onClose={() => setDrive(false)} />}
     </>
+  );
+}
+
+/* Deixa fotos e vídeos das fichas no CDN antes da live: a 1ª pessoa que abrir a ficha não espera o Drive. */
+function PrepararMidias({ bps, porCodigo }: { bps: BP[]; porCodigo: Record<string, Prod> }) {
+  const [st, setSt] = useState<{ feitos: number; total: number; erros: number } | null>(null);
+  async function preparar() {
+    const ids = bps.filter((b) => b.ativo).map((b) => porCodigo[b.codigo]?.id).filter(Boolean) as string[];
+    const arqs: string[] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data } = await supabase.from('content_materials').select('drive_url, kind').in('product_id', ids.slice(i, i + 100)).eq('status', 'liberado').in('kind', ['foto', 'video']);
+      (data ?? []).forEach((m: { drive_url: string | null }) => { const id = driveId(m.drive_url ?? ''); if (id) arqs.push(id); });
+    }
+    const lista = [...new Set(arqs)];
+    let feitos = 0, erros = 0;
+    setSt({ feitos, total: lista.length, erros });
+    // 3 por vez: rápido sem sobrecarregar o Drive
+    const fila = [...lista];
+    await Promise.all([0, 1, 2].map(async () => {
+      while (fila.length) {
+        const id = fila.shift()!;
+        try { const r = await fetch(midia(id, 'preparar')); if (!r.ok) erros++; } catch { erros++; }
+        feitos++; setSt({ feitos, total: lista.length, erros });
+      }
+    }));
+  }
+  const rodando = st != null && st.feitos < st.total;
+  return (
+    <div className="cbx-box">
+      <h3>Fotos e vídeos das fichas</h3>
+      <p className="cbx-hint">A ficha abre as mídias por uma cópia rápida (CDN). Rode antes da live, e de novo quando liberar material novo, para que nenhum cliente espere o arquivo vir do Drive.</p>
+      <div className="cbx-acts" style={{ marginTop: 10, alignItems: 'center' }}>
+        <button className="btn" type="button" disabled={rodando} onClick={preparar}>{rodando ? `Preparando ${st!.feitos} de ${st!.total}…` : 'Preparar mídias para a live'}</button>
+        {st && !rodando && <span className="cbx-hint">{st.total === 0 ? 'Nenhuma foto ou vídeo liberado nos produtos da Black.' : `${st.total - st.erros} de ${st.total} prontos${st.erros ? ` · ${st.erros} com erro (arquivo grande demais ou fora do Drive)` : ''}.`}</span>}
+      </div>
+    </div>
   );
 }
