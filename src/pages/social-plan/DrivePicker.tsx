@@ -12,8 +12,9 @@ type Marca = 'Cardoso' | 'Playmi' | 'Tópi';
 type Item = {
   id: string; nome: string; tipo: 'pasta' | 'video' | 'imagem' | 'outro'; alterado: string | null;
   miniatura: string | null; largura: number | null; altura: number | null; duracao: number | null;
+  grupo?: string;   // modo produto: subpasta de onde o arquivo veio
 };
-type Resposta = { pastas?: { id: string; nome: string }[]; pasta?: { id: string; nome: string; caminho: string[] }; itens?: Item[]; error?: string };
+type Resposta = { pastas?: { id: string; nome: string }[]; pasta?: { id: string; nome: string; caminho: string[] }; itens?: Item[]; error?: string; aviso?: string; produto?: { nome: string }; matriz?: { nome: string } | null };
 
 const fileUrl = (id: string) => `https://drive.google.com/file/d/${id}/view`;
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -45,7 +46,7 @@ export function alternativaPara(channelId: string, brand: string): { marca: Marc
 
 export type DriveItem = Item;
 
-export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose, outra, produto }: {
+export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose, outra, produto, matriz }: {
   marca: Marca;
   pasta: string;
   multiple?: boolean;                    // carrossel: várias lâminas, na ordem do clique
@@ -54,7 +55,8 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   onPick: (urls: string[], itens: Item[]) => void;   // itens: nome e tipo (vídeo/imagem) de cada escolhido
   onClose: () => void;
   outra?: { marca: Marca; pasta: string };   // se a pasta pedida não existir no Drive, abre esta (ex.: Status da Playmi → Story da Playmi)
-  produto?: string;                      // código do produto: abre Cardoso/Produtos/REF. <código>/04. Material Visual
+  produto?: string;                      // código do produto: arquivos de Produtos/REF. <código>/04. Material Visual, numa tela só
+  matriz?: string;                       // caixa individual: código da REF matriz (material dela + embalagem da caixa individual)
 }) {
   const un = unidade;
   const [m, setM] = useState<Marca>(marca);          // dá para procurar o criativo em outra marca
@@ -69,7 +71,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    const body = produto ? { produto, ...(nav.folderId ? { folderId: nav.folderId } : {}) } : { marca: m, ...nav };
+    const body = produto ? { produto, ...(matriz ? { matriz } : {}), ...(nav.folderId ? { folderId: nav.folderId } : {}) } : { marca: m, ...nav };
     supabase.functions.invoke('drive-pasta', { body }).then(async ({ data: d, error }) => {
       if (!alive) return;
       let r = (d ?? {}) as Resposta;
@@ -157,8 +159,8 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
       <div className="dpk-box">
         <div className="dpk-head">
           <div>
-            <small>{produto ? `Produtos · ${(data as { produto?: { nome: string } } | null)?.produto?.nome ?? `REF. ${produto}`}` : `${m} · Redes Sociais`}</small>
-            <b>{caminho.join(' / ') || 'Escolha a pasta'}</b>
+            <small>{produto ? `Produtos · ${data?.produto?.nome ?? `REF. ${produto}`}` : `${m} · Redes Sociais`}</small>
+            <b>{produto ? (data?.matriz ? `Material Visual · com o material de ${data.matriz.nome}` : 'Material Visual') : caminho.join(' / ') || 'Escolha a pasta'}</b>
           </div>
           <button type="button" className="dpk-x" onClick={onClose} aria-label="Fechar">×</button>
         </div>
@@ -168,7 +170,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
               onClick={() => { if (x === m) return; setAviso(''); setM(x); setNav({ pasta: x === marca ? pasta : undefined }); }}>{x}</button>
           ))}
         </div>}
-        {aviso && <p className="dpk-aviso">{aviso}</p>}
+        {(aviso || data?.aviso) && <p className="dpk-aviso">{aviso || data?.aviso}</p>}
         {!!data?.pastas?.length && (
           <div className="dpk-chips" role="tablist">
             {data.pastas.map((p) => (
@@ -206,6 +208,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
                         <span className="dpk-name">{i.nome}</span>
                         <span className="dpk-meta">
                           {i.pts >= 2 && <i className="sug">combina com a peça</i>}
+                          {i.grupo && <span className="grp">{i.grupo}</span>}
                           {usado && <i className="used">já usado em {usado}</i>}
                           {!usado && i.alterado && <span>{i.alterado.slice(8, 10)}/{i.alterado.slice(5, 7)}</span>}
                         </span>
