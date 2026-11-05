@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell from './Shell';
-import { diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
+import { FN_CADASTRO, diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
 import { Ic, Sv } from './Icones';
 
 /* /black?r=<representante> — pré-cadastro da Cardoso Black.
@@ -59,7 +59,7 @@ export default function BlackCadastro() {
     setAviso(''); setJaInscrito(null);
     if (digitos(cnpj).length !== 14) { setErros({ cnpj: true }); return; }
     setErros({}); setConsultando(true);
-    const { data, error } = await supabase.functions.invoke('black-cadastro', { body: { acao: 'consulta', cnpj: digitos(cnpj) } });
+    const { data, error } = await supabase.functions.invoke(FN_CADASTRO, { body: { acao: 'consulta', cnpj: digitos(cnpj) } });
     setConsultando(false);
     if (error || !data) { setAviso('Não consegui consultar agora. Tente de novo em instantes.'); return; }
     if (data.erro === 'ja_inscrito') { setJaInscrito(data.status); return; }
@@ -84,7 +84,7 @@ export default function BlackCadastro() {
     setErros(E);
     if (Object.keys(E).length) { setAviso('Confira os campos destacados.'); return; }
     setAviso(''); setEnviando(true);
-    const { data, error } = await supabase.functions.invoke('black-cadastro', {
+    const { data, error } = await supabase.functions.invoke(FN_CADASTRO, {
       body: { acao: 'inscrever', cnpj: digitos(cnpj), comprador, email, celular, canais, senha, lgpd, rep, ...manual },
     });
     setEnviando(false);
