@@ -389,16 +389,21 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
   }
   async function importar(file: File) {
     const L = lerCsv(await file.text());
+    // zero ou negativo vira vazio: caixa vazia usa a da ficha técnica; preço vazio usa a Tabela de Preços
+    const pos = (v: number | null) => (v !== null && v > 0 ? v : null);
     const linhas = L.map((r, i) => ({
-      codigo: (r.codigo || r.ref || r.cod || '').replace(/^\D+/, ''),
-      ordem: num(r.ordem) ?? i + 1, familia: r.familia || r.fam || '', preco_peca: num(r.preco_peca || r.preco || r.black),
-      caixa_qtd: num(r.caixa_qtd || r.caixa || r.cx), estoque_caixas: num(r.estoque_caixas || r.estoque), ativo: true,
+      codigo: (r.codigo || r.ref || r.cod || '').trim().replace(/^\D+/, ''),
+      ordem: Math.round(num(r.ordem) ?? i + 1), familia: r.familia || r.fam || '', preco_peca: pos(num(r.preco_peca || r.preco || r.black)),
+      caixa_qtd: pos(num(r.caixa_qtd || r.caixa || r.cx)) === null ? null : Math.round(num(r.caixa_qtd || r.caixa || r.cx)!),
+      estoque_caixas: (() => { const e = num(r.estoque_caixas || r.estoque); return e === null || e < 0 ? null : Math.round(e); })(),
+      ativo: true,
     })).filter((r) => r.codigo);
+    const semCaixa = linhas.filter((r) => r.caixa_qtd === null).map((r) => r.codigo);
     // o catálogo do Hub guarda o código com 4 dígitos (0275); a TAB às vezes vem sem o zero
     const codes = new Set(prods.map((p) => p.code));
     linhas.forEach((r) => { if (!codes.has(r.codigo) && codes.has(r.codigo.padStart(4, '0'))) r.codigo = r.codigo.padStart(4, '0'); });
     const { error } = await supabase.from('black_produtos').upsert(linhas);
-    setAviso(error ? `Não consegui importar: ${error.message}` : `${linhas.length} produtos importados.`); if (!error) recarregar();
+    setAviso(error ? `Não consegui importar: ${error.message}` : `${linhas.length} produtos importados.${semCaixa.length ? ` Sem caixa na planilha (usa a caixa master da ficha técnica): ${semCaixa.join(', ')}.` : ''}`); if (!error) recarregar();
   }
   const set = (c: string, k: keyof BP, v: string | boolean) => setEd((e) => ({ ...e, [c]: { ...e[c], [k]: v } }));
   const txt = (b: BP, k: keyof BP) => { const v = ed[b.codigo]?.[k]; if (typeof v === 'string') return v; const o = b[k]; return o === null || o === undefined ? '' : String(o).replace('.', ','); };
