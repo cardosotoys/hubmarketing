@@ -5,7 +5,10 @@ import { supabase } from '../../lib/supabaseClient';
  * O lojista não tem login do Supabase: ele entra com CNPJ e senha e recebe um token de sessão
  * (black_sessoes), guardado neste aparelho até o fim da Black. */
 
-export const FN_MIDIA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/black-midia`;
+/* Endereços das funções no Supabase. Criadas pelo painel, receberam endereços automáticos:
+ * black-cadastro → smooth-endpoint, black-midia → dynamic-worker (o nome no painel é só rótulo). */
+export const FN_CADASTRO = 'smooth-endpoint';
+export const FN_MIDIA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynamic-worker`;
 
 export type BlackConfig = {
   inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number;
