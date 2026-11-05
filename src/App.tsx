@@ -69,6 +69,11 @@ import ProductDevRiscos from './pages/design-produto/ProductDevRiscos';
 import ProductDevDecisoes from './pages/design-produto/ProductDevDecisoes';
 import ProductDevHistorico from './pages/design-produto/ProductDevHistorico';
 import Monday from './pages/Monday';
+import CardosoBlack from './pages/CardosoBlack';
+import BlackCadastro from './pages/black/BlackCadastro';
+import BlackPedido from './pages/black/BlackPedido';
+import BlackFicha from './pages/black/BlackFicha';
+import BlackSenha from './pages/black/BlackSenha';
 import MondayBoardView from './pages/MondayBoardView';
 
 const CAMPAIGN_COMING_SOON: { path: string; title: string; description: string }[] = [
@@ -89,6 +94,11 @@ export default function App() {
           <Route path="/visao-final" element={<VisaoFinal />} />
           {/* Peças aprovadas para baixar (Comercial e Marketing) — pública, por link com token */}
           <Route path="/pecas" element={<Pecas />} />
+          {/* Cardoso Black: páginas públicas do lojista (sem login do Hub) */}
+          <Route path="/black" element={<BlackCadastro />} />
+          <Route path="/black/pedido" element={<BlackPedido />} />
+          <Route path="/black/p/:codigo" element={<BlackFicha />} />
+          <Route path="/black/senha" element={<BlackSenha />} />
           <Route element={<AppLayout />}>
             <Route index element={<ModuleGate moduleKey="dashboard"><Dashboard /></ModuleGate>} />
             {/* Módulos novos (estrutura vazia — implementação futura) */}
@@ -122,6 +132,7 @@ export default function App() {
             <Route path="biblioteca" element={<ModuleGate moduleKey="biblioteca"><Biblioteca /></ModuleGate>} />
             <Route path="produtos" element={<ModuleGate moduleKey="produtos"><Produtos /></ModuleGate>} />
             <Route path="tabela-precos" element={<ModuleGate moduleKey="tabela-precos"><TabelaPrecos /></ModuleGate>} />
+            <Route path="cardoso-black" element={<ModuleGate moduleKey="cardoso-black"><CardosoBlack /></ModuleGate>} />
             <Route path="trade" element={<ModuleGate moduleKey="trade-marketing"><TradeMarketing /></ModuleGate>} />
             <Route
               path="monitor-precos"
