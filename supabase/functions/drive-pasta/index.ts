@@ -8,7 +8,8 @@
 // chave no Secret GOOGLE_SERVICE_ACCOUNT_JSON. Só lê: não cria, não move, não apaga nada no Drive.
 //
 // Também abre a pasta de cada produto (Cardoso Black → Mídias): { produto: '0301' } procura a pasta "REF. 0301 - …"
-// na pasta Produtos do Drive compartilhado e já abre em "04. Material Visual"; { produto, folderId } navega dentro dela.
+// na pasta Produtos do Drive compartilhado e devolve, numa lista só, os arquivos de "04. Material Visual" e subpastas.
+// { produto, matriz }: caixa individual → material da REF matriz + só a embalagem da REF da caixa individual.
 //
 // Segurança: só atende usuário logado no Hub, e só abre pastas que ficam dentro das três pastas de marca abaixo
 // (Redes Sociais) ou dentro da pasta do produto pedido.
@@ -157,22 +158,59 @@ async function acharProduto(codigo: string): Promise<DriveFile | null> {
   return achados.find((f) => /^\s*ref/i.test(f.name)) ?? achados[0] ?? null;
 }
 
-async function pastaDoProduto(codigo: string, folderId?: string) {
-  const prod = await acharProduto(codigo);
-  if (!prod) return json({ error: `Não achei a pasta "REF. ${codigo}" na pasta de Produtos do Drive.`, pastas: [] }, 404);
-  const subs = (await children(prod.id, true)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
-  const pastas = subs.map((f) => ({ id: f.id, nome: f.name }));
-  let alvo: { id: string; nome: string; caminho: string[] };
-  if (folderId) {
-    const caminho = folderId === prod.id ? [] : await insideBrand(folderId, prod.id);
-    if (!caminho) return json({ error: 'Essa pasta não fica dentro da pasta do produto.', pastas }, 403);
-    alvo = { id: folderId, nome: caminho[caminho.length - 1] ?? prod.name, caminho: caminho.length ? caminho : [prod.name] };
-  } else {
-    const mv = subs.find((f) => /material visual/.test(norm(f.name)));
-    alvo = mv ? { id: mv.id, nome: mv.name, caminho: [mv.name] } : { id: prod.id, nome: prod.name, caminho: [prod.name] };
+const ocultos = (f: DriveFile) => /^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(f.name) || f.name.startsWith('.');
+
+// todos os arquivos de uma pasta e das subpastas (até 3 níveis), com o caminho de onde vieram
+async function arquivos(folderId: string, rotulo: string[], nivel = 0, acc: (ReturnType<typeof itemDe> & { grupo: string })[] = []) {
+  if (acc.length >= 400) return acc;
+  const filhos = await children(folderId);
+  for (const f of filhos) {
+    if (ocultos(f)) continue;
+    if (f.mimeType === FOLDER) { if (nivel < 3) await arquivos(f.id, [...rotulo, f.name], nivel + 1, acc); continue; }
+    acc.push({ ...itemDe(f), grupo: rotulo.join(' › ') });
   }
-  const itens = (await children(alvo.id)).filter((f) => !/^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(f.name) && !f.name.startsWith('.')).map(itemDe);
-  return json({ pastas, pasta: alvo, itens, produto: { id: prod.id, nome: prod.name } });
+  return acc;
+}
+
+async function materialVisual(prod: DriveFile) {
+  const subs = await children(prod.id, true);
+  return subs.find((f) => /material visual/.test(norm(f.name))) ?? prod;
+}
+
+// { produto, matriz? }: tudo o que está em 04. Material Visual, numa tela só (sem navegar por pastas).
+// Caixa individual: o material vem da REF matriz e, da REF da caixa individual, só o que é de embalagem.
+async function pastaDoProduto(codigo: string, folderId?: string, matriz?: string) {
+  const prod = await acharProduto(codigo);
+  const mat = matriz ? await acharProduto(matriz) : null;
+  if (!prod && !mat) return json({ error: `Não achei a pasta "REF. ${codigo}" na pasta de Produtos do Drive.`, pastas: [] }, 404);
+
+  if (folderId && prod) { // navegação antiga, por pasta, dentro do produto
+    const caminho = folderId === prod.id ? [] : await insideBrand(folderId, prod.id);
+    if (!caminho) return json({ error: 'Essa pasta não fica dentro da pasta do produto.', pastas: [] }, 403);
+    const itens = (await children(folderId)).filter((f) => !ocultos(f)).map(itemDe);
+    return json({ pastas: [], pasta: { id: folderId, nome: caminho[caminho.length - 1] ?? prod.name, caminho: caminho.length ? caminho : [prod.name] }, itens, produto: { id: prod.id, nome: prod.name } });
+  }
+
+  let itens: (ReturnType<typeof itemDe> & { grupo: string })[] = [];
+  let aviso = '';
+  if (mat) {
+    const mvM = await materialVisual(mat);
+    itens = await arquivos(mvM.id, [`REF. ${matriz}`]);
+    if (prod) {
+      const mvP = await materialVisual(prod);
+      const doProd = await arquivos(mvP.id, ['Caixa individual']);
+      const emb = doProd.filter((i) => /embalag|caixa|pack|cx/i.test(`${i.grupo} ${i.nome}`.replace(/^Caixa individual/, '')));
+      itens = [...(emb.length ? emb : doProd), ...itens];
+      if (!emb.length && doProd.length) aviso = 'Na REF da caixa individual não achei pasta ou arquivo de embalagem; mostrando todos os arquivos dela.';
+    } else aviso = `Não achei a pasta "REF. ${codigo}" (caixa individual); mostrando só o material da REF ${matriz}.`;
+  } else if (prod) {
+    itens = await arquivos((await materialVisual(prod)).id, []);
+  }
+  const base = prod ?? mat!;
+  return json({
+    pastas: [], pasta: { id: (await materialVisual(base)).id, nome: 'Material Visual', caminho: [base.name] }, itens, aviso,
+    produto: { id: base.id, nome: prod?.name ?? base.name }, matriz: mat ? { id: mat.id, nome: mat.name } : null,
+  });
 }
 
 Deno.serve(async (req) => {
@@ -184,8 +222,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return json({ error: 'Entre no Hub para ver as pastas do Drive.' }, 401);
 
-    const { marca, pasta, folderId, arquivo, produto } = (await req.json()) as { marca?: string; pasta?: string; folderId?: string; arquivo?: string; produto?: string };
-    if (produto) return await pastaDoProduto(String(produto), folderId);
+    const { marca, pasta, folderId, arquivo, produto, matriz } = (await req.json()) as { marca?: string; pasta?: string; folderId?: string; arquivo?: string; produto?: string; matriz?: string };
+    if (produto) return await pastaDoProduto(String(produto), folderId, matriz ? String(matriz) : undefined);
     const rootId = marca ? RAIZ[marca] : undefined;
     if (!rootId) return json({ error: `Marca desconhecida: ${marca ?? '(vazia)'}` }, 400);
 

@@ -517,7 +517,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
           </table>
         </div>
       )}
-      {midias && <MidiasProduto prod={midias} onClose={() => { setMidias(null); recarregar(); }} />}
+      {midias && <MidiasProduto prod={midias} matriz={matrizDe(midias, prods)} onClose={() => { setMidias(null); recarregar(); }} />}
       <p className="cbx-hint">Fotos e vídeos da ficha vêm de Produtos (foto do produto e da embalagem) e do banco de materiais com status <b>Liberado</b>. Para incluir fotos e vídeos do Drive, use o botão <b>Mídias</b> do produto.</p>
     </>
   );
@@ -658,7 +658,14 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
 type Mat = { id: string; kind: 'foto' | 'video' | 'kit' | 'documento'; name: string; drive_url: string; status: string; created_at: string };
 const KIND: Record<string, string> = { foto: 'Foto', video: 'Vídeo', kit: 'Kit', documento: 'Documento' };
 const STM: Record<string, string> = { liberado: 'Na ficha', aguardando: 'Aguardando liberação', producao: 'Em produção', pedido: 'Pedido' };
-function MidiasProduto({ prod, onClose }: { prod: Prod; onClose: () => void }) {
+/* caixa individual: mesmo produto da REF matriz, muda só a embalagem ("Geladeira Sonho de Menina Caixa Individual" → "Geladeira Sonho de Menina") */
+const nomeBase = (n: string) => n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\(?\s*(caixa|cx\.?)\s+individual\s*\)?/g, ' ').replace(/\s+/g, ' ').trim();
+function matrizDe(p: Prod, todos: Prod[]): Prod | null {
+  if (!/(caixa|cx\.?)\s+individual/i.test(p.name)) return null;
+  const alvo = nomeBase(p.name);
+  return todos.find((x) => x.code !== p.code && !/(caixa|cx\.?)\s+individual/i.test(x.name) && nomeBase(x.name) === alvo) ?? null;
+}
+function MidiasProduto({ prod, matriz, onClose }: { prod: Prod; matriz: Prod | null; onClose: () => void }) {
   const { profile } = useAuth();
   const [lista, setLista] = useState<Mat[]>([]);
   const [drive, setDrive] = useState(false);
@@ -701,6 +708,7 @@ function MidiasProduto({ prod, onClose }: { prod: Prod; onClose: () => void }) {
       <Modal title={`Mídias · ${prod.packaging_name || prod.name} (${prod.code})`} onClose={onClose} wide>
         <div style={{ display: 'grid', gap: 12 }}>
           <p className="cbx-hint">Fotos e vídeos do Drive que aparecem na ficha do QR, além da foto do cadastro do produto. O vídeo aparece primeiro. Não precisa deixar o arquivo público no Drive.</p>
+          {matriz && <div className="alert">Caixa individual: o Drive mostra o material da REF {matriz.code} ({matriz.name}) e, desta REF, só a embalagem.</div>}
           <div className="cbx-acts">
             <button className="btn" type="button" onClick={() => setDrive(true)}>Adicionar do Drive</button>
             <a className="btn ghost" href={`/black/p/${prod.code}`} target="_blank" rel="noreferrer">Ver a ficha</a>
@@ -723,7 +731,7 @@ function MidiasProduto({ prod, onClose }: { prod: Prod; onClose: () => void }) {
           </div>
         </div>
       </Modal>
-      {drive && <DrivePicker marca={marcaDe(prod)} pasta="Material Finalizado" produto={prod.code} multiple unidade="arquivo"
+      {drive && <DrivePicker marca={marcaDe(prod)} pasta="Material Finalizado" produto={prod.code} matriz={matriz?.code} multiple unidade="arquivo"
         hints={{ product: prod.name, sku: prod.code }} onPick={adicionar} onClose={() => setDrive(false)} />}
     </>
   );

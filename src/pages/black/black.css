@@ -456,3 +456,4 @@
 .cbx-mid .it b { display: block; font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cbx-mid .it small { color: var(--text-dim); font-size: 12px; }
 .cbx-mid .it .ac { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.dpk-meta .grp { flex-basis: 100%; color: var(--muted, #7C8A90); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
