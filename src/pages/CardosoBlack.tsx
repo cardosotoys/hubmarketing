@@ -560,7 +560,7 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
         {campo('Pedido mínimo (R$)', 'pedido_minimo', 'number')}
         {campo('Frete grátis SP/RJ a partir de (R$)', 'frete_gratis_sp_rj', 'number')}
         {campo('Desconto sobre a Tabela de Preços (%)', 'desconto_pct', 'number', 'Só para produtos sem preço fixo na Black.')}
-        {campo('Data da live (texto)', 'live_data', 'text', 'Ex.: Sexta-feira, 13/11 · 19h')}
+        {campo('Data da live (texto)', 'live_data', 'text', 'Ex.: Quinta-feira, 12/11 · 15h')}
         {campo('Link da live (Meet ou Zoom)', 'live_link', 'url', 'Só aparece para cadastro aprovado.')}
         {campo('Link do canal no WhatsApp', 'canal_link', 'url', 'Só aparece para cadastro aprovado.')}
       </div>

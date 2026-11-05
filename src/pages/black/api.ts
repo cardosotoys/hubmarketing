@@ -111,7 +111,20 @@ export const ERRO_LOGIN: Record<string, string> = {
   rede: 'Não consegui conectar agora. Tente de novo em instantes.',
 };
 
-export const fmtData = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const TZ = 'America/Sao_Paulo';
+export const fmtData = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: TZ });
+export const diaMes = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TZ });
+export const hora = (iso: string) => {
+  const [h, m] = new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }).split(':');
+  return m === '00' ? `${Number(h)}h` : `${Number(h)}h${m}`;
+};
+export const diaBadge = (iso: string) => {
+  const d = new Date(iso);
+  return { dia: d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: TZ }), mes: d.toLocaleDateString('pt-BR', { month: 'short', timeZone: TZ }).replace('.', '').toUpperCase() };
+};
+/* "de 12/11, às 15h, a 15/11, até 23h59" — sempre a partir dos Ajustes do Hub */
+export const periodoPedidos = (c: { abre_em: string; fecha_em: string } | null | undefined) =>
+  c ? `de ${diaMes(c.abre_em)}, às ${hora(c.abre_em)}, a ${diaMes(c.fecha_em)}, até ${hora(c.fecha_em)}` : 'de 12/11, às 15h, a 15/11, até 23h59';
 
 /* contagem regressiva até uma data, atualizada a cada 30 s */
 export function useFaltam(alvo: string | undefined) {

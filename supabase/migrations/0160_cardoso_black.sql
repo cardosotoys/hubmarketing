@@ -71,11 +71,11 @@ as $fn$ select regexp_replace(coalesce(t, ''), '\D', '', 'g'); $fn$;
 create table if not exists public.black_config (
   id integer primary key default 1 check (id = 1),
   inscricoes_ate timestamptz not null default '2026-11-15 23:59:59-03',
-  abre_em timestamptz not null default '2026-11-13 00:00:00-03',
+  abre_em timestamptz not null default '2026-11-12 15:00:00-03',
   fecha_em timestamptz not null default '2026-11-15 23:59:59-03',
   pedido_minimo numeric(12, 2) not null default 2500,
   frete_gratis_sp_rj numeric(12, 2) not null default 5000,
-  live_data text not null default 'Sexta-feira, 13/11 · horário a confirmar',
+  live_data text not null default 'Quinta-feira, 12/11 · 15h',
   live_link text not null default '',
   canal_link text not null default '',
   desconto_pct numeric(5, 2) not null default 0 check (desconto_pct >= 0 and desconto_pct < 100),
@@ -83,6 +83,9 @@ create table if not exists public.black_config (
   atualizado_por uuid references public.profiles (id)
 );
 insert into public.black_config (id) values (1) on conflict (id) do nothing;
+-- a Black começa em 12/11 às 15h (live e abertura dos pedidos); corrige o padrão antigo se ainda estiver nele
+update public.black_config set abre_em = '2026-11-12 15:00:00-03', live_data = 'Quinta-feira, 12/11 · 15h'
+ where id = 1 and abre_em = '2026-11-13 00:00:00-03';
 
 
 -- ------------------------------------------------------------------ carteira

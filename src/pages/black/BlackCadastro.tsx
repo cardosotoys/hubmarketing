@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell from './Shell';
-import { digitos, maskCnpj, maskFone, useConfig } from './api';
+import { diaBadge, digitos, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
 
 /* /black?r=<representante> — pré-cadastro da Cardoso Black.
  * 1) CNPJ → a função black-cadastro consulta a Receita e a carteira e mostra a empresa.
@@ -110,11 +110,11 @@ export default function BlackCadastro() {
             : `Estamos conferindo os dados de ${res.fantasia}. Assim que o cadastro for aprovado, você recebe o acesso ao canal.`}</p>
           {ok && res.canal_link && <a className="cb-btn wa full" href={res.canal_link} target="_blank" rel="noreferrer">Acessar o canal Cardoso Black</a>}
           <div className="cb-live">
-            <div className="d"><b>13</b><small>NOV</small></div>
+            <div className="d"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
             <div><b>Live da Cardoso Black</b><span>{res.live_data}</span><span>{ok ? 'O link de acesso sai no canal.' : 'O convite chega com a aprovação.'}</span></div>
           </div>
           <div className="cb-alert">
-            <b>Pedidos de 13 a 15/11, até 23h59</b>, somente pelo link de pedido, entrando com este CNPJ e a senha que você criou.
+            <b>Pedidos {periodoPedidos(cfg)}</b>, somente pelo link de pedido, entrando com este CNPJ e a senha que você criou.
           </div>
           {ok && <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>}
           {res.representante && <p style={{ fontSize: 13 }}>Dúvidas? Fale com <b>{res.representante}</b>, seu representante.</p>}
@@ -129,8 +129,8 @@ export default function BlackCadastro() {
         <div>
           <div className="cb-hi">Participe da live e do período de pedidos da Cardoso Black</div>
           <div className="cb-card cb-pad" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            <div className="cb-ev"><span className="n">1</span><div><b>Live · {cfg?.live_data ?? 'sexta-feira, 13/11'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
-            <div className="cb-ev"><span className="n">2</span><div><b>Pedidos de 13 a 15/11</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
+            <div className="cb-ev"><span className="n">1</span><div><b>Live · {cfg?.live_data ?? 'quinta-feira, 12/11 · 15h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
+            <div className="cb-ev"><span className="n">2</span><div><b>Pedidos {periodoPedidos(cfg)}</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
             <div className="cb-ev"><span className="n">3</span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
           </div>
         </div>
