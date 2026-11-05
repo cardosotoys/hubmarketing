@@ -23,8 +23,10 @@ export default function BlackPedido() {
   if (!cfg || carregando) return <Shell sub="Pedidos somente por esta página" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} ate={diaMes(cfg.fecha_em)} /></Shell>;
 
-  const antes = abre !== null && abre.ms > 0;
-  const depois = fecha !== null && fecha.ms <= 0;
+  // prévia da equipe: vitrine liberada antes da abertura e depois do fim, sem enviar pedido
+  const previa = !!sessao.previa;
+  const antes = !previa && abre !== null && abre.ms > 0;
+  const depois = !previa && fecha !== null && fecha.ms <= 0;
   return (
     <Shell sub={`Pedido somente por esta página · caixa fechada · mínimo de ${brl(cfg.pedido_minimo)}`} clock={clock}>
       <div className="cb-who" style={{ margin: '-24px -20px 18px', borderRadius: 0 }}>
@@ -36,6 +38,7 @@ export default function BlackPedido() {
           <button type="button" className="cb-link" onClick={sair}>Sair</button>
         </div>
       </div>
+      {previa && <div className="cb-alert warn" style={{ marginBottom: 14 }}><b>Prévia da equipe.</b> Esta é a visão do cliente com a loja de demonstração: preços e carrinho funcionam, mas o pedido não é enviado e nada entra na medição.</div>}
       {antes ? <Espera alvo={cfg.abre_em} sessao={sessao.canal_link} />
         : <Loja token={token} uf={sessao.uf} cidade={sessao.cidade} comprador={sessao.comprador} email={sessao.email}
             celular={sessao.celular} representante={sessao.representante} razao={sessao.razao_social} cnpj={sessao.cnpj}
@@ -259,6 +262,7 @@ const ERRO_PEDIDO = (r: { erro: string; codigo?: string; disponivel?: number; mi
   nao_abriu: 'Os pedidos ainda não abriram.',
   encerrado: 'Os pedidos da Cardoso Black foram encerrados.',
   vazio: 'O pedido está vazio.',
+  previa: 'Prévia da equipe: o pedido não é enviado. Na Black, o cliente recebe aqui o número do pedido e o resumo.',
   minimo: `O pedido não chegou ao mínimo de ${brl(Number(r.minimo ?? 0))}.`,
   estoque: `${nome(r.codigo ?? '')}: restam ${r.disponivel ?? 0} caixas. Ajustei a quantidade.`,
   produto: `${nome(r.codigo ?? '')} não está mais disponível. Retirei do pedido.`,
