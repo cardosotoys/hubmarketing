@@ -45,7 +45,7 @@ export function alternativaPara(channelId: string, brand: string): { marca: Marc
 
 export type DriveItem = Item;
 
-export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose, outra }: {
+export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose, outra, produto }: {
   marca: Marca;
   pasta: string;
   multiple?: boolean;                    // carrossel: várias lâminas, na ordem do clique
@@ -54,6 +54,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   onPick: (urls: string[], itens: Item[]) => void;   // itens: nome e tipo (vídeo/imagem) de cada escolhido
   onClose: () => void;
   outra?: { marca: Marca; pasta: string };   // se a pasta pedida não existir no Drive, abre esta (ex.: Status da Playmi → Story da Playmi)
+  produto?: string;                      // código do produto: abre Cardoso/Produtos/REF. <código>/04. Material Visual
 }) {
   const un = unidade;
   const [m, setM] = useState<Marca>(marca);          // dá para procurar o criativo em outra marca
@@ -68,7 +69,8 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    supabase.functions.invoke('drive-pasta', { body: { marca: m, ...nav } }).then(async ({ data: d, error }) => {
+    const body = produto ? { produto, ...(nav.folderId ? { folderId: nav.folderId } : {}) } : { marca: m, ...nav };
+    supabase.functions.invoke('drive-pasta', { body }).then(async ({ data: d, error }) => {
       if (!alive) return;
       let r = (d ?? {}) as Resposta;
       // erro da função: o motivo e a lista de pastas vêm no corpo da resposta
@@ -139,7 +141,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   }, [data, q, chaves]);
 
   const usarPasta = async (folderId: string) => {
-    const { data: d } = await supabase.functions.invoke('drive-pasta', { body: { marca: m, folderId } });
+    const { data: d } = await supabase.functions.invoke('drive-pasta', { body: produto ? { produto, folderId } : { marca: m, folderId } });
     const imgs = ((d as Resposta)?.itens ?? []).filter((i) => i.tipo !== 'pasta').sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
     if (imgs.length) onPick(imgs.map((i) => fileUrl(i.id)), imgs);
   };
@@ -155,17 +157,17 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
       <div className="dpk-box">
         <div className="dpk-head">
           <div>
-            <small>{m} · Redes Sociais</small>
+            <small>{produto ? `Produtos · ${(data as { produto?: { nome: string } } | null)?.produto?.nome ?? `REF. ${produto}`}` : `${m} · Redes Sociais`}</small>
             <b>{caminho.join(' / ') || 'Escolha a pasta'}</b>
           </div>
           <button type="button" className="dpk-x" onClick={onClose} aria-label="Fechar">×</button>
         </div>
-        <div className="dpk-marcas" role="tablist" aria-label="Marca">
+        {!produto && <div className="dpk-marcas" role="tablist" aria-label="Marca">
           {(['Cardoso', 'Playmi', 'Tópi'] as Marca[]).map((x) => (
             <button key={x} type="button" role="tab" aria-selected={x === m}
               onClick={() => { if (x === m) return; setAviso(''); setM(x); setNav({ pasta: x === marca ? pasta : undefined }); }}>{x}</button>
           ))}
-        </div>
+        </div>}
         {aviso && <p className="dpk-aviso">{aviso}</p>}
         {!!data?.pastas?.length && (
           <div className="dpk-chips" role="tablist">
@@ -176,7 +178,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
           </div>
         )}
         <div className="dpk-tools">
-          {caminho.length > 1 && <button type="button" className="dpk-back" onClick={() => setNav({ pasta: caminho[0] })}>← {caminho[0]}</button>}
+          {caminho.length > 1 && <button type="button" className="dpk-back" onClick={() => setNav(produto ? {} : { pasta: caminho[0] })}>← {caminho[0]}</button>}
           <input type="search" placeholder="Buscar pelo nome do arquivo" value={q} onChange={(e) => setQ(e.target.value)} />
           {data?.pasta && <a href={`https://drive.google.com/drive/folders/${data.pasta.id}`} target="_blank" rel="noreferrer">Abrir no Drive ↗</a>}
         </div>
