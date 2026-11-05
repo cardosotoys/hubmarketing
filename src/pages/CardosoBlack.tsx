@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
+import DrivePicker, { type DriveItem } from './social-plan/DrivePicker';
 import './black/black.css';
 import { useRedonda } from './black/fonte';
 
@@ -33,7 +34,8 @@ type Pedido = {
 };
 type Item = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
 type BP = { codigo: string; ordem: number; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
-type Prod = { id: string; code: string; name: string; packaging_name: string; line: string; image_url: string; carton_quantity: number | null };
+type Prod = { id: string; code: string; name: string; packaging_name: string; line: string; image_url: string; carton_quantity: number | null; brand?: { label: string } | { label: string }[] | null };
+const marcaDe = (p?: Prod) => { const b = p?.brand; const l = Array.isArray(b) ? b[0]?.label : b?.label; return l === 'Playmi' || l === 'Tópi' ? l : 'Cardoso'; };
 type Cart = { id: string; razao_social: string; cnpj: string | null; uf: string; representante: string; grupo: string; situacao: string; dias_sem_compra: number | null; importado_em: string };
 
 const brl = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -110,7 +112,7 @@ export default function CardosoBlack() {
         paginar<Pedido>((a, z) => supabase.from('black_pedidos').select('*').order('criado_em', { ascending: false }).range(a, z)),
         paginar<Item>((a, z) => supabase.from('black_pedido_itens').select('*').range(a, z)),
         supabase.from('black_produtos').select('*').order('ordem'),
-        paginar<Prod>((a, z) => supabase.from('products').select('id, code, name, packaging_name, line, image_url, carton_quantity').order('code').range(a, z)),
+        paginar<Prod>((a, z) => supabase.from('products').select('id, code, name, packaging_name, line, image_url, carton_quantity, brand:brands(label)').order('code').range(a, z)),
         paginar<Cart>((a, z) => supabase.from('black_carteira').select('id, razao_social, cnpj, uf, representante, grupo, situacao, dias_sem_compra, importado_em').order('razao_social').range(a, z)),
         paginar<{ codigo: string }>((a, z) => supabase.from('black_eventos').select('codigo').eq('tipo', 'ficha').range(a, z)),
         paginar<{ product_id: string }>((a, z) => supabase.from('content_materials').select('product_id').eq('status', 'liberado').range(a, z)),
@@ -398,6 +400,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
   const [novo, setNovo] = useState({ codigo: '', preco: '' });
   // edição em texto (aceita vírgula); converte para número só ao salvar
   const [ed, setEd] = useState<Record<string, Record<string, string | boolean>>>({});
+  const [midias, setMidias] = useState<Prod | null>(null);
   const vivos = new Set(peds.filter((p) => p.status !== 'cancelado').map((p) => p.id));
   const vend: Record<string, number> = {}; itens.filter((i) => vivos.has(i.pedido_id)).forEach((i) => { vend[i.codigo] = (vend[i.codigo] ?? 0) + i.caixas; });
   const semCadastro = bps.filter((b) => !porCodigo[b.codigo]);
@@ -509,12 +512,13 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
                 <td className="num">{fichas[b.codigo] ?? 0}</td>
                 <td className="num">{p ? (mats[p.id] ?? 0) : '—'}</td>
                 <td><input type="checkbox" style={{ width: 'auto' }} checked={ativo(b)} onChange={(e) => set(b.codigo, 'ativo', e.target.checked)} /></td>
-                <td style={{ whiteSpace: 'nowrap' }}>{sujo && <button className="btn sm" onClick={() => salvar(b)}>Salvar</button>} <a className="btn ghost sm" href={`/black/p/${b.codigo}`} target="_blank" rel="noreferrer">Ficha</a> <button className="btn ghost sm" onClick={() => remover(b)}>Tirar</button></td>
+                <td style={{ whiteSpace: 'nowrap' }}>{sujo && <button className="btn sm" onClick={() => salvar(b)}>Salvar</button>} {p && <button className="btn ghost sm" type="button" onClick={() => setMidias(p)}>Mídias{mats[p.id] ? ` (${mats[p.id]})` : ''}</button>} <a className="btn ghost sm" href={`/black/p/${b.codigo}`} target="_blank" rel="noreferrer">Ficha</a> <button className="btn ghost sm" onClick={() => remover(b)}>Tirar</button></td>
               </tr>); })}</tbody>
           </table>
         </div>
       )}
-      <p className="cbx-hint">Fotos e vídeos da ficha vêm de Produtos (foto do produto e da embalagem) e do banco de materiais com status <b>Liberado</b>. Para incluir um vídeo novo, cadastre o material do produto com o link do Drive e libere.</p>
+      {midias && <MidiasProduto prod={midias} onClose={() => { setMidias(null); recarregar(); }} />}
+      <p className="cbx-hint">Fotos e vídeos da ficha vêm de Produtos (foto do produto e da embalagem) e do banco de materiais com status <b>Liberado</b>. Para incluir fotos e vídeos do Drive, use o botão <b>Mídias</b> do produto.</p>
     </>
   );
 }
@@ -647,5 +651,80 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
       <div className="modal-actions" style={{ marginTop: 14 }}><button className="btn" onClick={salvar}>Salvar ajustes</button></div>
       {aviso && <p className="cbx-hint">{aviso}</p>}
     </div>
+  );
+}
+
+/* ================= Mídias do produto (Drive) ================= */
+type Mat = { id: string; kind: 'foto' | 'video' | 'kit' | 'documento'; name: string; drive_url: string; status: string; created_at: string };
+const KIND: Record<string, string> = { foto: 'Foto', video: 'Vídeo', kit: 'Kit', documento: 'Documento' };
+const STM: Record<string, string> = { liberado: 'Na ficha', aguardando: 'Aguardando liberação', producao: 'Em produção', pedido: 'Pedido' };
+function MidiasProduto({ prod, onClose }: { prod: Prod; onClose: () => void }) {
+  const { profile } = useAuth();
+  const [lista, setLista] = useState<Mat[]>([]);
+  const [drive, setDrive] = useState(false);
+  const [aviso, setAviso] = useState('');
+  const carregar = useCallback(async () => {
+    const { data } = await supabase.from('content_materials').select('id, kind, name, drive_url, status, created_at').eq('product_id', prod.id).order('created_at');
+    setLista((data as Mat[]) ?? []);
+  }, [prod.id]);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  async function adicionar(urls: string[], itens: DriveItem[]) {
+    setDrive(false);
+    const ja = new Set(lista.map((m) => m.drive_url));
+    const novos = urls.map((u, i) => ({ u, it: itens[i] })).filter((x) => !ja.has(x.u));
+    if (!novos.length) { setAviso('Esses arquivos já estão no produto.'); return; }
+    const linhas = (status: string) => novos.map(({ u, it }) => ({
+      product_id: prod.id, brand: marcaDe(prod), kind: it?.tipo === 'video' ? 'video' : 'foto', name: it?.nome ?? 'Arquivo do Drive',
+      drive_url: u, status, ...(status === 'liberado' ? { released_by: profile?.id ?? null, released_at: new Date().toISOString() } : {}),
+    }));
+    let { error } = await supabase.from('content_materials').insert(linhas('liberado'));
+    let msg = `${novos.length} arquivo${novos.length > 1 ? 's' : ''} na ficha.`;
+    if (error) { // sem permissão de liberar: entra para a liberação do aprovador
+      ({ error } = await supabase.from('content_materials').insert(linhas('aguardando')));
+      msg = `${novos.length} arquivo${novos.length > 1 ? 's' : ''} enviado${novos.length > 1 ? 's' : ''} para liberação (Redes Sociais → Banco de materiais).`;
+    }
+    setAviso(error ? `Não consegui adicionar: ${error.message}` : msg);
+    carregar();
+  }
+  async function liberar(m: Mat) {
+    const { error } = await supabase.from('content_materials').update({ status: 'liberado', released_by: profile?.id ?? null, released_at: new Date().toISOString() }).eq('id', m.id);
+    setAviso(error ? `Não consegui liberar: ${error.message}` : 'Liberado. Já aparece na ficha.'); carregar();
+  }
+  async function tirar(m: Mat) {
+    if (!window.confirm(`Tirar "${m.name}" do produto? O arquivo continua no Drive.`)) return;
+    const { error } = await supabase.from('content_materials').delete().eq('id', m.id);
+    setAviso(error ? `Não consegui tirar: ${error.message}` : 'Retirado.'); carregar();
+  }
+  return (
+    <>
+      <Modal title={`Mídias · ${prod.packaging_name || prod.name} (${prod.code})`} onClose={onClose} wide>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <p className="cbx-hint">Fotos e vídeos do Drive que aparecem na ficha do QR, além da foto do cadastro do produto. O vídeo aparece primeiro. Não precisa deixar o arquivo público no Drive.</p>
+          <div className="cbx-acts">
+            <button className="btn" type="button" onClick={() => setDrive(true)}>Adicionar do Drive</button>
+            <a className="btn ghost" href={`/black/p/${prod.code}`} target="_blank" rel="noreferrer">Ver a ficha</a>
+          </div>
+          {aviso && <div className="alert">{aviso}</div>}
+          <div className="cbx-mid">
+            {prod.image_url && <div className="it"><img src={prod.image_url} alt="" /><div><b>Foto do cadastro</b><small>Produtos · sempre na ficha</small></div></div>}
+            {lista.map((m) => (
+              <div key={m.id} className="it">
+                <span className="ic">{m.kind === 'video' ? '▶' : m.kind === 'foto' ? '🖼' : '📄'}</span>
+                <div><b title={m.name}>{m.name}</b><small>{KIND[m.kind]} · <span className={`cbx-st ${m.status === 'liberado' ? 'aprovado' : 'analise'}`}>{STM[m.status] ?? m.status}</span></small></div>
+                <div className="ac">
+                  {m.drive_url && <a className="btn ghost sm" href={m.drive_url} target="_blank" rel="noreferrer">Drive</a>}
+                  {m.status !== 'liberado' && <button className="btn sm" type="button" onClick={() => liberar(m)}>Liberar</button>}
+                  <button className="btn ghost sm" type="button" onClick={() => tirar(m)}>Tirar</button>
+                </div>
+              </div>
+            ))}
+            {!lista.length && !prod.image_url && <p className="cbx-hint">Nenhuma mídia ainda.</p>}
+          </div>
+        </div>
+      </Modal>
+      {drive && <DrivePicker marca={marcaDe(prod)} pasta="Material Finalizado" multiple unidade="arquivo"
+        hints={{ product: prod.name, sku: prod.code }} onPick={adicionar} onClose={() => setDrive(false)} />}
+    </>
   );
 }
