@@ -457,3 +457,20 @@
 .cbx-mid .it small { color: var(--text-dim); font-size: 12px; }
 .cbx-mid .it .ac { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .dpk-meta .grp { flex-basis: 100%; color: var(--muted, #7C8A90); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ficha: galeria */
+.cb-stage { border: 1px solid var(--line); }
+.cb-stage .dl { position: absolute; right: 12px; top: 12px; background: rgba(255,255,255,.94); color: var(--navy); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 800; text-decoration: none; box-shadow: 0 2px 8px rgba(10,37,48,.15); }
+.cb-thumbs button { border-color: var(--line); }
+.cb-thumbs .vt { position: absolute; inset: 0; background: var(--navy); }
+/* galeria: foto em quadro quadrado; vídeo no formato dele (9:16 em pé ou 16:9 deitado), sempre inteiro */
+.cb-stage { aspect-ratio: 1; max-height: min(78vh, 640px); margin-inline: auto; width: 100%; isolation: isolate; }
+.cb-stage img { padding: 14px; box-sizing: border-box; }
+.cb-stage.v { background: var(--navy); }
+.cb-stage.v::before { content: ''; position: absolute; inset: -30px; z-index: -1; background: var(--fundo, none) center / cover; filter: blur(28px) brightness(.55) saturate(1.1); }
+.cb-stage > img, .cb-stage > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.cb-stage.v video { background: transparent; filter: drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+.cb-stage .vb { top: 12px; bottom: auto; }
+.cb-thumbs video.vt { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--navy); pointer-events: none; }
+.cb-stage.v { max-height: none; }
+.cb-stage.vp { width: auto; height: min(80vh, 760px); max-width: 100%; }
+.cb-stage.v video { object-fit: contain; }
