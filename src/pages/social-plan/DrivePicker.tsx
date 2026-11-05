@@ -43,13 +43,15 @@ export function alternativaPara(channelId: string, brand: string): { marca: Marc
   return { marca, pasta: channelId === 'wa-st' ? 'Instagram - Story' : 'Instagram - Post' };
 }
 
+export type DriveItem = Item;
+
 export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina', hints, onPick, onClose, outra }: {
   marca: Marca;
   pasta: string;
   multiple?: boolean;                    // carrossel: várias lâminas, na ordem do clique
-  unidade?: 'lâmina' | 'tela';           // Story/Status chama de tela
+  unidade?: 'lâmina' | 'tela' | 'arquivo'; // Story/Status chama de tela; mídias de produto, arquivo
   hints: { title?: string; product?: string; sku?: string; date?: string };
-  onPick: (urls: string[]) => void;
+  onPick: (urls: string[], itens: Item[]) => void;   // itens: nome e tipo (vídeo/imagem) de cada escolhido
   onClose: () => void;
   outra?: { marca: Marca; pasta: string };   // se a pasta pedida não existir no Drive, abre esta (ex.: Status da Playmi → Story da Playmi)
 }) {
@@ -139,11 +141,11 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
   const usarPasta = async (folderId: string) => {
     const { data: d } = await supabase.functions.invoke('drive-pasta', { body: { marca: m, folderId } });
     const imgs = ((d as Resposta)?.itens ?? []).filter((i) => i.tipo !== 'pasta').sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
-    if (imgs.length) onPick(imgs.map((i) => fileUrl(i.id)));
+    if (imgs.length) onPick(imgs.map((i) => fileUrl(i.id)), imgs);
   };
   const clicar = (i: Item) => {
     if (i.tipo === 'pasta') { setNav({ folderId: i.id }); setSel([]); return; }
-    if (!multiple) { onPick([fileUrl(i.id)]); return; }
+    if (!multiple) { onPick([fileUrl(i.id)], [i]); return; }
     setSel((s) => (s.includes(i.id) ? s.filter((x) => x !== i.id) : [...s, i.id]));
   };
 
@@ -217,7 +219,7 @@ export default function DrivePicker({ marca, pasta, multiple, unidade = 'lâmina
         {multiple && (
           <div className="dpk-foot">
             <span>{sel.length ? `${sel.length} ${un}${sel.length > 1 ? 's' : ''} na ordem do clique` : `Clique nas ${un}s na ordem em que vão aparecer`}</span>
-            <button type="button" className="dpk-ok" disabled={!sel.length} onClick={() => onPick(sel.map(fileUrl))}>Usar {sel.length || ''} {un}{sel.length === 1 ? '' : 's'}</button>
+            <button type="button" className="dpk-ok" disabled={!sel.length} onClick={() => onPick(sel.map(fileUrl), sel.map((id) => (data?.itens ?? []).find((x) => x.id === id)).filter((x): x is Item => !!x))}>Usar {sel.length || ''} {un}{sel.length === 1 ? '' : 's'}</button>
           </div>
         )}
       </div>

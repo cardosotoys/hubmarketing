@@ -376,3 +376,9 @@
   .cbx-top .cbx-acts, .cbx .tp-tabs, .cbx-noprint, .cbx-hrow .btn { display: none !important; }
   .cbx-box, .cbx-kpi { box-shadow: none !important; border: 1px solid #ddd; break-inside: avoid; }
 }
+.cbx-mid { display: grid; gap: 8px; }
+.cbx-mid .it { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; background: var(--surface-2); border-radius: 12px; padding: 8px 10px; }
+.cbx-mid .it img, .cbx-mid .it .ic { width: 52px; height: 52px; border-radius: 10px; object-fit: contain; background: var(--surface); display: grid; place-items: center; font-size: 20px; }
+.cbx-mid .it b { display: block; font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cbx-mid .it small { color: var(--text-dim); font-size: 12px; }
+.cbx-mid .it .ac { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
