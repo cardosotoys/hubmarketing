@@ -495,7 +495,7 @@
 
 /* ============ módulo interno · layout do onboarding aprovado (Sistema interno) ============ */
 .cbx-app { --bn: #0A2530; --bn2: #12384A; --br: #DA3A2F; --bt: #1F7F88; --bline: #DCE3E6; --bink3: #7C8A90; --bink2: #4E636C;
-  display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 18px; align-items: start; font-family: 'CB Figtree', 'Figtree', system-ui, sans-serif; }
+  display: flex; flex-direction: column; gap: 14px; font-family: 'CB Figtree', 'Figtree', system-ui, sans-serif; }
 .cbx-side { position: sticky; top: 16px; background: var(--bn); color: #fff; border-radius: 18px; padding: 16px 10px 12px; display: flex; flex-direction: column; gap: 3px; min-height: calc(100vh - 140px); }
 .cbx-side .lo { display: flex; align-items: center; gap: 8px; padding: 2px 8px 14px; font-family: 'redonda', 'Redonda', 'CB Figtree', system-ui, sans-serif; font-weight: 900; font-size: 16px; }
 .cbx-side .lo img { height: 26px; }
@@ -555,12 +555,11 @@
 .cbx-app .cbx-chips span { background: #F9F8F8; font-size: 10.5px; font-weight: 800; color: var(--bink2); }
 [data-theme='dark'] .cbx-app .cbx-table th { background: var(--surface-2); }
 [data-theme='dark'] .cbx-app .cbx-fu i, [data-theme='dark'] .cbx-app .cbx-br i { background: var(--surface-3); }
-@media (max-width: 1100px) {
-  .cbx-app { grid-template-columns: minmax(0, 1fr); }
-  .cbx-side { display: none; }
+@media (max-width: 1100px) { .cbx-app .cbx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* no celular o menu lateral vira gaveta: as abas aparecem também no topo da página */
+@media (max-width: 880px) {
   .cbx-mtabs { display: flex; gap: 4px; background: #0A2530; border-radius: 999px; padding: 5px; overflow-x: auto; scrollbar-width: none; }
   .cbx-mtabs button { border: 0; background: none; color: #C9D3D7; border-radius: 999px; padding: 7px 13px; font-weight: 800; font-size: 13px; white-space: nowrap; cursor: pointer; font-family: inherit; }
   .cbx-mtabs button.on { background: #DA3A2F; color: #fff; }
-  .cbx-app .cbx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media print { .cbx-side, .cbx-mtabs, .cbx-ht .r { display: none !important; } .cbx-app { display: block; } }

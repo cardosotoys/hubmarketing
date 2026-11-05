@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +8,7 @@ import EmptyState from '../components/EmptyState';
 import DrivePicker, { type DriveItem } from './social-plan/DrivePicker';
 import './black/black.css';
 import { useRedonda } from './black/fonte';
-import { Ic, type IconeMarca } from './black/Icones';
+import { ABAS, abaValida, type Aba } from './black/abas';
 import { driveId, midia } from './black/api';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
@@ -87,14 +88,12 @@ async function paginar<T>(q: (from: number, to: number) => PromiseLike<{ data: T
   return out;
 }
 
-type Aba = 'resumo' | 'inscritos' | 'pedidos' | 'produtos' | 'carteira' | 'links' | 'ajustes';
-// menu na ordem do onboarding aprovado (Carteira → Inscritos → Pedidos → Medição) + a operação
-const ABAS: [Aba, string, IconeMarca, 1 | 2][] = [['carteira', 'Carteira', 'store', 1], ['inscritos', 'Inscritos', 'users', 1], ['pedidos', 'Pedidos', 'cart', 1], ['resumo', 'Medição', 'target', 1],
-  ['produtos', 'Produtos da Black', 'tag', 2], ['links', 'Links e QR', 'marketing', 2], ['ajustes', 'Ajustes', 'bolt', 2]];
-
 export default function CardosoBlack() {
   useRedonda();
-  const [aba, setAba] = useState<Aba>('resumo'); // abre na Medição
+  // a aba fica na URL (?aba=...): o menu navy da lateral (BlackNav) troca a aba pelo link
+  const [params, setParams] = useSearchParams();
+  const aba = abaValida(params.get('aba'));
+  const setAba = (k: Aba) => setParams(k === 'resumo' ? {} : { aba: k });
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [ins, setIns] = useState<Inscrito[]>([]);
   const [peds, setPeds] = useState<Pedido[]>([]);
@@ -106,7 +105,6 @@ export default function CardosoBlack() {
   const [mats, setMats] = useState<Record<string, number>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
-  const [avisoPrevia, setAvisoPrevia] = useState('');
 
   const carregar = useCallback(async () => {
     try {
@@ -133,47 +131,14 @@ export default function CardosoBlack() {
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  // prévia da equipe: entra na página de pedido como a loja de demonstração (não envia pedido)
-  async function verComoCliente() {
-    const aba = window.open('about:blank', '_blank');
-    const { data, error } = await supabase.rpc('black_previa_entrar');
-    const tok = (data as { token?: string } | null)?.token;
-    if (error || !tok) {
-      aba?.close();
-      setAvisoPrevia(error?.message.includes('black_previa_entrar') ? 'Para usar a prévia, rode o SQL 0164_black_previa_equipe.sql no Supabase.' : `Não consegui abrir a prévia: ${error?.message ?? 'sem resposta'}`);
-      return;
-    }
-    try { localStorage.setItem('cb-token', JSON.stringify(tok)); sessionStorage.removeItem('cb-token'); } catch { /* sem armazenamento */ }
-    if (aba) aba.location.href = '/black/pedido'; else window.location.href = '/black/pedido';
-  }
-
   const porCodigo = useMemo(() => Object.fromEntries(prods.map((p) => [p.code, p])), [prods]);
 
   if (carregando) return <Loading />;
   const nAn = ins.filter((x) => x.status === 'analise').length;
 
   const titulo = ABAS.find((x) => x[0] === aba)?.[1] ?? '';
-  const item = ([k, l, ic]: (typeof ABAS)[number]) => (
-    <button key={k} type="button" className={aba === k ? 'on' : ''} aria-current={aba === k ? 'page' : undefined} onClick={() => setAba(k)}>
-      <span className="ic"><Ic n={ic} /></span>{l}{k === 'inscritos' && nAn > 0 && <em>{nAn}</em>}
-    </button>
-  );
-
   return (
     <div className="page cbx cbx-app">
-      <aside className="cbx-side" aria-label="Cardoso Black">
-        <div className="lo"><img src="/black/simbolo-branco.svg" alt="" />Cardoso <span>Black</span></div>
-        <span className="gp">Cardoso Black</span>
-        {ABAS.filter((x) => x[3] === 1).map(item)}
-        <span className="gp">Operação</span>
-        {ABAS.filter((x) => x[3] === 2).map(item)}
-        <div className="lk">
-          <button type="button" onClick={verComoCliente}>Ver como cliente</button>
-          <a href="/black" target="_blank" rel="noreferrer">Pré-cadastro ↗</a>
-          <a href="/black/pedido" target="_blank" rel="noreferrer">Página de pedido ↗</a>
-        </div>
-        <div className="us"><b>Pedidos</b>{cfg ? `${dt(cfg.abre_em)} a ${dt(cfg.fecha_em)}` : '—'}</div>
-      </aside>
       <nav className="cbx-mtabs" aria-label="Cardoso Black">{ABAS.map(([k, l]) => <button key={k} type="button" className={aba === k ? 'on' : ''} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn}` : ''}</button>)}</nav>
       <div className="cbx-main">
         <div className="cbx-ht">
@@ -182,7 +147,6 @@ export default function CardosoBlack() {
           {aba === 'pedidos' && cfg && <span className="ex">{dt(cfg.abre_em)} a {dt(cfg.fecha_em)}</span>}
           <div className="r"><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
         </div>
-        {avisoPrevia && <div className="alert">{avisoPrevia}</div>}
         {erro && <div className="alert">{erro}</div>}
         {!erro && cfg && (
           <>

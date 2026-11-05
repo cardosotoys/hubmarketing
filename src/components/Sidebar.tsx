@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import Avatar from './Avatar';
+import BlackNav from './BlackNav';
 import Icon from './Icon';
 import { ROLE_LABELS } from '../types/database';
 import { NAV_GROUPS, isNavItemVisible, type NavItem } from '../lib/navVisibility';
@@ -107,7 +108,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </div>
       </div>
 
-      {/* PAINEL claro — itens do módulo ativo */}
+      {/* PAINEL claro — itens do módulo ativo (a Cardoso Black tem o painel navy próprio) */}
+      {current?.mod.key === 'cardoso-black' ? <BlackNav onClose={onClose} /> : (
       <div className="navpanel">
         <button className="navpanel-x" onClick={onClose} aria-label="Fechar">✕</button>
         <div className="navpanel-head">
@@ -135,6 +137,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           <button className="logout-btn" onClick={signOut}>Sair</button>
         </div>
       </div>
+      )}
     </div>
   );
 }
