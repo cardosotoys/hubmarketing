@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
@@ -24,6 +25,7 @@ export default function BlackFicha() {
   const { token, sessao, carregando, entrar } = useSessao();
   const [f, setF] = useState<Ficha | null | undefined>(undefined);
   const [sel, setSel] = useState(0);
+  const [proporcao, setProporcao] = useState(9 / 16); // Reels; troca sozinho se o vídeo for deitado (16:9)
   const [falhou, setFalhou] = useState<Set<string>>(new Set());
   const marcarFalha = (src: string) => { setFalhou((f) => new Set(f).add(src)); setSel(0); };
   const [qtd, setQtd] = useState(1);
@@ -59,11 +61,11 @@ export default function BlackFicha() {
         m.push({ tipo: 'img', src, thumb: x.cache ? src : midia(id!, true), nome: x.nome });
       }
     }
-    // vídeo primeiro: é o que mais ajuda quem está assistindo à live
     // foto primeiro (abre na hora); o vídeo vem logo depois, marcado com ▶
     return [...m.filter((x) => x.tipo !== 'video'), ...m.filter((x) => x.tipo === 'video')].filter((x) => !falhou.has(x.src));
   }, [f, falhou]);
 
+  const capa = midias.find((x) => x.tipo === 'img')?.thumb;
   const clock = fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : null;
   if (f === undefined || carregando) return <Shell sub="Ficha do produto" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   if (f === null) return <Shell sub="Ficha do produto"><div className="cb-card cb-pad cb-narrow cb-res"><h2>Produto não encontrado</h2><p>Este produto não faz parte da Cardoso Black.</p><Link className="cb-btn dk" to="/black/pedido">Ir para a página de pedido</Link></div></Shell>;
@@ -95,9 +97,10 @@ export default function BlackFicha() {
     <Shell sub="Ficha do produto · Cardoso Black" clock={clock}>
       <div className="cb-fi">
         <div className="cb-media">
-          <div className="cb-stage">
+          <div className={`cb-stage${atual?.tipo === 'video' ? ` v${proporcao < 1 ? ' vp' : ''}` : ''}`}
+            style={atual?.tipo === 'video' ? ({ aspectRatio: String(proporcao), ...(capa ? { '--fundo': `url("${capa}")` } : {}) } as React.CSSProperties) : undefined}>
             {!atual ? <span className="cb-hi" style={{ color: 'var(--ink3)' }}>{f.codigo}</span>
-              : atual.tipo === 'video' ? <><video key={atual.src} src={atual.src} controls playsInline preload="metadata" poster={atual.thumb} onError={() => marcarFalha(atual.src)} /><span className="vb">Vídeo do produto</span></>
+              : atual.tipo === 'video' ? <><video key={atual.src} src={atual.src} controls playsInline preload="metadata" onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setProporcao(v.videoWidth / v.videoHeight); }} onError={() => marcarFalha(atual.src)} /><span className="vb">Vídeo do produto</span></>
               : <img key={atual.src} src={atual.src} alt={atual.nome} onError={() => marcarFalha(atual.src)} />}
             {atual && <a className="dl" href={atual.src} target="_blank" rel="noreferrer" download aria-label={atual.tipo === 'video' ? 'Baixar este vídeo' : 'Baixar esta imagem'}>{atual.tipo === 'video' ? 'Baixar vídeo' : 'Baixar imagem'}</a>}
           </div>
@@ -105,7 +108,7 @@ export default function BlackFicha() {
             <div className="cb-thumbs">
               {midias.map((m, i) => (
                 <button key={m.src} type="button" className={i === sel ? 'on' : ''} onClick={() => setSel(i)} aria-label={m.nome}>
-                  {m.tipo === 'video' ? <span className="vt" /> : <img src={m.thumb} alt="" loading="lazy" onError={() => marcarFalha(m.src)} />}{m.tipo === 'video' && <span className="pl">▶</span>}
+                  {m.tipo === 'video' ? <video className="vt" src={`${m.src}#t=0.5`} muted playsInline preload="metadata" tabIndex={-1} /> : <img src={m.thumb} alt="" loading="lazy" onError={() => marcarFalha(m.src)} />}{m.tipo === 'video' && <span className="pl">▶</span>}
                 </button>
               ))}
             </div>
