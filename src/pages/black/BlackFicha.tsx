@@ -128,7 +128,7 @@ export default function BlackFicha() {
                     <button className="cb-btn" type="button" onClick={adicionar} disabled={noCarrinho + qtd > max}>Adicionar ao pedido</button>
                   </div>
                 )}
-                {noCarrinho > 0 && <div className="cb-alert ok">{noCarrinho} caixa{noCarrinho > 1 ? 's' : ''} deste produto no seu pedido. <Link to="/black/pedido">Ver pedido</Link></div>}
+                {noCarrinho > 0 && <div className="cb-alert ok">{noCarrinho} caixa{noCarrinho > 1 ? 's' : ''} deste produto no seu pedido. <Link to="/black/pedido?v=carrinho">Ver carrinho</Link></div>}
               </>
             )}
           {f.descricao && <div className="cb-desc">{f.descricao}</div>}
@@ -149,7 +149,7 @@ export default function BlackFicha() {
           <div className="cb-fbar"><div className="cb-wrap">
             <div><small>Seu pedido</small><b>{brl(total)}</b>
               <em className={total >= minimo ? 'ok' : ''}>{total >= minimo ? 'mínimo atingido' : `faltam ${brl(minimo - total)} para o mínimo`}</em></div>
-            <Link className="cb-btn dk" to="/black/pedido">Ver pedido ›</Link>
+            <Link className="cb-btn dk" to="/black/pedido?v=carrinho">Ver carrinho ›</Link>
           </div></div>
         );
       })()}
