@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell from './Shell';
-import { diaBadge, digitos, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
+import { diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
+import { Ic, Sv } from './Icones';
 
 /* /black?r=<representante> — pré-cadastro da Cardoso Black.
  * 1) CNPJ → a função black-cadastro consulta a Receita e a carteira e mostra a empresa.
@@ -100,24 +101,38 @@ export default function BlackCadastro() {
 
   if (res) {
     const ok = res.status === 'aprovado';
+    const nome = res.fantasia || emp?.razao || 'Sua loja';
     return (
-      <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce" wide={false}>
-        <div className="cb-card cb-pad cb-res">
-          <div className="bd" style={{ ['--c' as string]: ok ? 'var(--teal)' : 'var(--gold)' }}>{ok ? '✓' : '…'}</div>
-          <h2>{ok ? 'Cadastro aprovado' : 'Cadastro recebido'}</h2>
-          <p>{ok
-            ? `${res.fantasia} está confirmada na Cardoso Black. Acesse o canal para receber o link da live e os avisos.`
-            : `Estamos conferindo os dados de ${res.fantasia}. Assim que o cadastro for aprovado, você recebe o acesso ao canal.`}</p>
-          {ok && res.canal_link && <a className="cb-btn wa full" href={res.canal_link} target="_blank" rel="noreferrer">Acessar o canal Cardoso Black</a>}
-          <div className="cb-live">
-            <div className="d"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
-            <div><b>Live da Cardoso Black</b><span>{res.live_data}</span><span>{ok ? 'O link de acesso sai no canal.' : 'O convite chega com a aprovação.'}</span></div>
+      <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce" wide={false} faixa={false}>
+        <div className="cb-rs">
+          <div className="hdr">
+            <div className="bd" style={{ ['--c' as string]: ok ? 'var(--teal)' : 'var(--gold)', color: ok ? '#fff' : 'var(--navy)' }}>{ok ? <Ic n="check" /> : <Sv.hg />}</div>
+            <span className="cb-chip" style={ok ? { ['--c' as string]: 'var(--mint)', ['--fg' as string]: 'var(--teal)' } : { ['--c' as string]: '#FFF4E0', ['--fg' as string]: '#8a5d00' }}>{ok ? 'Cadastro aprovado' : 'Em análise'}</span>
+            <h2>{ok ? nome : 'Cadastro recebido'}</h2>
+            <p>{ok
+              ? `${emp?.razao && emp.razao !== nome ? emp.razao : nome} está confirmada na Cardoso Black. Acesse o canal para receber o link da live.`
+              : `Estamos conferindo os dados de ${nome}. Assim que o cadastro for aprovado, você recebe o acesso ao canal.`}</p>
           </div>
-          <div className="cb-alert">
-            <b>Pedidos {periodoPedidos(cfg)}</b>, somente pelo link de pedido, entrando com este CNPJ e a senha que você criou.
-          </div>
-          {ok && <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>}
-          {res.representante && <p style={{ fontSize: 13 }}>Dúvidas? Fale com <b>{res.representante}</b>, seu representante.</p>}
+          {ok ? (
+            <>
+              {res.canal_link && <a className="cb-wab" href={res.canal_link} target="_blank" rel="noreferrer"><Sv.wa />Acessar o canal Cardoso Black</a>}
+              <div className="cb-lvc">
+                <div className="dt"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
+                <div className="l1">Live · {cfg ? diaSemana(cfg.abre_em) : 'quinta-feira'}</div>
+                <div className="l2">Produtos, condições e pedido ao vivo</div>
+                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 15h'}</span><span>Link enviado no canal</span></div>
+              </div>
+              <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos {periodoPedidos(cfg)},</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
+              <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>
+            </>
+          ) : (
+            <div className="cb-tline">
+              <div className="ok"><i>✓</i><div>Cadastro recebido<span>agora</span></div></div>
+              <div className="now"><i>2</i><div>Conferência pela equipe comercial<span>{res.representante ? `${res.representante}, seu representante, acompanha` : 'seu representante acompanha'}</span></div></div>
+              <div><i>3</i><div>Acesso ao canal da Cardoso Black<span>com o convite para a live de {cfg ? diaMesCurto(cfg.abre_em) : '12/11'}</span></div></div>
+            </div>
+          )}
+          {res.representante && <div className="cb-buy"><span className="ic" style={{ background: 'var(--mint)', color: 'var(--teal)' }}><Sv.mail /></span><span>Dúvidas: fale com <b>{res.representante}</b>, seu representante.</span></div>}
         </div>
       </Shell>
     );
@@ -129,9 +144,9 @@ export default function BlackCadastro() {
         <div>
           <div className="cb-hi">Participe da live e do período de pedidos da Cardoso Black</div>
           <div className="cb-card cb-pad" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            <div className="cb-ev"><span className="n">1</span><div><b>Live · {cfg?.live_data ?? 'quinta-feira, 12/11 · 15h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
-            <div className="cb-ev"><span className="n">2</span><div><b>Pedidos {periodoPedidos(cfg)}</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
-            <div className="cb-ev"><span className="n">3</span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 15h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedidos {periodoPedidos(cfg)}</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="chat" /></span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
           </div>
         </div>
 
@@ -162,13 +177,13 @@ export default function BlackCadastro() {
             </>
           ) : emp ? (
             <div className="cb-cmp" style={{ ['--c' as string]: consulta.carteira ? 'var(--teal)' : '#B9790B', ['--b' as string]: consulta.carteira ? '#F2FAFA' : '#FFFAF0' }}>
-              <div className="h">{consulta.carteira ? 'Empresa encontrada na carteira Cardoso' : 'Empresa não localizada na carteira de clientes'}
+              <div className="h"><span className="ic">{consulta.carteira ? <Ic n="check" /> : <Sv.info />}</span>{consulta.carteira ? 'Empresa encontrada na carteira Cardoso' : 'Empresa não localizada na carteira de clientes'}
                 <button type="button" className="cb-link" onClick={() => { setConsulta(null); setErros({}); }}>Alterar CNPJ</button></div>
               <dl>
-                <div className="w"><dt>Razão social</dt><dd>{emp.razao}</dd></div>
-                {emp.fantasia && <div><dt>Nome fantasia</dt><dd>{emp.fantasia}</dd></div>}
-                <div><dt>Cidade/UF</dt><dd>{emp.cidade}/{emp.uf}</dd></div>
-                {(consulta.carteira?.representante || rep) && <div className="w"><dt>Representante</dt><dd>{consulta.carteira?.representante || rep}</dd></div>}
+                <div className="w"><dt><Sv.lock />Razão social</dt><dd>{emp.razao}</dd></div>
+                {emp.fantasia && <div><dt><Sv.lock />Nome fantasia</dt><dd>{emp.fantasia}</dd></div>}
+                <div><dt><Sv.lock />Cidade/UF</dt><dd>{emp.cidade}/{emp.uf}</dd></div>
+                {(consulta.carteira?.representante || rep) && <div className="w"><dt><Sv.lock />Representante</dt><dd>{consulta.carteira?.representante || rep}</dd></div>}
               </dl>
               {!consulta.carteira && <div style={{ fontSize: 13, color: 'var(--ink2)', fontWeight: 600 }}>Você pode concluir o cadastro. Ele será analisado pela equipe comercial.</div>}
             </div>
@@ -231,7 +246,7 @@ export default function BlackCadastro() {
             </>
           )}
           {aviso && <div className="cb-alert err">{aviso}</div>}
-          <div className="cb-note">Dados utilizados somente pela Cardoso Toys</div>
+          <div className="cb-note"><Sv.lock />Dados utilizados somente pela Cardoso Toys</div>
         </form>
       </div>
     </Shell>

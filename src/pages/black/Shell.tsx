@@ -2,8 +2,9 @@ import { useEffect, type ReactNode } from 'react';
 import './black.css';
 
 /* Moldura das páginas públicas: cabeçalho padrão da Cardoso + faixa navy com o título. */
-export default function Shell({ sub, clock, children, wide = true }: {
+export default function Shell({ sub, clock, children, wide = true, faixa = true }: {
   sub: string;
+  faixa?: boolean;
   clock?: { label: string; value: string } | null;
   children: ReactNode;
   wide?: boolean;
@@ -25,7 +26,7 @@ export default function Shell({ sub, clock, children, wide = true }: {
           <img className="sym" src="/black/simbolo-branco.svg" alt="" />
         </div>
       </header>
-      <div className="cb-band">
+      {faixa && <div className="cb-band">
         <div className="cb-wrap">
           <div>
             <h1>Cardoso <em>Black</em></h1>
@@ -33,7 +34,7 @@ export default function Shell({ sub, clock, children, wide = true }: {
           </div>
           {clock && <div className="cb-clock"><small>{clock.label}</small><b>{clock.value}</b></div>}
         </div>
-      </div>
+      </div>}
       <main className="cb-main"><div className="cb-wrap" style={wide ? undefined : { maxWidth: 640 }}>{children}</div></main>
       <footer className="cb-foot">Cardoso Toys · Cardoso Black 2026 · exclusivo para lojas de e-commerce</footer>
     </div>

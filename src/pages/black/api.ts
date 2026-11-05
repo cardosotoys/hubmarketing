@@ -57,8 +57,16 @@ const ls = {
   set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sem armazenamento */ } },
   del(k: string) { try { localStorage.removeItem(k); } catch { /* idem */ } },
 };
-export const tokenGuardado = () => ls.get<string>('cb-token', '');
-export const guardarToken = (t: string) => (t ? ls.set('cb-token', t) : ls.del('cb-token'));
+/* "manter conectado": guarda no aparelho (localStorage); sem isso, só nesta aba (sessionStorage) */
+const ss = {
+  get() { try { return sessionStorage.getItem('cb-token') ?? ''; } catch { return ''; } },
+  set(v: string) { try { if (v) sessionStorage.setItem('cb-token', v); else sessionStorage.removeItem('cb-token'); } catch { /* sem armazenamento */ } },
+};
+export const tokenGuardado = () => ls.get<string>('cb-token', '') || ss.get();
+export const guardarToken = (t: string, manter = true) => {
+  if (!t) { ls.del('cb-token'); ss.set(''); return; }
+  if (manter) { ls.set('cb-token', t); ss.set(''); } else { ls.del('cb-token'); ss.set(t); }
+};
 export type Carrinho = Record<string, number>;
 export const lerCarrinho = () => ls.get<Carrinho>('cb-carrinho', {});
 export const gravarCarrinho = (c: Carrinho) => ls.set('cb-carrinho', c);
@@ -88,12 +96,12 @@ export function useSessao() {
     });
     return () => { vivo = false; };
   }, [token]);
-  const entrar = useCallback(async (cnpj: string, senha: string): Promise<string | null> => {
+  const entrar = useCallback(async (cnpj: string, senha: string, manter = true): Promise<string | null> => {
     const { data, error } = await supabase.rpc('black_login', { p_cnpj: digitos(cnpj), p_senha: senha });
     if (error) return 'rede';
     const r = data as { token?: string; erro?: string };
     if (r.erro || !r.token) return r.erro ?? 'senha';
-    guardarToken(r.token); setTok(r.token);
+    guardarToken(r.token, manter); setTok(r.token);
     return null;
   }, []);
   const sair = useCallback(async () => {
@@ -122,6 +130,7 @@ export const diaBadge = (iso: string) => {
   const d = new Date(iso);
   return { dia: d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: TZ }), mes: d.toLocaleDateString('pt-BR', { month: 'short', timeZone: TZ }).replace('.', '').toUpperCase() };
 };
+export const diaSemana = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: TZ }).replace('-feira', '-feira');
 /* "de 12/11, às 15h, a 15/11, até 23h59" — sempre a partir dos Ajustes do Hub */
 export const periodoPedidos = (c: { abre_em: string; fecha_em: string } | null | undefined) =>
   c ? `de ${diaMes(c.abre_em)}, às ${hora(c.abre_em)}, a ${diaMes(c.fecha_em)}, até ${hora(c.fecha_em)}` : 'de 12/11, às 15h, a 15/11, até 23h59';

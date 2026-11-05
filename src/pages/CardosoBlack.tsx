@@ -18,7 +18,7 @@ import './black/black.css';
 
 type Cfg = {
   id: number; inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number;
-  live_data: string; live_link: string; canal_link: string; desconto_pct: number;
+  live_data: string; live_link: string; canal_link: string; desconto_pct: number; presentes_live?: number | null;
 };
 type Inscrito = {
   id: string; cnpj: string; razao_social: string; fantasia: string; cidade: string; uf: string; carteira_id: string | null;
@@ -33,7 +33,7 @@ type Pedido = {
 type Item = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
 type BP = { codigo: string; ordem: number; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
 type Prod = { id: string; code: string; name: string; packaging_name: string; line: string; image_url: string; carton_quantity: number | null };
-type Cart = { id: string; razao_social: string; cnpj: string | null; uf: string; representante: string; grupo: string; situacao: string; dias_sem_compra: number | null };
+type Cart = { id: string; razao_social: string; cnpj: string | null; uf: string; representante: string; grupo: string; situacao: string; dias_sem_compra: number | null; importado_em: string };
 
 const brl = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const brl0 = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
@@ -83,7 +83,7 @@ async function paginar<T>(q: (from: number, to: number) => PromiseLike<{ data: T
 }
 
 type Aba = 'resumo' | 'inscritos' | 'pedidos' | 'produtos' | 'carteira' | 'links' | 'ajustes';
-const ABAS: [Aba, string][] = [['resumo', 'Resumo'], ['inscritos', 'Inscritos'], ['pedidos', 'Pedidos'], ['produtos', 'Produtos da Black'], ['carteira', 'Carteira'], ['links', 'Links'], ['ajustes', 'Ajustes']];
+const ABAS: [Aba, string][] = [['resumo', 'Medição'], ['inscritos', 'Inscritos'], ['pedidos', 'Pedidos'], ['produtos', 'Produtos da Black'], ['carteira', 'Carteira'], ['links', 'Links'], ['ajustes', 'Ajustes']];
 
 export default function CardosoBlack() {
   const [aba, setAba] = useState<Aba>('resumo');
@@ -108,7 +108,7 @@ export default function CardosoBlack() {
         paginar<Item>((a, z) => supabase.from('black_pedido_itens').select('*').range(a, z)),
         supabase.from('black_produtos').select('*').order('ordem'),
         paginar<Prod>((a, z) => supabase.from('products').select('id, code, name, packaging_name, line, image_url, carton_quantity').order('code').range(a, z)),
-        paginar<Cart>((a, z) => supabase.from('black_carteira').select('id, razao_social, cnpj, uf, representante, grupo, situacao, dias_sem_compra').order('razao_social').range(a, z)),
+        paginar<Cart>((a, z) => supabase.from('black_carteira').select('id, razao_social, cnpj, uf, representante, grupo, situacao, dias_sem_compra, importado_em').order('razao_social').range(a, z)),
         paginar<{ codigo: string }>((a, z) => supabase.from('black_eventos').select('codigo').eq('tipo', 'ficha').range(a, z)),
         paginar<{ product_id: string }>((a, z) => supabase.from('content_materials').select('product_id').eq('status', 'liberado').range(a, z)),
       ]);
@@ -148,7 +148,7 @@ export default function CardosoBlack() {
       {erro && <div className="alert">{erro}</div>}
       {!erro && cfg && (
         <>
-          {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} />}
+          {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
           {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
           {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
           {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
@@ -172,34 +172,50 @@ function Barras({ dados, fmt = int, cor }: { dados: [string, number][]; fmt?: (n
 const top = (m: Record<string, number>, n = 8) => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n);
 
 /* ================= Resumo ================= */
-function Resumo({ ins, peds, itens, cart, fichas, porCodigo }: { ins: Inscrito[]; peds: Pedido[]; itens: Item[]; cart: Cart[]; fichas: Record<string, number>; porCodigo: Record<string, Prod> }) {
+function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: { ins: Inscrito[]; peds: Pedido[]; itens: Item[]; cart: Cart[]; fichas: Record<string, number>; porCodigo: Record<string, Prod>; cfg: Cfg; recarregar: () => void }) {
   const val = peds.filter((p) => p.status !== 'cancelado');
   const tv = val.reduce((s, p) => s + Number(p.total), 0);
   const lojas = new Set(val.map((p) => p.inscrito_id)).size;
   const ap = ins.filter((x) => x.status === 'aprovado').length;
+  const pres = cfg.presentes_live ?? null;
+  const [presTxt, setPresTxt] = useState(pres == null ? '' : String(pres));
+  const [aviso, setAviso] = useState('');
+  async function salvarPresentes() {
+    const n = presTxt.trim() === '' ? null : Math.max(0, Math.round(Number(presTxt.replace(/\D/g, ''))));
+    const { error } = await supabase.from('black_config').update({ presentes_live: n }).eq('id', 1);
+    setAviso(error ? (error.message.includes('presentes_live') ? 'Para guardar a presença, rode o SQL 0162_black_presentes_live.sql no Supabase.' : `Não consegui salvar: ${error.message}`) : 'Presença salva.');
+    if (!error) recarregar();
+  }
   const canais: Record<string, number> = {}; ins.forEach((x) => Object.keys(x.canais ?? {}).forEach((k) => { canais[CANAL[k] ?? k] = (canais[CANAL[k] ?? k] ?? 0) + 1; }));
   const porRep: Record<string, number> = {}; val.forEach((p) => { const r = p.representante || '(sem representante)'; porRep[r] = (porRep[r] ?? 0) + Number(p.total); });
   const vivos = new Set(val.map((p) => p.id));
   const cx: Record<string, number> = {}; itens.filter((i) => vivos.has(i.pedido_id)).forEach((i) => { cx[i.nome || i.codigo] = (cx[i.nome || i.codigo] ?? 0) + i.caixas; });
   const fi: Record<string, number> = {}; Object.entries(fichas).forEach(([c, n]) => { fi[porCodigo[c]?.name ?? c] = n; });
-  const F: [string, number, string][] = [['Carteira', cart.length, 'var(--text-faint)'], ['Inscritos', ins.length, '#0A2530'], ['Aprovados', ap, '#1F7F88'], ['Compraram', lojas, '#DA3A2F']];
+  const F: [string, number, string][] = [['Carteira', cart.length, '#7C8A90'], ['Inscritos', ins.length, '#0A2530'], ['Aprovados', ap, '#1F7F88'],
+    ...(pres != null ? [['Presentes na live', pres, '#4CBDC7'] as [string, number, string]] : []), ['Compraram', lojas, '#DA3A2F']];
   const mx = Math.max(1, ...F.map((f) => f[1]));
+  const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '—');
   return (
     <>
       <div className="cbx-kpis">
-        <Kpi l="Valor em pedidos" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedidos" v={int(val.length)} /><Kpi l="Pedido médio" v={brl0(val.length ? tv / val.length : 0)} />
-        <Kpi l="Lojas que compraram" v={int(lojas)} c="#1F7F88" /><Kpi l="Inscritos" v={int(ins.length)} c="#0A2530" /><Kpi l="Em análise" v={int(ins.filter((x) => x.status === 'analise').length)} c="#F2B84B" />
+        <Kpi l="Valor em pedidos" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedidos" v={int(val.length)} /><Kpi l="Pedido médio" v={brl0(val.length ? tv / val.length : 0)} c="#0A2530" />
+        <Kpi l="Compraram / aprovados" v={pct(lojas, ap)} c="#1F7F88" /><Kpi l="Presença" v={pres != null ? pct(pres, ap) : '—'} c="#4CBDC7" /><Kpi l="Em análise" v={int(ins.filter((x) => x.status === 'analise').length)} c="#F2B84B" />
       </div>
       <div className="cbx-box">
-        <h3>Funil da Cardoso Black</h3>
+        <div className="cbx-hrow"><h3>Funil da Cardoso Black</h3><button className="btn ghost sm" type="button" onClick={() => window.print()}>Relatório em PDF</button></div>
         <div className="cbx-funil">{F.map(([l, v, c]) => <div key={l} className="cbx-fu" style={{ ['--c' as string]: c }}><span>{l}</span><i><u style={{ width: `${(v / mx) * 100}%` }} /></i><b>{int(v)}</b></div>)}</div>
-        <p className="cbx-hint" style={{ marginTop: 10 }}>Presentes na live: use o relatório de presença do Meet ou do Zoom e cruze com a lista de convidados (aba Inscritos → Exportar convidados).</p>
+        <div className="cbx-acts cbx-noprint" style={{ marginTop: 12, alignItems: 'center' }}>
+          <span className="cbx-hint">Presentes na live (relatório de presença do Meet ou do Zoom):</span>
+          <input className="cbx-in" inputMode="numeric" style={{ width: 110 }} value={presTxt} placeholder="nº de lojas" onChange={(e) => setPresTxt(e.target.value)} />
+          <button className="btn sm" type="button" onClick={salvarPresentes}>Salvar</button>
+          {aviso && <span className="cbx-hint">{aviso}</span>}
+        </div>
       </div>
       <div className="cbx-two">
-        <div className="cbx-box"><h3>Inscritos por canal de venda</h3><Barras dados={top(canais)} /></div>
+        <div className="cbx-box"><h3>Inscritos por canal de venda</h3><Barras dados={top(canais)} cor="#0A2530" /></div>
         <div className="cbx-box"><h3>Valor por representante</h3><Barras dados={top(porRep, 10)} fmt={brl0} cor="#1F7F88" /></div>
         <div className="cbx-box"><h3>Produtos mais pedidos (caixas)</h3><Barras dados={top(cx, 10)} cor="#0A2530" /></div>
-        <div className="cbx-box"><h3>Fichas mais abertas pelo QR</h3><Barras dados={top(fi, 10)} cor="#DA3A2F" /></div>
+        <div className="cbx-box"><h3>Fichas mais abertas pelo QR na live</h3><Barras dados={top(fi, 10)} cor="#DA3A2F" /></div>
       </div>
     </>
   );
@@ -221,7 +237,7 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
     const { error } = await supabase.rpc('black_decidir', { p_inscrito: x.id, p_status: status, p_motivo: motivo });
     if (error) { setAviso(`Não consegui salvar: ${error.message}`); return; }
     setAviso(status === 'aprovado' ? `${x.fantasia || x.razao_social} aprovado. Copie a mensagem e envie ao cliente.` : 'Status atualizado.');
-    setSel({ ...x, status, motivo }); recarregar();
+    setSel((v) => (v && v.id === x.id ? { ...x, status, motivo } : v)); recarregar();
   }
   async function gerarLink(x: Inscrito) {
     const { data, error } = await supabase.rpc('black_senha_link', { p_inscrito: x.id });
@@ -233,6 +249,7 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
 
   return (
     <>
+      <div className="cbx-kpis"><Kpi l="Inscritos" v={int(ins.length)} c="#0A2530" /><Kpi l="Aprovados" v={int(n('aprovado'))} c="#1F7F88" /><Kpi l="Em análise" v={int(n('analise'))} c="#F2B84B" /><Kpi l="Recusados" v={int(n('recusado'))} c="#7C8A90" /></div>
       <div className="cbx-bar">
         {(['todos', 'analise', 'aprovado', 'recusado'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : ST[k]}<b>{k === 'todos' ? ins.length : n(k)}</b></button>)}
         <input type="search" placeholder="Loja, CNPJ, comprador ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -242,15 +259,18 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
       {vis.length === 0 ? <EmptyState title="Nenhum pré-cadastro" hint="Os cadastros feitos em /black aparecem aqui na hora." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
           <table className="cbx-table">
-            <thead><tr><th>Loja</th><th>Comprador</th><th>Canais</th><th>Representante</th><th>Cadastro</th><th>Status</th></tr></thead>
+            <thead><tr><th>Loja e canais</th><th>Representante</th><th>Cadastro</th><th>Status</th></tr></thead>
             <tbody>{vis.map((x) => (
               <tr key={x.id} className="click" onClick={() => { setSel(x); setLink(''); setAviso(''); }}>
-                <td><b>{x.fantasia || x.razao_social}</b><small>{cnpjFmt(x.cnpj)} · {x.cidade}/{x.uf}</small></td>
-                <td>{x.comprador}<small>{x.celular}</small></td>
-                <td><div className="cbx-chips">{Object.keys(x.canais ?? {}).map((k) => <span key={k}>{CANAL[k] ?? k}</span>)}</div></td>
+                <td><b>{x.fantasia || x.razao_social}</b><small>{cnpjFmt(x.cnpj)} · {x.comprador} · {x.cidade}/{x.uf}</small>
+                  <div className="cbx-chips" style={{ marginTop: 5 }}>{Object.keys(x.canais ?? {}).map((k) => <span key={k}>{CANAL[k] ?? k}</span>)}</div></td>
                 <td>{x.representante || '—'}</td>
                 <td>{dt(x.criado_em)}</td>
-                <td><span className={`cbx-st ${x.status}`}>{ST[x.status]}</span>{x.alertas?.filter((a) => a !== 'ddd_outra_uf').length > 0 && <small>{x.alertas.filter((a) => a !== 'ddd_outra_uf').length} alerta(s)</small>}</td>
+                <td><div style={{ display: 'grid', gap: 5, justifyItems: 'start' }}>
+                  <span className={`cbx-st ${x.status}`}>{ST[x.status]}</span>
+                  {x.alertas?.filter((a) => a !== 'ddd_outra_uf').length > 0 && <small>{x.alertas.filter((a) => a !== 'ddd_outra_uf').map((a) => ALERTA[a] ?? a).join(' · ')}</small>}
+                  {x.status === 'analise' && <button className="btn sm cbx-ok" type="button" onClick={(e) => { e.stopPropagation(); decidir(x, 'aprovado'); }}>Aprovar</button>}
+                </div></td>
               </tr>))}</tbody>
           </table>
         </div>
@@ -366,7 +386,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
   const [disp, setDisp] = useState<Record<string, Disp>>({});
   const carregarDisp = useCallback(async () => {
     const { data, error } = await supabase.rpc('black_disponibilidade');
-    if (!error) setDisp(Object.fromEntries(((data as Disp[]) ?? []).map((d) => [d.codigo, d])));
+    if (!error && Array.isArray(data)) setDisp(Object.fromEntries((data as Disp[]).map((d) => [d.codigo, d])));
   }, []);
   useEffect(() => { carregarDisp(); const t = setInterval(carregarDisp, 60000); return () => clearInterval(t); }, [carregarDisp, bps]);
   const ultimaLeitura = Object.values(disp).map((d) => d.guarani_em).filter(Boolean).sort().at(-1) ?? null;
@@ -510,6 +530,11 @@ function Carteira({ cart, ins, recarregar }: { cart: Cart[]; ins: Inscrito[]; re
   return (
     <>
       <div className="cbx-kpis"><Kpi l="Clientes na carteira" v={int(cart.length)} /><Kpi l="Já inscritos" v={int(inscritos.size)} c="#1F7F88" /><Kpi l="Faltam inscrever" v={int(cart.length - inscritos.size)} c="#DA3A2F" /><Kpi l="Com CNPJ" v={int(cart.filter((c) => c.cnpj).length)} c="#0A2530" /></div>
+      {cart.length > 0 && (() => {
+        const ult = cart.reduce((m, c) => (c.importado_em > m ? c.importado_em : m), '');
+        return <div className="cbx-box cbx-last"><span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><ellipse cx="12" cy="5.5" rx="8" ry="3" /><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></svg></span>
+          <div><b>Última importação: {dt(ult)}</b><small>{int(cart.length)} clientes · {int(cart.filter((c) => c.cnpj).length)} com CNPJ</small></div></div>;
+      })()}
       <div className="cbx-box">
         <h3>Importar carteira (CSV)</h3>
         <p className="cbx-hint">Colunas: <b>razao_social; cnpj; fantasia; cidade; uf; representante; grupo; situacao</b>. Sem CNPJ, a checagem usa a razão social oficial da Receita + UF. Estes dados ficam só no banco; nunca vão para o Git.</p>
@@ -528,7 +553,7 @@ function Carteira({ cart, ins, recarregar }: { cart: Cart[]; ins: Inscrito[]; re
       <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
         <table className="cbx-table">
           <thead><tr><th>Cliente</th><th>UF</th><th>Representante</th><th>Grupo</th><th>Situação</th><th>Pré-cadastro</th></tr></thead>
-          <tbody>{vis.slice(0, 300).map((c) => <tr key={c.id}><td><b>{c.razao_social}</b>{c.cnpj && <small>{cnpjFmt(c.cnpj)}</small>}</td><td>{c.uf}</td><td>{c.representante}</td><td>{c.grupo === '(sem grupo)' ? '' : c.grupo}</td><td>{c.situacao}</td><td>{inscritos.has(c.id) ? <span className="cbx-st aprovado">Inscrito</span> : <span className="cbx-st recusado">Falta</span>}</td></tr>)}</tbody>
+          <tbody>{vis.slice(0, 300).map((c) => <tr key={c.id}><td><b>{c.razao_social}</b>{c.cnpj && <small>{cnpjFmt(c.cnpj)}</small>}</td><td>{c.uf}</td><td>{c.representante}</td><td>{c.grupo === '(sem grupo)' ? '' : c.grupo}</td><td>{c.situacao}</td><td>{inscritos.has(c.id) ? <span className="cbx-st inscrito">Inscrito</span> : <span className="cbx-st recusado">Falta</span>}</td></tr>)}</tbody>
         </table>
         {vis.length > 300 && <p className="cbx-hint" style={{ padding: 12 }}>Mostrando 300 de {int(vis.length)}. Use a busca ou o filtro de representante.</p>}
       </div>
@@ -554,10 +579,10 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
         <h3>Links gerais</h3>
         <div className="cbx-acts">
           {[['Pré-cadastro', `${o}/black`], ['Página de pedido', `${o}/black/pedido`]].map(([l, u]) => <button key={u} className="btn ghost" onClick={() => copiar(u)}>{ok === u ? 'Copiado' : `Copiar · ${l}`}</button>)}
-          <button className="btn ghost" onClick={() => baixarCsv('links-qr-produtos.csv', [['ordem', 'codigo', 'produto', 'link_qr'], ...bps.map((b) => [b.ordem, b.codigo, porCodigo[b.codigo]?.name ?? '', `${o}/black/p/${b.codigo}`])])}>Baixar links dos QR (CSV)</button>
+          <button className="btn ghost" onClick={() => baixarCsv('links-qr-produtos.csv', [['ordem', 'codigo', 'produto', 'link_qr'], ...bps.map((b) => [b.ordem, b.codigo, porCodigo[b.codigo]?.name ?? '', `${o}/black/p/${b.codigo}?live=1`])])}>Baixar links dos QR (CSV)</button>
           <button className="btn ghost" onClick={() => baixarCsv('links-representantes.csv', [['representante', 'clientes', 'inscritos', 'link'], ...reps.map(([r, v]) => [r, v.cli, v.ins, L(r)])])}>Baixar links dos representantes (CSV)</button>
         </div>
-        <p className="cbx-hint" style={{ marginTop: 10 }}>Os QR da live apontam para {o}/black/p/&lt;código&gt;. Se o endereço do Hub mudar (ex.: app.cardosotoys.com.br), gere os QR de novo.</p>
+        <p className="cbx-hint" style={{ marginTop: 10 }}>Os QR da live apontam para {o}/black/p/&lt;código&gt;?live=1 (a ficha mostra “Visto agora na live”). Se o endereço do Hub mudar (ex.: app.cardosotoys.com.br), gere os QR de novo.</p>
       </div>
       <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
         <table className="cbx-table">
