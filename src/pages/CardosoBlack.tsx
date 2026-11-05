@@ -315,6 +315,7 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
         <button className="btn sm" onClick={() => guarani(true)}>Planilha Guarani (confirmados)</button>
         <button className="btn ghost sm" onClick={() => guarani(false)}>Todos os pedidos</button>
       </div>
+      <p className="cbx-hint">Mude para <b>Confirmado</b> quando o pedido for lançado no Guarani: a partir daí o estoque dele passa a ser contado pelo saldo do Guarani.</p>
       {aviso && <div className="alert">{aviso}</div>}
       {vis.length === 0 ? <EmptyState title="Nenhum pedido" hint="Os pedidos enviados pelo link aparecem aqui na hora." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
@@ -361,6 +362,25 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
   const vivos = new Set(peds.filter((p) => p.status !== 'cancelado').map((p) => p.id));
   const vend: Record<string, number> = {}; itens.filter((i) => vivos.has(i.pedido_id)).forEach((i) => { vend[i.codigo] = (vend[i.codigo] ?? 0) + i.caixas; });
   const semCadastro = bps.filter((b) => !porCodigo[b.codigo]);
+  type Disp = { codigo: string; guarani_pecas: number | null; guarani_em: string | null; disponivel: number | null };
+  const [disp, setDisp] = useState<Record<string, Disp>>({});
+  const carregarDisp = useCallback(async () => {
+    const { data, error } = await supabase.rpc('black_disponibilidade');
+    if (!error) setDisp(Object.fromEntries(((data as Disp[]) ?? []).map((d) => [d.codigo, d])));
+  }, []);
+  useEffect(() => { carregarDisp(); const t = setInterval(carregarDisp, 60000); return () => clearInterval(t); }, [carregarDisp, bps]);
+  const ultimaLeitura = Object.values(disp).map((d) => d.guarani_em).filter(Boolean).sort().at(-1) ?? null;
+  async function estoqueGuarani(file: File) {
+    const L = lerCsv(await file.text());
+    const linhas = L.map((r) => ({
+      codigo: (r.codigo || r.cod || r.produto || r.sku || r.referencia || r.ref || '').trim(),
+      pecas: num(r.pecas || r.estoque || r.saldo || r.quantidade || r.qtd || r.disponivel),
+    })).filter((r) => r.codigo && r.pecas !== null);
+    if (!linhas.length) { setAviso('Não encontrei as colunas codigo e estoque (em peças) no arquivo.'); return; }
+    const { error } = await supabase.rpc('estoque_guarani_atualizar', { p_linhas: linhas, p_origem: 'csv' });
+    setAviso(error ? `Não consegui atualizar o estoque: ${error.message}` : `Estoque do Guarani atualizado: ${linhas.length} códigos.`);
+    if (!error) carregarDisp();
+  }
 
   async function salvar(b: BP) {
     const e = ed[b.codigo]; if (!e) return;
@@ -413,7 +433,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
     <>
       <div className="cbx-box">
         <h3>Importar a TAB da Black (CSV)</h3>
-        <p className="cbx-hint">Colunas: <b>codigo; ordem; familia; preco_peca; caixa_qtd; estoque_caixas</b>. Preço por peça é o preço final. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque vazio = sem limite.</p>
+        <p className="cbx-hint">Colunas: <b>codigo; ordem; familia; preco_peca; caixa_qtd; estoque_caixas</b>. Preço por peça é o preço final. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
         <div className="cbx-acts" style={{ marginTop: 10 }}>
           <label className="btn">Escolher arquivo<input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = ''; }} /></label>
           <input className="tp-search" style={{ maxWidth: 140 }} placeholder="Código" value={novo.codigo} onChange={(e) => setNovo({ ...novo, codigo: e.target.value })} />
@@ -421,12 +441,21 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
           <button className="btn ghost" onClick={adicionar}>Adicionar um produto</button>
         </div>
       </div>
+      <div className="cbx-box">
+        <h3>Estoque do Guarani</h3>
+        <p className="cbx-hint">Disponível na Black = saldo do Guarani em caixas − pedidos da Black ainda não lançados no Guarani, limitado pela cota da Black (se preenchida). Pedidos de fora da Black já saem do saldo do Guarani. <b>Confirme o pedido aqui quando ele for lançado no Guarani.</b></p>
+        <p className="cbx-hint" style={{ marginTop: 6 }}>Última leitura: <b>{ultimaLeitura ? dt(ultimaLeitura) : 'nenhuma ainda'}</b>{ultimaLeitura && Date.now() - new Date(ultimaLeitura).getTime() > 3600000 ? ' · mais de 1 hora sem atualizar' : ''}. Arquivo: colunas <b>codigo; estoque</b> (em peças), exportado do Guarani.</p>
+        <div className="cbx-acts" style={{ marginTop: 10 }}>
+          <label className="btn">Atualizar estoque do Guarani (CSV)<input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) estoqueGuarani(f); e.target.value = ''; }} /></label>
+          <button className="btn ghost" onClick={carregarDisp}>Recalcular disponível</button>
+        </div>
+      </div>
       {semCadastro.length > 0 && <div className="alert">Sem cadastro no catálogo do Hub (a ficha fica sem foto e sem dados técnicos): {semCadastro.map((b) => b.codigo).join(', ')}</div>}
       {aviso && <div className="alert">{aviso}</div>}
       {bps.length === 0 ? <EmptyState title="Nenhum produto na Black" hint="Importe a TAB em CSV ou adicione pelo código." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
           <table className="cbx-table">
-            <thead><tr><th>Ordem</th><th>Produto</th><th>Família</th><th className="num">Preço/peça</th><th className="num">Caixa</th><th className="num">Estoque (cx)</th><th className="num">Vendidas</th><th className="num">QR</th><th className="num">Materiais</th><th>Ativo</th><th /></tr></thead>
+            <thead><tr><th>Ordem</th><th>Produto</th><th>Família</th><th className="num">Preço/peça</th><th className="num">Caixa</th><th className="num">Cota Black (cx)</th><th className="num">Guarani (cx)</th><th className="num">Disponível</th><th className="num">Vendidas</th><th className="num">QR</th><th className="num">Materiais</th><th>Ativo</th><th /></tr></thead>
             <tbody>{bps.map((b) => { const p = porCodigo[b.codigo]; const sujo = !!ed[b.codigo]; return (
               <tr key={b.codigo}>
                 <td style={{ width: 70 }}><input inputMode="numeric" value={txt(b, 'ordem')} onChange={(e) => set(b.codigo, 'ordem', e.target.value)} /></td>
@@ -434,7 +463,9 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
                 <td style={{ minWidth: 150 }}><input value={txt(b, 'familia')} placeholder={p?.line} onChange={(e) => set(b.codigo, 'familia', e.target.value)} /></td>
                 <td className="num" style={{ width: 110 }}><input inputMode="decimal" value={txt(b, 'preco_peca')} placeholder="tabela" onChange={(e) => set(b.codigo, 'preco_peca', e.target.value)} /></td>
                 <td className="num" style={{ width: 80 }}><input inputMode="numeric" value={txt(b, 'caixa_qtd')} placeholder={String(p?.carton_quantity ?? '')} onChange={(e) => set(b.codigo, 'caixa_qtd', e.target.value)} /></td>
-                <td className="num" style={{ width: 90 }}><input inputMode="numeric" value={txt(b, 'estoque_caixas')} placeholder="sem limite" onChange={(e) => set(b.codigo, 'estoque_caixas', e.target.value)} /></td>
+                <td className="num" style={{ width: 90 }}><input inputMode="numeric" value={txt(b, 'estoque_caixas')} placeholder="sem cota" onChange={(e) => set(b.codigo, 'estoque_caixas', e.target.value)} /></td>
+                <td className="num">{disp[b.codigo]?.guarani_pecas == null ? '—' : int(Math.floor(Number(disp[b.codigo].guarani_pecas) / Math.max(1, b.caixa_qtd ?? p?.carton_quantity ?? 1)))}</td>
+                <td className="num"><b>{disp[b.codigo]?.disponivel == null ? 'sem limite' : int(disp[b.codigo].disponivel!)}</b></td>
                 <td className="num">{vend[b.codigo] ?? 0}</td>
                 <td className="num">{fichas[b.codigo] ?? 0}</td>
                 <td className="num">{p ? (mats[p.id] ?? 0) : '—'}</td>
