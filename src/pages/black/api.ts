@@ -11,7 +11,7 @@ export const FN_CADASTRO = 'smooth-endpoint';
 export const FN_MIDIA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynamic-worker`;
 
 export type BlackConfig = {
-  inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number;
+  inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number; ipi_pct?: number;
   live_data: string; agora: string; aberto: boolean; encerrado: boolean;
 };
 export type BlackSessao = {
@@ -34,7 +34,7 @@ export type BlackFicha = BlackItem & {
   materiais: BlackMaterial[];
 };
 export type BlackPedido = {
-  numero: string; criado_em: string; caixas: number; total: number; status: string;
+  numero: string; criado_em: string; caixas: number; total: number; ipi?: number; total_com_ipi?: number; status: string;
   itens: { codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number }[];
 };
 
@@ -160,3 +160,7 @@ export function freteTexto(uf: string, cidade: string, total: number, limite: nu
   if (uf === 'SP' || uf === 'RJ') return total >= limite ? [`Frete grátis: pedido acima de R$ ${lim}`, true] : [`Frete grátis a partir de R$ ${lim} · faltam ${brl(limite - total)}`, false];
   return ['Transportadora, frete por conta da loja', false];
 }
+
+/** IPI da Black: os preços são líquidos e o IPI entra uma vez, sobre o pedido inteiro, no fechamento */
+export const ipiDe = (produtos: number, pct = 6.5) => Math.round(produtos * pct) / 100;
+export const pctTxt = (n: number) => `${String(n).replace('.', ',')}%`;

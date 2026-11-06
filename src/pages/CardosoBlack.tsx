@@ -23,7 +23,7 @@ import { driveId, midia } from './black/api';
 
 type Cfg = {
   id: number; inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number;
-  live_data: string; live_link: string; canal_link: string; desconto_pct: number; presentes_live?: number | null;
+  live_data: string; live_link: string; canal_link: string; desconto_pct: number; presentes_live?: number | null; ipi_pct?: number;
 };
 type Inscrito = {
   id: string; cnpj: string; razao_social: string; fantasia: string; cidade: string; uf: string; carteira_id: string | null;
@@ -33,7 +33,7 @@ type Inscrito = {
 type Pedido = {
   id: string; numero: string; inscrito_id: string; cnpj: string; razao_social: string; fantasia: string; cidade: string; uf: string;
   representante: string; comprador: string; email: string; celular: string; observacao: string; caixas: number; pecas: number;
-  total: number; frete: string; status: 'recebido' | 'confirmado' | 'cancelado'; criado_em: string;
+  total: number; ipi?: number; total_com_ipi?: number; frete: string; status: 'recebido' | 'confirmado' | 'cancelado'; criado_em: string;
 };
 type Item = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
 type BP = { codigo: string; ordem: number; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
@@ -214,7 +214,7 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
         <div className="cbx-box"><h3>Inscritos por canal de venda</h3><Barras dados={top(canais)} cor="#0A2530" /></div>
         <div className="cbx-box"><h3>Resultado</h3>
           <div className="cbx-kpis cbx-kpis2">
-            <Kpi l="Valor" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedido médio" v={brl0(val.length ? tv / val.length : 0)} c="#0A2530" />
+            <Kpi l="Valor (sem IPI)" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedido médio" v={brl0(val.length ? tv / val.length : 0)} c="#0A2530" />
             <Kpi l="Compraram / aprovados" v={pct(lojas, ap)} c="#1F7F88" /><Kpi l="Presença" v={pres != null ? pct(pres, ap) : '—'} c="#4CBDC7" />
             <Kpi l="Pedidos" v={int(val.length)} c="#7C8A90" /><Kpi l="Em análise" v={int(ins.filter((x) => x.status === 'analise').length)} c="#F2B84B" />
           </div>
@@ -330,13 +330,13 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
     const L = peds.filter((p) => (soConfirmados ? p.status === 'confirmado' : p.status !== 'cancelado'));
     const ids = new Map(L.map((p) => [p.id, p]));
     baixarCsv(`pedidos-cardoso-black${soConfirmados ? '-confirmados' : ''}.csv`, [
-      ['pedido', 'data', 'status', 'cnpj', 'razao_social', 'cidade', 'uf', 'representante', 'comprador', 'email', 'whatsapp', 'codigo', 'produto', 'caixas', 'pecas_por_caixa', 'pecas', 'preco_peca', 'total_item', 'frete', 'observacao'],
-      ...itens.filter((i) => ids.has(i.pedido_id)).map((i) => { const p = ids.get(i.pedido_id)!; return [p.numero, dt(p.criado_em), ST[p.status], p.cnpj, p.razao_social, p.cidade, p.uf, p.representante, p.comprador, p.email, p.celular, i.codigo, i.nome, i.caixas, i.pecas_caixa, i.caixas * i.pecas_caixa, String(i.preco_peca).replace('.', ','), Number(i.total).toFixed(2).replace('.', ','), p.frete, p.observacao]; }),
+      ['pedido', 'data', 'status', 'cnpj', 'razao_social', 'cidade', 'uf', 'representante', 'comprador', 'email', 'whatsapp', 'codigo', 'produto', 'caixas', 'pecas_por_caixa', 'pecas', 'preco_peca', 'total_item', 'produtos_pedido', 'ipi_pedido', 'total_pedido_com_ipi', 'frete', 'observacao'],
+      ...itens.filter((i) => ids.has(i.pedido_id)).map((i) => { const p = ids.get(i.pedido_id)!; return [p.numero, dt(p.criado_em), ST[p.status], p.cnpj, p.razao_social, p.cidade, p.uf, p.representante, p.comprador, p.email, p.celular, i.codigo, i.nome, i.caixas, i.pecas_caixa, i.caixas * i.pecas_caixa, String(i.preco_peca).replace('.', ','), Number(i.total).toFixed(2).replace('.', ','), Number(p.total).toFixed(2).replace('.', ','), Number(p.ipi ?? 0).toFixed(2).replace('.', ','), Number(p.total_com_ipi ?? p.total).toFixed(2).replace('.', ','), p.frete, p.observacao]; }),
     ]);
   }
   return (
     <>
-      <div className="cbx-kpis"><Kpi l="Valor" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedidos" v={int(val.length)} /><Kpi l="Confirmados" v={int(peds.filter((p) => p.status === 'confirmado').length)} c="#1F7F88" /><Kpi l="A confirmar" v={int(peds.filter((p) => p.status === 'recebido').length)} c="#F2B84B" /></div>
+      <div className="cbx-kpis"><Kpi l="Valor em produtos (sem IPI)" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedidos" v={int(val.length)} /><Kpi l="Confirmados" v={int(peds.filter((p) => p.status === 'confirmado').length)} c="#1F7F88" /><Kpi l="A confirmar" v={int(peds.filter((p) => p.status === 'recebido').length)} c="#F2B84B" /></div>
       <div className="cbx-bar">
         {(['todos', 'recebido', 'confirmado', 'cancelado'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : ST[k]}<b>{k === 'todos' ? peds.length : peds.filter((p) => p.status === k).length}</b></button>)}
         <input type="search" placeholder="Pedido, loja, CNPJ ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -348,7 +348,7 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
       {vis.length === 0 ? <EmptyState title="Nenhum pedido" hint="Os pedidos enviados pelo link aparecem aqui na hora." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
           <table className="cbx-table">
-            <thead><tr><th>Pedido</th><th>Loja</th><th>Representante</th><th className="num">Caixas</th><th className="num">Total</th><th>Status</th></tr></thead>
+            <thead><tr><th>Pedido</th><th>Loja</th><th>Representante</th><th className="num">Caixas</th><th className="num">Produtos</th><th className="num">Total c/ IPI</th><th>Status</th></tr></thead>
             <tbody>{vis.map((p) => (
               <Fragment key={p.id}>
                 <tr className="click" onClick={() => setAberto(aberto === p.id ? null : p.id)}>
@@ -356,7 +356,8 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
                   <td><b>{p.fantasia || p.razao_social}</b><small>{cnpjFmt(p.cnpj)} · {p.cidade}/{p.uf}</small></td>
                   <td>{p.representante || '—'}</td>
                   <td className="num">{p.caixas}</td>
-                  <td className="num"><b>{brl(Number(p.total))}</b></td>
+                  <td className="num">{brl(Number(p.total))}</td>
+                  <td className="num"><b>{brl(Number(p.total_com_ipi ?? p.total))}</b>{Number(p.ipi) > 0 && <small>IPI {brl(Number(p.ipi))}</small>}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <select value={p.status} onChange={(e) => status(p, e.target.value as Pedido['status'])}>{(['recebido', 'confirmado', 'cancelado'] as const).map((s) => <option key={s} value={s}>{ST[s]}</option>)}</select>
                   </td>
@@ -445,9 +446,14 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
       ordem: Math.round(num(r.ordem) ?? i + 1), familia: r.familia || r.fam || '', preco_peca: pos(num(r.preco_peca || r.preco || r.black)),
       caixa_qtd: pos(num(r.caixa_qtd || r.caixa || r.cx)) === null ? null : Math.round(num(r.caixa_qtd || r.caixa || r.cx)!),
       estoque_caixas: (() => { const e = num(r.estoque_caixas || r.estoque); return e === null || e < 0 ? null : Math.round(e); })(),
-      ativo: true,
+      // coluna ativo opcional: 0 / não / nao / false tira o produto da Black sem apagar
+      ativo: !/^(0|n|nao|não|false)$/i.test(String(r.ativo ?? '').trim()),
     })).filter((r) => r.codigo);
-    const semCaixa = linhas.filter((r) => r.caixa_qtd === null).map((r) => r.codigo);
+    // coluna que não veio na planilha não apaga o que já está no Hub (ex.: cota de estoque digitada à mão)
+    const tem = new Set(Object.keys(L[0] ?? {}).map((k) => k.trim().toLowerCase()));
+    const veio: Record<string, string[]> = { ordem: ['ordem'], familia: ['familia', 'fam'], preco_peca: ['preco_peca', 'preco', 'black'], caixa_qtd: ['caixa_qtd', 'caixa', 'cx'], estoque_caixas: ['estoque_caixas', 'estoque'] };
+    for (const r of linhas) for (const [k, cols] of Object.entries(veio)) if (!cols.some((c) => tem.has(c))) delete (r as Record<string, unknown>)[k];
+    const semCaixa = linhas.filter((r) => 'caixa_qtd' in r && r.caixa_qtd === null).map((r) => r.codigo);
     // o catálogo do Hub guarda o código com 4 dígitos (0275); a TAB às vezes vem sem o zero
     const codes = new Set(prods.map((p) => p.code));
     linhas.forEach((r) => { if (!codes.has(r.codigo) && codes.has(r.codigo.padStart(4, '0'))) r.codigo = r.codigo.padStart(4, '0'); });
@@ -462,7 +468,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
     <>
       <div className="cbx-box">
         <h3>Importar a TAB da Black (CSV)</h3>
-        <p className="cbx-hint">Colunas: <b>codigo; ordem; familia; preco_peca; caixa_qtd; estoque_caixas</b>. Preço por peça é o preço final. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
+        <p className="cbx-hint">Colunas: <b>codigo; ordem; familia; preco_peca; caixa_qtd; estoque_caixas; ativo</b>. Preço por peça é o preço líquido (o IPI soma no fechamento do pedido). Ativo = 0 tira o produto da Black. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
         <div className="cbx-acts" style={{ marginTop: 10 }}>
           <label className="btn">Escolher arquivo<input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = ''; }} /></label>
           <input className="tp-search" style={{ maxWidth: 140 }} placeholder="Código" value={novo.codigo} onChange={(e) => setNovo({ ...novo, codigo: e.target.value })} />
@@ -614,7 +620,7 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
   async function salvar() {
     const { error } = await supabase.from('black_config').update({
       inscricoes_ate: new Date(f.inscricoes_ate).toISOString(), abre_em: new Date(f.abre_em).toISOString(), fecha_em: new Date(f.fecha_em).toISOString(),
-      pedido_minimo: Number(f.pedido_minimo), frete_gratis_sp_rj: Number(f.frete_gratis_sp_rj), desconto_pct: Number(f.desconto_pct),
+      pedido_minimo: Number(f.pedido_minimo), frete_gratis_sp_rj: Number(f.frete_gratis_sp_rj), desconto_pct: Number(f.desconto_pct), ipi_pct: Number(f.ipi_pct ?? 6.5),
       live_data: f.live_data, live_link: f.live_link.trim(), canal_link: f.canal_link.trim(),
       atualizado_em: new Date().toISOString(), atualizado_por: profile?.id ?? null,
     }).eq('id', 1);
@@ -632,6 +638,7 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
         {campo('Pedido mínimo (R$)', 'pedido_minimo', 'number')}
         {campo('Frete grátis SP/RJ a partir de (R$)', 'frete_gratis_sp_rj', 'number')}
         {campo('Desconto sobre a Tabela de Preços (%)', 'desconto_pct', 'number', 'Só para produtos sem preço fixo na Black.')}
+        {campo('IPI no fechamento (%)', 'ipi_pct', 'number', 'Os preços da Black são líquidos; o IPI soma uma vez, sobre o pedido inteiro, no carrinho.')}
         {campo('Data da live (texto)', 'live_data', 'text', 'Ex.: Quinta-feira, 12/11 · 15h')}
         {campo('Link da live (Meet ou Zoom)', 'live_link', 'url', 'Só aparece para cadastro aprovado.')}
         {campo('Link do canal no WhatsApp', 'canal_link', 'url', 'Só aparece para cadastro aprovado.')}
