@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
 import {
-  brl, cachePublico, driveId, midiaRapida, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
+  brl, pctTxt, cachePublico, driveId, midiaRapida, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
   type BlackFicha as Ficha, type BlackItem,
 } from './api';
 
@@ -132,7 +132,7 @@ export default function BlackFicha() {
             : f.preco_peca == null ? <div className="cb-alert warn">Preço indisponível para a sua região. Fale com o seu representante.</div>
             : (
               <>
-                <div className="cb-price"><b>{brl(f.preco_peca)}</b><span>por peça · caixa com {f.caixa} = <strong>{brl(f.preco_peca * f.caixa)}</strong></span></div>
+                <div className="cb-price"><b>{brl(f.preco_peca)}</b><span>por peça (preço líquido) · caixa com {f.caixa} = <strong>{brl(f.preco_peca * f.caixa)}</strong><br />+ IPI de {pctTxt(Number(cfg?.ipi_pct ?? 6.5))} sobre o pedido, somado no fechamento</span></div>
                 {f.disponivel === 0 ? <div className="cb-alert err">Produto esgotado na Black.</div> : (
                   <div className="cb-add">
                     <div className="cb-stp">
@@ -162,7 +162,7 @@ export default function BlackFicha() {
         const minimo = cfg?.pedido_minimo ?? 2500;
         return (
           <div className="cb-fbar"><div className="cb-wrap">
-            <div><small>Seu pedido</small><b>{brl(total)}</b>
+            <div><small>Seu pedido · sem IPI</small><b>{brl(total)}</b>
               <em className={total >= minimo ? 'ok' : ''}>{total >= minimo ? 'mínimo atingido' : `faltam ${brl(minimo - total)} para o mínimo`}</em></div>
             <Link className="cb-btn dk" to="/black/pedido?v=carrinho">Ver carrinho ›</Link>
           </div></div>

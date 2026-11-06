@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
 import {
-  brl, diaMes, ERRO_LOGIN, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
+  brl, diaMes, ERRO_LOGIN, ipiDe, pctTxt, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
   type BlackConfig, type BlackItem, type BlackPedido as Pedido, type BlackSessao, type Carrinho,
 } from './api';
 
@@ -93,7 +93,7 @@ function Espera({ alvo, sessao: canal }: { alvo: string; sessao: string }) {
 type LojaProps = {
   token: string; sessao: BlackSessao; cfg: BlackConfig; antes: boolean; encerrado: boolean; previa: boolean; sair: () => void;
 };
-type Enviado = { numero: string; caixas: number; pecas: number; total: number; frete: string };
+type Enviado = { numero: string; caixas: number; pecas: number; total: number; ipi?: number; total_com_ipi?: number; frete: string };
 type Linha = { it: BlackItem; q: number };
 
 function Loja(p: LojaProps) {
@@ -148,7 +148,7 @@ function Loja(p: LojaProps) {
   });
   const remover = (c: string) => setCart((x) => { const y = { ...x }; delete y[c]; return y; });
   const podeComprar = !p.antes && !p.encerrado;
-  const resumo = { total, caixas, pecas, minimo: cfg.pedido_minimo, ok, frete: freteT, freteOk };
+  const resumo = { total, caixas, pecas, minimo: cfg.pedido_minimo, ok, frete: freteT, freteOk, ipiPct: Number(cfg.ipi_pct ?? 6.5) };
 
   return (
     <>
@@ -193,7 +193,7 @@ function Loja(p: LojaProps) {
                     <div className="bd">
                       <span className="cd">{i.codigo} · {i.familia}</span>
                       <h3>{i.nome}</h3>
-                      {i.preco_peca != null && <div className="pr"><b>{brl(i.preco_peca)}</b><span>por peça</span></div>}
+                      {i.preco_peca != null && <div className="pr"><b>{brl(i.preco_peca)}</b><span>por peça · líquido</span></div>}
                       <div className="bx">Caixa com {i.caixa}{i.preco_peca != null ? ` · ${brl(i.preco_peca * i.caixa)}` : ''}{i.disponivel != null && !esg ? ` · ${i.disponivel} cx disp.` : ''}</div>
                       <Stepper q={q} menos={() => mudar(i.codigo, -1)} mais={() => mudar(i.codigo, 1)} maisOff={esg || !podeComprar || (i.disponivel != null && q >= i.disponivel)} />
                     </div>
@@ -209,7 +209,7 @@ function Loja(p: LojaProps) {
             </aside>
           </div>
           <div className="cb-mbar">
-            <div><b>{brl(total)}</b><span>{ok ? `${caixas} caixas · mínimo atingido` : `${caixas} caixas · faltam ${brl(cfg.pedido_minimo - total)}`}</span><div className="cb-bar"><i style={{ width: `${Math.min(100, (total / cfg.pedido_minimo) * 100)}%` }} /></div></div>
+            <div><b>{brl(total)}</b><span>{ok ? `${caixas} caixas · sem IPI · mínimo atingido` : `${caixas} caixas · faltam ${brl(cfg.pedido_minimo - total)}`}</span><div className="cb-bar"><i style={{ width: `${Math.min(100, (total / cfg.pedido_minimo) * 100)}%` }} /></div></div>
             <button className="cb-btn" type="button" disabled={!linhas.length} onClick={() => ir('carrinho')}><Ic n="cart" />Carrinho</button>
           </div>
         </>
@@ -298,14 +298,25 @@ function Etapas({ atual }: { atual: 1 | 2 | 3 }) {
   );
 }
 
-type ResumoProps = { total: number; caixas: number; pecas: number; minimo: number; ok: boolean; frete: string; freteOk: boolean };
-function Resumo({ total, minimo, ok, frete, freteOk, pecas, botao, acao, desligado }: ResumoProps & { botao: string; acao: () => void; desligado: boolean }) {
+type ResumoProps = { total: number; caixas: number; pecas: number; minimo: number; ok: boolean; frete: string; freteOk: boolean; ipiPct: number };
+/** produtos (preço líquido) + IPI sobre o pedido inteiro = total. O mínimo e o frete grátis olham só os produtos. */
+function Totais({ total, ipiPct }: { total: number; ipiPct: number }) {
+  const ipi = ipiDe(total, ipiPct);
+  return (
+    <>
+      <div className="cb-sl"><span>Produtos <small>(preços líquidos)</small></span><b>{brl(total)}</b></div>
+      <div className="cb-sl"><span>IPI ({pctTxt(ipiPct)})</span><b>{brl(ipi)}</b></div>
+      <div className="cb-tot"><span>Total do pedido</span><b>{brl(total + ipi)}</b></div>
+    </>
+  );
+}
+function Resumo({ total, minimo, ok, frete, freteOk, pecas, ipiPct, botao, acao, desligado }: ResumoProps & { botao: string; acao: () => void; desligado: boolean }) {
   return (
     <div className="cb-sum">
       {pecas > 0 && <div className="cb-sl"><span>Peças</span><b>{pecas.toLocaleString('pt-BR')}</b></div>}
-      <div className="cb-tot"><span>Total</span><b>{brl(total)}</b></div>
+      <Totais total={total} ipiPct={ipiPct} />
       <div className="cb-bar"><i style={{ width: `${Math.min(100, (total / minimo) * 100)}%` }} /></div>
-      <div className={`cb-hint${ok ? ' ok' : ''}`}>{ok ? 'Pedido mínimo atingido' : `Faltam ${brl(minimo - total)} para o mínimo de ${brl(minimo)}`}</div>
+      <div className={`cb-hint${ok ? ' ok' : ''}`}>{ok ? 'Pedido mínimo atingido' : `Faltam ${brl(minimo - total)} em produtos para o mínimo de ${brl(minimo)}`}</div>
       <div className={`cb-fre${freteOk ? ' ok' : ''}`}>{frete}</div>
       <button className="cb-btn full" type="button" disabled={desligado} onClick={acao}>{botao}</button>
     </div>
@@ -375,7 +386,7 @@ function Finalizar(p: ResumoProps & {
         <div className="ct"><b>Seu pedido</b><span>{p.caixas} cx</span></div>
         {p.linhas.map((l) => <div key={l.it.codigo} className="ln"><b>{l.it.nome}</b><b>{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b><small>{l.q} cx × {l.it.caixa} pç · {brl(l.it.preco_peca ?? 0)}/pç</small></div>)}
         <div className="cb-sum">
-          <div className="cb-tot"><span>Total</span><b>{brl(p.total)}</b></div>
+          <Totais total={p.total} ipiPct={p.ipiPct} />
           <div className={`cb-fre${p.freteOk ? ' ok' : ''}`}>{p.frete}</div>
           <label className="cb-check"><input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
             <span>Estou de acordo: pedido por caixa fechada, sujeito à confirmação do representante.</span></label>
@@ -394,7 +405,7 @@ function Confirmacao({ enviado, representante, outro, pedidos }: { enviado: Envi
       <div className="bd" style={{ ['--c' as string]: 'var(--teal)' }}><Ic n="check" /></div>
       <h2>Pedido enviado</h2>
       <div><span className="cb-btn dk sm" style={{ cursor: 'default' }}>{enviado.numero}</span></div>
-      <p>{enviado.caixas} caixas · {enviado.pecas.toLocaleString('pt-BR')} peças · <b>{brl(enviado.total)}</b></p>
+      <p>{enviado.caixas} caixas · {enviado.pecas.toLocaleString('pt-BR')} peças · <b>{brl(Number(enviado.total_com_ipi ?? enviado.total))}</b>{enviado.ipi ? <small style={{ display: 'block' }}>{brl(enviado.total)} em produtos + {brl(Number(enviado.ipi))} de IPI</small> : null}</p>
       <div className="cb-fre">{enviado.frete}</div>
       <Andamento status="recebido" representante={representante} />
       <div className="cb-row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -439,11 +450,12 @@ function MeusPedidos({ pedidos, representante, comprar }: { pedidos: Pedido[]; r
             <button type="button" className="h" onClick={() => setAberto(on ? null : x.numero)} aria-expanded={on}>
               <b>{x.numero}</b><span className={`cb-st ${x.status}`}><i />{ST[x.status] ?? x.status}</span>
               <small>{fmtData(x.criado_em)} · {x.caixas} caixas</small>
-              <span className="tt">{brl(Number(x.total))}</span><span className="ch">{on ? '−' : '+'}</span>
+              <span className="tt">{brl(Number(x.total_com_ipi ?? x.total))}</span><span className="ch">{on ? '−' : '+'}</span>
             </button>
             {on && (
               <div style={{ display: 'grid', gap: 10 }}>
                 {x.itens?.map((it) => <div key={it.codigo} className="cb-it"><span>{it.nome}<small>{it.caixas} cx × {it.pecas_caixa} pç · {brl(Number(it.preco_peca))}/pç</small></span><b>{brl(Number(it.total))}</b></div>)}
+                {Number(x.ipi) > 0 && <div className="cb-it"><span>IPI sobre o pedido</span><b>{brl(Number(x.ipi))}</b></div>}
                 <Andamento status={x.status} representante={representante} />
               </div>
             )}
@@ -480,7 +492,7 @@ function MinhaConta({ sessao: s, cfg, sair }: { sessao: BlackSessao; cfg: BlackC
         </div>
         {s.live_link && <a className="cb-btn dk full" href={s.live_link} target="_blank" rel="noreferrer"><Ic n="laptop" />Entrar na live</a>}
         {s.canal_link && <a className="cb-wab" href={s.canal_link} target="_blank" rel="noreferrer"><Sv.wa />Canal Cardoso Black no WhatsApp</a>}
-        <div className="cb-buy"><span className="ic"><Ic n="coins" /></span><span><b>Condições:</b> caixa fechada · mínimo de {brl(cfg.pedido_minimo)} · frete grátis em SP capital e em SP/RJ acima de {brl(cfg.frete_gratis_sp_rj)}.</span></div>
+        <div className="cb-buy"><span className="ic"><Ic n="coins" /></span><span><b>Condições:</b> preços líquidos, com IPI de {pctTxt(Number(cfg.ipi_pct ?? 6.5))} somado no fechamento · caixa fechada · mínimo de {brl(cfg.pedido_minimo)} em produtos · frete grátis em SP capital e em SP/RJ acima de {brl(cfg.frete_gratis_sp_rj)}.</span></div>
       </div>
     </div>
   );
