@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { REPRESENTANTES } from './representantes';
 import { supabase } from '../../lib/supabaseClient';
 import Shell from './Shell';
-import { FN_CADASTRO, diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
+import { FN_CADASTRO, diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, useConfig } from './api';
 import { Ic, Sv } from './Icones';
 
 /* /black?r=<representante> — pré-cadastro da Cardoso Black.
@@ -129,7 +129,7 @@ export default function BlackCadastro() {
                 <div className="l2">Produtos, condições e pedido ao vivo</div>
                 <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 14h'}</span><span>Link enviado no canal</span></div>
               </div>
-              <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos {periodoPedidos(cfg)},</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
+              <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos durante a live,</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
               <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>
             </>
           ) : (
@@ -149,10 +149,12 @@ export default function BlackCadastro() {
     <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce">
       <div className="cb-grid2">
         <div>
-          <div className="cb-hi">Participe da live e do período de pedidos da Cardoso Black</div>
+          <div className="cb-hi">Participe da live da Cardoso Black e faça seu pedido ao vivo</div>
           <div className="cb-card cb-pad" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 14h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
-            <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedidos {periodoPedidos(cfg)}</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 16h'}</b><span>os pedidos são feitos durante a live, pelo link</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="tag" /></span><div><b>Produtos com até 60% de desconto</b><span>condição por tempo e estoque limitados</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="store" /></span><div><b>Diversos licenciados</b><span>Disney, Pocoyo, Smurfs, Galinha Pintadinha, DC e mais</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedido por caixa fechada</b><span>mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')} · somente pelo link</span></div></div>
             <div className="cb-ev"><span className="n"><Ic n="chat" /></span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
           </div>
         </div>
