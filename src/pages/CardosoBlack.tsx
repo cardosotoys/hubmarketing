@@ -37,7 +37,7 @@ type Pedido = {
   total: number; ipi?: number; total_com_ipi?: number; frete: string; status: 'recebido' | 'confirmado' | 'cancelado'; criado_em: string;
 };
 type Item = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
-type BP = { codigo: string; ordem: number; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
+type BP = { codigo: string; ordem: number; nome?: string; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
 type Prod = { id: string; code: string; name: string; packaging_name: string; line: string; image_url: string; carton_quantity: number | null; brand?: { label: string } | { label: string }[] | null };
 const marcaDe = (p?: Prod) => { const b = p?.brand; const l = Array.isArray(b) ? b[0]?.label : b?.label; return l === 'Playmi' || l === 'Tópi' ? l : 'Cardoso'; };
 type Cart = { id: string; razao_social: string; cnpj: string | null; uf: string; representante: string; grupo: string; situacao: string; dias_sem_compra: number | null; importado_em: string };
@@ -392,7 +392,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
   const [midias, setMidias] = useState<Prod | null>(null);
   const vivos = new Set(peds.filter((p) => p.status !== 'cancelado').map((p) => p.id));
   const vend: Record<string, number> = {}; itens.filter((i) => vivos.has(i.pedido_id)).forEach((i) => { vend[i.codigo] = (vend[i.codigo] ?? 0) + i.caixas; });
-  const semCadastro = bps.filter((b) => !porCodigo[b.codigo]);
+  const semCadastro = bps.filter((b) => b.ativo && !porCodigo[b.codigo]);
   type Disp = { codigo: string; guarani_pecas: number | null; guarani_em: string | null; disponivel: number | null };
   const [disp, setDisp] = useState<Record<string, Disp>>({});
   const carregarDisp = useCallback(async () => {
@@ -469,7 +469,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
     <>
       <div className="cbx-box">
         <h3>Importar a TAB da Black (CSV)</h3>
-        <p className="cbx-hint">Colunas: <b>codigo; nome; ordem; familia; preco_peca; preco_tabela; caixa_qtd; estoque_caixas; ativo</b>. Preço de tabela = o “de” do “de/por”. Nome é o nome de vitrine na Black (vazio = nome do cadastro). Preço por peça é o preço líquido (o IPI soma no fechamento do pedido). Ativo = 0 tira o produto da Black. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
+        <p className="cbx-hint">Colunas: <b>codigo; nome; ordem; familia; preco_peca; caixa_qtd; estoque_caixas; ativo</b>. Nome é o nome de vitrine na Black (vazio = nome do cadastro). Preço por peça é o preço líquido (o IPI soma no fechamento do pedido). Ativo = 0 tira o produto da Black. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
         <div className="cbx-acts" style={{ marginTop: 10 }}>
           <label className="btn">Escolher arquivo<input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = ''; }} /></label>
           <input className="tp-search" style={{ maxWidth: 140 }} placeholder="Código" value={novo.codigo} onChange={(e) => setNovo({ ...novo, codigo: e.target.value })} />
@@ -493,10 +493,10 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
           <table className="cbx-table">
             <thead><tr><th>Ordem</th><th>Produto</th><th>Família</th><th className="num">Preço/peça</th><th className="num">Caixa</th><th className="num">Cota Black (cx)</th><th className="num">Guarani (cx)</th><th className="num">Disponível</th><th className="num">Vendidas</th><th className="num">QR</th><th className="num">Materiais</th><th>Ativo</th><th /></tr></thead>
-            <tbody>{bps.map((b) => { const p = porCodigo[b.codigo]; const sujo = !!ed[b.codigo]; return (
-              <tr key={b.codigo}>
+            <tbody>{[...bps.filter((x) => x.ativo), ...bps.filter((x) => !x.ativo)].map((b) => { const p = porCodigo[b.codigo]; const sujo = !!ed[b.codigo]; return (
+              <tr key={b.codigo} style={b.ativo ? undefined : { opacity: 0.45 }}>
                 <td style={{ width: 70 }}><input inputMode="numeric" value={txt(b, 'ordem')} onChange={(e) => set(b.codigo, 'ordem', e.target.value)} /></td>
-                <td><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{p?.image_url ? <img className="cbx-thumb" src={p.image_url} alt="" /> : <span className="cbx-thumb" />}<div><b>{p?.packaging_name || p?.name || '—'}</b><small>{b.codigo}</small></div></div></td>
+                <td><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{p?.image_url ? <img className="cbx-thumb" src={p.image_url} alt="" /> : <span className="cbx-thumb" />}<div><b>{b.nome || p?.packaging_name || p?.name || '—'}</b><small>{b.codigo}{b.ativo ? '' : ' · fora da Black'}</small></div></div></td>
                 <td style={{ minWidth: 150 }}><input value={txt(b, 'familia')} placeholder={p?.line} onChange={(e) => set(b.codigo, 'familia', e.target.value)} /></td>
                 <td className="num" style={{ width: 110 }}><input inputMode="decimal" value={txt(b, 'preco_peca')} placeholder="tabela" onChange={(e) => set(b.codigo, 'preco_peca', e.target.value)} /></td>
                 <td className="num" style={{ width: 80 }}><input inputMode="numeric" value={txt(b, 'caixa_qtd')} placeholder={String(p?.carton_quantity ?? '')} onChange={(e) => set(b.codigo, 'caixa_qtd', e.target.value)} /></td>
@@ -598,7 +598,7 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
         <h3>Links gerais</h3>
         <div className="cbx-acts">
           {[['Pré-cadastro', `${o}/black`], ['Página de pedido', `${o}/black/pedido`]].map(([l, u]) => <button key={u} className="btn ghost" onClick={() => copiar(u)}>{ok === u ? 'Copiado' : `Copiar · ${l}`}</button>)}
-          <button className="btn ghost" onClick={() => baixarCsv('links-qr-produtos.csv', [['ordem', 'codigo', 'produto', 'link_qr'], ...bps.map((b) => [b.ordem, b.codigo, porCodigo[b.codigo]?.name ?? '', `${o}/black/p/${b.codigo}?live=1`])])}>Baixar links dos QR (CSV)</button>
+          <button className="btn ghost" onClick={() => baixarCsv('links-qr-produtos.csv', [['ordem', 'codigo', 'produto', 'link_qr'], ...bps.filter((b) => b.ativo).map((b) => [b.ordem, b.codigo, b.nome || porCodigo[b.codigo]?.name || '', `${o}/black/p/${b.codigo}?live=1`])])}>Baixar links dos QR (CSV)</button>
           <button className="btn ghost" onClick={() => baixarCsv('links-representantes.csv', [['representante', 'clientes', 'inscritos', 'link'], ...reps.map(([r, v]) => [r, v.cli, v.ins, L(r)])])}>Baixar links dos representantes (CSV)</button>
         </div>
         <p className="cbx-hint" style={{ marginTop: 10 }}>Os QR da live apontam para {o}/black/p/&lt;código&gt;?live=1 (a ficha mostra “Visto agora na live”). Se o endereço do Hub mudar (ex.: app.cardosotoys.com.br), gere os QR de novo.</p>
