@@ -123,7 +123,7 @@ export default function BlackCadastro() {
           </div>
           {/* próximo passo de todo mundo: seguir o canal (link da live, lembretes e avisos) */}
           {canal && <a className="cb-wab cb-wab-xl" href={canal} target="_blank" rel="noreferrer"><Sv.wa />Entrar no canal da Cardoso Black</a>}
-          {canal && <p className="cb-note" style={{ marginTop: -4 }}>Toque em <b>Seguir</b> e ative as notificações 🔔 para receber o link da live.</p>}
+          {canal && <p className="cb-wab-tip">Toque em <b>Seguir</b> e ative as notificações 🔔 para receber o link da live.</p>}
           {ok ? (
             <>
               <div className="cb-lvc">
