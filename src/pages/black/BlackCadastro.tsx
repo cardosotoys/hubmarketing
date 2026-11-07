@@ -147,19 +147,25 @@ export default function BlackCadastro() {
 
   return (
     <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce">
-      <div className="cb-grid2">
-        <div>
-          <div className="cb-hi">Participe da live da Cardoso Black e faça seu pedido ao vivo</div>
-          <div className="cb-card cb-pad" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 16h'}</b><span>os pedidos são feitos durante a live, pelo link</span></div></div>
-            <div className="cb-ev"><span className="n"><Ic n="tag" /></span><div><b>Produtos com até 60% de desconto</b><span>condição por tempo e estoque limitados</span></div></div>
-            <div className="cb-ev"><span className="n"><Ic n="store" /></span><div><b>Diversos licenciados</b><span>Disney, Pocoyo, Smurfs, Galinha Pintadinha, DC e mais</span></div></div>
-            <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedido por caixa fechada</b><span>mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')} · somente pelo link</span></div></div>
-            <div className="cb-ev"><span className="n"><Ic n="chat" /></span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
+      {/* celular: título + destaques curtos, o formulário logo em seguida (sem rolar) e os detalhes depois */}
+      <div className="cb-grid2 cb-pre">
+        <div className="cb-pre-hd">
+          <div className="cb-hi">Faça seu pedido ao vivo na Cardoso Black</div>
+          <div className="cb-chips">
+            <span><Ic n="laptop" />Live {cfg ? `${diaMesCurto(cfg.abre_em)} · ${hora(cfg.abre_em)}` : '12/11 · 16h'}</span>
+            <span className="hot"><Ic n="tag" />Até 60% de desconto</span>
+            <span><Ic n="store" />Licenciados</span>
           </div>
         </div>
+        <div className="cb-card cb-pad cb-pre-det" style={{ paddingTop: 6, paddingBottom: 6 }}>
+          <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 16h'}</b><span>os pedidos são feitos durante a live, pelo link</span></div></div>
+          <div className="cb-ev"><span className="n"><Ic n="tag" /></span><div><b>Produtos com até 60% de desconto</b><span>condição por tempo e estoque limitados</span></div></div>
+          <div className="cb-ev"><span className="n"><Ic n="store" /></span><div><b>Diversos licenciados</b><span>Disney, Pocoyo, Smurfs, Galinha Pintadinha, Warner e mais</span></div></div>
+          <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedido por caixa fechada</b><span>mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')} · somente pelo link</span></div></div>
+          <div className="cb-ev"><span className="n"><Ic n="chat" /></span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
+        </div>
 
-        <form className="cb-card cb-pad cb-form" onSubmit={enviar} noValidate>
+        <form className="cb-card cb-pad cb-form cb-pre-form" onSubmit={enviar} noValidate>
           {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, representante Cardoso</span></div>}
           {encerrado && <div className="cb-alert err">As inscrições para a Cardoso Black estão encerradas.</div>}
 
