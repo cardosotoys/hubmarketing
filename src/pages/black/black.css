@@ -586,3 +586,4 @@
 .cb-cnt.cb-cnt4 { grid-template-columns: repeat(4, 1fr); }
 .cb-crono { margin-top: 8px; }
 @media (max-width: 420px) { .cb-cnt.cb-cnt4 b { font-size: 24px; } }
+.cb-wab.cb-wab-xl { padding: 16px 18px; font-size: 17px; justify-content: center; }

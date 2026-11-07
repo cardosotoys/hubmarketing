@@ -11,7 +11,7 @@ export const FN_CADASTRO = 'smooth-endpoint';
 export const FN_MIDIA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynamic-worker`;
 
 export type BlackConfig = {
-  inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number; ipi_pct?: number;
+  inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number; ipi_pct?: number; canal_link?: string;
   live_data: string; agora: string; aberto: boolean; encerrado: boolean;
 };
 export type BlackSessao = {

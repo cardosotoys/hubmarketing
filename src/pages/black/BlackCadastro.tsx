@@ -109,6 +109,7 @@ export default function BlackCadastro() {
   if (res) {
     const ok = res.status === 'aprovado';
     const nome = res.fantasia || emp?.razao || 'Sua loja';
+    const canal = res.canal_link || cfg?.canal_link || '';
     return (
       <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce" wide={false} faixa={false}>
         <div className="cb-rs">
@@ -118,16 +119,18 @@ export default function BlackCadastro() {
             <h2>{ok ? nome : 'Cadastro recebido'}</h2>
             <p>{ok
               ? `${emp?.razao && emp.razao !== nome ? emp.razao : nome} está confirmada na Cardoso Black. Acesse o canal para receber o link da live.`
-              : `Estamos conferindo os dados de ${nome}. Assim que o cadastro for aprovado, você recebe o acesso ao canal.`}</p>
+              : `Estamos conferindo os dados de ${nome}. Enquanto isso, entre no canal da Cardoso Black: o link da live chega por lá.`}</p>
           </div>
+          {/* próximo passo de todo mundo: seguir o canal (link da live, lembretes e avisos) */}
+          {canal && <a className="cb-wab cb-wab-xl" href={canal} target="_blank" rel="noreferrer"><Sv.wa />Entrar no canal da Cardoso Black</a>}
+          {canal && <p className="cb-note" style={{ marginTop: -4 }}>Toque em <b>Seguir</b> e ative as notificações 🔔 para receber o link da live.</p>}
           {ok ? (
             <>
-              {res.canal_link && <a className="cb-wab" href={res.canal_link} target="_blank" rel="noreferrer"><Sv.wa />Acessar o canal Cardoso Black</a>}
               <div className="cb-lvc">
                 <div className="dt"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
                 <div className="l1">Live · {cfg ? diaSemana(cfg.abre_em) : 'quinta-feira'}</div>
                 <div className="l2">Produtos, condições e pedido ao vivo</div>
-                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 14h'}</span><span>Link enviado no canal</span></div>
+                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 16h'}</span><span>Link enviado no canal</span></div>
               </div>
               <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos durante a live,</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
               <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>
@@ -136,7 +139,7 @@ export default function BlackCadastro() {
             <div className="cb-tline">
               <div className="ok"><i>✓</i><div>Cadastro recebido<span>agora</span></div></div>
               <div className="now"><i>2</i><div>Conferência pela equipe comercial<span>{res.representante ? `${res.representante}, seu representante, acompanha` : 'seu representante acompanha'}</span></div></div>
-              <div><i>3</i><div>Acesso ao canal da Cardoso Black<span>com o convite para a live de {cfg ? diaMesCurto(cfg.abre_em) : '12/11'}</span></div></div>
+              <div><i>3</i><div>Live da Cardoso Black<span>{cfg ? `${diaMesCurto(cfg.abre_em)}, às ${hora(cfg.abre_em)}` : '12/11'} · link enviado no canal</span></div></div>
             </div>
           )}
           {res.representante && <div className="cb-buy"><span className="ic" style={{ background: 'var(--mint)', color: 'var(--teal)' }}><Sv.mail /></span><span>Dúvidas: fale com <b>{res.representante}</b>, seu representante.</span></div>}
