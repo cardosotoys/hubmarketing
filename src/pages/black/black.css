@@ -582,3 +582,7 @@
   .cb-pre .cb-hi { font-size: 22px; }
   .cb-pre-form.cb-pad { padding-top: 16px; padding-bottom: 16px; }
 }
+/* contagem regressiva (vitrine fechada antes da live) */
+.cb-cnt.cb-cnt4 { grid-template-columns: repeat(4, 1fr); }
+.cb-crono { margin-top: 8px; }
+@media (max-width: 420px) { .cb-cnt.cb-cnt4 b { font-size: 24px; } }
