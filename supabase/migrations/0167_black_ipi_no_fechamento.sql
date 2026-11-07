@@ -1,6 +1,7 @@
 -- Cardoso Black: preços líquidos (TAB 225 LIVE BLACK) + IPI de 6,5% somado só no fechamento, sobre o pedido inteiro.
 -- black_pedidos.total continua sendo o valor dos produtos (base do mínimo de R$ 2.500 e do frete grátis);
 -- ipi e total_com_ipi guardam o imposto e o valor final do pedido.
+-- black_produtos.nome: nome de vitrine da Black (da TAB); quando vazio, usa o nome do cadastro do produto.
 begin;
 
 alter table public.black_config add column if not exists ipi_pct numeric(5, 2) not null default 6.5
@@ -101,5 +102,73 @@ as $fn$
   from public.black_pedidos pd
   where pd.inscrito_id = public.black_inscrito_da_sessao(p_token);
 $fn$;
+
+alter table public.black_produtos add column if not exists nome text not null default '';
+
+create or replace function public.black_catalogo(p_token text)
+returns json language sql stable security definer set search_path = public
+as $fn$
+  with logado as (select i.uf, true as ok from public.black_inscritos i where i.id = public.black_inscrito_da_sessao(p_token))
+  select coalesce(json_agg(json_build_object(
+      'codigo', bp.codigo, 'ordem', bp.ordem, 'nome', coalesce(nullif(bp.nome, ''), nullif(p.packaging_name, ''), p.name, bp.codigo),
+      'familia', coalesce(nullif(bp.familia, ''), p.line, ''),
+      'caixa', coalesce(bp.caixa_qtd, p.carton_quantity, 1),
+      'preco_peca', case when (select ok from logado) and public.black_preco_visivel(p_token)
+                         then public.black_preco(bp.codigo, (select uf from logado)) end,
+      'disponivel', public.black_disponivel(bp.codigo),
+      'imagem', coalesce(p.image_url, ''), 'embalagem', coalesce(p.packaging_image_url, ''))
+    order by bp.ordem, bp.codigo), '[]'::json)
+  from public.black_produtos bp
+  left join public.products p on p.code = bp.codigo
+  where bp.ativo;
+$fn$;
+
+create or replace function public.black_produto(p_codigo text, p_token text)
+returns json language plpgsql security definer set search_path = public
+as $fn$
+declare v_ins uuid := public.black_inscrito_da_sessao(p_token); v json;
+begin
+  select json_build_object(
+    'codigo', bp.codigo, 'ordem', bp.ordem,
+    'nome', coalesce(nullif(bp.nome, ''), nullif(p.packaging_name, ''), p.name, bp.codigo),
+    'familia', coalesce(nullif(bp.familia, ''), p.line, ''),
+    'caixa', coalesce(bp.caixa_qtd, p.carton_quantity, 1),
+    'preco_peca', case when v_ins is not null and public.black_preco_visivel(p_token)
+                       then public.black_preco(bp.codigo, (select uf from public.black_inscritos where id = v_ins)) end,
+    'disponivel', public.black_disponivel(bp.codigo),
+    'imagem', coalesce(p.image_url, ''), 'embalagem', coalesce(p.packaging_image_url, ''),
+    'descricao', coalesce(p.description, ''), 'diferenciais', coalesce(to_json(p.differentials), '[]'::json),
+    'tecnico', json_build_object(
+      'faixa_etaria', p.age_range, 'ean', p.ean, 'inmetro', p.inmetro_number, 'material', p.material,
+      'cor', p.color, 'categoria', p.toy_category, 'conteudo', p.package_contents,
+      'mecanismo', p.has_mechanism, 'som', p.has_sound, 'luz', p.has_light, 'pilhas', p.battery_type,
+      'produto_mm', json_build_array(p.product_length_mm, p.product_width_mm, p.product_height_mm),
+      'produto_kg', p.product_weight_kg,
+      'embalagem_mm', json_build_array(p.package_length_mm, p.package_width_mm, p.package_height_mm),
+      'embalagem_kg', p.package_weight_kg,
+      'caixa_mm', json_build_array(p.carton_length_mm, p.carton_width_mm, p.carton_height_mm),
+      'caixa_kg', p.carton_gross_weight_kg, 'caixa_obs', p.carton_note),
+    'materiais', coalesce((
+      select json_agg(json_build_object('tipo', m.kind, 'nome', m.name, 'link', m.drive_url, 'cache', '')
+                      order by m.kind, m.name)
+        from public.content_materials m
+       where m.product_id = p.id and m.status = 'liberado'), '[]'::json))
+  into v
+  from public.black_produtos bp
+  left join public.products p on p.code = bp.codigo
+  where bp.codigo = p_codigo and bp.ativo;
+
+  if v is null then return null; end if;
+  if not public.black_eh_previa(p_token) then
+    insert into public.black_eventos (tipo, codigo, inscrito_id) values ('ficha', p_codigo, v_ins);
+  end if;
+  return v;
+end
+$fn$;
+
+-- live e abertura dos pedidos às 14h de 12/11 (antes 15h)
+update public.black_config
+   set abre_em = '2026-11-12 14:00:00-03', live_data = 'Quinta-feira, 12/11 · 14h', atualizado_em = now()
+ where id = 1;
 
 commit;

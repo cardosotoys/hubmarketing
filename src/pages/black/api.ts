@@ -137,9 +137,9 @@ export const diaBadge = (iso: string) => {
   return { dia: d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: TZ }), mes: d.toLocaleDateString('pt-BR', { month: 'short', timeZone: TZ }).replace('.', '').toUpperCase() };
 };
 export const diaSemana = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: TZ }).replace('-feira', '-feira');
-/* "de 12/11, às 15h, a 15/11, até 23h59" — sempre a partir dos Ajustes do Hub */
+/* "de 12/11, às 14h, a 15/11, até 23h59" — sempre a partir dos Ajustes do Hub */
 export const periodoPedidos = (c: { abre_em: string; fecha_em: string } | null | undefined) =>
-  c ? `de ${diaMes(c.abre_em)}, às ${hora(c.abre_em)}, a ${diaMes(c.fecha_em)}, até ${hora(c.fecha_em)}` : 'de 12/11, às 15h, a 15/11, até 23h59';
+  c ? `de ${diaMes(c.abre_em)}, às ${hora(c.abre_em)}, a ${diaMes(c.fecha_em)}, até ${hora(c.fecha_em)}` : 'de 12/11, às 14h, a 15/11, até 23h59';
 
 /* contagem regressiva até uma data, atualizada a cada 30 s */
 export function useFaltam(alvo: string | undefined) {

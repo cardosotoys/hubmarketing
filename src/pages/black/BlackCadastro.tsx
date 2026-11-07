@@ -120,7 +120,7 @@ export default function BlackCadastro() {
                 <div className="dt"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
                 <div className="l1">Live · {cfg ? diaSemana(cfg.abre_em) : 'quinta-feira'}</div>
                 <div className="l2">Produtos, condições e pedido ao vivo</div>
-                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 15h'}</span><span>Link enviado no canal</span></div>
+                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 14h'}</span><span>Link enviado no canal</span></div>
               </div>
               <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos {periodoPedidos(cfg)},</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
               <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>
@@ -144,7 +144,7 @@ export default function BlackCadastro() {
         <div>
           <div className="cb-hi">Participe da live e do período de pedidos da Cardoso Black</div>
           <div className="cb-card cb-pad" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 15h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 14h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
             <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedidos {periodoPedidos(cfg)}</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
             <div className="cb-ev"><span className="n"><Ic n="chat" /></span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
           </div>
