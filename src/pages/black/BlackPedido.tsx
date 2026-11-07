@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
+import Cronometro from './Cronometro';
 import {
   brl, descontoPct, diaMes, ERRO_LOGIN, ipiDe, pctTxt, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
   type BlackConfig, type BlackItem, type BlackPedido as Pedido, type BlackSessao, type Carrinho,
@@ -28,6 +29,8 @@ export default function BlackPedido() {
   const clock = cfg ? (abre && abre.ms > 0 ? { label: 'abre em', value: abre.texto } : fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : { label: 'pedidos', value: 'encerrados' }) : null;
 
   if (!cfg || carregando) return <Shell sub="Pedidos somente por esta página" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
+  // antes da live: só a contagem regressiva (sem login, sem produtos). A prévia da equipe passa direto.
+  if (abre && abre.ms > 0 && !sessao?.previa) return <Shell sub="Cardoso Black · exclusivo para lojas de e-commerce" clock={clock} wide={false}><Cronometro alvo={cfg.abre_em} canal={sessao?.canal_link} cadastro={!sessao} /></Shell>;
   if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} ate={diaMes(cfg.fecha_em)} /></Shell>;
 
   // prévia da equipe: vitrine liberada antes da abertura e depois do fim, sem enviar pedido
