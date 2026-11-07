@@ -10,6 +10,7 @@ import './black/black.css';
 import { useRedonda } from './black/fonte';
 import { ABAS, abaValida, type Aba } from './black/abas';
 import { driveId, midia } from './black/api';
+import { slugDoRepresentante } from './black/representantes';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -589,7 +590,8 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
     return Object.entries(m).sort((a, b) => b[1].cli - a[1].cli);
   }, [cart, ins]);
   const copiar = async (t: string) => { try { await navigator.clipboard.writeText(t); setOk(t); setTimeout(() => setOk(''), 1500); } catch { /* sem permissão */ } };
-  const L = (r: string) => `${o}/black?r=${encodeURIComponent(r)}`;
+  // link curto quando o representante está em representantes.ts; senão o formato antigo (?r=)
+  const L = (r: string) => { const sl = slugDoRepresentante(r); return sl ? `${o}/black/r/${sl}` : `${o}/black?r=${encodeURIComponent(r)}`; };
   return (
     <>
       <div className="cbx-box">

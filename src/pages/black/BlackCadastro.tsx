@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { REPRESENTANTES } from './representantes';
 import { supabase } from '../../lib/supabaseClient';
 import Shell from './Shell';
 import { FN_CADASTRO, diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
@@ -33,10 +34,12 @@ const ERROS: Record<string, string> = {
 
 export default function BlackCadastro() {
   const [params] = useSearchParams();
-  const rep = (params.get('r') ?? '').slice(0, 60);
-  // ?n= nome da pessoa (Marcelo); ?r= nome do escritório como está na carteira (ROCHA REPRESENTACOES)
+  // link curto do representante (/black/r/marcelo-rocha) ou o formato antigo (?r=ESCRITORIO&n=Nome)
+  const { rep: slug } = useParams();
+  const doLink = slug ? REPRESENTANTES[slug.toLowerCase()] : undefined;
+  const rep = (doLink?.r ?? params.get('r') ?? '').slice(0, 60);
   const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(/-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase());
-  const repPessoa = titulo((params.get('n') ?? '').slice(0, 40).trim());
+  const repPessoa = doLink?.n ?? titulo((params.get('n') ?? '').slice(0, 40).trim());
   const repEsc = titulo(rep);
   const { cfg } = useConfig();
   const [cnpj, setCnpj] = useState('');
@@ -155,7 +158,7 @@ export default function BlackCadastro() {
         </div>
 
         <form className="cb-card cb-pad cb-form" onSubmit={enviar} noValidate>
-          {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, representante Cardoso{repPessoa && repEsc ? ` · ${repEsc}` : ''}</span></div>}
+          {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, representante Cardoso</span></div>}
           {encerrado && <div className="cb-alert err">As inscrições para a Cardoso Black estão encerradas.</div>}
 
           <div className={`cb-step${emp || consulta ? ' ok' : ''}`}><i>{emp || consulta ? '✓' : '1'}</i>Empresa</div>
