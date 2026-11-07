@@ -34,6 +34,10 @@ const ERROS: Record<string, string> = {
 export default function BlackCadastro() {
   const [params] = useSearchParams();
   const rep = (params.get('r') ?? '').slice(0, 60);
+  // ?n= nome da pessoa (Marcelo); ?r= nome do escritório como está na carteira (ROCHA REPRESENTACOES)
+  const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(/-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase());
+  const repPessoa = titulo((params.get('n') ?? '').slice(0, 40).trim());
+  const repEsc = titulo(rep);
   const { cfg } = useConfig();
   const [cnpj, setCnpj] = useState('');
   const [consultando, setConsultando] = useState(false);
@@ -151,7 +155,7 @@ export default function BlackCadastro() {
         </div>
 
         <form className="cb-card cb-pad cb-form" onSubmit={enviar} noValidate>
-          {rep && <div className="cb-rep"><span className="cb-av">{rep[0]?.toUpperCase()}</span><span>Convite de <b>{rep}</b>, representante Cardoso</span></div>}
+          {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, representante Cardoso{repPessoa && repEsc ? ` · ${repEsc}` : ''}</span></div>}
           {encerrado && <div className="cb-alert err">As inscrições para a Cardoso Black estão encerradas.</div>}
 
           <div className={`cb-step${emp || consulta ? ' ok' : ''}`}><i>{emp || consulta ? '✓' : '1'}</i>Empresa</div>
