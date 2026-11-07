@@ -96,6 +96,7 @@ export default function App() {
           <Route path="/pecas" element={<Pecas />} />
           {/* Cardoso Black: páginas públicas do lojista (sem login do Hub) */}
           <Route path="/black" element={<BlackCadastro />} />
+          <Route path="/black/r/:rep" element={<BlackCadastro />} />
           <Route path="/black/pedido" element={<BlackPedido />} />
           <Route path="/black/p/:codigo" element={<BlackFicha />} />
           <Route path="/black/senha" element={<BlackSenha />} />

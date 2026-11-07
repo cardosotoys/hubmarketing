@@ -11,7 +11,7 @@ export const FN_CADASTRO = 'smooth-endpoint';
 export const FN_MIDIA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynamic-worker`;
 
 export type BlackConfig = {
-  inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number;
+  inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number; ipi_pct?: number;
   live_data: string; agora: string; aberto: boolean; encerrado: boolean;
 };
 export type BlackSessao = {
@@ -19,7 +19,7 @@ export type BlackSessao = {
   comprador: string; email: string; celular: string; canal_link: string; live_link: string; previa?: boolean;
 };
 export type BlackItem = {
-  codigo: string; ordem: number; nome: string; familia: string; caixa: number; preco_peca: number | null;
+  codigo: string; ordem: number; nome: string; familia: string; caixa: number; preco_peca: number | null; preco_tabela?: number | null;
   disponivel: number | null; imagem: string; embalagem: string;
 };
 export type BlackMaterial = { tipo: 'foto' | 'video' | 'kit' | 'documento'; nome: string; link: string; cache: string };
@@ -34,7 +34,7 @@ export type BlackFicha = BlackItem & {
   materiais: BlackMaterial[];
 };
 export type BlackPedido = {
-  numero: string; criado_em: string; caixas: number; total: number; status: string;
+  numero: string; criado_em: string; caixas: number; total: number; ipi?: number; total_com_ipi?: number; status: string;
   itens: { codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number }[];
 };
 
@@ -137,9 +137,9 @@ export const diaBadge = (iso: string) => {
   return { dia: d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: TZ }), mes: d.toLocaleDateString('pt-BR', { month: 'short', timeZone: TZ }).replace('.', '').toUpperCase() };
 };
 export const diaSemana = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: TZ }).replace('-feira', '-feira');
-/* "de 12/11, às 15h, a 15/11, até 23h59" — sempre a partir dos Ajustes do Hub */
+/* "de 12/11, às 14h, a 15/11, até 23h59" — sempre a partir dos Ajustes do Hub */
 export const periodoPedidos = (c: { abre_em: string; fecha_em: string } | null | undefined) =>
-  c ? `de ${diaMes(c.abre_em)}, às ${hora(c.abre_em)}, a ${diaMes(c.fecha_em)}, até ${hora(c.fecha_em)}` : 'de 12/11, às 15h, a 15/11, até 23h59';
+  c ? `de ${diaMes(c.abre_em)}, às ${hora(c.abre_em)}, a ${diaMes(c.fecha_em)}, até ${hora(c.fecha_em)}` : 'de 12/11, às 14h, a 15/11, até 23h59';
 
 /* contagem regressiva até uma data, atualizada a cada 30 s */
 export function useFaltam(alvo: string | undefined) {
@@ -160,3 +160,11 @@ export function freteTexto(uf: string, cidade: string, total: number, limite: nu
   if (uf === 'SP' || uf === 'RJ') return total >= limite ? [`Frete grátis: pedido acima de R$ ${lim}`, true] : [`Frete grátis a partir de R$ ${lim} · faltam ${brl(limite - total)}`, false];
   return ['Transportadora, frete por conta da loja', false];
 }
+
+/** IPI da Black: os preços são líquidos e o IPI entra uma vez, sobre o pedido inteiro, no fechamento */
+export const ipiDe = (produtos: number, pct = 6.5) => Math.round(produtos * pct) / 100;
+export const pctTxt = (n: number) => `${String(n).replace('.', ',')}%`;
+
+/** % de desconto da Black sobre a tabela atual (só quando os dois preços existem e a Black é menor) */
+export const descontoPct = (black?: number | null, tabela?: number | null) =>
+  black && tabela && tabela > black ? Math.round((1 - black / tabela) * 100) : 0;

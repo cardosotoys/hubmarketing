@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { REPRESENTANTES } from './representantes';
 import { supabase } from '../../lib/supabaseClient';
 import Shell from './Shell';
 import { FN_CADASTRO, diaBadge, diaMes as diaMesCurto, diaSemana, digitos, hora, maskCnpj, maskFone, periodoPedidos, useConfig } from './api';
@@ -33,7 +34,13 @@ const ERROS: Record<string, string> = {
 
 export default function BlackCadastro() {
   const [params] = useSearchParams();
-  const rep = (params.get('r') ?? '').slice(0, 60);
+  // link curto do representante (/black/r/marcelo-rocha) ou o formato antigo (?r=ESCRITORIO&n=Nome)
+  const { rep: slug } = useParams();
+  const doLink = slug ? REPRESENTANTES[slug.toLowerCase()] : undefined;
+  const rep = (doLink?.r ?? params.get('r') ?? '').slice(0, 60);
+  const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(/-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase());
+  const repPessoa = doLink?.n ?? titulo((params.get('n') ?? '').slice(0, 40).trim());
+  const repEsc = titulo(rep);
   const { cfg } = useConfig();
   const [cnpj, setCnpj] = useState('');
   const [consultando, setConsultando] = useState(false);
@@ -120,7 +127,7 @@ export default function BlackCadastro() {
                 <div className="dt"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
                 <div className="l1">Live · {cfg ? diaSemana(cfg.abre_em) : 'quinta-feira'}</div>
                 <div className="l2">Produtos, condições e pedido ao vivo</div>
-                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 15h'}</span><span>Link enviado no canal</span></div>
+                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 14h'}</span><span>Link enviado no canal</span></div>
               </div>
               <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos {periodoPedidos(cfg)},</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
               <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>
@@ -144,14 +151,14 @@ export default function BlackCadastro() {
         <div>
           <div className="cb-hi">Participe da live e do período de pedidos da Cardoso Black</div>
           <div className="cb-card cb-pad" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 15h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
+            <div className="cb-ev"><span className="n"><Ic n="laptop" /></span><div><b>Live · {cfg?.live_data ?? 'Quinta-feira, 12/11 · 14h'}</b><span>produtos, condições e pedido ao vivo</span></div></div>
             <div className="cb-ev"><span className="n"><Ic n="cart" /></span><div><b>Pedidos {periodoPedidos(cfg)}</b><span>somente pelo link · caixa fechada · mínimo de R$ {(cfg?.pedido_minimo ?? 2500).toLocaleString('pt-BR')}</span></div></div>
             <div className="cb-ev"><span className="n"><Ic n="chat" /></span><div><b>Canal no WhatsApp</b><span>link da live e avisos, sem grupo</span></div></div>
           </div>
         </div>
 
         <form className="cb-card cb-pad cb-form" onSubmit={enviar} noValidate>
-          {rep && <div className="cb-rep"><span className="cb-av">{rep[0]?.toUpperCase()}</span><span>Convite de <b>{rep}</b>, representante Cardoso</span></div>}
+          {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, representante Cardoso</span></div>}
           {encerrado && <div className="cb-alert err">As inscrições para a Cardoso Black estão encerradas.</div>}
 
           <div className={`cb-step${emp || consulta ? ' ok' : ''}`}><i>{emp || consulta ? '✓' : '1'}</i>Empresa</div>
