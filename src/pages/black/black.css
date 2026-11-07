@@ -569,3 +569,16 @@
 .cb-price .de em, .cb-pc .pr .de em { font-style: normal; background: var(--navy); color: #fff; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 900; }
 .cb-price .de { font-size: 14px; margin-bottom: 2px; }
 .cb-price .de em { font-size: 13px; background: var(--red); }
+/* pré-cadastro: formulário à vista sem rolar (celular) · título+destaques | formulário | detalhes */
+.cb-pre { grid-template-areas: 'hd' 'form' 'det'; gap: 14px; }
+.cb-pre-hd { grid-area: hd; } .cb-pre-form { grid-area: form; } .cb-pre-det { grid-area: det; }
+@media (min-width: 900px) { .cb-pre { grid-template-areas: 'hd form' 'det form'; grid-template-rows: auto 1fr; gap: 16px 22px; } }
+.cb-pre .cb-hi { margin-bottom: 10px; }
+.cb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-chips span { display: inline-flex; align-items: center; gap: 6px; background: #fff; border-radius: 999px; padding: 6px 11px 6px 9px; font-size: 13px; font-weight: 800; color: var(--navy); box-shadow: inset 0 0 0 1.5px var(--line); }
+.cb-chips span .bi { width: 15px; height: 15px; }
+.cb-chips span.hot { background: var(--red); color: #fff; box-shadow: none; }
+@media (max-width: 640px) {
+  .cb-pre .cb-hi { font-size: 22px; }
+  .cb-pre-form.cb-pad { padding-top: 16px; padding-bottom: 16px; }
+}
