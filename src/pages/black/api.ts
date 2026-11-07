@@ -19,7 +19,7 @@ export type BlackSessao = {
   comprador: string; email: string; celular: string; canal_link: string; live_link: string; previa?: boolean;
 };
 export type BlackItem = {
-  codigo: string; ordem: number; nome: string; familia: string; caixa: number; preco_peca: number | null;
+  codigo: string; ordem: number; nome: string; familia: string; caixa: number; preco_peca: number | null; preco_tabela?: number | null;
   disponivel: number | null; imagem: string; embalagem: string;
 };
 export type BlackMaterial = { tipo: 'foto' | 'video' | 'kit' | 'documento'; nome: string; link: string; cache: string };
@@ -164,3 +164,7 @@ export function freteTexto(uf: string, cidade: string, total: number, limite: nu
 /** IPI da Black: os preços são líquidos e o IPI entra uma vez, sobre o pedido inteiro, no fechamento */
 export const ipiDe = (produtos: number, pct = 6.5) => Math.round(produtos * pct) / 100;
 export const pctTxt = (n: number) => `${String(n).replace('.', ',')}%`;
+
+/** % de desconto da Black sobre a tabela atual (só quando os dois preços existem e a Black é menor) */
+export const descontoPct = (black?: number | null, tabela?: number | null) =>
+  black && tabela && tabela > black ? Math.round((1 - black / tabela) * 100) : 0;

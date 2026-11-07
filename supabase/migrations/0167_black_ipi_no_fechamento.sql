@@ -1,6 +1,7 @@
 -- Cardoso Black: preços líquidos (TAB 225 LIVE BLACK) + IPI de 6,5% somado só no fechamento, sobre o pedido inteiro.
 -- black_pedidos.total continua sendo o valor dos produtos (base do mínimo de R$ 2.500 e do frete grátis);
 -- ipi e total_com_ipi guardam o imposto e o valor final do pedido.
+-- black_produtos.preco_tabela: preço da tabela atual, para mostrar “de/por” e o % de desconto.
 -- black_produtos.nome: nome de vitrine da Black (da TAB); quando vazio, usa o nome do cadastro do produto.
 begin;
 
@@ -104,6 +105,8 @@ as $fn$
 $fn$;
 
 alter table public.black_produtos add column if not exists nome text not null default '';
+-- preço por peça na tabela atual (o “de” do “de/por”); só aparece junto com o preço da Black
+alter table public.black_produtos add column if not exists preco_tabela numeric(12, 2) check (preco_tabela is null or preco_tabela > 0);
 
 create or replace function public.black_catalogo(p_token text)
 returns json language sql stable security definer set search_path = public
@@ -115,6 +118,7 @@ as $fn$
       'caixa', coalesce(bp.caixa_qtd, p.carton_quantity, 1),
       'preco_peca', case when (select ok from logado) and public.black_preco_visivel(p_token)
                          then public.black_preco(bp.codigo, (select uf from logado)) end,
+      'preco_tabela', case when (select ok from logado) and public.black_preco_visivel(p_token) then bp.preco_tabela end,
       'disponivel', public.black_disponivel(bp.codigo),
       'imagem', coalesce(p.image_url, ''), 'embalagem', coalesce(p.packaging_image_url, ''))
     order by bp.ordem, bp.codigo), '[]'::json)
@@ -135,6 +139,7 @@ begin
     'caixa', coalesce(bp.caixa_qtd, p.carton_quantity, 1),
     'preco_peca', case when v_ins is not null and public.black_preco_visivel(p_token)
                        then public.black_preco(bp.codigo, (select uf from public.black_inscritos where id = v_ins)) end,
+    'preco_tabela', case when v_ins is not null and public.black_preco_visivel(p_token) then bp.preco_tabela end,
     'disponivel', public.black_disponivel(bp.codigo),
     'imagem', coalesce(p.image_url, ''), 'embalagem', coalesce(p.packaging_image_url, ''),
     'descricao', coalesce(p.description, ''), 'diferenciais', coalesce(to_json(p.differentials), '[]'::json),

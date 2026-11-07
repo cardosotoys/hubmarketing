@@ -563,3 +563,9 @@
   .cbx-mtabs button.on { background: #DA3A2F; color: #fff; }
 }
 @media print { .cbx-side, .cbx-mtabs, .cbx-ht .r { display: none !important; } .cbx-app { display: block; } }
+/* de/por: preço da tabela atual riscado + % de desconto da Black */
+.cb-price .de, .cb-pc .pr .de { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink3); font-weight: 700; }
+.cb-price .de s, .cb-pc .pr .de s { color: var(--ink3); }
+.cb-price .de em, .cb-pc .pr .de em { font-style: normal; background: var(--navy); color: #fff; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 900; }
+.cb-price .de { font-size: 14px; margin-bottom: 2px; }
+.cb-price .de em { font-size: 13px; background: var(--red); }

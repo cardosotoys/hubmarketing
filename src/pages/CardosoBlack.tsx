@@ -444,7 +444,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
     const pos = (v: number | null) => (v !== null && v > 0 ? v : null);
     const linhas = L.map((r, i) => ({
       codigo: (r.codigo || r.ref || r.cod || '').trim().replace(/^\D+/, ''),
-      ordem: Math.round(num(r.ordem) ?? i + 1), familia: r.familia || r.fam || '', nome: (r.nome || '').trim(), preco_peca: pos(num(r.preco_peca || r.preco || r.black)),
+      ordem: Math.round(num(r.ordem) ?? i + 1), familia: r.familia || r.fam || '', nome: (r.nome || '').trim(), preco_tabela: pos(num(r.preco_tabela || r.tabela || r.tabela_atual)), preco_peca: pos(num(r.preco_peca || r.preco || r.black)),
       caixa_qtd: pos(num(r.caixa_qtd || r.caixa || r.cx)) === null ? null : Math.round(num(r.caixa_qtd || r.caixa || r.cx)!),
       estoque_caixas: (() => { const e = num(r.estoque_caixas || r.estoque); return e === null || e < 0 ? null : Math.round(e); })(),
       // coluna ativo opcional: 0 / não / nao / false tira o produto da Black sem apagar
@@ -452,7 +452,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
     })).filter((r) => r.codigo);
     // coluna que não veio na planilha não apaga o que já está no Hub (ex.: cota de estoque digitada à mão)
     const tem = new Set(Object.keys(L[0] ?? {}).map((k) => k.trim().toLowerCase()));
-    const veio: Record<string, string[]> = { nome: ['nome'], ordem: ['ordem'], familia: ['familia', 'fam'], preco_peca: ['preco_peca', 'preco', 'black'], caixa_qtd: ['caixa_qtd', 'caixa', 'cx'], estoque_caixas: ['estoque_caixas', 'estoque'] };
+    const veio: Record<string, string[]> = { nome: ['nome'], preco_tabela: ['preco_tabela', 'tabela', 'tabela_atual'], ordem: ['ordem'], familia: ['familia', 'fam'], preco_peca: ['preco_peca', 'preco', 'black'], caixa_qtd: ['caixa_qtd', 'caixa', 'cx'], estoque_caixas: ['estoque_caixas', 'estoque'] };
     for (const r of linhas) for (const [k, cols] of Object.entries(veio)) if (!cols.some((c) => tem.has(c))) delete (r as Record<string, unknown>)[k];
     const semCaixa = linhas.filter((r) => 'caixa_qtd' in r && r.caixa_qtd === null).map((r) => r.codigo);
     // o catálogo do Hub guarda o código com 4 dígitos (0275); a TAB às vezes vem sem o zero
@@ -469,7 +469,7 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
     <>
       <div className="cbx-box">
         <h3>Importar a TAB da Black (CSV)</h3>
-        <p className="cbx-hint">Colunas: <b>codigo; nome; ordem; familia; preco_peca; caixa_qtd; estoque_caixas; ativo</b>. Nome é o nome de vitrine na Black (vazio = nome do cadastro). Preço por peça é o preço líquido (o IPI soma no fechamento do pedido). Ativo = 0 tira o produto da Black. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
+        <p className="cbx-hint">Colunas: <b>codigo; nome; ordem; familia; preco_peca; preco_tabela; caixa_qtd; estoque_caixas; ativo</b>. Preço de tabela = o “de” do “de/por”. Nome é o nome de vitrine na Black (vazio = nome do cadastro). Preço por peça é o preço líquido (o IPI soma no fechamento do pedido). Ativo = 0 tira o produto da Black. Vazio = usa a Tabela de Preços da região do cliente com o desconto dos Ajustes. Caixa vazia = caixa master da ficha técnica. Estoque = cota da Black (vazio = sem cota; o limite passa a ser o saldo do Guarani).</p>
         <div className="cbx-acts" style={{ marginTop: 10 }}>
           <label className="btn">Escolher arquivo<input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = ''; }} /></label>
           <input className="tp-search" style={{ maxWidth: 140 }} placeholder="Código" value={novo.codigo} onChange={(e) => setNovo({ ...novo, codigo: e.target.value })} />
