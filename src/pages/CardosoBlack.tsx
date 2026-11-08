@@ -590,6 +590,18 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
     return Object.entries(m).sort((a, b) => b[1].cli - a[1].cli);
   }, [cart, ins]);
   const copiar = async (t: string) => { try { await navigator.clipboard.writeText(t); setOk(t); setTimeout(() => setOk(''), 1500); } catch { /* sem permissão */ } };
+  // aberturas do pré-cadastro por link ('' = link geral), contadas a partir da versão de 07/11
+  type Ac = { rep: string; aberturas: number; pessoas: number };
+  const [ac, setAc] = useState<Record<string, Ac>>({});
+  useEffect(() => {
+    supabase.rpc('black_acessos_resumo').then(({ data }) => setAc(Object.fromEntries((Array.isArray(data) ? (data as Ac[]) : []).map((x) => [x.rep, x]))));
+  }, []);
+  const cadPorLink = useMemo(() => { const m: Record<string, number> = {}; ins.forEach((x) => { const k = x.rep_link ?? ''; m[k] = (m[k] ?? 0) + 1; }); return m; }, [ins]);
+  const comAcesso = Object.keys(ac).filter((k) => k && !reps.some(([r]) => r === k));
+  const linhas: [string, { cli: number; ins: number }][] = [...reps, ...comAcesso.map((k) => [k, { cli: 0, ins: 0 }] as [string, { cli: number; ins: number }])]
+    .sort((a, b) => (ac[b[0]]?.aberturas ?? 0) - (ac[a[0]]?.aberturas ?? 0) || b[1].cli - a[1].cli);
+  const totAb = Object.values(ac).reduce((t, x) => t + Number(x.aberturas), 0);
+  const totPe = Object.values(ac).reduce((t, x) => t + Number(x.pessoas), 0);
   // link curto quando o representante está em representantes.ts; senão o formato antigo (?r=)
   const L = (r: string) => { const sl = slugDoRepresentante(r); return sl ? `${o}/black/r/${sl}` : `${o}/black?r=${encodeURIComponent(r)}`; };
   return (
@@ -599,14 +611,21 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
         <div className="cbx-acts">
           {[['Pré-cadastro', `${o}/black`], ['Página de pedido', `${o}/black/pedido`]].map(([l, u]) => <button key={u} className="btn ghost" onClick={() => copiar(u)}>{ok === u ? 'Copiado' : `Copiar · ${l}`}</button>)}
           <button className="btn ghost" onClick={() => baixarCsv('links-qr-produtos.csv', [['ordem', 'codigo', 'produto', 'link_qr'], ...bps.filter((b) => b.ativo).map((b) => [b.ordem, b.codigo, b.nome || porCodigo[b.codigo]?.name || '', `${o}/black/p/${b.codigo}?live=1`])])}>Baixar links dos QR (CSV)</button>
-          <button className="btn ghost" onClick={() => baixarCsv('links-representantes.csv', [['representante', 'clientes', 'inscritos', 'link'], ...reps.map(([r, v]) => [r, v.cli, v.ins, L(r)])])}>Baixar links dos representantes (CSV)</button>
+          <button className="btn ghost" onClick={() => baixarCsv('links-representantes.csv', [['representante', 'clientes', 'aberturas', 'pessoas', 'cadastros_pelo_link', 'inscritos', 'link'], ...linhas.map(([r, v]) => [r, v.cli, Number(ac[r]?.aberturas ?? 0), Number(ac[r]?.pessoas ?? 0), cadPorLink[r] ?? 0, v.ins, L(r)])])}>Baixar links dos representantes (CSV)</button>
         </div>
+        <div className="cbx-kpis" style={{ marginTop: 12 }}>
+          <Kpi l="Aberturas do pré-cadastro" v={int(totAb)} c="#DA3A2F" />
+          <Kpi l="Pessoas que abriram" v={int(totPe)} c="#0A2530" />
+          <Kpi l="Link geral (sem representante)" v={int(Number(ac['']?.aberturas ?? 0))} c="#1F7F88" />
+          <Kpi l="Pré-cadastros enviados" v={int(ins.length)} c="#4CBDC7" />
+        </div>
+        <p className="cbx-hint" style={{ marginTop: 10 }}>Aberturas contadas a partir de 07/11 à noite. A mesma pessoa abrindo de novo em menos de 30 minutos conta uma vez; “pessoas” = navegadores diferentes.</p>
         <p className="cbx-hint" style={{ marginTop: 10 }}>Os QR da live apontam para {o}/black/p/&lt;código&gt;?live=1 (a ficha mostra “Visto agora na live”). Se o endereço do Hub mudar (ex.: app.cardosotoys.com.br), gere os QR de novo.</p>
       </div>
       <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
         <table className="cbx-table">
-          <thead><tr><th>Representante</th><th className="num">Clientes</th><th className="num">Inscritos</th><th>Link de pré-cadastro</th><th /></tr></thead>
-          <tbody>{reps.map(([r, v]) => <tr key={r}><td><b>{r}</b></td><td className="num">{int(v.cli)}</td><td className="num">{int(v.ins)}</td><td><small style={{ wordBreak: 'break-all' }}>{L(r)}</small></td><td><button className="btn sm" onClick={() => copiar(L(r))}>{ok === L(r) ? 'Copiado' : 'Copiar'}</button></td></tr>)}</tbody>
+          <thead><tr><th>Representante</th><th className="num">Clientes</th><th className="num">Aberturas</th><th className="num">Pessoas</th><th className="num">Cadastros pelo link</th><th className="num">Inscritos (total)</th><th>Link de pré-cadastro</th><th /></tr></thead>
+          <tbody>{linhas.map(([r, v]) => <tr key={r}><td><b>{r}</b></td><td className="num">{int(v.cli)}</td><td className="num"><b>{int(Number(ac[r]?.aberturas ?? 0))}</b></td><td className="num">{int(Number(ac[r]?.pessoas ?? 0))}</td><td className="num">{int(cadPorLink[r] ?? 0)}</td><td className="num">{int(v.ins)}</td><td><small style={{ wordBreak: 'break-all' }}>{L(r)}</small></td><td><button className="btn sm" onClick={() => copiar(L(r))}>{ok === L(r) ? 'Copiado' : 'Copiar'}</button></td></tr>)}</tbody>
         </table>
       </div>
     </>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { REPRESENTANTES } from './representantes';
 import { supabase } from '../../lib/supabaseClient';
@@ -41,6 +41,12 @@ export default function BlackCadastro() {
   const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(/-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase());
   const repPessoa = doLink?.n ?? titulo((params.get('n') ?? '').slice(0, 40).trim());
   const repEsc = titulo(rep);
+  // conta a abertura do link (geral ou do representante); id anônimo do navegador separa aberturas de pessoas
+  useEffect(() => {
+    let vis = '';
+    try { vis = localStorage.getItem('cb-vis') ?? ''; if (!vis) { vis = crypto.randomUUID(); localStorage.setItem('cb-vis', vis); } } catch { /* sem armazenamento */ }
+    supabase.rpc('black_registrar_acesso', { p_pagina: 'precadastro', p_rep: rep, p_visitante: vis }).then(() => undefined, () => undefined);
+  }, [rep]);
   const { cfg } = useConfig();
   const [cnpj, setCnpj] = useState('');
   const [consultando, setConsultando] = useState(false);
