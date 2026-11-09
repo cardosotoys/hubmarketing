@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CommercialBanner } from '../../types/database';
 import { BannerArt } from './ComercialView';
 import NetworkPreview from './NetworkPreview';
+import { normalizeUrl } from '../../lib/url';
 import { addDays, addMonths, brShort, dowIndex, driveThumb, monthName, parseYmd, slug, type PreviewItem } from './shared';
 
 /* O cenário final, igual para o link sem login e para a prévia dentro do Hub.
@@ -155,7 +156,7 @@ function Comercial({ data }: { data: FinalData }) {
                   <span className="sp-pt-ref">{ms[0].product_code ? `REF ${ms[0].product_code}` : 'Campanha'}</span>
                   <b>{ms[0].product_name ?? ms[0].subject}</b>
                   <span className="sp-pt-f">{[...new Set(ms.map((m) => KIND[m.kind]))].join(' · ')}</span>
-                  <span className="sp-pt-links">{ms.map((m) => <a key={m.id} className="sp-linkbtn" href={m.drive_url} target="_blank" rel="noreferrer">{m.name}</a>)}</span>
+                  <span className="sp-pt-links">{ms.map((m) => <a key={m.id} className="sp-linkbtn" href={normalizeUrl(m.drive_url)} target="_blank" rel="noreferrer">{m.name}</a>)}</span>
                 </div>
               </div>
             ))}

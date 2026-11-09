@@ -208,7 +208,7 @@ export default function MateriaisView({ materials, products, board, profiles, me
                       </div>
                       <span className={`sp-state t-${MST[m.status].tone}`}>{MST[m.status].label}</span>
                       <div className="sp-cacts">
-                        {m.drive_url && <a className="sp-ebtn" href={m.drive_url} target="_blank" rel="noreferrer">Drive</a>}
+                        {m.drive_url && <a className="sp-ebtn" href={normalizeUrl(m.drive_url)} target="_blank" rel="noreferrer">Drive</a>}
                         {m.task_id && <a className="sp-ebtn" href={`/demandas?task=${m.task_id}`}>Demanda</a>}
                         {m.status === 'pedido' && !m.task_id && <button className="sp-ebtn" disabled={busy} onClick={() => run(() => supabase.from('content_materials').update({ status: 'producao' }).eq('id', m.id), 'Em produção.')}>Começar</button>}
                         {(m.status === 'pedido' || m.status === 'producao') && <button className="sp-ebtn" onClick={() => setLinkFor({ id: m.id, url: '' })}>Colar link e enviar</button>}

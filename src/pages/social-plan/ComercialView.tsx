@@ -148,7 +148,7 @@ function Demandas({ materials, banners, board, products, profiles, deadlines, ca
         <b>{p ? `${p.code} · ${p.name}` : m.subject}</b>
         <span>{m.name}</span>
         <div className="sp-cacts">
-          {m.drive_url && <a className="sp-ebtn" href={m.drive_url} target="_blank" rel="noreferrer">Drive</a>}
+          {m.drive_url && <a className="sp-ebtn" href={normalizeUrl(m.drive_url)} target="_blank" rel="noreferrer">Drive</a>}
           {m.status === 'aguardando' && canRelease && <button className="sp-ebtn prim" onClick={() => releaseMat(m)}>Liberar</button>}
           {m.status !== 'aguardando' && m.status !== 'liberado' && <span className="sp-state">{MST[m.status].label}</span>}
         </div>
