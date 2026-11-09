@@ -175,7 +175,7 @@ export default function BlackCadastro() {
         </div>
 
         <form className="cb-card cb-pad cb-form cb-pre-form" onSubmit={enviar} noValidate>
-          {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, representante Cardoso</span></div>}
+          {rep && <div className="cb-rep"><span className="cb-av">{(repPessoa || repEsc)[0]}</span><span>Convite de <b>{repPessoa || repEsc}</b>, {/ e /.test(repPessoa) ? 'representantes' : 'representante'} Cardoso</span></div>}
           {encerrado && <div className="cb-alert err">As inscrições para a Cardoso Black estão encerradas.</div>}
 
           <div className={`cb-step${emp || consulta ? ' ok' : ''}`}><i>{emp || consulta ? '✓' : '1'}</i>Empresa</div>
