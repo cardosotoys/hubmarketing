@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { logActivity } from '../lib/activityLog';
+import { normalizeUrl } from '../lib/url';
 import Loading from '../components/Loading';
 import Modal from '../components/Modal';
 import ProductCombobox from '../components/ProductCombobox';
@@ -343,7 +344,7 @@ function Detail({ item, brands, profiles, products, me, profById, media, approva
           <h4>{stageDef.gate === 'conteudo' ? '👁️ Aceite do planejado' : stageDef.gate === 'arte' ? '🖼️ Aprovação da arte' : '📤 Aprovação no mLabs'}</h4>
           {stageDef.gate === 'mlabs' && (
             <div style={{ marginBottom: 10 }}>
-              {f.mlabs_url ? <a className="btn sm" href={f.mlabs_url} target="_blank" rel="noreferrer">📤 Abrir no mLabs →</a> : <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Cole o link do mLabs no campo acima para o aprovador acessar.</span>}
+              {f.mlabs_url ? <a className="btn sm" href={normalizeUrl(f.mlabs_url)} target="_blank" rel="noreferrer">📤 Abrir no mLabs →</a> : <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Cole o link do mLabs no campo acima para o aprovador acessar.</span>}
               <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>O aprovador faz os ajustes no mLabs e sinaliza aqui só se está <b>aprovado</b> ou <b>tem alteração</b>.</p>
             </div>
           )}
@@ -434,7 +435,7 @@ function ApprovalCard({ item, appr, brand, thumb, onOpen, onDecide }: { item: Co
         <div onClick={onOpen} style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15, lineHeight: 1.25 }}>{item.title}</div>
         {item.objective && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>🎯 {item.objective}</div>}
         {item.copy && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 6, whiteSpace: 'pre-wrap', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.copy}</div>}
-        {appr.gate === 'mlabs' && item.mlabs_url && <a className="btn ghost sm" href={item.mlabs_url} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: 'inline-block' }}>📤 Abrir no mLabs →</a>}
+        {appr.gate === 'mlabs' && item.mlabs_url && <a className="btn ghost sm" href={normalizeUrl(item.mlabs_url)} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: 'inline-block' }}>📤 Abrir no mLabs →</a>}
         {asking ? (
           <div style={{ marginTop: 10 }}>
             <input placeholder="O que ajustar?" value={note} onChange={(e) => setNote(e.target.value)} />
