@@ -6,6 +6,7 @@ export const REPRESENTANTES: Record<string, { r: string; n: string }> = {
   'alexandre-boo': { r: 'BOO REPR.', n: 'Alexandre' },
   'alexandre-lufada': { r: 'LUFADA', n: 'Alexandre' },
   'alexandre-trade': { r: 'TRADE BRASIL - ALEXANDRE', n: 'Alexandre' },
+  'aldair-bras': { r: 'ALDAIR BRAS', n: 'Aldair Brás' },
   'altair-poli': { r: 'POLI-MIX', n: 'Altair' },
   'andreia-carapanari': { r: 'CARAPANARI', n: 'Andréia' },
   'angela': { r: 'ANGELA', n: 'Ângela' },
