@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
 import Cronometro from './Cronometro';
+import Encerrada from './Encerrada';
 import {
   brl, descontoPct, diaMes, ERRO_LOGIN, ipiDe, pctTxt, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
   type BlackConfig, type BlackItem, type BlackPedido as Pedido, type BlackSessao, type Carrinho,
@@ -25,12 +26,16 @@ export default function BlackPedido() {
   const { token, sessao, carregando, entrar, sair } = useSessao();
   const abre = useFaltam(cfg?.abre_em);
   const fecha = useFaltam(cfg?.fecha_em);
+  const [params] = useSearchParams();
 
   const clock = cfg ? (abre && abre.ms > 0 ? { label: 'abre em', value: abre.texto } : fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : { label: 'pedidos', value: 'encerrados' }) : null;
 
   if (!cfg || carregando) return <Shell sub="Pedidos somente por esta página" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   // antes da live: só a contagem regressiva (sem login, sem produtos). A prévia da equipe passa direto.
   if (abre && abre.ms > 0 && !sessao?.previa) return <Shell sub="Cardoso Black · exclusivo para lojas de e-commerce" clock={clock} wide={false}><Cronometro alvo={cfg.abre_em} canal={sessao?.canal_link} cadastro={!sessao} /></Shell>;
+  // depois das 19h (fim da live): o link fecha. Quem está logado ainda vê os próprios pedidos.
+  const fechou = fecha !== null && fecha.ms <= 0 && !sessao?.previa;
+  if (fechou && !sessao) return <Shell sub="Cardoso Black" clock={clock} wide={false}><Encerrada fim={cfg.fecha_em} /></Shell>;
   if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} ate={diaMes(cfg.fecha_em)} /></Shell>;
 
   // prévia da equipe: vitrine liberada antes da abertura e depois do fim, sem enviar pedido
@@ -39,7 +44,7 @@ export default function BlackPedido() {
   const depois = !previa && fecha !== null && fecha.ms <= 0;
   return (
     <Shell sub={`Pedido somente por esta página · caixa fechada · mínimo de ${brl(cfg.pedido_minimo)}`} clock={clock}>
-      <Loja token={token} sessao={sessao} cfg={cfg} antes={antes} encerrado={depois} previa={previa} sair={sair} />
+      {depois && params.get('v') !== 'pedidos' && params.get('v') !== 'conta' ? <Encerrada fim={cfg.fecha_em} logado /> : <Loja token={token} sessao={sessao} cfg={cfg} antes={antes} encerrado={depois} previa={previa} sair={sair} />}
     </Shell>
   );
 }

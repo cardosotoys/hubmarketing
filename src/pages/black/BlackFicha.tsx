@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
 import { Ic, Sv } from './Icones';
 import Cronometro from './Cronometro';
+import Encerrada from './Encerrada';
 import {
   brl, descontoPct, pctTxt, cachePublico, driveId, midiaRapida, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
   type BlackFicha as Ficha, type BlackItem,
@@ -28,6 +29,7 @@ export default function BlackFicha() {
   const [f, setF] = useState<Ficha | null | undefined>(undefined);
   const [sel, setSel] = useState(0);
   const [fechada, setFechada] = useState(''); // vitrine fechada: data de abertura
+  const [encerrada, setEncerrada] = useState(''); // live terminou: data de fim
   const [proporcao, setProporcao] = useState(9 / 16); // Reels; troca sozinho se o vídeo for deitado (16:9)
   const [falhou, setFalhou] = useState<Set<string>>(new Set());
   const marcarFalha = (src: string) => { setFalhou((f) => new Set(f).add(src)); setSel(0); };
@@ -53,8 +55,9 @@ export default function BlackFicha() {
   useEffect(() => {
     if (carregando) return;
     supabase.rpc('black_produto', { p_codigo: codigo, p_token: token }).then(({ data }) => {
-      const d = data as (Ficha & { bloqueado?: boolean; abre_em?: string }) | null;
+      const d = data as (Ficha & { bloqueado?: boolean; abre_em?: string; encerrado?: boolean; fecha_em?: string }) | null;
       if (d?.bloqueado) { setFechada(d.abre_em ?? ''); return; } // antes da live: só a contagem
+      if (d?.encerrado) { setEncerrada(d.fecha_em ?? ''); return; } // depois das 19h: link fechado
       setF(d ?? null);
     });
   }, [codigo, token, carregando]);
@@ -81,6 +84,7 @@ export default function BlackFicha() {
 
   const capa = midias.find((x) => x.tipo === 'img')?.thumb;
   const clock = fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : null;
+  if (encerrada) return <Shell sub="Ficha do produto" unico><Encerrada fim={encerrada} logado={!!sessao} /></Shell>;
   if (fechada) return <Shell sub="Ficha do produto" unico><Cronometro alvo={fechada} canal={sessao?.canal_link} cadastro={!sessao} /></Shell>;
   if (f === undefined || carregando) return <Shell sub="Ficha do produto" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   if (f === null) return <Shell sub="Ficha do produto"><div className="cb-card cb-pad cb-narrow cb-res"><h2>Produto não encontrado</h2><p>Este produto não faz parte da Cardoso Black.</p><Link className="cb-btn dk" to="/black/pedido">Ir para a página de pedido</Link></div></Shell>;
