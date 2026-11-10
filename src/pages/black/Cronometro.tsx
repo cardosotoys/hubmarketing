@@ -7,7 +7,7 @@ import { fmtData } from './api';
    Ao zerar, a página recarrega sozinha e os produtos aparecem. */
 export default function Cronometro({ alvo, canal, cadastro = true }: { alvo: string; canal?: string; cadastro?: boolean }) {
   const [agora, setAgora] = useState(Date.now());
-  const recarregou = useRef(false);
+  const recarregou = useRef(new Date(alvo).getTime() <= Date.now()); // já passou ao abrir: não recarrega em loop
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 1000); return () => clearInterval(t); }, []);
   const ms = Math.max(0, new Date(alvo).getTime() - agora);
   useEffect(() => {
