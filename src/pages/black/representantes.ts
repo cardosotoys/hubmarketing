@@ -9,7 +9,8 @@ export const REPRESENTANTES: Record<string, { r: string; n: string }> = {
   'aldair-bras': { r: 'ALDAIR BRAS', n: 'Aldair Brás' },
   'altair-poli': { r: 'POLI-MIX', n: 'Altair' },
   'andreia-carapanari': { r: 'CARAPANARI', n: 'Andréia' },
-  'angela': { r: 'ANGELA', n: 'Ângela' },
+  'angela': { r: 'ANGELA', n: 'Ângela e Silvio' }, // link antigo, continua valendo
+  'angela-e-silvio': { r: 'ANGELA', n: 'Ângela e Silvio' },
   'antonio-grm': { r: 'GRM MIX-TONINHO', n: 'Antônio' },
   'armando-aeb': { r: 'A E B', n: 'Armando' },
   'bruno': { r: 'BRUNO', n: 'Bruno' },
@@ -63,4 +64,4 @@ export const REPRESENTANTES: Record<string, { r: string; n: string }> = {
   'welington-wlira': { r: 'W.LIRA', n: 'Welington' },
 };
 
-export const slugDoRepresentante = (r: string) => Object.entries(REPRESENTANTES).find(([, v]) => v.r === r)?.[0];
+export const slugDoRepresentante = (r: string) => (r === 'ANGELA' ? 'angela-e-silvio' : Object.entries(REPRESENTANTES).find(([, v]) => v.r === r)?.[0]);
