@@ -3,7 +3,8 @@
 // Representante novo: acrescente uma linha aqui (o Hub mostra o link pronto em Cardoso Black → Links e QR).
 export const REPRESENTANTES: Record<string, { r: string; n: string }> = {
   'alex-artell': { r: 'ARTELL', n: 'Alex' },
-  'alexandre-boo': { r: 'BOO REPR.', n: 'Alexandre' },
+  'alessandro-boo': { r: 'BOO REPR.', n: 'Alessandro' },
+  'alexandre-boo': { r: 'BOO REPR.', n: 'Alessandro' }, // link antigo, mantido
   'alexandre-lufada': { r: 'LUFADA', n: 'Alexandre' },
   'alexandre-trade': { r: 'TRADE BRASIL - ALEXANDRE', n: 'Alexandre' },
   'aldair-bras': { r: 'ALDAIR BRAS', n: 'Aldair Brás' },
