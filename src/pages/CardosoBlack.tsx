@@ -154,6 +154,7 @@ export default function CardosoBlack() {
             {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
             {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
+            {aba === 'carrinhos' && <Carrinhos />}
             {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
             {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
             {aba === 'links' && <Links cart={cart} ins={ins} bps={bps} porCodigo={porCodigo} />}
@@ -314,6 +315,102 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
 }
 
 /* ================= Pedidos ================= */
+type CarRel = {
+  id: string; criado_em: string; atualizado_em: string; visto_em: string; finalizado_em: string | null;
+  situacao: 'ativo' | 'abandonado' | 'finalizado' | 'vazio'; fantasia: string; razao_social: string; cnpj: string; cidade: string; uf: string;
+  representante: string; comprador: string; celular: string; email: string; pedido: string | null; caixas: number; valor: number;
+  itens: { codigo: string; nome: string; caixas: number }[]; mudancas: number; retirados: { codigo: string; max: number }[];
+};
+const SIT: Record<CarRel['situacao'], string> = { ativo: 'Em andamento', abandonado: 'Abandonado', finalizado: 'Finalizado', vazio: 'Vazio' };
+const SITC: Record<CarRel['situacao'], string> = { ativo: '#F2B84B', abandonado: '#DA3A2F', finalizado: '#1F7F88', vazio: '#7C8A90' };
+/* carrinhos da Black: abandonados, em andamento e finalizados (cada mudança de quantidade fica registrada) */
+function Carrinhos() {
+  const [rel, setRel] = useState<CarRel[] | null>(null);
+  const [erro, setErro] = useState('');
+  const [flt, setFlt] = useState<'todos' | CarRel['situacao']>('todos');
+  const [busca, setBusca] = useState('');
+  const [aberto, setAberto] = useState<string | null>(null);
+  const carregar = useCallback(async () => {
+    const { data, error } = await supabase.rpc('black_carrinhos_relatorio');
+    if (error) { setErro(error.message.includes('black_carrinhos_relatorio') ? 'Para ver os carrinhos, rode o SQL 0172 no Supabase.' : error.message); setRel([]); return; }
+    setErro(''); setRel(Array.isArray(data) ? (data as CarRel[]) : []);
+  }, []);
+  useEffect(() => { carregar(); const t = setInterval(carregar, 60000); return () => clearInterval(t); }, [carregar]);
+  const L = (rel ?? []).filter((c) => c.situacao !== 'vazio');
+  const n = (k: CarRel['situacao']) => L.filter((c) => c.situacao === k);
+  const soma = (x: CarRel[]) => x.reduce((t, c) => t + Number(c.valor), 0);
+  const conv = L.length ? Math.round((n('finalizado').length / L.length) * 100) : 0;
+  const vis = L.filter((c) => (flt === 'todos' || c.situacao === flt)
+    && (!busca.trim() || `${c.fantasia} ${c.razao_social} ${c.cnpj} ${c.representante} ${c.cidade}`.toLowerCase().includes(busca.trim().toLowerCase())));
+  // produtos deixados em carrinhos abandonados
+  const prodAb = useMemo(() => {
+    const m: Record<string, { nome: string; caixas: number; lojas: number }> = {};
+    (rel ?? []).filter((c) => c.situacao === 'abandonado').forEach((c) => c.itens.forEach((i) => { m[i.codigo] ??= { nome: i.nome, caixas: 0, lojas: 0 }; m[i.codigo].caixas += i.caixas; m[i.codigo].lojas++; }));
+    return Object.entries(m).sort((a, b) => b[1].caixas - a[1].caixas);
+  }, [rel]);
+  function csv() {
+    baixarCsv('carrinhos-cardoso-black.csv', [
+      ['situacao', 'loja', 'razao_social', 'cnpj', 'cidade', 'uf', 'representante', 'comprador', 'whatsapp', 'email', 'criado_em', 'ultima_mudanca', 'ultima_visita', 'finalizado_em', 'pedido', 'caixas', 'valor_produtos', 'mudancas', 'itens', 'retirou_do_carrinho'],
+      ...L.map((c) => [SIT[c.situacao], c.fantasia, c.razao_social, c.cnpj, c.cidade, c.uf, c.representante, c.comprador, c.celular, c.email, dt(c.criado_em), dt(c.atualizado_em), dt(c.visto_em), dt(c.finalizado_em), c.pedido ?? '', c.caixas, Number(c.valor).toFixed(2).replace('.', ','), c.mudancas,
+        c.itens.map((i) => `${i.codigo} ${i.nome} (${i.caixas} cx)`).join(' | '), c.retirados.map((r) => `${r.codigo} (chegou a ${r.max} cx)`).join(' | ')]),
+    ]);
+  }
+  if (rel === null) return <div className="cbx-hint">Carregando carrinhos…</div>;
+  return (
+    <>
+      {erro && <div className="alert">{erro}</div>}
+      <div className="cbx-kpis">
+        <Kpi l="Abandonados" v={`${int(n('abandonado').length)} · ${brl0(soma(n('abandonado')))}`} c="#DA3A2F" />
+        <Kpi l="Em andamento agora" v={`${int(n('ativo').length)} · ${brl0(soma(n('ativo')))}`} c="#F2B84B" />
+        <Kpi l="Finalizados" v={`${int(n('finalizado').length)} · ${brl0(soma(n('finalizado')))}`} c="#1F7F88" />
+        <Kpi l="Conversão de carrinho" v={`${conv}%`} c="#0A2530" />
+      </div>
+      <div className="cbx-bar">
+        {(['todos', 'abandonado', 'ativo', 'finalizado'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : SIT[k]}<b>{k === 'todos' ? L.length : n(k).length}</b></button>)}
+        <input type="search" placeholder="Loja, CNPJ, cidade ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <button className="btn sm" onClick={csv}>Baixar relatório (CSV)</button>
+      </div>
+      <p className="cbx-hint">A caixa no carrinho sai do estoque de todos na hora. Carrinho parado há mais de 30 minutos (cliente saiu da página) devolve o estoque e passa a <b>Abandonado</b>; se o cliente voltar, ele reserva de novo o que ainda houver. Atualiza a cada minuto.</p>
+      {vis.length === 0 ? <EmptyState title="Nenhum carrinho" hint="Os carrinhos aparecem aqui assim que o cliente coloca a primeira caixa." /> : (
+        <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
+          <table className="cbx-table">
+            <thead><tr><th>Loja</th><th>Representante</th><th>Situação</th><th className="num">Caixas</th><th className="num">Produtos</th><th>Última mudança</th><th>Pedido</th></tr></thead>
+            <tbody>{vis.map((c) => (
+              <Fragment key={c.id}>
+                <tr className="click" onClick={() => setAberto(aberto === c.id ? null : c.id)}>
+                  <td><b>{c.fantasia || c.razao_social}</b><small>{cnpjFmt(c.cnpj)} · {c.cidade}/{c.uf}</small></td>
+                  <td>{c.representante || '—'}</td>
+                  <td><b style={{ color: SITC[c.situacao] }}>{SIT[c.situacao]}</b></td>
+                  <td className="num">{c.caixas}</td>
+                  <td className="num">{brl(Number(c.valor))}</td>
+                  <td>{dt(c.atualizado_em)}<small>visto {dt(c.visto_em)}</small></td>
+                  <td>{c.pedido ?? '—'}</td>
+                </tr>
+                {aberto === c.id && (
+                  <tr><td colSpan={7} style={{ background: 'var(--surface-2)' }}>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {c.itens.map((i) => <div key={i.codigo} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{i.codigo} · {i.nome}</span><b>{i.caixas} cx</b></div>)}
+                      {c.retirados.length > 0 && <small>Retirou do carrinho: {c.retirados.map((r) => `${r.codigo} (chegou a ${r.max} cx)`).join(', ')}</small>}
+                      <small>Comprador: {c.comprador} · {c.email} · {c.celular} · {c.mudancas} mudança{c.mudancas === 1 ? '' : 's'} de quantidade · criado {dt(c.criado_em)}</small>
+                    </div>
+                  </td></tr>
+                )}
+              </Fragment>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+      {prodAb.length > 0 && (
+        <div className="cbx-box" style={{ marginTop: 14 }}>
+          <h3>Produtos deixados em carrinhos abandonados</h3>
+          <table className="cbx-table"><thead><tr><th>Produto</th><th className="num">Caixas</th><th className="num">Lojas</th></tr></thead>
+            <tbody>{prodAb.map(([cod, x]) => <tr key={cod}><td>{cod} · {x.nome}</td><td className="num">{x.caixas}</td><td className="num">{x.lojas}</td></tr>)}</tbody></table>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; recarregar: () => void }) {
   const { profile } = useAuth();
   const [flt, setFlt] = useState<'todos' | Pedido['status']>('todos');
