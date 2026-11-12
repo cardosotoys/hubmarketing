@@ -11,7 +11,7 @@ export default function Cronometro({ alvo, canal, cadastro = true }: { alvo: str
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 1000); return () => clearInterval(t); }, []);
   const ms = Math.max(0, new Date(alvo).getTime() - agora);
   useEffect(() => {
-    if (ms === 0 && !recarregou.current) { recarregou.current = true; setTimeout(() => window.location.reload(), 1500); }
+    if (ms === 0 && !recarregou.current) { recarregou.current = true; setTimeout(() => window.location.reload(), 1500 + Math.random() * 12000); }
   }, [ms]);
   const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3);
   const dois = (n: number) => String(n).padStart(2, '0');
