@@ -617,4 +617,9 @@
 .cb-band .cb-wrap > div { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .cb-band p { margin: 0; }
 .cb-hd1 .cb-selo { height: 42px; }
-@media (max-width: 640px) { .cb-selo { height: 46px; } .cb-hd1 .cb-selo { height: 36px; } }
+@media (max-width: 640px) {
+  .cb-band .cb-wrap > div { flex-direction: column; justify-content: center; width: 100%; text-align: center; gap: 8px; }
+  .cb-band .cb-selo { height: 84px; margin: 4px auto 0; }
+  .cb-band p { text-align: center; }
+  .cb-hd1 .cb-selo { height: 40px; }
+}
