@@ -8,7 +8,7 @@ import EmptyState from '../components/EmptyState';
 import DrivePicker, { type DriveItem } from './social-plan/DrivePicker';
 import './black/black.css';
 import { useRedonda } from './black/fonte';
-import { ABAS, abaValida, entrarComoCliente, type Aba } from './black/abas';
+import { ABAS, abaValida, linkComoCliente, type Aba } from './black/abas';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 
@@ -344,6 +344,7 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
   const [busca, setBusca] = useState('');
   const [sel, setSel] = useState<Inscrito | null>(null);
   const [link, setLink] = useState('');
+  const [pedLink, setPedLink] = useState('');
   const [aviso, setAviso] = useState('');
   const vis = ins.filter((x) => (flt === 'todos' || x.status === flt)
     && (!busca.trim() || `${x.razao_social} ${x.fantasia} ${x.cnpj} ${x.comprador} ${x.representante}`.toLowerCase().includes(busca.trim().toLowerCase())));
@@ -378,7 +379,7 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
           <table className="cbx-table">
             <thead><tr><th>Loja e canais</th><th>Representante</th><th>Cadastro</th><th>Status</th></tr></thead>
             <tbody>{vis.map((x) => (
-              <tr key={x.id} className="click" onClick={() => { setSel(x); setLink(''); setAviso(''); }}>
+              <tr key={x.id} className="click" onClick={() => { setSel(x); setLink(''); setPedLink(''); setAviso(''); }}>
                 <td><b>{x.fantasia || x.razao_social}</b><small>{cnpjFmt(x.cnpj)} · {x.comprador} · {x.cidade}/{x.uf}</small>
                   <div className="cbx-chips" style={{ marginTop: 5 }}>{Object.keys(x.canais ?? {}).map((k) => <span key={k}>{CANAL[k] ?? k}</span>)}</div></td>
                 <td>{x.representante || '—'}</td>
@@ -408,11 +409,12 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
               {sel.status !== 'aprovado' && <button className="btn" onClick={() => decidir(sel, 'aprovado')}>Aprovar</button>}
               {sel.status !== 'recusado' && <button className="btn ghost" onClick={() => decidir(sel, 'recusado')}>Recusar</button>}
               {sel.status === 'recusado' && <button className="btn ghost" onClick={() => decidir(sel, 'analise')}>Voltar para análise</button>}
-              {sel.status === 'aprovado' && <button className="btn" onClick={async () => { const e = await entrarComoCliente(sel.id); setAviso(e || `Página de pedido aberta como ${sel.fantasia || sel.razao_social}. Faça um cliente por vez: abrir outro troca a loja da página.`); }}>Fazer pedido por este cliente</button>}
+              {sel.status === 'aprovado' && <button className="btn" onClick={async () => { setPedLink(''); const r = await linkComoCliente(sel.id); if (r.link) { setPedLink(r.link); try { await navigator.clipboard.writeText(r.link); } catch { /* sem área de transferência */ } setAviso(''); } else setAviso(r.erro ?? ''); }}>Fazer pedido por este cliente</button>}
               {sel.status === 'aprovado' && <button className="btn ghost" onClick={() => copiar(msgAprovado(sel))}>Copiar mensagem de aprovação</button>}
               <button className="btn ghost" onClick={() => gerarLink(sel)}>Gerar link de nova senha</button>
               {sel.celular && <a className="btn ghost" href={`https://wa.me/55${sel.celular.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">Abrir WhatsApp</a>}
             </div>
+            {pedLink && <div className="alert"><b>Link copiado.</b> Cole no Google Chrome para fazer o pedido como {sel.fantasia || sel.razao_social} (vale 3 horas; use um cliente por vez em cada navegador): <b style={{ wordBreak: 'break-all' }}>{pedLink}</b> <button className="btn sm" onClick={() => copiar(pedLink)}>Copiar de novo</button></div>}
             {link && <div className="alert">Link de nova senha (vale 3 dias): <b style={{ wordBreak: 'break-all' }}>{link}</b> <button className="btn sm" onClick={() => copiar(link)}>Copiar</button></div>}
             {aviso && <p className="cbx-hint">{aviso}</p>}
           </div>

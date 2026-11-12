@@ -69,7 +69,16 @@ const ss = {
   get() { try { return sessionStorage.getItem('cb-token') ?? ''; } catch { return ''; } },
   set(v: string) { try { if (v) sessionStorage.setItem('cb-token', v); else sessionStorage.removeItem('cb-token'); } catch { /* sem armazenamento */ } },
 };
-export const tokenGuardado = () => ls.get<string>('cb-token', '') || ss.get();
+// link do pedido manual (?entrar=TOKEN): a equipe cola em qualquer navegador e já entra como o cliente
+function tokenDoLink() {
+  try {
+    const u = new URL(window.location.href); const t = u.searchParams.get('entrar');
+    if (!t) return;
+    ls.set('cb-token', t); ls.del('cb-carrinho'); ss.set('');
+    u.searchParams.delete('entrar'); window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+  } catch { /* sem armazenamento */ }
+}
+export const tokenGuardado = () => { tokenDoLink(); return ls.get<string>('cb-token', '') || ss.get(); };
 export const guardarToken = (t: string, manter = true) => {
   if (!t) { ls.del('cb-token'); ss.set(''); return; }
   if (manter) { ls.set('cb-token', t); ss.set(''); } else { ls.del('cb-token'); ss.set(t); }

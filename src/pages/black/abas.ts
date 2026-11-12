@@ -23,17 +23,13 @@ export async function verComoCliente(): Promise<string> {
   return '';
 }
 
-/** pedido manual: a equipe entra na página de pedido como um cliente aprovado e faz o pedido por ele. Devolve o erro, se houver. */
-export async function entrarComoCliente(inscrito: string): Promise<string> {
+/** pedido manual: gera o link que entra na página de pedido como um cliente aprovado (abre em qualquer navegador). */
+export async function linkComoCliente(inscrito: string): Promise<{ link?: string; erro?: string }> {
   const { supabase } = await import('../../lib/supabaseClient');
-  const aba = window.open('about:blank', '_blank');
   const { data, error } = await supabase.rpc('black_entrar_como', { p_inscrito: inscrito });
   const r = data as { token?: string; erro?: string } | null;
   if (error || !r?.token) {
-    aba?.close();
-    return error?.message.includes('black_entrar_como') ? 'Para fazer pedido pelo cliente, rode o SQL 0174 no Supabase.' : (r?.erro ?? `Não consegui entrar como o cliente: ${error?.message ?? 'sem resposta'}`);
+    return { erro: error?.message.includes('black_entrar_como') ? 'Para fazer pedido pelo cliente, rode o SQL 0174 no Supabase.' : (r?.erro ?? `Não consegui gerar o link: ${error?.message ?? 'sem resposta'}`) };
   }
-  try { localStorage.setItem('cb-token', JSON.stringify(r.token)); localStorage.removeItem('cb-carrinho'); sessionStorage.removeItem('cb-token'); } catch { /* sem armazenamento */ }
-  if (aba) aba.location.href = '/black/pedido'; else window.location.href = '/black/pedido';
-  return '';
+  return { link: `${window.location.origin}/black/pedido?entrar=${r.token}` };
 }
