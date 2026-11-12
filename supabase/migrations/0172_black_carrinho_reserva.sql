@@ -7,6 +7,8 @@
 --   • relatório de carrinhos (abandonados, em andamento e finalizados) para a equipe.
 begin;
 
+alter table public.black_produtos add column if not exists preco_tabela numeric(12, 2);
+alter table public.black_produtos add column if not exists nome text not null default '';
 alter table public.black_config add column if not exists reserva_min int not null default 30;
 alter table public.black_config add column if not exists limite_pct numeric(5, 2) not null default 10;
 alter table public.black_config add column if not exists limite_codigos text not null default '300,301';
