@@ -151,7 +151,7 @@ export default function BlackFicha() {
             : f.preco_peca == null ? <div className="cb-alert warn">Preço indisponível para a sua região. Fale com o seu representante.</div>
             : (
               <>
-                <div className="cb-price">{descontoPct(f.preco_peca, f.preco_tabela) > 0 && <div className="de"><s>{brl(f.preco_tabela!)}</s> na tabela atual <em>−{descontoPct(f.preco_peca, f.preco_tabela)}%</em></div>}<b>{brl(f.preco_peca)}</b><span>por peça (preço líquido) · caixa com {f.caixa} = <strong>{brl(f.preco_peca * f.caixa)}</strong><br />+ IPI de {pctTxt(Number(cfg?.ipi_pct ?? 6.5))} sobre o pedido, somado no fechamento</span></div>
+                <div className="cb-price">{descontoPct(f.preco_peca, f.preco_tabela) > 0 && <div className="de"><em>−{descontoPct(f.preco_peca, f.preco_tabela)}%</em></div>}<b>{brl(f.preco_peca)}</b><span>por peça (preço líquido) · caixa com {f.caixa} = <strong>{brl(f.preco_peca * f.caixa)}</strong><br />+ IPI de {pctTxt(Number(cfg?.ipi_pct ?? 6.5))} sobre o pedido, somado no fechamento</span></div>
                 {f.disponivel === 0 ? <div className="cb-alert err">Produto esgotado na Black.</div> : (
                   <div className="cb-add">
                     <div className="cb-stp">

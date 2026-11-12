@@ -263,7 +263,7 @@ function Loja(p: LojaProps) {
                     <div className="bd">
                       <span className="cd">{i.codigo} · {i.familia}</span>
                       <h3>{i.nome}</h3>
-                      {i.preco_peca != null && <div className="pr">{descontoPct(i.preco_peca, i.preco_tabela) > 0 && <div className="de"><s>{brl(i.preco_tabela!)}</s><em>−{descontoPct(i.preco_peca, i.preco_tabela)}%</em></div>}<b>{brl(i.preco_peca)}</b><span>por peça · líquido</span></div>}
+                      {i.preco_peca != null && <div className="pr">{descontoPct(i.preco_peca, i.preco_tabela) > 0 && <div className="de"><em>−{descontoPct(i.preco_peca, i.preco_tabela)}%</em></div>}<b>{brl(i.preco_peca)}</b><span>por peça · líquido</span></div>}
                       <div className="bx">Caixa com {i.caixa}{i.preco_peca != null ? ` · ${brl(i.preco_peca * i.caixa)}` : ''}{i.disponivel != null && !esg ? ` · ${i.disponivel} cx disp.` : ''}</div>
                       <Stepper q={q} menos={() => mudar(i.codigo, -1)} mais={() => mudar(i.codigo, 1)} maisOff={esg || !podeComprar || (i.disponivel != null && q >= i.disponivel)} />
                     </div>
