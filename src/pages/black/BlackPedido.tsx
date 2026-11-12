@@ -186,7 +186,7 @@ function Loja(p: LojaProps) {
   // a cada minuto e meio: renova a reserva do carrinho e atualiza o disponível (o que os outros pegaram)
   useEffect(() => {
     if (!podeComprar || p.previa) return;
-    const t = setInterval(() => { const c = lerCarrinho(); if (Object.keys(c).length) sincronizar(c, true); carregar(); }, 90000);
+    const t = setInterval(() => { const c = lerCarrinho(); if (Object.keys(c).length) sincronizar(c, true); carregar(); }, 100000 + Math.floor(Math.random() * 40000));
     return () => clearInterval(t);
   }, [podeComprar, p.previa, sincronizar, carregar]);
 
