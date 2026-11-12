@@ -274,7 +274,7 @@ function Loja(p: LojaProps) {
             <aside className="cb-card cb-cart">
               <div className="ct"><b>Seu carrinho</b><span>{caixas} cx</span></div>
               {linhas.length === 0 ? <div className="ce">Escolha as caixas na lista.</div>
-                : linhas.map((l) => <div key={l.it.codigo} className="ln"><b>{l.it.nome}</b><b>{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b><small>{l.q} cx × {l.it.caixa} pç</small></div>)}
+                : <div className="ls">{linhas.map((l) => <div key={l.it.codigo} className="ln"><b>{l.it.nome}</b><b>{brl(l.q * l.it.caixa * (l.it.preco_peca ?? 0))}</b><small>{l.q} cx × {l.it.caixa} pç</small></div>)}</div>}
               <Resumo {...resumo} botao="Ir para o carrinho" acao={() => ir('carrinho')} desligado={!linhas.length} />
             </aside>
           </div>
