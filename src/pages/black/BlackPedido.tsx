@@ -116,6 +116,11 @@ function Loja(p: LojaProps) {
   const [itens, setItens] = useState<BlackItem[]>([]);
   const [cart, setCart] = useState<Carrinho>(lerCarrinho());
   const [fam, setFam] = useState('Todas');
+  const [ordem, setOrdem] = useState<Ordem>('live');
+  const [lic, setLic] = useState('');
+  const [descMin, setDescMin] = useState(0);
+  const [soEstoque, setSoEstoque] = useState(false);
+  const [soCarrinho, setSoCarrinho] = useState(false);
   const [busca, setBusca] = useState('');
   const [toast, setToast] = useState('');
   const [enviado, setEnviado] = useState<Enviado | null>(null);
@@ -151,8 +156,17 @@ function Loja(p: LojaProps) {
   const limOk = valLim <= total * limPct / 100 + 0.005;
   const limMsg = limOk ? '' : `Totokinha Clássica (0300 e 0301): juntas, até ${pctTxt(limPct)} do pedido. Hoje estão em ${brl(valLim)} de ${brl(total * limPct / 100)} permitidos: retire caixas ou acrescente outros produtos.`;
   const familias = ['Todas', ...new Set(itens.map((i) => i.familia).filter(Boolean))];
-  const vis = itens.filter((i) => (fam === 'Todas' || i.familia === fam)
-    && (!busca.trim() || `${i.codigo} ${i.nome}`.toLowerCase().includes(busca.trim().toLowerCase())));
+  const q = busca.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const filtrados = itens.filter((i) => (!q || `${i.codigo} ${i.nome} ${i.familia}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q))
+    && (!lic || licencaDe(i) === lic)
+    && (!descMin || descontoPct(i.preco_peca ?? 0, i.preco_tabela) >= descMin)
+    && (!soEstoque || i.disponivel !== 0)
+    && (!soCarrinho || (cart[i.codigo] ?? 0) > 0));
+  const porFam = (f: string) => filtrados.filter((i) => f === 'Todas' || i.familia === f).length;
+  const vis = ordenar(filtrados.filter((i) => fam === 'Todas' || i.familia === fam), ordem);
+  const licencas = [...new Set(itens.map(licencaDe).filter(Boolean))] as string[];
+  const temFiltro = !!(q || lic || descMin || soEstoque || soCarrinho || fam !== 'Todas' || ordem !== 'live');
+  const limpar = () => { setBusca(''); setLic(''); setDescMin(0); setSoEstoque(false); setSoCarrinho(false); setFam('Todas'); setOrdem('live'); };
 
   const mudar = (c: string, d: number) => setCart((x) => {
     const it = porCod[c]; const max = it?.disponivel ?? 9999;
@@ -213,14 +227,30 @@ function Loja(p: LojaProps) {
       {view === 'produtos' && (p.antes ? <Espera alvo={cfg.abre_em} sessao={sessao.canal_link} /> : (
         <>
           <div className="cb-tools">
-            <input className="cb-search" type="search" placeholder="Buscar por nome ou código" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <input className="cb-search" type="search" placeholder="Buscar por nome, código ou personagem" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <label className="cb-sel"><span>Ordenar</span>
+              <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)}>
+                <option value="live">Ordem da live</option><option value="desconto">Maior desconto</option>
+                <option value="menor">Menor preço por peça</option><option value="maior">Maior preço por peça</option>
+                <option value="caixa">Menor valor da caixa</option><option value="nome">Nome (A–Z)</option>
+              </select></label>
+          </div>
+          <div className="cb-filtros">
+            <label className="cb-sel"><span>Personagem</span>
+              <select value={lic} onChange={(e) => setLic(e.target.value)}><option value="">Todos</option>{licencas.map((l) => <option key={l} value={l}>{l}</option>)}</select></label>
+            <label className="cb-sel"><span>Desconto</span>
+              <select value={descMin} onChange={(e) => setDescMin(Number(e.target.value))}><option value={0}>Todos</option><option value={30}>30%+</option><option value={40}>40%+</option><option value={50}>50%+</option></select></label>
+            <button type="button" className={`cb-tg${soEstoque ? ' on' : ''}`} onClick={() => setSoEstoque((v) => !v)}>Só com estoque</button>
+            <button type="button" className={`cb-tg${soCarrinho ? ' on' : ''}`} onClick={() => setSoCarrinho((v) => !v)}>No meu carrinho{caixas ? ` (${linhas.length})` : ''}</button>
+            <span className="cb-cnt-txt">{vis.length} de {itens.length} produtos</span>
+            {temFiltro && <button type="button" className="cb-link" onClick={limpar}>Limpar filtros</button>}
           </div>
           <div className="cb-chips" style={{ marginBottom: 14 }}>
-            {familias.map((f) => <button key={f} type="button" className={f === fam ? 'on' : ''} onClick={() => setFam(f)}>{f}</button>)}
+            {familias.map((f) => { const n = porFam(f); return <button key={f} type="button" className={f === fam ? 'on' : ''} disabled={!n && f !== fam} onClick={() => setFam(f)}>{f} <small>{n}</small></button>; })}
           </div>
           <div className="cb-shop">
             <div className="cb-prods">
-              {vis.length === 0 && <div className="cb-note" style={{ gridColumn: '1/-1' }}>{itens.length ? 'Nenhum produto com essa busca.' : <><span className="cb-spin" /> Carregando produtos…</>}</div>}
+              {vis.length === 0 && <div className="cb-note" style={{ gridColumn: '1/-1' }}>{itens.length ? <>Nenhum produto com esses filtros. <button type="button" className="cb-link" onClick={limpar}>Limpar filtros</button></> : <><span className="cb-spin" /> Carregando produtos…</>}</div>}
               {vis.map((i) => {
                 const q = cart[i.codigo] ?? 0; const esg = i.disponivel === 0;
                 return (
@@ -557,4 +587,30 @@ function Condicoes({ cfg }: { cfg: BlackConfig }) {
       <dl>{L.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
     </div>
   );
+}
+
+/* ordenação e filtros da vitrine */
+type Ordem = 'live' | 'desconto' | 'menor' | 'maior' | 'caixa' | 'nome';
+function ordenar(l: BlackItem[], o: Ordem): BlackItem[] {
+  const pr = (i: BlackItem) => i.preco_peca ?? 0;
+  const c = [...l];
+  if (o === 'desconto') c.sort((a, b) => descontoPct(pr(b), b.preco_tabela) - descontoPct(pr(a), a.preco_tabela) || a.ordem - b.ordem);
+  else if (o === 'menor') c.sort((a, b) => pr(a) - pr(b) || a.ordem - b.ordem);
+  else if (o === 'maior') c.sort((a, b) => pr(b) - pr(a) || a.ordem - b.ordem);
+  else if (o === 'caixa') c.sort((a, b) => pr(a) * a.caixa - pr(b) * b.caixa || a.ordem - b.ordem);
+  else if (o === 'nome') c.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  else c.sort((a, b) => a.ordem - b.ordem);
+  return c;
+}
+const LICENCAS: [string, RegExp][] = [
+  ['Pocoyo', /pocoyo|elly|loula|\bpato\b|nina|fred|sonequita/],
+  ['Disney', /disney|mickey|minnie|ariel|stitch|buzz|woody|toy story/],
+  ['Smurfs', /smurf/],
+  ['Galinha Pintadinha', /galinha/],
+  ['Show da Luna', /luna/],
+  ['DC (Warner)', /batman|flash|mulher maravilha|batwheels|redbird/],
+];
+function licencaDe(i: BlackItem): string {
+  const t = `${i.nome} ${i.familia}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return LICENCAS.find(([, r]) => r.test(t))?.[0] ?? '';
 }

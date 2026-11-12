@@ -26,8 +26,7 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true,
       {unico ? (
         <header className="cb-hd1">
           <div className="cb-wrap">
-            <img className="wm" src="/black/cardoso-branco.png" alt="Cardoso" />
-            <span className="bk">Black</span>
+            <img className="cb-selo" src="/black/selo-black.webp" alt="Black Cardoso" />
             <span className="sb">{sub}</span>
             {clock && <div className="cb-clock"><small>{clock.label}</small><b>{clock.value}</b></div>}
           </div>
@@ -43,7 +42,8 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true,
       {faixa && <div className="cb-band">
         <div className="cb-wrap">
           <div>
-            <h1>Cardoso <em>Black</em></h1>
+            <h1 className="cb-sr">Black Cardoso</h1>
+            <img className="cb-selo" src="/black/selo-black.webp" alt="" />
             <p>{sub}</p>
           </div>
           {clock && <div className="cb-clock"><small>{clock.label}</small><b>{clock.value}</b></div>}
