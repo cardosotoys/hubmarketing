@@ -7,7 +7,7 @@ import { Ic, Sv } from './Icones';
 import Cronometro from './Cronometro';
 import Encerrada from './Encerrada';
 import {
-  brl, descontoPct, pctTxt, cachePublico, driveId, midiaRapida, ERRO_LOGIN, gravarCarrinho, lerCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
+  brl, descontoPct, pctTxt, cachePublico, driveId, midiaRapida, ERRO_LOGIN, gravarCarrinho, lerCarrinho, sincronizarCarrinho, maskCnpj, midia, useConfig, useFaltam, useSessao,
   type BlackFicha as Ficha, type BlackItem,
 } from './api';
 
@@ -57,7 +57,7 @@ export default function BlackFicha() {
     supabase.rpc('black_produto', { p_codigo: codigo, p_token: token }).then(({ data }) => {
       const d = data as (Ficha & { bloqueado?: boolean; abre_em?: string; encerrado?: boolean; fecha_em?: string }) | null;
       if (d?.bloqueado) { setFechada(d.abre_em ?? ''); return; } // antes da live: só a contagem
-      if (d?.encerrado) { setEncerrada(d.fecha_em ?? ''); return; } // depois das 19h: link fechado
+      if (d?.encerrado) { setEncerrada(d.fecha_em ?? ''); return; } // depois do fechamento: link fechado
       setF(d ?? null);
     });
   }, [codigo, token, carregando]);
@@ -100,6 +100,14 @@ export default function BlackFicha() {
     c[f.codigo] = Math.min(max, (c[f.codigo] ?? 0) + qtd);
     gravarCarrinho(c); setCart(c);
     setToast(`${qtd} caixa${qtd > 1 ? 's' : ''} adicionada${qtd > 1 ? 's' : ''} ao pedido`); setQtd(1);
+    // reserva no servidor: se alguém pegou antes, ajusta para o que sobrou
+    if (token && !sessao?.previa) sincronizarCarrinho(token, c).then((r) => {
+      const a = r?.ajustes.find((x) => x.codigo === f.codigo);
+      if (!r || !a) return;
+      const y = lerCarrinho(); if (a.aceito) y[a.codigo] = a.aceito; else delete y[a.codigo];
+      gravarCarrinho(y); setCart(y);
+      setToast(a.aceito ? `Só ${a.aceito} caixa${a.aceito > 1 ? 's' : ''} disponíve${a.aceito > 1 ? 'is' : 'l'} agora. Ajustei seu pedido.` : 'Este produto esgotou agora há pouco.');
+    });
   }
 
   const t = f.tecnico;

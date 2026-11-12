@@ -12,6 +12,7 @@ export const FN_MIDIA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynam
 
 export type BlackConfig = {
   inscricoes_ate: string; abre_em: string; fecha_em: string; pedido_minimo: number; frete_gratis_sp_rj: number; ipi_pct?: number; canal_link?: string;
+  limite_pct?: number; limite_codigos?: string;
   live_data: string; agora: string; aberto: boolean; encerrado: boolean;
 };
 export type BlackSessao = {
@@ -152,13 +153,24 @@ export function useFaltam(alvo: string | undefined) {
   return { ms, d, h, m, texto: d > 0 ? `${d}d ${h}h ${String(m).padStart(2, '0')}min` : `${h}h ${String(m).padStart(2, '0')}min` };
 }
 
-/* mesma regra do banco (black_frete), só para mostrar antes de enviar */
-export function freteTexto(uf: string, cidade: string, total: number, limite: number): [string, boolean] {
-  const norm = cidade.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
-  const lim = limite.toLocaleString('pt-BR');
-  if (uf === 'SP' && norm === 'SAO PAULO') return ['Frete grátis para SP capital', true];
-  if (uf === 'SP' || uf === 'RJ') return total >= limite ? [`Frete grátis: pedido acima de R$ ${lim}`, true] : [`Frete grátis a partir de R$ ${lim} · faltam ${brl(limite - total)}`, false];
-  return ['Transportadora, frete por conta da loja', false];
+/* mesma regra do banco (black_frete), só para mostrar antes de enviar: grátis só para a cidade de São Paulo */
+export function freteTexto(uf: string, cidade: string): [string, boolean] {
+  const norm = cidade.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (uf === 'SP' && norm === 'SAO PAULO') return ['Frete grátis para a cidade de São Paulo', true];
+  return ['Frete por conta da loja', false];
+}
+
+/* Totokinha Clássica (0300 e 0301): juntas, no máximo limite_pct do valor do pedido */
+export const ehLimitado = (codigo: string, cfg: { limite_codigos?: string }) =>
+  (cfg.limite_codigos ?? '300,301').replace(/\s/g, '').split(',').includes(codigo.trim().replace(/^0+/, ''));
+
+/* o carrinho também fica no servidor: a caixa no carrinho sai do estoque de todos; ao remover, volta.
+   Devolve o que foi aceito (pode ser menos que o pedido, se o estoque acabou). */
+export async function sincronizarCarrinho(token: string, cart: Carrinho): Promise<{ itens: Carrinho; ajustes: { codigo: string; pedido: number; aceito: number }[] } | null> {
+  const { data, error } = await supabase.rpc('black_carrinho_sincronizar', { p_token: token, p_itens: cart });
+  const d = data as { itens?: Carrinho; ajustes?: { codigo: string; pedido: number; aceito: number }[]; erro?: string } | null;
+  if (error || !d || d.erro || !d.itens) return null;
+  return { itens: d.itens, ajustes: d.ajustes ?? [] };
 }
 
 /** IPI da Black: os preços são líquidos e o IPI entra uma vez, sobre o pedido inteiro, no fechamento */

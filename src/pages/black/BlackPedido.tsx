@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Shell, { Toast } from './Shell';
@@ -6,7 +6,7 @@ import { Ic, Sv } from './Icones';
 import Cronometro from './Cronometro';
 import Encerrada from './Encerrada';
 import {
-  brl, descontoPct, diaMes, ERRO_LOGIN, ipiDe, pctTxt, fmtData, freteTexto, gravarCarrinho, lerCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
+  brl, descontoPct, diaMes, ERRO_LOGIN, ipiDe, pctTxt, fmtData, freteTexto, ehLimitado, gravarCarrinho, lerCarrinho, sincronizarCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
   type BlackConfig, type BlackItem, type BlackPedido as Pedido, type BlackSessao, type Carrinho,
 } from './api';
 
@@ -33,7 +33,7 @@ export default function BlackPedido() {
   if (!cfg || carregando) return <Shell sub="Pedidos somente por esta página" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   // antes da live: só a contagem regressiva (sem login, sem produtos). A prévia da equipe passa direto.
   if (abre && abre.ms > 0 && !sessao?.previa) return <Shell sub="Cardoso Black · exclusivo para lojas de e-commerce" clock={clock} wide={false}><Cronometro alvo={cfg.abre_em} canal={sessao?.canal_link || cfg?.canal_link} cadastro={!sessao} /></Shell>;
-  // depois das 19h (fim da live): o link fecha. Quem está logado ainda vê os próprios pedidos.
+  // depois do fechamento (fecha_em, ajustável): o link fecha. Quem está logado ainda vê os próprios pedidos.
   const fechou = fecha !== null && fecha.ms <= 0 && !sessao?.previa;
   if (fechou && !sessao) return <Shell sub="Cardoso Black" clock={clock} wide={false}><Encerrada fim={cfg.fecha_em} /></Shell>;
   if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} ate={diaMes(cfg.fecha_em)} /></Shell>;
@@ -144,7 +144,12 @@ function Loja(p: LojaProps) {
   const caixas = linhas.reduce((s, l) => s + l.q, 0);
   const pecas = linhas.reduce((s, l) => s + l.q * l.it.caixa, 0);
   const ok = total >= cfg.pedido_minimo;
-  const [freteT, freteOk] = freteTexto(sessao.uf, sessao.cidade, total, cfg.frete_gratis_sp_rj);
+  const [freteT, freteOk] = freteTexto(sessao.uf, sessao.cidade);
+  // Totokinha Clássica (0300 e 0301): juntas, no máximo limite_pct do valor do pedido
+  const limPct = Number(cfg.limite_pct ?? 10);
+  const valLim = linhas.filter((l) => ehLimitado(l.it.codigo, cfg)).reduce((s, l) => s + l.q * l.it.caixa * (l.it.preco_peca ?? 0), 0);
+  const limOk = valLim <= total * limPct / 100 + 0.005;
+  const limMsg = limOk ? '' : `Totokinha Clássica (0300 e 0301): juntas, até ${pctTxt(limPct)} do pedido. Hoje estão em ${brl(valLim)} de ${brl(total * limPct / 100)} permitidos: retire caixas ou acrescente outros produtos.`;
   const familias = ['Todas', ...new Set(itens.map((i) => i.familia).filter(Boolean))];
   const vis = itens.filter((i) => (fam === 'Todas' || i.familia === fam)
     && (!busca.trim() || `${i.codigo} ${i.nome}`.toLowerCase().includes(busca.trim().toLowerCase())));
@@ -156,7 +161,34 @@ function Loja(p: LojaProps) {
   });
   const remover = (c: string) => setCart((x) => { const y = { ...x }; delete y[c]; return y; });
   const podeComprar = !p.antes && !p.encerrado;
-  const resumo = { total, caixas, pecas, minimo: cfg.pedido_minimo, ok, frete: freteT, freteOk, ipiPct: Number(cfg.ipi_pct ?? 6.5) };
+  const resumo = { total, caixas, pecas, minimo: cfg.pedido_minimo, ok: ok && limOk, frete: freteT, freteOk, ipiPct: Number(cfg.ipi_pct ?? 6.5), aviso: limMsg };
+
+  // o carrinho também fica no servidor: a caixa colocada sai do estoque de todos; ao remover, volta.
+  // Se alguém pegou antes, o servidor devolve menos e o carrinho se ajusta.
+  const enviadoRef = useRef(JSON.stringify({}));
+  const sincronizar = useCallback(async (c: Carrinho, forcar = false) => {
+    const j = JSON.stringify(c);
+    if (!forcar && j === enviadoRef.current) return;
+    enviadoRef.current = j;
+    const r = await sincronizarCarrinho(p.token, c);
+    if (!r || !r.ajustes.length) return;
+    setCart((x) => { const y = { ...x }; r.ajustes.forEach((a) => { if (a.aceito) y[a.codigo] = a.aceito; else delete y[a.codigo]; }); return y; });
+    const a = r.ajustes[0]; const n = porCodRef.current[a.codigo]?.nome ?? a.codigo;
+    setToast(a.aceito ? `${n}: só ${a.aceito} caixa${a.aceito > 1 ? 's' : ''} disponíve${a.aceito > 1 ? 'is' : 'l'} agora. Ajustei seu carrinho.` : `${n} esgotou agora há pouco. Retirei do seu carrinho.`);
+    carregar();
+  }, [p.token, carregar]);
+  const porCodRef = useRef(porCod); porCodRef.current = porCod;
+  useEffect(() => {
+    if (!podeComprar || p.previa) return;
+    const t = setTimeout(() => sincronizar(cart), 350);
+    return () => clearTimeout(t);
+  }, [cart, podeComprar, p.previa, sincronizar]);
+  // a cada minuto e meio: renova a reserva do carrinho e atualiza o disponível (o que os outros pegaram)
+  useEffect(() => {
+    if (!podeComprar || p.previa) return;
+    const t = setInterval(() => { const c = lerCarrinho(); if (Object.keys(c).length) sincronizar(c, true); carregar(); }, 90000);
+    return () => clearInterval(t);
+  }, [podeComprar, p.previa, sincronizar, carregar]);
 
   return (
     <>
@@ -176,7 +208,7 @@ function Loja(p: LojaProps) {
       </nav>
 
       {p.previa && <div className="cb-alert warn" style={{ marginBottom: 14 }}><b>Prévia da equipe.</b> Esta é a visão do cliente com a loja de demonstração: preços e carrinho funcionam, mas o pedido não é enviado e nada entra na medição.</div>}
-      {p.encerrado && <div className="cb-alert warn" style={{ marginBottom: 14 }}>A Cardoso Black terminou. Os pedidos foram aceitos até {fmtData(cfg.fecha_em).replace(', ', ', às ')}.</div>}
+      {p.encerrado && <div className="cb-alert warn" style={{ marginBottom: 14 }}>A Cardoso Black terminou. Os pedidos foram aceitos até {fmtData(cfg.fecha_em).replace(', ', ' às ')}.</div>}
 
       {view === 'produtos' && (p.antes ? <Espera alvo={cfg.abre_em} sessao={sessao.canal_link} /> : (
         <>
@@ -251,6 +283,7 @@ function Loja(p: LojaProps) {
                   </div>
                 ))}
                 <div className="ft"><button type="button" className="cb-link" onClick={() => ir('produtos')}>‹ Continuar escolhendo</button></div>
+                <Condicoes cfg={cfg} />
               </div>
               <aside className="cb-card cb-cart fixo">
                 <div className="ct"><b>Resumo</b><span>{caixas} cx</span></div>
@@ -306,7 +339,7 @@ function Etapas({ atual }: { atual: 1 | 2 | 3 }) {
   );
 }
 
-type ResumoProps = { total: number; caixas: number; pecas: number; minimo: number; ok: boolean; frete: string; freteOk: boolean; ipiPct: number };
+type ResumoProps = { total: number; caixas: number; pecas: number; minimo: number; ok: boolean; frete: string; freteOk: boolean; ipiPct: number; aviso?: string };
 /** produtos (preço líquido) + IPI sobre o pedido inteiro = total. O mínimo e o frete grátis olham só os produtos. */
 function Totais({ total, ipiPct }: { total: number; ipiPct: number }) {
   const ipi = ipiDe(total, ipiPct);
@@ -318,13 +351,14 @@ function Totais({ total, ipiPct }: { total: number; ipiPct: number }) {
     </>
   );
 }
-function Resumo({ total, minimo, ok, frete, freteOk, pecas, ipiPct, botao, acao, desligado }: ResumoProps & { botao: string; acao: () => void; desligado: boolean }) {
+function Resumo({ total, minimo, frete, freteOk, pecas, ipiPct, aviso, botao, acao, desligado }: ResumoProps & { botao: string; acao: () => void; desligado: boolean }) {
   return (
     <div className="cb-sum">
       {pecas > 0 && <div className="cb-sl"><span>Peças</span><b>{pecas.toLocaleString('pt-BR')}</b></div>}
       <Totais total={total} ipiPct={ipiPct} />
       <div className="cb-bar"><i style={{ width: `${Math.min(100, (total / minimo) * 100)}%` }} /></div>
-      <div className={`cb-hint${ok ? ' ok' : ''}`}>{ok ? 'Pedido mínimo atingido' : `Faltam ${brl(minimo - total)} em produtos para o mínimo de ${brl(minimo)}`}</div>
+      <div className={`cb-hint${total >= minimo ? ' ok' : ''}`}>{total >= minimo ? 'Pedido mínimo atingido' : `Faltam ${brl(minimo - total)} em produtos para o mínimo de ${brl(minimo)}`}</div>
+      {aviso && <div className="cb-alert err" style={{ margin: '8px 0 0', fontSize: 13 }}>{aviso}</div>}
       <div className={`cb-fre${freteOk ? ' ok' : ''}`}>{frete}</div>
       <button className="cb-btn full" type="button" disabled={desligado} onClick={acao}>{botao}</button>
     </div>
@@ -338,6 +372,7 @@ const ERRO_PEDIDO = (r: { erro: string; codigo?: string; disponivel?: number; mi
   vazio: 'O pedido está vazio.',
   previa: 'Prévia da equipe: o pedido não é enviado. Na Black, o cliente recebe aqui o número do pedido e o resumo.',
   minimo: `O pedido não chegou ao mínimo de ${brl(Number(r.minimo ?? 0))}.`,
+  limite: 'Totokinha Clássica (0300 e 0301): juntas, podem ser no máximo 10% do valor do pedido. Ajuste o carrinho.',
   estoque: `${nome(r.codigo ?? '')}: restam ${r.disponivel ?? 0} caixas. Ajustei a quantidade.`,
   produto: `${nome(r.codigo ?? '')} não está mais disponível. Retirei do pedido.`,
 } as Record<string, string>)[r.erro] ?? 'Não consegui enviar agora. Tente de novo.';
@@ -500,8 +535,26 @@ function MinhaConta({ sessao: s, cfg, sair }: { sessao: BlackSessao; cfg: BlackC
         </div>
         {s.live_link && <a className="cb-btn dk full" href={s.live_link} target="_blank" rel="noreferrer"><Ic n="laptop" />Entrar na live</a>}
         {s.canal_link && <a className="cb-wab" href={s.canal_link} target="_blank" rel="noreferrer"><Sv.wa />Canal Cardoso Black no WhatsApp</a>}
-        <div className="cb-buy"><span className="ic"><Ic n="coins" /></span><span><b>Condições:</b> preços líquidos, com IPI de {pctTxt(Number(cfg.ipi_pct ?? 6.5))} somado no fechamento · caixa fechada · mínimo de {brl(cfg.pedido_minimo)} em produtos · frete grátis em SP capital e em SP/RJ acima de {brl(cfg.frete_gratis_sp_rj)}.</span></div>
+        <div className="cb-buy"><span className="ic"><Ic n="coins" /></span><span><b>Condições:</b> pagamento antecipado · preços líquidos, com IPI de {pctTxt(Number(cfg.ipi_pct ?? 6.5))} somado no fechamento · caixa fechada · mínimo de {brl(cfg.pedido_minimo)} em produtos · frete grátis para a cidade de São Paulo · Totokinha Clássica (0300 e 0301) até {pctTxt(Number(cfg.limite_pct ?? 10))} do pedido · pedidos até {fmtData(cfg.fecha_em).replace(', ', ' às ')}.</span></div>
       </div>
+    </div>
+  );
+}
+
+/** condições comerciais da Black, no carrinho */
+function Condicoes({ cfg }: { cfg: BlackConfig }) {
+  const L: [string, string][] = [
+    ['Pagamento', 'Antecipado'],
+    ['Pedido mínimo', `${brl(cfg.pedido_minimo)} em produtos, por caixa fechada`],
+    ['Frete', 'Grátis para a cidade de São Paulo'],
+    ['IPI', `${pctTxt(Number(cfg.ipi_pct ?? 6.5))} somado no fechamento, sobre o pedido`],
+    ['Totokinha Clássica (0300 e 0301)', `Juntas, até ${pctTxt(Number(cfg.limite_pct ?? 10))} do valor do pedido`],
+    ['Pedidos até', fmtData(cfg.fecha_em).replace(', ', ' às ')],
+  ];
+  return (
+    <div className="cb-cond">
+      <b>Condições comerciais</b>
+      <dl>{L.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
     </div>
   );
 }
