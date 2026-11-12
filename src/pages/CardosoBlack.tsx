@@ -10,7 +10,7 @@ import './black/black.css';
 import { useRedonda } from './black/fonte';
 import { ABAS, abaValida, type Aba } from './black/abas';
 import { driveId, midia } from './black/api';
-import { slugDoRepresentante } from './black/representantes';
+import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -155,6 +155,7 @@ export default function CardosoBlack() {
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
             {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
             {aba === 'carrinhos' && <Carrinhos />}
+            {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} />}
             {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
             {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
             {aba === 'links' && <Links cart={cart} ins={ins} bps={bps} porCodigo={porCodigo} />}
@@ -232,6 +233,112 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
 }
 
 /* ================= Inscritos ================= */
+/* mensagem 1 a 1 para cada inscrito, aberta no WhatsApp Web já preenchida */
+const MSG_PADRAO = `Olá, *{comprador}*! Tudo bem?
+Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.
+
+⏰ *É HOJE: BLACK CARDOSO - 12.11 às 16h*
+
+O cadastro da *{loja}* está aprovado e você já pode participar.
+
+📺 *Link da live (videochamada):*
+{live}
+
+🛒 *Link para fazer seu pedido:*
+{pedido}
+Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*.
+
+🚨 *As compras são feitas somente pelo link de pedido, a partir das 16h.*
+
+*Condições:*
+• Produtos com *até 60% de desconto*, incluindo licenciados Disney, Pocoyo, Smurfs, Galinha Pintadinha e Warner
+• Pagamento antecipado · caixa fechada · pedido mínimo de R$ 2.500
+• Frete grátis para a cidade de São Paulo
+• IPI de 6,5% somado no fechamento do pedido
+• Estoque limitado: a caixa fica garantida quando entra no seu carrinho
+
+Seu representante: *{representante}*.
+Te esperamos às 16h! 🖤`;
+const LS_MSG = 'cb-msg-live-modelo', LS_ENV = 'cb-msg-live-enviados';
+const lerLS = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } };
+const telWa = (c: string) => { const d = (c || '').replace(/\D/g, ''); if (!d) return ''; return d.length <= 11 ? `55${d}` : d; };
+const nomeRep = (r: string) => { const s = slugDoRepresentante(r); return (s && REPRESENTANTES[s]?.n) || r || 'Equipe Cardoso'; };
+const primeiroNome = (n: string) => { const p = (n || '').trim().split(/\s+/)[0] ?? ''; return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : ''; };
+function Mensagens({ ins, cfg }: { ins: Inscrito[]; cfg: Cfg }) {
+  const [modelo, setModelo] = useState<string>(() => lerLS(LS_MSG, MSG_PADRAO));
+  const [live, setLive] = useState(cfg.live_link || 'https://meet.google.com/tfw-dcqi-xyr');
+  const [env, setEnv] = useState<Record<string, string>>(() => lerLS(LS_ENV, {}));
+  const [flt, setFlt] = useState<'pendentes' | 'enviados' | 'todos'>('pendentes');
+  const [busca, setBusca] = useState('');
+  const [editar, setEditar] = useState(false);
+  useEffect(() => { try { localStorage.setItem(LS_MSG, JSON.stringify(modelo)); } catch { /* sem armazenamento */ } }, [modelo]);
+  useEffect(() => { try { localStorage.setItem(LS_ENV, JSON.stringify(env)); } catch { /* sem armazenamento */ } }, [env]);
+  const pedido = `${window.location.origin}/black/pedido`;
+  const aprov = ins.filter((i) => i.status === 'aprovado' && i.origem !== 'previa');
+  const msg = (i: Inscrito) => modelo
+    .replaceAll('{comprador}', primeiroNome(i.comprador) || 'tudo bem')
+    .replaceAll('{loja}', i.fantasia || i.razao_social)
+    .replaceAll('{representante}', nomeRep(i.representante))
+    .replaceAll('{live}', live).replaceAll('{pedido}', pedido);
+  const lista = aprov.filter((i) => (flt === 'todos' || (flt === 'enviados' ? !!env[i.id] : !env[i.id]))
+    && (!busca.trim() || `${i.fantasia} ${i.razao_social} ${i.comprador} ${i.representante} ${i.cidade}`.toLowerCase().includes(busca.trim().toLowerCase())));
+  function abrir(i: Inscrito) {
+    const tel = telWa(i.celular); if (!tel) return;
+    window.open(`https://web.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(msg(i))}`, 'cb-whatsapp');
+    setEnv((e) => ({ ...e, [i.id]: new Date().toISOString() }));
+  }
+  const proximo = aprov.find((i) => !env[i.id] && telWa(i.celular));
+  const nEnv = aprov.filter((i) => env[i.id]).length;
+  return (
+    <>
+      <div className="cbx-kpis">
+        <Kpi l="Aprovados" v={int(aprov.length)} c="#0A2530" />
+        <Kpi l="Enviados" v={int(nEnv)} c="#1F7F88" />
+        <Kpi l="Faltam" v={int(aprov.length - nEnv)} c="#DA3A2F" />
+        <Kpi l="Sem WhatsApp" v={int(aprov.filter((i) => !telWa(i.celular)).length)} c="#7C8A90" />
+      </div>
+      <div className="cbx-box" style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <b style={{ flex: 1, minWidth: 220 }}>Como funciona</b>
+          <button className="btn sm" onClick={() => setEditar((v) => !v)}>{editar ? 'Fechar o modelo' : 'Editar a mensagem'}</button>
+          <button className="btn sm primary" disabled={!proximo} onClick={() => proximo && abrir(proximo)}>{proximo ? `Abrir o próximo: ${proximo.fantasia || proximo.razao_social}` : 'Todos enviados'}</button>
+        </div>
+        <p className="cbx-hint" style={{ margin: 0 }}>Clique em <b>Abrir no WhatsApp</b>: a conversa abre no WhatsApp Web (sempre na mesma aba) com a mensagem já escrita. Confira e aperte <b>Enviar</b>. O inscrito fica marcado como enviado neste computador.</p>
+        <label className="cbx-hint" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0 }}>Link da live
+          <input value={live} onChange={(e) => setLive(e.target.value)} style={{ flex: 1, minWidth: 260 }} /></label>
+        {editar && <>
+          <textarea value={modelo} onChange={(e) => setModelo(e.target.value)} rows={16} style={{ width: '100%', font: 'inherit', fontSize: 13.5, lineHeight: 1.45 }} />
+          <div className="cbx-hint" style={{ margin: 0 }}>Campos trocados em cada mensagem: <code>{'{comprador}'}</code> <code>{'{loja}'}</code> <code>{'{representante}'}</code> <code>{'{live}'}</code> <code>{'{pedido}'}</code> · <button className="btn ghost sm" onClick={() => setModelo(MSG_PADRAO)}>voltar ao texto original</button></div>
+        </>}
+      </div>
+      <div className="cbx-bar">
+        {(['pendentes', 'enviados', 'todos'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'pendentes' ? 'A enviar' : k === 'enviados' ? 'Enviados' : 'Todos'}<b>{k === 'todos' ? aprov.length : k === 'enviados' ? nEnv : aprov.length - nEnv}</b></button>)}
+        <input type="search" placeholder="Loja, comprador, cidade ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      </div>
+      {lista.length === 0 ? <EmptyState title={flt === 'pendentes' ? 'Mensagens enviadas para todos os aprovados' : 'Nenhum inscrito'} hint="Só os inscritos aprovados recebem a mensagem da live." /> : (
+        <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
+          <table className="cbx-table">
+            <thead><tr><th>Loja</th><th>Comprador</th><th>WhatsApp</th><th>Representante</th><th>Situação</th><th></th></tr></thead>
+            <tbody>{lista.map((i) => { const tel = telWa(i.celular); return (
+              <tr key={i.id}>
+                <td><b>{i.fantasia || i.razao_social}</b><small>{i.cidade}/{i.uf}</small></td>
+                <td>{i.comprador}</td>
+                <td>{i.celular || '—'}</td>
+                <td>{nomeRep(i.representante)}</td>
+                <td>{env[i.id] ? <span style={{ color: '#1F7F88', fontWeight: 700 }}>Enviado {dt(env[i.id])}</span> : <span style={{ color: '#7C8A90' }}>A enviar</span>}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button className="btn sm primary" disabled={!tel} title={tel ? '' : 'Sem celular no cadastro'} onClick={() => abrir(i)}>{env[i.id] ? 'Abrir de novo' : 'Abrir no WhatsApp'}</button>
+                  {' '}<button className="btn sm" onClick={() => navigator.clipboard?.writeText(msg(i))}>Copiar</button>
+                  {env[i.id] && <>{' '}<button className="btn ghost sm" onClick={() => setEnv((e) => { const x = { ...e }; delete x[i.id]; return x; })}>desmarcar</button></>}
+                </td>
+              </tr>); })}</tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarregar: () => void }) {
   const [flt, setFlt] = useState<'todos' | Inscrito['status']>('todos');
   const [busca, setBusca] = useState('');
