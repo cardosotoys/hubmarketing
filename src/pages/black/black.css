@@ -588,3 +588,4 @@
 @media (max-width: 420px) { .cb-cnt.cb-cnt4 b { font-size: 24px; } }
 .cb-wab.cb-wab-xl { padding: 16px 18px; font-size: 17px; justify-content: center; }
 .cb-wab-tip { margin: -4px 0 0; text-align: center; font-size: 13px; color: var(--ink2); }
+.cb-canal-txt { margin: 4px 0 -4px; text-align: center; font-size: 14px; color: var(--ink2); }

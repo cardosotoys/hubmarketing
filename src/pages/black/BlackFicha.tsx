@@ -85,7 +85,7 @@ export default function BlackFicha() {
   const capa = midias.find((x) => x.tipo === 'img')?.thumb;
   const clock = fecha && fecha.ms > 0 ? { label: 'encerra em', value: fecha.texto } : null;
   if (encerrada) return <Shell sub="Ficha do produto" unico><Encerrada fim={encerrada} logado={!!sessao} /></Shell>;
-  if (fechada) return <Shell sub="Ficha do produto" unico><Cronometro alvo={fechada} canal={sessao?.canal_link} cadastro={!sessao} /></Shell>;
+  if (fechada) return <Shell sub="Ficha do produto" unico><Cronometro alvo={fechada} canal={sessao?.canal_link || cfg?.canal_link} cadastro={!sessao} /></Shell>;
   if (f === undefined || carregando) return <Shell sub="Ficha do produto" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   if (f === null) return <Shell sub="Ficha do produto"><div className="cb-card cb-pad cb-narrow cb-res"><h2>Produto não encontrado</h2><p>Este produto não faz parte da Cardoso Black.</p><Link className="cb-btn dk" to="/black/pedido">Ir para a página de pedido</Link></div></Shell>;
 

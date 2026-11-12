@@ -32,7 +32,7 @@ export default function BlackPedido() {
 
   if (!cfg || carregando) return <Shell sub="Pedidos somente por esta página" clock={clock}><div className="cb-note"><span className="cb-spin" /> Carregando…</div></Shell>;
   // antes da live: só a contagem regressiva (sem login, sem produtos). A prévia da equipe passa direto.
-  if (abre && abre.ms > 0 && !sessao?.previa) return <Shell sub="Cardoso Black · exclusivo para lojas de e-commerce" clock={clock} wide={false}><Cronometro alvo={cfg.abre_em} canal={sessao?.canal_link} cadastro={!sessao} /></Shell>;
+  if (abre && abre.ms > 0 && !sessao?.previa) return <Shell sub="Cardoso Black · exclusivo para lojas de e-commerce" clock={clock} wide={false}><Cronometro alvo={cfg.abre_em} canal={sessao?.canal_link || cfg?.canal_link} cadastro={!sessao} /></Shell>;
   // depois das 19h (fim da live): o link fecha. Quem está logado ainda vê os próprios pedidos.
   const fechou = fecha !== null && fecha.ms <= 0 && !sessao?.previa;
   if (fechou && !sessao) return <Shell sub="Cardoso Black" clock={clock} wide={false}><Encerrada fim={cfg.fecha_em} /></Shell>;

@@ -24,7 +24,8 @@ export default function Cronometro({ alvo, canal, cadastro = true }: { alvo: str
         <div><b>{d}</b><small>dias</small></div><div><b>{dois(h)}</b><small>horas</small></div>
         <div><b>{dois(m)}</b><small>min</small></div><div><b>{dois(s)}</b><small>seg</small></div>
       </div>
-      {canal && <a className="cb-wab" href={canal} target="_blank" rel="noreferrer"><Sv.wa />Acompanhar pelo canal Cardoso Black</a>}
+      {canal && <p className="cb-canal-txt">O link da live e os avisos saem pelo nosso canal da Cardoso Black no WhatsApp.</p>}
+      {canal && <a className="cb-wab" href={canal} target="_blank" rel="noreferrer"><Sv.wa />Entrar no nosso canal no WhatsApp</a>}
       {cadastro && <div className="cb-note">Ainda não tem cadastro? <Link to="/black">Faça o pré-cadastro</Link></div>}
     </div>
   );
