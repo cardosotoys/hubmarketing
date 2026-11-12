@@ -422,7 +422,7 @@ function Finalizar(p: ResumoProps & {
       p_token: p.token, p_itens: p.linhas.map((l) => ({ codigo: l.it.codigo, caixas: l.q })), p_obs: obs, p_comprador: comprador,
     });
     setEnviando(false);
-    if (error || !data) { setErro('Não consegui enviar agora. Tente de novo.'); return; }
+    if (error || !data) { console.error('black_pedido_enviar', error); setErro('Não consegui enviar agora. Espere alguns segundos e toque em Enviar pedido de novo. Seu carrinho continua salvo.'); return; }
     const r = data as { erro?: string; codigo?: string; disponivel?: number; minimo?: number } & Enviado;
     if (r.erro) {
       const nome = (c: string) => p.linhas.find((l) => l.it.codigo === c)?.it.nome ?? c;
@@ -437,6 +437,10 @@ function Finalizar(p: ResumoProps & {
     p.onEnviado(r);
   }
   const s = p.sessao;
+  // diz por que o botão está bloqueado, em vez de deixar o cliente sem saber
+  const motivo = !p.ok
+    ? (p.aviso || (p.total < p.minimo ? `Faltam ${brl(p.minimo - p.total)} para o pedido mínimo de ${brl(p.minimo)}. Volte ao carrinho e adicione mais caixas.` : ''))
+    : !aceite ? 'Para enviar, marque "Estou de acordo" logo acima.' : '';
   return (
     <div className="cb-co">
       <div style={{ display: 'grid', gap: 16 }}>
@@ -464,6 +468,7 @@ function Finalizar(p: ResumoProps & {
           <label className="cb-check"><input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
             <span>Estou de acordo: pedido por caixa fechada, sujeito à confirmação do representante.</span></label>
           {erro && <div className="cb-alert err">{erro}</div>}
+          {!erro && motivo && <div className="cb-alert">{motivo}</div>}
           <button className="cb-btn full" type="button" disabled={!aceite || enviando || !p.ok} onClick={enviar}>{enviando ? 'Enviando…' : 'Enviar pedido'}</button>
           <button className="cb-btn gh full" type="button" onClick={p.voltar}>Voltar ao carrinho</button>
         </div>
