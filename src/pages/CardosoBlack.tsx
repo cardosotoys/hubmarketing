@@ -8,7 +8,7 @@ import EmptyState from '../components/EmptyState';
 import DrivePicker, { type DriveItem } from './social-plan/DrivePicker';
 import './black/black.css';
 import { useRedonda } from './black/fonte';
-import { ABAS, abaValida, type Aba } from './black/abas';
+import { ABAS, abaValida, entrarComoCliente, type Aba } from './black/abas';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 
@@ -408,6 +408,7 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
               {sel.status !== 'aprovado' && <button className="btn" onClick={() => decidir(sel, 'aprovado')}>Aprovar</button>}
               {sel.status !== 'recusado' && <button className="btn ghost" onClick={() => decidir(sel, 'recusado')}>Recusar</button>}
               {sel.status === 'recusado' && <button className="btn ghost" onClick={() => decidir(sel, 'analise')}>Voltar para análise</button>}
+              {sel.status === 'aprovado' && <button className="btn" onClick={async () => { const e = await entrarComoCliente(sel.id); setAviso(e || `Página de pedido aberta como ${sel.fantasia || sel.razao_social}. Faça um cliente por vez: abrir outro troca a loja da página.`); }}>Fazer pedido por este cliente</button>}
               {sel.status === 'aprovado' && <button className="btn ghost" onClick={() => copiar(msgAprovado(sel))}>Copiar mensagem de aprovação</button>}
               <button className="btn ghost" onClick={() => gerarLink(sel)}>Gerar link de nova senha</button>
               {sel.celular && <a className="btn ghost" href={`https://wa.me/55${sel.celular.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">Abrir WhatsApp</a>}
