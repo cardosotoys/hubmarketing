@@ -135,6 +135,28 @@ export default function CardosoBlack() {
     setCarregando(false);
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
+  // durante a Black os números mudam a todo momento: pedidos, itens, inscritos e estoque se atualizam sozinhos a cada minuto
+  // (e quando a aba volta a ficar visível), sem recarregar a página
+  const [atualizado, setAtualizado] = useState<Date | null>(null);
+  const atualizar = useCallback(async () => {
+    if (document.hidden) return;
+    try {
+      const [i, p, it, b] = await Promise.all([
+        paginar<Inscrito>((a, z) => supabase.from('black_inscritos').select('*').neq('origem', 'previa').order('criado_em', { ascending: false }).range(a, z)),
+        paginar<Pedido>((a, z) => supabase.from('black_pedidos').select('*').order('criado_em', { ascending: false }).range(a, z)),
+        paginar<Item>((a, z) => supabase.from('black_pedido_itens').select('*').range(a, z)),
+        supabase.from('black_produtos').select('*').order('ordem'),
+      ]);
+      if (b.error) return;
+      setIns(i); setPeds(p); setItens(it); setBps((b.data as BP[]) ?? []); setAtualizado(new Date());
+    } catch { /* tenta de novo no próximo minuto */ }
+  }, []);
+  useEffect(() => {
+    const t = setInterval(atualizar, 60000);
+    const vis = () => { if (!document.hidden) atualizar(); };
+    document.addEventListener('visibilitychange', vis);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis); };
+  }, [atualizar]);
 
   const porCodigo = useMemo(() => Object.fromEntries(prods.map((p) => [p.code, p])), [prods]);
 
