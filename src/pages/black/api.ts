@@ -74,10 +74,12 @@ function tokenDoLink() {
   try {
     const u = new URL(window.location.href); const t = u.searchParams.get('entrar');
     if (!t) return;
-    ls.set('cb-token', t); ls.del('cb-carrinho'); ss.set('');
+    ls.set('cb-token', t); ls.del('cb-carrinho'); ss.set(''); ls.set('cb-equipe', true);
     u.searchParams.delete('entrar'); window.history.replaceState(null, '', u.pathname + u.search + u.hash);
   } catch { /* sem armazenamento */ }
 }
+/** sessão aberta pela equipe (link de pedido manual): depois do fechamento continua podendo fazer pedido */
+export const sessaoDaEquipe = () => ls.get<boolean>('cb-equipe', false);
 export const tokenGuardado = () => { tokenDoLink(); return ls.get<string>('cb-token', '') || ss.get(); };
 export const guardarToken = (t: string, manter = true) => {
   if (!t) { ls.del('cb-token'); ss.set(''); return; }
@@ -117,12 +119,12 @@ export function useSessao() {
     if (error) return 'rede';
     const r = data as { token?: string; erro?: string };
     if (r.erro || !r.token) return r.erro ?? 'senha';
-    guardarToken(r.token, manter); setTok(r.token);
+    ls.del('cb-equipe'); guardarToken(r.token, manter); setTok(r.token);
     return null;
   }, []);
   const sair = useCallback(async () => {
     if (token) await supabase.rpc('black_sair', { p_token: token });
-    guardarToken(''); setTok(''); setSessao(null);
+    ls.del('cb-equipe'); guardarToken(''); setTok(''); setSessao(null);
   }, [token]);
   return { token, sessao, carregando, entrar, sair };
 }

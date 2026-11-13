@@ -180,7 +180,7 @@ export default function CardosoBlack() {
           <>
             {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
-            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} recarregar={carregar} />}
+            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} fechaEm={cfg?.fecha_em ?? null} recarregar={carregar} />}
             {aba === 'carrinhos' && <Carrinhos ins={ins} peds={peds} fechaEm={cfg?.fecha_em ?? null} />}
             {aba === 'relatorio' && cfg && <RelatorioDiretoria cfg={cfg} ins={ins} peds={peds} itens={itens} bps={bps} porCodigo={porCodigo} fichas={fichas} />}
             {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} peds={peds} />}
@@ -686,7 +686,8 @@ function Carrinhos({ ins, peds, fechaEm }: { ins: Inscrito[]; peds: Pedido[]; fe
   );
 }
 
-function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; recarregar: () => void }) {
+function Pedidos({ peds, itens, cart, porCodigo, fechaEm, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; fechaEm: string | null; recarregar: () => void }) {
+  const aposFechar = (p: Pedido) => !!fechaEm && (p.criado_em > fechaEm || (!!p.alterado_em && p.alterado_em > fechaEm));
   const { profile } = useAuth();
   const [flt, setFlt] = useState<'todos' | 'alterados' | Pedido['status']>('todos');
   const [busca, setBusca] = useState('');
@@ -741,7 +742,7 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
             <tbody>{vis.map((p) => (
               <Fragment key={p.id}>
                 <tr className="click" onClick={() => setAberto(aberto === p.id ? null : p.id)}>
-                  <td><b>{p.numero}</b>{(p.versao ?? 1) > 1 && <span style={{ marginLeft: 6, background: '#DA3A2F', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>ALTERADO · v{p.versao}</span>}<small>{dt(p.criado_em)}{p.alterado_em ? ` · alterado ${dt(p.alterado_em)}` : ''}</small></td>
+                  <td><b>{p.numero}</b>{(p.versao ?? 1) > 1 && <span style={{ marginLeft: 6, background: '#DA3A2F', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>ALTERADO · v{p.versao}</span>}{aposFechar(p) && <span style={{ marginLeft: 6, background: '#0E0E10', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>LIBERADO APÓS 12H</span>}<small>{dt(p.criado_em)}{p.alterado_em ? ` · alterado ${dt(p.alterado_em)}` : ''}</small></td>
                   <td><b>{p.fantasia || p.razao_social}</b><small>{cnpjFmt(p.cnpj)} · {p.cidade}/{p.uf}</small></td>
                   <td>{p.representante || '—'}</td>
                   <td className="num">{p.caixas}</td>
