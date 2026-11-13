@@ -150,7 +150,7 @@ export default function CardosoBlack() {
           <h2>{titulo}</h2>
           {aba === 'resumo' && <span className="ex">atualizado agora</span>}
           {aba === 'pedidos' && cfg && <span className="ex">{dt(cfg.abre_em)} a {dt(cfg.fecha_em)}</span>}
-          <div className="r"><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
+          <div className="r"><small style={{ color: 'var(--text-3, #7C8A90)', marginRight: 8 }}>Atualiza sozinho a cada minuto{atualizado ? ` · ${atualizado.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</small><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
         </div>
         {erro && <div className="alert">{erro}</div>}
         {!erro && cfg && (
