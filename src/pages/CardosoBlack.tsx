@@ -614,7 +614,7 @@ function Carrinhos({ ins, peds }: { ins: Inscrito[]; peds: Pedido[] }) {
       </div>
       <div className="cbx-box" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
         <b style={{ flex: 1, minWidth: 240 }}>Relação para o representante <small style={{ fontWeight: 500, display: 'block' }}>Pedidos concluídos, carrinhos sem fechar e inscritos que não compraram, em PDF.</small></b>
-        <select value={relRep} onChange={(e) => setRelRep(e.target.value)} style={{ borderRadius: 999, padding: '7px 12px' }}><option value="">Todos (uma folha por representante)</option>{repsRel.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+        <select value={relRep} onChange={(e) => setRelRep(e.target.value)} style={{ borderRadius: 999, padding: '7px 12px' }}><option value="">Todos (uma folha por representante)</option>{repsRel.map((r) => { const n = L.filter((c) => (c.situacao === 'abandonado' || c.situacao === 'ativo') && (c.representante ?? '').trim() === r && !peds.some((p) => p.status !== 'cancelado' && p.cnpj.replace(/\D/g, '') === c.cnpj.replace(/\D/g, ''))).length; return <option key={r} value={r}>{r}{n ? ` · ⚠ ${n} carrinho${n > 1 ? 's' : ''} parado${n > 1 ? 's' : ''}` : ''}</option>; })}</select>
         <button className="btn sm primary" onClick={() => { if (!abrirRelacao(ins, peds, rel ?? [], relRep, arqRel(relRep))) setErro('O navegador bloqueou a janela do PDF. Libere pop-ups para o Hub.'); }}>Gerar PDF</button>
       </div>
       <Filtros reps={unicos(L.map((c) => c.representante))} ufs={unicos(L.map((c) => c.uf))} prods={prodsCar} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />

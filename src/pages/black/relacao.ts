@@ -29,6 +29,7 @@ th:first-child{border-radius:7px 0 0 7px}th:last-child{border-radius:0 7px 7px 0
 td{padding:6px 7px;border-bottom:1px solid #EFECE8;vertical-align:top}td.r,th.r{text-align:right}td small{display:block;color:#6B6E73;font-size:7.8pt}
 tbody tr:nth-child(even) td{background:#FAF8F6}.vz{color:#8A8D92;font-style:italic;padding:6px 2px}
 .tg{display:inline-block;font-size:6.8pt;font-weight:800;padding:1px 6px;border-radius:99px;margin-left:5px;background:#141416;color:#fff}.tg.a{background:#F2B84B;color:#141416}
+.aten{margin-top:10px;background:#DA3A2F;color:#fff;border-radius:10px;padding:9px 13px;display:grid;gap:2px}.aten b{font-size:11pt;font-weight:900}.aten span{font-size:8.6pt}
 .ft{margin-top:10px;font-size:7.5pt;color:#6B6E73}
 @media screen{body{background:#EDEAE6;padding:20px}.rp{background:#fff;max-width:840px;margin:0 auto 20px;padding:18px;border-radius:12px}
 .barra{position:sticky;top:0;max-width:840px;margin:0 auto 14px;background:#0E0E10;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;z-index:2}
@@ -40,12 +41,13 @@ function secao(nome: string, peds: Ped[], cars: Car[], sem: Ins[], quando: strin
   const tot = peds.reduce((t, p) => t + Number(p.total_com_ipi ?? Number(p.total) + Number(p.ipi ?? 0)), 0);
   const tc = cars.reduce((t, c) => t + Number(c.valor), 0);
   const tbPed = peds.length ? `<table><thead><tr><th>Pedido</th><th>Loja</th><th>Comprador</th><th>Cidade/UF</th><th class="r">Caixas</th><th class="r">Total c/ IPI</th></tr></thead><tbody>${peds.map((p) => `<tr><td><b>${esc(p.numero)}</b>${(p.versao ?? 1) > 1 ? `<span class="tg">alterado v${p.versao}</span>` : ''}<small>${dh(p.criado_em)} · ${esc(ST[p.status] ?? p.status)}</small></td><td><b>${esc(p.fantasia || p.razao_social)}</b></td><td>${esc(p.comprador)}<small>${esc(p.celular)}</small></td><td>${esc(p.cidade)}/${esc(p.uf)}</td><td class="r">${p.caixas}</td><td class="r"><b>${brl(Number(p.total_com_ipi ?? Number(p.total) + Number(p.ipi ?? 0)))}</b></td></tr>`).join('')}</tbody></table>` : '<div class="vz">Nenhum pedido ainda.</div>';
-  const tbCar = cars.length ? `<table><thead><tr><th>Loja</th><th>Comprador</th><th>No carrinho</th><th class="r">Valor</th><th>Última visita</th></tr></thead><tbody>${cars.map((c) => `<tr><td><b>${esc(c.fantasia || c.razao_social)}</b>${c.situacao === 'ativo' ? '<span class="tg a">na página agora</span>' : ''}<small>${esc(c.cidade)}/${esc(c.uf)}</small></td><td>${esc(c.comprador)}<small>${esc(c.celular)}</small></td><td>${c.itens.map((i) => `${i.caixas} cx · ${esc(i.nome)}`).join('<br>')}</td><td class="r"><b>${brl(Number(c.valor))}</b><small>${c.caixas} cx</small></td><td>${dh(c.visto_em)}</td></tr>`).join('')}</tbody></table>` : '<div class="vz">Nenhum carrinho sem fechar.</div>';
+  const tbCar = cars.length ? `<table><thead><tr><th>Loja</th><th>Comprador</th><th>No carrinho</th><th class="r">Valor</th><th>Última visita</th></tr></thead><tbody>${cars.map((c) => `<tr><td><b>${esc(c.fantasia || c.razao_social)}</b>${c.situacao === 'ativo' ? '<span class="tg a">na página agora</span>' : ''}<small>${esc(c.cidade)}/${esc(c.uf)}</small></td><td>${esc(c.comprador)}<small><b style="color:#141416">${esc(c.celular)}</b></small></td><td>${c.itens.map((i) => `${i.caixas} cx · ${esc(i.nome)}`).join('<br>')}</td><td class="r"><b>${brl(Number(c.valor))}</b><small>${c.caixas} cx</small></td><td>${dh(c.visto_em)}</td></tr>`).join('')}</tbody></table>` : '<div class="vz">Nenhum carrinho sem fechar.</div>';
   const tbSem = sem.length ? `<table><thead><tr><th>Loja</th><th>Comprador</th><th>WhatsApp</th><th>Cidade/UF</th></tr></thead><tbody>${sem.map((i) => `<tr><td><b>${esc(i.fantasia || i.razao_social)}</b></td><td>${esc(i.comprador)}</td><td>${esc(i.celular)}</td><td>${esc(i.cidade)}/${esc(i.uf)}</td></tr>`).join('')}</tbody></table>` : '<div class="vz">Todos os inscritos já compraram ou estão com carrinho.</div>';
   return `<section class="rp"><div class="hd"><img src="/black/selo-black.webp" alt=""><div class="t"><h1>${esc(nome)}</h1><p>Relação da Black Cardoso · posição de ${quando}</p></div>
-<div class="kp"><div class="r"><b>${peds.length}</b><small>pedidos</small></div><div><b>${brl(tot).replace(',00', '')}</b><small>vendido c/ IPI</small></div><div><b>${cars.length}</b><small>carrinhos</small></div><div><b>${sem.length}</b><small>sem compra</small></div></div></div>
+<div class="kp"><div${cars.length ? ' class="r"' : ''}><b>${cars.length}</b><small>carrinhos parados</small></div><div><b>${peds.length}</b><small>pedidos</small></div><div><b>${brl(tot).replace(',00', '')}</b><small>vendido c/ IPI</small></div><div><b>${sem.length}</b><small>sem compra</small></div></div></div>
+${cars.length ? `<div class="aten"><b>⚠ ATENÇÃO: ${cars.length} cliente${cars.length === 1 ? '' : 's'} com carrinho sem fechar · ${brl(tc)} parados</b><span>Ligue ou mande mensagem agora: os produtos ainda não são deles e os pedidos encerram no horário da Black. Comece pelos de maior valor.</span></div>` : ''}
+<h2>Carrinho sem fechar <small>${cars.length} · ${brl(tc)} em produtos · prioridade</small></h2>${tbCar}
 <h2>Pedidos concluídos <small>${peds.length} · ${brl(tot)} com IPI</small></h2>${tbPed}
-<h2>Carrinho sem fechar <small>${cars.length} · ${brl(tc)} em produtos</small></h2><p class="dica">Colocaram produtos no carrinho e não enviaram o pedido. Vale ligar: o estoque só fica garantido quando o pedido é enviado.</p>${tbCar}
 <h2>Inscritos que ainda não compraram <small>${sem.length}</small></h2><p class="dica">Cadastro aprovado, sem pedido e sem carrinho.</p>${tbSem}
 <div class="ft">Black Cardoso · relação de ${esc(nome)} · os pedidos encerram no horário da Black; alterações feitas pelo cliente aparecem como "alterado".</div></section>`;
 }
@@ -59,7 +61,8 @@ export function abrirRelacao(ins: Ins[], peds: Ped[], cars: Car[], so: string, t
   const aprov = ins.filter((i) => i.status === 'aprovado' && i.origem !== 'previa');
   const sem = aprov.filter((i) => !comprou.has(dig(i.cnpj)) && !comCarro.has(dig(i.cnpj)));
   const reps = [...new Set([...aprov.map((i) => rep(i.representante)), ...validos.map((p) => rep(p.representante))])]
-    .filter((r) => !so || r === so).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    .filter((r) => !so || r === so)
+    .sort((a, b) => abertos.filter((c) => rep(c.representante) === b).length - abertos.filter((c) => rep(c.representante) === a).length || a.localeCompare(b, 'pt-BR'));
   const quando = dh(new Date().toISOString());
   const corpo = reps.map((r) => secao(r, validos.filter((p) => rep(p.representante) === r).sort((a, b) => a.numero.localeCompare(b.numero)),
     abertos.filter((c) => rep(c.representante) === r).sort((a, b) => Number(b.valor) - Number(a.valor)),
