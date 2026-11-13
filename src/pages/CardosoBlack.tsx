@@ -9,6 +9,7 @@ import DrivePicker, { type DriveItem } from './social-plan/DrivePicker';
 import './black/black.css';
 import { useRedonda } from './black/fonte';
 import { ABAS, abaValida, linkComoCliente, type Aba } from './black/abas';
+import { abrirEspelhos } from './black/espelho';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 
@@ -153,7 +154,7 @@ export default function CardosoBlack() {
           <>
             {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
-            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
+            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} recarregar={carregar} />}
             {aba === 'carrinhos' && <Carrinhos />}
             {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} peds={peds} />}
             {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
@@ -648,7 +649,7 @@ function Carrinhos() {
   );
 }
 
-function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; recarregar: () => void }) {
+function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; recarregar: () => void }) {
   const { profile } = useAuth();
   const [flt, setFlt] = useState<'todos' | Pedido['status']>('todos');
   const [busca, setBusca] = useState('');
@@ -664,6 +665,8 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
     .sort((a, b) => fx.ordem === 'valor' ? Number(b.total) - Number(a.total) : fx.ordem === 'caixas' ? b.caixas - a.caixas
       : fx.ordem === 'antigo' ? a.criado_em.localeCompare(b.criado_em) : b.criado_em.localeCompare(a.criado_em));
   const visOk = vis.filter((p) => p.status !== 'cancelado');
+  const imgs = useMemo(() => Object.fromEntries(Object.values(porCodigo).filter((p) => p.image_url).map((p) => [p.code, p.image_url])), [porCodigo]);
+  function pdf(L: Pedido[], titulo: string) { if (!abrirEspelhos(L, itens, cart, titulo, imgs)) setAviso('O navegador bloqueou a janela do PDF. Libere pop-ups para o Hub e tente de novo.'); }
   const itProd = fx.prod ? itens.filter((i) => i.codigo === fx.prod && visOk.some((p) => p.id === i.pedido_id)) : [];
   const val = peds.filter((p) => p.status !== 'cancelado'); const tv = val.reduce((s, p) => s + Number(p.total), 0);
   async function status(p: Pedido, s: Pedido['status']) {
@@ -686,6 +689,7 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
         <input type="search" placeholder="Pedido, loja, CNPJ ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <button className="btn sm" onClick={() => guarani(true)}>Planilha Guarani (confirmados)</button>
         <button className="btn ghost sm" onClick={() => guarani(false)}>Todos os pedidos</button>
+        <button className="btn sm primary" disabled={!visOk.length} onClick={() => pdf(visOk, fx.rep ? `Pedidos Black Cardoso · ${fx.rep}` : 'Pedidos Black Cardoso')}>PDF dos pedidos{fx.rep ? ` · ${fx.rep}` : ''} ({visOk.length})</button>
       </div>
       <Filtros reps={unicos(peds.map((p) => p.representante))} ufs={unicos(peds.map((p) => p.uf))} prods={prodsPed} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
       <p className="cbx-hint"><b>{int(vis.length)} pedido{vis.length === 1 ? '' : 's'}</b> no filtro · {brl(visOk.reduce((t, p) => t + Number(p.total), 0))} em produtos, sem IPI · {int(visOk.reduce((t, p) => t + p.caixas, 0))} caixas (sem os cancelados){fx.prod ? ` · ${fx.prod}: ${int(itProd.reduce((t, i) => t + i.caixas, 0))} cx, ${int(itProd.reduce((t, i) => t + i.caixas * i.pecas_caixa, 0))} pç, ${brl(itProd.reduce((t, i) => t + Number(i.total), 0))}` : ''}</p>
@@ -713,6 +717,7 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
                     <div style={{ display: 'grid', gap: 6 }}>
                       {itens.filter((i) => i.pedido_id === p.id).map((i) => <div key={i.codigo} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{i.codigo} · {i.nome} <small style={{ display: 'inline' }}>({i.caixas} cx × {i.pecas_caixa} pç · {brl(Number(i.preco_peca))})</small></span><b>{brl(Number(i.total))}</b></div>)}
                       <small>Comprador: {p.comprador} · {p.email} · {p.celular} · {p.frete}{p.observacao ? ` · Obs.: ${p.observacao}` : ''}</small>
+                      <div><button className="btn sm" onClick={() => pdf([p], `Pedido ${p.numero} · ${p.fantasia || p.razao_social}`)}>PDF deste pedido</button></div>
                     </div>
                   </td></tr>
                 )}
