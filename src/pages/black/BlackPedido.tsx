@@ -6,7 +6,7 @@ import { Ic, Sv } from './Icones';
 import Cronometro from './Cronometro';
 import Encerrada from './Encerrada';
 import {
-  brl, descontoPct, diaMes, ERRO_LOGIN, ipiDe, pctTxt, fmtData, freteTexto, ehLimitado, gravarCarrinho, lerCarrinho, sincronizarCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
+  brl, descontoPct, diaMes, ERRO_LOGIN, sessaoDaEquipe, ipiDe, pctTxt, fmtData, freteTexto, ehLimitado, gravarCarrinho, lerCarrinho, sincronizarCarrinho, maskCnpj, useConfig, useFaltam, useSessao,
   type BlackConfig, type BlackItem, type BlackPedido as Pedido, type BlackSessao, type Carrinho,
 } from './api';
 
@@ -34,16 +34,19 @@ export default function BlackPedido() {
   // antes da live: só a contagem regressiva (sem login, sem produtos). A prévia da equipe passa direto.
   if (abre && abre.ms > 0 && !sessao?.previa) return <Shell sub="Cardoso Black · exclusivo para lojas de e-commerce" clock={clock} wide={false}><Cronometro alvo={cfg.abre_em} canal={sessao?.canal_link || cfg?.canal_link} cadastro={!sessao} /></Shell>;
   // depois do fechamento (fecha_em, ajustável): o link fecha. Quem está logado ainda vê os próprios pedidos.
-  const fechou = fecha !== null && fecha.ms <= 0 && !sessao?.previa;
+  const equipe = !!sessao && sessaoDaEquipe();
+  const fechou = fecha !== null && fecha.ms <= 0 && !sessao?.previa && !equipe;
   if (fechou && !sessao) return <Shell sub="Cardoso Black" clock={clock} wide={false}><Encerrada fim={cfg.fecha_em} /></Shell>;
   if (!sessao) return <Shell sub="Pedidos somente por esta página" clock={clock} wide={false}><Login entrar={entrar} ate={diaMes(cfg.fecha_em)} /></Shell>;
 
   // prévia da equipe: vitrine liberada antes da abertura e depois do fim, sem enviar pedido
   const previa = !!sessao.previa;
   const antes = !previa && abre !== null && abre.ms > 0;
-  const depois = !previa && fecha !== null && fecha.ms <= 0;
+  const depois = !previa && !equipe && fecha !== null && fecha.ms <= 0;
+  const liberado = equipe && fecha !== null && fecha.ms <= 0;
   return (
     <Shell sub={`Pedido somente por esta página · caixa fechada · mínimo de ${brl(cfg.pedido_minimo)}`} clock={clock}>
+      {liberado && <div className="cb-alert warn" style={{ marginBottom: 14 }}><b>Liberado pela equipe Cardoso:</b> a Black já fechou para os clientes. Este pedido entra como liberado após o fechamento.</div>}
       {depois && params.get('v') !== 'pedidos' && params.get('v') !== 'conta' ? <Encerrada fim={cfg.fecha_em} logado /> : <Loja token={token} sessao={sessao} cfg={cfg} antes={antes} encerrado={depois} previa={previa} sair={sair} />}
     </Shell>
   );
