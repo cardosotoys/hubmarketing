@@ -10,6 +10,7 @@ import './black/black.css';
 import { useRedonda } from './black/fonte';
 import { ABAS, abaValida, linkComoCliente, type Aba } from './black/abas';
 import { abrirEspelhos } from './black/espelho';
+import { abrirRelacao } from './black/relacao';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 
@@ -157,7 +158,7 @@ export default function CardosoBlack() {
             {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
             {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} recarregar={carregar} />}
-            {aba === 'carrinhos' && <Carrinhos />}
+            {aba === 'carrinhos' && <Carrinhos ins={ins} peds={peds} />}
             {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} peds={peds} />}
             {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
             {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
@@ -555,13 +556,16 @@ function Filtros({ reps, ufs, prods, f, set }: {
 }
 const unicos = (v: (string | null | undefined)[]) => [...new Set(v.map((x) => (x ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-function Carrinhos() {
+function Carrinhos({ ins, peds }: { ins: Inscrito[]; peds: Pedido[] }) {
   const [rel, setRel] = useState<CarRel[] | null>(null);
   const [erro, setErro] = useState('');
   const [flt, setFlt] = useState<'todos' | CarRel['situacao']>('todos');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
   const [fx, setFx] = useState<{ rep: string; uf: string; prod: string; ordem: Ordem }>({ rep: '', uf: '', prod: '', ordem: 'recente' });
+  const [relRep, setRelRep] = useState('');
+  const repsRel = useMemo(() => unicos([...ins.filter((i) => i.status === 'aprovado').map((i) => i.representante), ...peds.map((p) => p.representante)]), [ins, peds]);
+  const arqRel = (r: string) => 'CARDOSO_BLACK-CARDOSO_RELACAO_' + (r || 'TODOS').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.rpc('black_carrinhos_relatorio');
     if (error) { setErro(error.message.includes('black_carrinhos_relatorio') ? 'Para ver os carrinhos, rode o SQL 0172 no Supabase.' : error.message); setRel([]); return; }
@@ -607,6 +611,11 @@ function Carrinhos() {
         {(['todos', 'abandonado', 'ativo', 'finalizado'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : SIT[k]}<b>{k === 'todos' ? L.length : n(k).length}</b></button>)}
         <input type="search" placeholder="Loja, CNPJ, cidade ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <button className="btn sm" onClick={csv}>Baixar relatório (CSV)</button>
+      </div>
+      <div className="cbx-box" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+        <b style={{ flex: 1, minWidth: 240 }}>Relação para o representante <small style={{ fontWeight: 500, display: 'block' }}>Pedidos concluídos, carrinhos sem fechar e inscritos que não compraram, em PDF.</small></b>
+        <select value={relRep} onChange={(e) => setRelRep(e.target.value)} style={{ borderRadius: 999, padding: '7px 12px' }}><option value="">Todos (uma folha por representante)</option>{repsRel.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+        <button className="btn sm primary" onClick={() => { if (!abrirRelacao(ins, peds, rel ?? [], relRep, arqRel(relRep))) setErro('O navegador bloqueou a janela do PDF. Libere pop-ups para o Hub.'); }}>Gerar PDF</button>
       </div>
       <Filtros reps={unicos(L.map((c) => c.representante))} ufs={unicos(L.map((c) => c.uf))} prods={prodsCar} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
       <p className="cbx-hint"><b>{int(vis.length)} carrinho{vis.length === 1 ? '' : 's'}</b> · {brl(soma(vis))} em produtos · {int(vis.reduce((t, c) => t + cxProd(c), 0))} caixas{fx.prod ? ` de ${fx.prod}` : ''}. O CSV baixa só o que está filtrado.</p>
