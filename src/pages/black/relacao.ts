@@ -49,7 +49,7 @@ ${cars.length ? `<div class="aten"><b>⚠ ATENÇÃO: ${cars.length} cliente${car
 <h2>Carrinho sem fechar <small>${cars.length} · ${brl(tc)} em produtos · prioridade</small></h2>${tbCar}
 <h2>Pedidos concluídos <small>${peds.length} · ${brl(tot)} com IPI</small></h2>${tbPed}
 <h2>Inscritos que ainda não compraram <small>${sem.length}</small></h2><p class="dica">Cadastro aprovado, sem pedido e sem carrinho.</p>${tbSem}
-<div class="ft">Black Cardoso · relação de ${esc(nome)} · os pedidos encerram no horário da Black; alterações feitas pelo cliente aparecem como "alterado".</div></section>`;
+<div class="ft">Black Cardoso · relação de ${esc(nome)} · os pedidos encerram no horário da Black; alterações feitas pelo cliente ou pela equipe aparecem como "alterado".</div></section>`;
 }
 
 /** abre a relação de um representante (ou de todos, uma folha cada) para salvar em PDF */
