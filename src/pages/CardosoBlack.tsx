@@ -900,7 +900,6 @@ function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: {
     const val = peds.filter((p) => p.status !== 'cancelado'); const ids = new Set(val.map((p) => p.id));
     const its = itens.filter((i) => ids.has(i.pedido_id)); const pedDe = new Map(val.map((p) => [p.id, p]));
     const comprou = new Set(val.map((p) => dig(p.cnpj)));
-    const abertos = cars.filter((c) => (c.situacao === 'ativo' || c.situacao === 'abandonado') && c.itens.length && !comprou.has(dig(c.cnpj)));
     const aprov = ins.filter((i) => i.status === 'aprovado');
     const produtos = bps.filter((b) => b.ativo).sort((a, b) => a.ordem - b.ordem).map((b) => {
       const pr = porCodigo[b.codigo]; const ii = its.filter((i) => i.codigo === b.codigo);
@@ -909,15 +908,14 @@ function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: {
         caixa: b.caixa_qtd ?? pr?.carton_quantity ?? 1, preco: Number(b.preco_peca ?? 0), cota: b.estoque_caixas,
         cx: ii.reduce((t, i) => t + i.caixas, 0), pc: ii.reduce((t, i) => t + i.caixas * i.pecas_caixa, 0), valor: ii.reduce((t, i) => t + Number(i.total), 0),
         lojas: new Set(ii.map((i) => pedDe.get(i.pedido_id)?.cnpj)).size, qr: fichas[b.codigo] ?? 0,
-        carCx: abertos.reduce((t, c) => t + (c.itens.find((x) => x.codigo === b.codigo)?.caixas ?? 0), 0),
+        carCx: 0, // carrinho abandonado não sai do estoque e não entra no relatório
       };
     });
     const repsN = [...new Set([...aprov.map((i) => rep(i.representante)), ...val.map((p) => rep(p.representante))])];
     const reps = repsN.map((r) => {
       const ii = aprov.filter((i) => rep(i.representante) === r); const pp = val.filter((p) => rep(p.representante) === r);
-      const cc = abertos.filter((c) => rep(c.representante) === r); const cnpjs = new Set([...pp.map((p) => dig(p.cnpj)), ...cc.map((c) => dig(c.cnpj))]);
       return { rep: r, ins: ii.length, comp: new Set(pp.map((p) => dig(p.cnpj))).size, ped: pp.length, val: pp.reduce((t, p) => t + Number(p.total), 0),
-        car: cc.length, carVal: cc.reduce((t, c) => t + Number(c.valor), 0), sem: ii.filter((i) => !cnpjs.has(dig(i.cnpj))).length };
+        car: 0, carVal: 0, sem: ii.filter((i) => !comprou.has(dig(i.cnpj))).length };
     });
     const insIds = new Set(aprov.map((i) => i.id));
     const comCarrinho = new Set([...cars.filter((c) => c.itens.length || c.situacao === 'finalizado').map((c) => dig(c.cnpj)), ...comprou]);
@@ -930,8 +928,8 @@ function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: {
       funil: { ins: ins.length, aprov: aprov.length, entraram: new Set(ev.filter((e) => e.tipo === 'login' && e.inscrito_id && insIds.has(e.inscrito_id)).map((e) => e.inscrito_id)).size,
         carrinho: aprov.filter((i) => comCarrinho.has(dig(i.cnpj))).length, compraram: aprov.filter((i) => comprou.has(dig(i.cnpj))).length,
         loginFalhou: ev.filter((e) => e.tipo === 'login_falhou').length, fichas: Object.values(fichas).reduce((t, n) => t + n, 0) },
-      carros: abertos.map((c) => ({ loja: c.fantasia || c.razao_social, rep: rep(c.representante), cid: c.cidade, uf: c.uf, val: Number(c.valor), cx: c.caixas,
-        itens: c.itens.map((i) => [i.codigo, i.nome, i.caixas] as [string, string, number]), visto: c.visto_em })),
+      // carrinhos abandonados ficam no sistema (aba Carrinhos), fora do relatório: não contam nem sujam o resultado
+      carros: [],
     };
   }, [cars, ev, ins, peds, itens, bps, porCodigo, fichas, cfg]);
   const html = useMemo(() => (dados ? gerarRelatorio(dados) : ''), [dados]);
