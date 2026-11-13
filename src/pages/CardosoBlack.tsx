@@ -11,6 +11,7 @@ import { useRedonda } from './black/fonte';
 import { ABAS, abaValida, linkComoCliente, type Aba } from './black/abas';
 import { abrirEspelhos } from './black/espelho';
 import { abrirRelacao } from './black/relacao';
+import { gerarRelatorio, type DadosRelatorio } from './black/relatorioDiretoria';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 
@@ -180,7 +181,8 @@ export default function CardosoBlack() {
             {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
             {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} recarregar={carregar} />}
-            {aba === 'carrinhos' && <Carrinhos ins={ins} peds={peds} />}
+            {aba === 'carrinhos' && <Carrinhos ins={ins} peds={peds} fechaEm={cfg?.fecha_em ?? null} />}
+            {aba === 'relatorio' && cfg && <RelatorioDiretoria cfg={cfg} ins={ins} peds={peds} itens={itens} bps={bps} porCodigo={porCodigo} fichas={fichas} />}
             {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} peds={peds} />}
             {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
             {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
@@ -578,7 +580,8 @@ function Filtros({ reps, ufs, prods, f, set }: {
 }
 const unicos = (v: (string | null | undefined)[]) => [...new Set(v.map((x) => (x ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-function Carrinhos({ ins, peds }: { ins: Inscrito[]; peds: Pedido[] }) {
+function Carrinhos({ ins, peds, fechaEm }: { ins: Inscrito[]; peds: Pedido[]; fechaEm: string | null }) {
+  const congelado = !!fechaEm && Date.now() >= new Date(fechaEm).getTime();
   const [rel, setRel] = useState<CarRel[] | null>(null);
   const [erro, setErro] = useState('');
   const [flt, setFlt] = useState<'todos' | CarRel['situacao']>('todos');
@@ -623,8 +626,9 @@ function Carrinhos({ ins, peds }: { ins: Inscrito[]; peds: Pedido[] }) {
   return (
     <>
       {erro && <div className="alert">{erro}</div>}
+      {congelado && <div className="alert" style={{ background: '#0E0E10', color: '#fff', borderColor: '#0E0E10' }}><b>Black encerrada em {dt(fechaEm)}: carrinhos congelados.</b> Ninguém consegue mais enviar pedido nem mexer no carrinho. Os carrinhos com produtos que não viraram pedido aparecem como <b>Congelado · não enviado</b>.</div>}
       <div className="cbx-kpis">
-        <Kpi l="Abandonados" v={`${int(n('abandonado').length)} · ${brl0(soma(n('abandonado')))}`} c="#DA3A2F" />
+        <Kpi l={congelado ? 'Congelados (não enviados)' : 'Abandonados'} v={`${int(n('abandonado').length)} · ${brl0(soma(n('abandonado')))}`} c="#DA3A2F" />
         <Kpi l="Em andamento agora" v={`${int(n('ativo').length)} · ${brl0(soma(n('ativo')))}`} c="#F2B84B" />
         <Kpi l="Finalizados" v={`${int(n('finalizado').length)} · ${brl0(soma(n('finalizado')))}`} c="#1F7F88" />
         <Kpi l="Conversão de carrinho" v={`${conv}%`} c="#0A2530" />
@@ -651,7 +655,7 @@ function Carrinhos({ ins, peds }: { ins: Inscrito[]; peds: Pedido[] }) {
                 <tr className="click" onClick={() => setAberto(aberto === c.id ? null : c.id)}>
                   <td><b>{c.fantasia || c.razao_social}</b><small>{cnpjFmt(c.cnpj)} · {c.cidade}/{c.uf}</small></td>
                   <td>{c.representante || '—'}</td>
-                  <td><b style={{ color: SITC[c.situacao] }}>{SIT[c.situacao]}</b></td>
+                  <td><b style={{ color: SITC[c.situacao] }}>{congelado && (c.situacao === 'ativo' || c.situacao === 'abandonado') ? 'Congelado · não enviado' : SIT[c.situacao]}</b></td>
                   <td className="num">{c.caixas}</td>
                   <td className="num">{brl(Number(c.valor))}</td>
                   <td>{dt(c.atualizado_em)}<small>visto {dt(c.visto_em)}</small></td>
@@ -763,6 +767,79 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
           </table>
         </div>
       )}
+    </>
+  );
+}
+
+/* ================= Relatório da diretoria ================= */
+function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: { cfg: Cfg; ins: Inscrito[]; peds: Pedido[]; itens: Item[]; bps: BP[]; porCodigo: Record<string, Prod>; fichas: Record<string, number> }) {
+  const [cars, setCars] = useState<CarRel[] | null>(null);
+  const [ev, setEv] = useState<{ inscrito_id: string | null; tipo: string }[]>([]);
+  const [aviso, setAviso] = useState('');
+  const carregar = useCallback(async () => {
+    const [c, e] = await Promise.all([
+      supabase.rpc('black_carrinhos_relatorio'),
+      paginar<{ inscrito_id: string | null; tipo: string }>((a, z) => supabase.from('black_eventos').select('inscrito_id, tipo').in('tipo', ['login', 'login_falhou']).range(a, z)),
+    ]);
+    setCars(Array.isArray(c.data) ? (c.data as CarRel[]) : []); setEv(e);
+  }, []);
+  useEffect(() => { carregar(); const t = setInterval(carregar, 60000); return () => clearInterval(t); }, [carregar]);
+  const dados = useMemo<DadosRelatorio | null>(() => {
+    if (!cars) return null;
+    const dig = (x: string | null | undefined) => (x ?? '').replace(/\D/g, '');
+    const rep = (r: string | null | undefined) => (r ?? '').trim() || 'Sem representante';
+    const val = peds.filter((p) => p.status !== 'cancelado'); const ids = new Set(val.map((p) => p.id));
+    const its = itens.filter((i) => ids.has(i.pedido_id)); const pedDe = new Map(val.map((p) => [p.id, p]));
+    const comprou = new Set(val.map((p) => dig(p.cnpj)));
+    const abertos = cars.filter((c) => (c.situacao === 'ativo' || c.situacao === 'abandonado') && c.itens.length && !comprou.has(dig(c.cnpj)));
+    const aprov = ins.filter((i) => i.status === 'aprovado');
+    const produtos = bps.filter((b) => b.ativo).sort((a, b) => a.ordem - b.ordem).map((b) => {
+      const pr = porCodigo[b.codigo]; const ii = its.filter((i) => i.codigo === b.codigo);
+      return {
+        c: b.codigo, n: b.nome || pr?.packaging_name || pr?.name || b.codigo, fam: b.familia, img: pr?.image_url ?? '',
+        caixa: b.caixa_qtd ?? pr?.carton_quantity ?? 1, preco: Number(b.preco_peca ?? 0), cota: b.estoque_caixas,
+        cx: ii.reduce((t, i) => t + i.caixas, 0), pc: ii.reduce((t, i) => t + i.caixas * i.pecas_caixa, 0), valor: ii.reduce((t, i) => t + Number(i.total), 0),
+        lojas: new Set(ii.map((i) => pedDe.get(i.pedido_id)?.cnpj)).size, qr: fichas[b.codigo] ?? 0,
+        carCx: abertos.reduce((t, c) => t + (c.itens.find((x) => x.codigo === b.codigo)?.caixas ?? 0), 0),
+      };
+    });
+    const repsN = [...new Set([...aprov.map((i) => rep(i.representante)), ...val.map((p) => rep(p.representante))])];
+    const reps = repsN.map((r) => {
+      const ii = aprov.filter((i) => rep(i.representante) === r); const pp = val.filter((p) => rep(p.representante) === r);
+      const cc = abertos.filter((c) => rep(c.representante) === r); const cnpjs = new Set([...pp.map((p) => dig(p.cnpj)), ...cc.map((c) => dig(c.cnpj))]);
+      return { rep: r, ins: ii.length, comp: new Set(pp.map((p) => dig(p.cnpj))).size, ped: pp.length, val: pp.reduce((t, p) => t + Number(p.total), 0),
+        car: cc.length, carVal: cc.reduce((t, c) => t + Number(c.valor), 0), sem: ii.filter((i) => !cnpjs.has(dig(i.cnpj))).length };
+    });
+    const insIds = new Set(aprov.map((i) => i.id));
+    const comCarrinho = new Set([...cars.filter((c) => c.itens.length || c.situacao === 'finalizado').map((c) => dig(c.cnpj)), ...comprou]);
+    return {
+      geradoEm: new Date().toISOString(), abreEm: cfg.abre_em, fechaEm: cfg.fecha_em, minimo: Number(cfg.pedido_minimo), ipiPct: Number(cfg.ipi_pct ?? 6.5),
+      produtos,
+      pedidos: [...val].sort((a, b) => a.criado_em.localeCompare(b.criado_em)).map((p) => ({ n: p.numero, em: p.criado_em, loja: p.fantasia || p.razao_social, cid: p.cidade, uf: p.uf, rep: rep(p.representante),
+        cx: p.caixas, pc: p.pecas, val: Number(p.total), ipi: Number(p.ipi ?? 0), v: p.versao ?? 1, st: p.status, itens: its.filter((i) => i.pedido_id === p.id).length })),
+      reps,
+      funil: { ins: ins.length, aprov: aprov.length, entraram: new Set(ev.filter((e) => e.tipo === 'login' && e.inscrito_id && insIds.has(e.inscrito_id)).map((e) => e.inscrito_id)).size,
+        carrinho: aprov.filter((i) => comCarrinho.has(dig(i.cnpj))).length, compraram: aprov.filter((i) => comprou.has(dig(i.cnpj))).length,
+        loginFalhou: ev.filter((e) => e.tipo === 'login_falhou').length, fichas: Object.values(fichas).reduce((t, n) => t + n, 0) },
+      carros: abertos.map((c) => ({ loja: c.fantasia || c.razao_social, rep: rep(c.representante), cid: c.cidade, uf: c.uf, val: Number(c.valor), cx: c.caixas,
+        itens: c.itens.map((i) => [i.codigo, i.nome, i.caixas] as [string, string, number]), visto: c.visto_em })),
+    };
+  }, [cars, ev, ins, peds, itens, bps, porCodigo, fichas, cfg]);
+  const html = useMemo(() => (dados ? gerarRelatorio(dados) : ''), [dados]);
+  const nomeArq = () => `CARDOSO_BLACK-CARDOSO_RELATORIO-DIRETORIA_${new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\D+/g, '-')}.html`;
+  function telaCheia() { const w = window.open('', '_blank'); if (!w) { setAviso('O navegador bloqueou a janela. Libere pop-ups para o Hub.'); return; } w.document.open(); w.document.write(html); w.document.close(); }
+  function baixar() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = nomeArq(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+  if (!dados) return <div className="cbx-hint">Montando o relatório…</div>;
+  const fim = Date.now() >= new Date(cfg.fecha_em).getTime();
+  return (
+    <>
+      <div className="cbx-bar" style={{ marginBottom: 10 }}>
+        <span className="cbx-hint" style={{ flex: 1, margin: 0 }}>{fim ? <><b>Pedidos encerrados.</b> O relatório mostra o resultado final.</> : <><b>Resultado parcial.</b> Atualiza sozinho a cada minuto; depois de {dt(cfg.fecha_em)} vira o resultado final.</>} O arquivo baixado guarda os números do momento em que foi gerado.</span>
+        <button className="btn sm" onClick={telaCheia}>Abrir em tela cheia</button>
+        <button className="btn sm primary" onClick={baixar}>Baixar HTML para apresentar</button>
+      </div>
+      {aviso && <div className="alert">{aviso}</div>}
+      <iframe title="Relatório da Black Cardoso" srcDoc={html} style={{ width: '100%', height: 'calc(100vh - 210px)', minHeight: 640, border: '1px solid var(--border)', borderRadius: 14, background: '#fff' }} />
     </>
   );
 }
