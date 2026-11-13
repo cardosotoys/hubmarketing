@@ -39,7 +39,10 @@ type Pedido = {
   representante: string; comprador: string; email: string; celular: string; observacao: string; caixas: number; pecas: number;
   total: number; ipi?: number; total_com_ipi?: number; frete: string; status: 'recebido' | 'confirmado' | 'cancelado'; criado_em: string;
   versao?: number; alterado_em?: string | null; alteracoes?: { codigo: string; nome: string; de: number; para: number }[] | null;
+  edicoes?: Edicao[] | null;
 };
+type Edicao = { tipo: 'itens' | 'dados'; em: string; por: string; versao?: number; motivo?: string; cadastro?: boolean;
+  mudou: ({ codigo: string; nome: string; de: number; para: number } | { campo: string; de: string | null; para: string | null })[] };
 const difTxt = (a: { codigo: string; nome: string; de: number; para: number }) => (!a.de ? `+ ${a.para} cx ${a.codigo} ${a.nome} (novo)` : !a.para ? `− ${a.codigo} ${a.nome} (saiu, eram ${a.de} cx)` : `${a.codigo} ${a.nome}: ${a.de} → ${a.para} cx`);
 type Item = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
 type BP = { codigo: string; ordem: number; nome?: string; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
@@ -180,7 +183,7 @@ export default function CardosoBlack() {
           <>
             {aba === 'resumo' && <Resumo ins={ins} peds={peds} itens={itens} cart={cart} fichas={fichas} porCodigo={porCodigo} cfg={cfg} recarregar={carregar} />}
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
-            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} fechaEm={cfg?.fecha_em ?? null} recarregar={carregar} />}
+            {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} cart={cart} porCodigo={porCodigo} bps={bps} fechaEm={cfg?.fecha_em ?? null} recarregar={carregar} />}
             {aba === 'carrinhos' && <Carrinhos ins={ins} peds={peds} fechaEm={cfg?.fecha_em ?? null} />}
             {aba === 'relatorio' && cfg && <RelatorioDiretoria cfg={cfg} ins={ins} peds={peds} itens={itens} bps={bps} porCodigo={porCodigo} fichas={fichas} />}
             {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} peds={peds} />}
@@ -686,7 +689,109 @@ function Carrinhos({ ins, peds, fechaEm }: { ins: Inscrito[]; peds: Pedido[]; fe
   );
 }
 
-function Pedidos({ peds, itens, cart, porCodigo, fechaEm, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; fechaEm: string | null; recarregar: () => void }) {
+const CAMPO: Record<string, string> = { razao_social: 'Razão social', fantasia: 'Nome fantasia', cnpj: 'CNPJ', cidade: 'Cidade', uf: 'UF', representante: 'Representante', comprador: 'Comprador', email: 'E-mail', celular: 'WhatsApp', observacao: 'Observação' };
+// quem fez a última alteração de produtos: a equipe (registrada em edicoes) ou o cliente
+function quemAlterou(p: Pedido) {
+  const e = [...(p.edicoes ?? [])].reverse().find((x) => x.tipo === 'itens');
+  return e && p.alterado_em && Math.abs(new Date(e.em).getTime() - new Date(p.alterado_em).getTime()) < 5000 ? `pela equipe (${e.por})` : 'pelo cliente';
+}
+const AVISO: Record<string, (a: Record<string, unknown>) => string> = {
+  estoque: (a) => `${a.codigo}: só há ${a.disponivel} cx disponíveis`,
+  minimo: (a) => `o pedido fica em ${brl(Number(a.total))}, abaixo do mínimo de ${brl(Number(a.minimo))}`,
+  limite: (a) => `Totokinhas 0300/0301 somam ${brl(Number(a.valor))}, acima do limite de ${brl(Number(a.maximo))}`,
+  inativo: (a) => `${a.codigo} está fora da Black (inativo)`,
+};
+/* a equipe edita o pedido do cliente: dados cadastrais e produtos (quantidade, incluir, tirar) */
+function EditarPedido({ p, itens, bps, porCodigo, fechar, salvo }: { p: Pedido; itens: Item[]; bps: BP[]; porCodigo: Record<string, Prod>; fechar: () => void; salvo: (msg: string) => void }) {
+  const campos = ['razao_social', 'fantasia', 'cnpj', 'cidade', 'uf', 'representante', 'comprador', 'email', 'celular', 'observacao'] as const;
+  const [dados, setDados] = useState<Record<string, string>>(() => Object.fromEntries(campos.map((k) => [k, String(p[k] ?? '')])));
+  const [cadastro, setCadastro] = useState(true);
+  const [qt, setQt] = useState<Record<string, number>>(() => Object.fromEntries(itens.map((i) => [i.codigo, i.caixas])));
+  const [novo, setNovo] = useState({ codigo: '', caixas: '' });
+  const [motivo, setMotivo] = useState('');
+  const [avisos, setAvisos] = useState<Record<string, unknown>[] | null>(null);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const nomeDe = (c: string) => itens.find((i) => i.codigo === c)?.nome || bps.find((b) => b.codigo === c)?.nome || porCodigo[c]?.packaging_name || porCodigo[c]?.name || c;
+  const linha = (c: string) => { const i = itens.find((x) => x.codigo === c); const b = bps.find((x) => x.codigo === c);
+    const pc = i?.pecas_caixa ?? b?.caixa_qtd ?? porCodigo[c]?.carton_quantity ?? 1; const pr = i ? Number(i.preco_peca) : Number(b?.preco_peca ?? 0); return { pc, pr, novo: !i }; };
+  const codigos = [...new Set([...itens.map((i) => i.codigo), ...Object.keys(qt)])];
+  const total = codigos.reduce((t, c) => { const l = linha(c); return t + (qt[c] ?? 0) * l.pc * l.pr; }, 0);
+  const mudouDados = campos.some((k) => (dados[k] ?? '') !== String(p[k] ?? ''));
+  const mudouItens = codigos.some((c) => (qt[c] ?? 0) !== (itens.find((i) => i.codigo === c)?.caixas ?? 0));
+  const opcoes = bps.filter((b) => !(b.codigo in qt)).sort((a, b) => a.codigo.localeCompare(b.codigo));
+  function incluir() { const n = Math.floor(Number(novo.caixas)); if (!novo.codigo || !(n > 0)) return; setQt((q) => ({ ...q, [novo.codigo]: n })); setNovo({ codigo: '', caixas: '' }); setAvisos(null); }
+  async function salvar(forcar = false) {
+    setErro(''); setSalvando(true); const msgs: string[] = [];
+    try {
+      if (mudouDados) {
+        const { data, error } = await supabase.rpc('black_pedido_admin_dados', { p_pedido: p.id, p_dados: dados, p_cadastro: cadastro });
+        if (error) throw new Error(error.message);
+        const r = data as { erro?: string }; if (!r?.erro) msgs.push(`dados do cliente${cadastro ? ' (pedido e cadastro)' : ''}`);
+      }
+      if (mudouItens) {
+        const lista = Object.entries(qt).filter(([, n]) => n > 0).map(([codigo, caixas]) => ({ codigo, caixas }));
+        if (!lista.length) throw new Error('O pedido precisa de pelo menos um produto. Para tirar tudo, mude o status para Cancelado.');
+        const { data, error } = await supabase.rpc('black_pedido_admin_itens', { p_pedido: p.id, p_itens: lista, p_forcar: forcar, p_motivo: motivo });
+        if (error) throw new Error(error.message);
+        const r = data as { erro?: string; avisos?: Record<string, unknown>[]; codigo?: string; versao?: number };
+        if (r?.erro === 'avisos') { setAvisos(r.avisos ?? []); if (msgs.length) salvo(`${p.numero}: ${msgs.join(' e ')} salvo. Os produtos ainda não: veja os avisos.`); return; }
+        if (r?.erro === 'produto') throw new Error(`O produto ${r.codigo} não tem preço na Black.`);
+        if (r?.erro && r.erro !== 'igual') throw new Error(`Não consegui salvar (${r.erro}).`);
+        if (!r?.erro) msgs.push(`produtos (agora versão ${r.versao})`);
+      }
+      salvo(msgs.length ? `${p.numero}: ${msgs.join(' e ')} salvo.` : 'Nada mudou.');
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setSalvando(false); }
+  }
+  const inp: React.CSSProperties = { width: '100%' };
+  return (
+    <div className="cbx-box" style={{ display: 'grid', gap: 14, background: 'var(--surface)', margin: '4px 0' }}>
+      <div>
+        <b>Dados do cliente</b>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 8, marginTop: 8 }}>
+          {campos.map((k) => <label key={k} style={{ display: 'grid', gap: 3, fontSize: 12 }}>{CAMPO[k]}
+            {k === 'observacao' ? <textarea rows={2} style={inp} value={dados[k]} onChange={(e) => setDados((d) => ({ ...d, [k]: e.target.value }))} />
+              : <input style={inp} value={dados[k]} maxLength={k === 'uf' ? 2 : undefined} onChange={(e) => setDados((d) => ({ ...d, [k]: e.target.value }))} />}</label>)}
+        </div>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, fontSize: 13 }}><input type="checkbox" checked={cadastro} onChange={(e) => setCadastro(e.target.checked)} />Atualizar também o cadastro do cliente (inscrição), não só este pedido</label>
+      </div>
+      <div>
+        <b>Produtos</b> <small style={{ display: 'inline' }}>· zere a quantidade para tirar o produto</small>
+        <table className="cbx-table" style={{ marginTop: 6 }}>
+          <thead><tr><th>Produto</th><th className="num">Caixas</th><th className="num">Pç/cx</th><th className="num">Preço pç</th><th className="num">Total</th><th></th></tr></thead>
+          <tbody>{codigos.map((c) => { const l = linha(c); const n = qt[c] ?? 0; const antes = itens.find((i) => i.codigo === c)?.caixas ?? 0; return (
+            <tr key={c} style={{ opacity: n ? 1 : 0.5 }}>
+              <td>{c} · {nomeDe(c)}{l.novo && <small style={{ display: 'inline', color: '#1F7F88', fontWeight: 700 }}> novo</small>}{n !== antes && !l.novo && <small style={{ display: 'inline', color: '#DA3A2F', fontWeight: 700 }}> era {antes}</small>}</td>
+              <td className="num"><input type="number" min={0} step={1} value={n} style={{ width: 80, textAlign: 'right' }} onChange={(e) => { setQt((q) => ({ ...q, [c]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })); setAvisos(null); }} /></td>
+              <td className="num">{l.pc}</td><td className="num">{brl(l.pr)}</td><td className="num">{brl(n * l.pc * l.pr)}</td>
+              <td>{n > 0 ? <button className="btn ghost sm" onClick={() => { setQt((q) => ({ ...q, [c]: 0 })); setAvisos(null); }}>Tirar</button> : l.novo ? <button className="btn ghost sm" onClick={() => setQt((q) => { const x = { ...q }; delete x[c]; return x; })}>Desfazer</button> : null}</td>
+            </tr>); })}</tbody>
+        </table>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          <select value={novo.codigo} onChange={(e) => setNovo((x) => ({ ...x, codigo: e.target.value }))} style={{ maxWidth: 360 }}>
+            <option value="">Incluir produto…</option>
+            {opcoes.map((b) => <option key={b.codigo} value={b.codigo}>{b.codigo} · {nomeDe(b.codigo)}{b.ativo ? '' : ' (fora da Black)'}</option>)}
+          </select>
+          <input type="number" min={1} placeholder="caixas" value={novo.caixas} onChange={(e) => setNovo((x) => ({ ...x, caixas: e.target.value }))} style={{ width: 90 }} />
+          <button className="btn sm" disabled={!novo.codigo || !(Number(novo.caixas) > 0)} onClick={incluir}>Incluir</button>
+          <span style={{ marginLeft: 'auto' }}>Novo total em produtos: <b>{brl(total)}</b> <small style={{ display: 'inline' }}>(antes {brl(Number(p.total))}; produto novo entra com o preço Black atual)</small></span>
+        </div>
+        {mudouItens && <label style={{ display: 'grid', gap: 3, fontSize: 12, marginTop: 8 }}>Motivo da alteração (fica no histórico)<input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: pedido do representante por WhatsApp" /></label>}
+      </div>
+      {avisos && <div className="alert" style={{ margin: 0 }}><b>Antes de salvar os produtos, confira:</b><ul style={{ margin: '6px 0 8px 18px' }}>{avisos.map((a, k) => <li key={k}>{AVISO[String(a.tipo)]?.(a) ?? String(a.tipo)}</li>)}</ul>
+        <button className="btn sm primary" disabled={salvando} onClick={() => salvar(true)}>Salvar mesmo assim</button> <button className="btn ghost sm" onClick={() => setAvisos(null)}>Voltar e ajustar</button></div>}
+      {erro && <div className="alert" style={{ margin: 0 }}>{erro}</div>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn primary" disabled={salvando || (!mudouDados && !mudouItens) || !!avisos} onClick={() => salvar(false)}>{salvando ? 'Salvando…' : 'Salvar alterações'}</button>
+        <button className="btn ghost" onClick={fechar}>Cancelar</button>
+        <small style={{ alignSelf: 'center' }}>Alterar produtos gera uma nova versão do pedido (o PDF do representante mostra o que mudou). O cliente não é avisado.</small>
+      </div>
+    </div>
+  );
+}
+
+function Pedidos({ peds, itens, cart, porCodigo, bps, fechaEm, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; bps: BP[]; fechaEm: string | null; recarregar: () => void }) {
+  const [editando, setEditando] = useState<string | null>(null);
   const aposFechar = (p: Pedido) => !!fechaEm && (p.criado_em > fechaEm || (!!p.alterado_em && p.alterado_em > fechaEm));
   const { profile } = useAuth();
   const [flt, setFlt] = useState<'todos' | 'alterados' | Pedido['status']>('todos');
@@ -742,7 +847,7 @@ function Pedidos({ peds, itens, cart, porCodigo, fechaEm, recarregar }: { peds: 
             <tbody>{vis.map((p) => (
               <Fragment key={p.id}>
                 <tr className="click" onClick={() => setAberto(aberto === p.id ? null : p.id)}>
-                  <td><b>{p.numero}</b>{(p.versao ?? 1) > 1 && <span style={{ marginLeft: 6, background: '#DA3A2F', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>ALTERADO · v{p.versao}</span>}{aposFechar(p) && <span style={{ marginLeft: 6, background: '#0E0E10', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>LIBERADO APÓS 12H</span>}<small>{dt(p.criado_em)}{p.alterado_em ? ` · alterado ${dt(p.alterado_em)}` : ''}</small></td>
+                  <td><b>{p.numero}</b>{(p.versao ?? 1) > 1 && <span style={{ marginLeft: 6, background: '#DA3A2F', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>ALTERADO · v{p.versao}</span>}{!!p.edicoes?.length && <span style={{ marginLeft: 6, background: '#1F7F88', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>EDITADO PELA EQUIPE</span>}{aposFechar(p) && <span style={{ marginLeft: 6, background: '#0E0E10', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>LIBERADO APÓS 12H</span>}<small>{dt(p.criado_em)}{p.alterado_em ? ` · alterado ${dt(p.alterado_em)}` : ''}</small></td>
                   <td><b>{p.fantasia || p.razao_social}</b><small>{cnpjFmt(p.cnpj)} · {p.cidade}/{p.uf}</small></td>
                   <td>{p.representante || '—'}</td>
                   <td className="num">{p.caixas}</td>
@@ -756,9 +861,12 @@ function Pedidos({ peds, itens, cart, porCodigo, fechaEm, recarregar }: { peds: 
                 {aberto === p.id && (
                   <tr><td colSpan={6} style={{ background: 'var(--surface-2)' }}>
                     <div style={{ display: 'grid', gap: 6 }}>
-                      {(p.versao ?? 1) > 1 && !!p.alteracoes?.length && <div className="alert" style={{ margin: 0 }}><b>Alterado pelo cliente em {dt(p.alterado_em ?? null)} (versão {p.versao}):</b> {p.alteracoes.map(difTxt).join(' · ')}</div>}
+                      {(p.versao ?? 1) > 1 && !!p.alteracoes?.length && <div className="alert" style={{ margin: 0 }}><b>Alterado {quemAlterou(p)} em {dt(p.alterado_em ?? null)} (versão {p.versao}):</b> {p.alteracoes.map(difTxt).join(' · ')}</div>}
+                      {editando === p.id ? <EditarPedido p={p} itens={itens.filter((i) => i.pedido_id === p.id)} bps={bps} porCodigo={porCodigo} fechar={() => setEditando(null)} salvo={(m) => { setEditando(null); setAviso(m); recarregar(); }} />
+                        : <div><button className="btn sm primary" onClick={() => setEditando(p.id)}>Editar pedido (dados do cliente e produtos)</button></div>}
                       {itens.filter((i) => i.pedido_id === p.id).map((i) => <div key={i.codigo} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{i.codigo} · {i.nome} <small style={{ display: 'inline' }}>({i.caixas} cx × {i.pecas_caixa} pç · {brl(Number(i.preco_peca))})</small></span><b>{brl(Number(i.total))}</b></div>)}
                       <small>Comprador: {p.comprador} · {p.email} · {p.celular} · {p.frete}{p.observacao ? ` · Obs.: ${p.observacao}` : ''}</small>
+                      {!!p.edicoes?.length && <div style={{ display: 'grid', gap: 2 }}><b style={{ fontSize: 12 }}>Edições da equipe</b>{p.edicoes.map((e, k) => <small key={k}>{dt(e.em)} · {e.por} · {e.tipo === 'itens' ? `produtos (v${e.versao}): ` : `dados${e.cadastro ? ' (e cadastro)' : ''}: `}{e.mudou.map((m) => ('campo' in m ? `${CAMPO[m.campo] ?? m.campo}: ${m.de || '—'} → ${m.para || '—'}` : difTxt(m))).join(' · ')}{e.motivo ? ` · motivo: ${e.motivo}` : ''}</small>)}</div>}
                       
                     </div>
                   </td></tr>
