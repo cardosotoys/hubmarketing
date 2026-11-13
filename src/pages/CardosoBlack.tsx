@@ -150,7 +150,7 @@ export default function CardosoBlack() {
           <h2>{titulo}</h2>
           {aba === 'resumo' && <span className="ex">atualizado agora</span>}
           {aba === 'pedidos' && cfg && <span className="ex">{dt(cfg.abre_em)} a {dt(cfg.fecha_em)}</span>}
-          <div className="r"><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
+          <div className="r"><small style={{ color: 'var(--text-3, #7C8A90)', marginRight: 8 }}>Atualiza sozinho a cada minuto{atualizado ? ` · ${atualizado.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</small><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
         </div>
         {erro && <div className="alert">{erro}</div>}
         {!erro && cfg && (
@@ -614,7 +614,7 @@ function Carrinhos({ ins, peds }: { ins: Inscrito[]; peds: Pedido[] }) {
       </div>
       <div className="cbx-box" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
         <b style={{ flex: 1, minWidth: 240 }}>Relação para o representante <small style={{ fontWeight: 500, display: 'block' }}>Pedidos concluídos, carrinhos sem fechar e inscritos que não compraram, em PDF.</small></b>
-        <select value={relRep} onChange={(e) => setRelRep(e.target.value)} style={{ borderRadius: 999, padding: '7px 12px' }}><option value="">Todos (uma folha por representante)</option>{repsRel.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+        <select value={relRep} onChange={(e) => setRelRep(e.target.value)} style={{ borderRadius: 999, padding: '7px 12px' }}><option value="">Todos (uma folha por representante)</option>{repsRel.map((r) => { const n = L.filter((c) => (c.situacao === 'abandonado' || c.situacao === 'ativo') && (c.representante ?? '').trim() === r && !peds.some((p) => p.status !== 'cancelado' && p.cnpj.replace(/\D/g, '') === c.cnpj.replace(/\D/g, ''))).length; return <option key={r} value={r}>{r}{n ? ` · ⚠ ${n} carrinho${n > 1 ? 's' : ''} parado${n > 1 ? 's' : ''}` : ''}</option>; })}</select>
         <button className="btn sm primary" onClick={() => { if (!abrirRelacao(ins, peds, rel ?? [], relRep, arqRel(relRep))) setErro('O navegador bloqueou a janela do PDF. Libere pop-ups para o Hub.'); }}>Gerar PDF</button>
       </div>
       <Filtros reps={unicos(L.map((c) => c.representante))} ufs={unicos(L.map((c) => c.uf))} prods={prodsCar} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
