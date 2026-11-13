@@ -666,6 +666,8 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
       : fx.ordem === 'antigo' ? a.criado_em.localeCompare(b.criado_em) : b.criado_em.localeCompare(a.criado_em));
   const visOk = vis.filter((p) => p.status !== 'cancelado');
   const imgs = useMemo(() => Object.fromEntries(Object.values(porCodigo).filter((p) => p.image_url).map((p) => [p.code, p.image_url])), [porCodigo]);
+  // nome do arquivo: CARDOSO_BLACK-CARDOSO_<pedido>_<cliente>
+  const arq = (...partes: string[]) => 'CARDOSO_BLACK-CARDOSO_' + partes.map((x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9-]+/g, '-').replace(/^-+|-+$/g, '')).filter(Boolean).join('_');
   function pdf(L: Pedido[], titulo: string) { if (!abrirEspelhos(L, itens, cart, titulo, imgs)) setAviso('O navegador bloqueou a janela do PDF. Libere pop-ups para o Hub e tente de novo.'); }
   const itProd = fx.prod ? itens.filter((i) => i.codigo === fx.prod && visOk.some((p) => p.id === i.pedido_id)) : [];
   const val = peds.filter((p) => p.status !== 'cancelado'); const tv = val.reduce((s, p) => s + Number(p.total), 0);
@@ -689,7 +691,7 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
         <input type="search" placeholder="Pedido, loja, CNPJ ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <button className="btn sm" onClick={() => guarani(true)}>Planilha Guarani (confirmados)</button>
         <button className="btn ghost sm" onClick={() => guarani(false)}>Todos os pedidos</button>
-        <button className="btn sm primary" disabled={!visOk.length} onClick={() => pdf(visOk, fx.rep ? `Pedidos Black Cardoso · ${fx.rep}` : 'Pedidos Black Cardoso')}>PDF dos pedidos{fx.rep ? ` · ${fx.rep}` : ''} ({visOk.length})</button>
+        <button className="btn sm primary" disabled={!visOk.length} onClick={() => pdf(visOk, arq('PEDIDOS', fx.rep || 'GERAL'))}>PDF geral{fx.rep ? ` · ${fx.rep}` : ''} ({visOk.length})</button>
       </div>
       <Filtros reps={unicos(peds.map((p) => p.representante))} ufs={unicos(peds.map((p) => p.uf))} prods={prodsPed} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
       <p className="cbx-hint"><b>{int(vis.length)} pedido{vis.length === 1 ? '' : 's'}</b> no filtro · {brl(visOk.reduce((t, p) => t + Number(p.total), 0))} em produtos, sem IPI · {int(visOk.reduce((t, p) => t + p.caixas, 0))} caixas (sem os cancelados){fx.prod ? ` · ${fx.prod}: ${int(itProd.reduce((t, i) => t + i.caixas, 0))} cx, ${int(itProd.reduce((t, i) => t + i.caixas * i.pecas_caixa, 0))} pç, ${brl(itProd.reduce((t, i) => t + Number(i.total), 0))}` : ''}</p>
@@ -698,7 +700,7 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
       {vis.length === 0 ? <EmptyState title="Nenhum pedido" hint="Os pedidos enviados pelo link aparecem aqui na hora." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
           <table className="cbx-table">
-            <thead><tr><th>Pedido</th><th>Loja</th><th>Representante</th><th className="num">Caixas</th><th className="num">Produtos</th><th className="num">Total c/ IPI</th><th>Status</th></tr></thead>
+            <thead><tr><th>Pedido</th><th>Loja</th><th>Representante</th><th className="num">Caixas</th><th className="num">Produtos</th><th className="num">Total c/ IPI</th><th>PDF · Status</th></tr></thead>
             <tbody>{vis.map((p) => (
               <Fragment key={p.id}>
                 <tr className="click" onClick={() => setAberto(aberto === p.id ? null : p.id)}>
@@ -708,7 +710,8 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
                   <td className="num">{p.caixas}</td>
                   <td className="num">{brl(Number(p.total))}</td>
                   <td className="num"><b>{brl(Number(p.total_com_ipi ?? p.total))}</b>{Number(p.ipi) > 0 && <small>IPI {brl(Number(p.ipi))}</small>}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                    <button className="btn sm" title="Imprimir ou salvar o PDF deste pedido" onClick={() => pdf([p], arq(p.numero, p.fantasia || p.razao_social))}>PDF</button>{' '}
                     <select value={p.status} onChange={(e) => status(p, e.target.value as Pedido['status'])}>{(['recebido', 'confirmado', 'cancelado'] as const).map((s) => <option key={s} value={s}>{ST[s]}</option>)}</select>
                   </td>
                 </tr>
@@ -717,7 +720,7 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
                     <div style={{ display: 'grid', gap: 6 }}>
                       {itens.filter((i) => i.pedido_id === p.id).map((i) => <div key={i.codigo} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{i.codigo} · {i.nome} <small style={{ display: 'inline' }}>({i.caixas} cx × {i.pecas_caixa} pç · {brl(Number(i.preco_peca))})</small></span><b>{brl(Number(i.total))}</b></div>)}
                       <small>Comprador: {p.comprador} · {p.email} · {p.celular} · {p.frete}{p.observacao ? ` · Obs.: ${p.observacao}` : ''}</small>
-                      <div><button className="btn sm" onClick={() => pdf([p], `Pedido ${p.numero} · ${p.fantasia || p.razao_social}`)}>PDF deste pedido</button></div>
+                      
                     </div>
                   </td></tr>
                 )}
