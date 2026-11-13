@@ -5,6 +5,7 @@ type P = {
   id: string; numero: string; cnpj: string; razao_social: string; fantasia: string; cidade: string; uf: string;
   representante: string; comprador: string; email: string; celular: string; observacao: string; caixas: number; pecas: number;
   total: number; ipi?: number; total_com_ipi?: number; frete: string; status: string; criado_em: string;
+  versao?: number; alterado_em?: string | null; alteracoes?: { codigo: string; nome: string; de: number; para: number }[] | null;
 };
 type I = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
 type C = { cnpj: string | null; grupo: string; situacao: string };
@@ -39,6 +40,8 @@ td{padding:6px 7px;border-bottom:1px solid #EFECE8;font-size:9pt}td.r,th.r{text-
 tbody tr:nth-child(even) td{background:#FAF8F6}
 .tot{display:flex;justify-content:flex-end;margin-top:8px}.tot div{min-width:270px;border:1px solid #E7E4E0;border-radius:10px;overflow:hidden}
 .tot p{margin:0;display:flex;justify-content:space-between;padding:6px 12px;font-size:9.2pt}.tot p.f{background:#0E0E10;color:#fff;font-weight:900;font-size:11pt}
+.alt{margin-top:8px;background:#DA3A2F;color:#fff;border-radius:9px;padding:8px 12px;font-size:9.4pt;font-weight:800}
+tr.mud td{background:#FFF1D6!important}small.de{display:block;font-size:7pt;color:#B42318;font-weight:800}
 .obs{margin-top:10px;border-left:3px solid #DA3A2F;padding:6px 10px;background:#FFF5F4;border-radius:0 8px 8px 0;font-size:9pt}
 .ft{margin-top:10px;font-size:7.6pt;color:#6B6E73;display:flex;justify-content:space-between;gap:10px}
 .capa{page-break-after:always}.capa .lista td{font-size:9.2pt}
@@ -50,10 +53,13 @@ tbody tr:nth-child(even) td{background:#FAF8F6}
 
 function folha(p: P, itens: I[], cart: C | undefined, img: Record<string, string>) {
   const ipi = Number(p.ipi ?? 0); const comIpi = Number(p.total_com_ipi ?? Number(p.total) + ipi);
-  const linhas = itens.map((i) => `<tr><td class="im">${img[i.codigo] ? `<img src="${esc(img[i.codigo])}" alt="">` : ''}</td><td class="c">${esc(i.codigo)}</td><td><b>${esc(i.nome)}</b></td><td class="r">${int(i.caixas)}</td><td class="r">${int(i.pecas_caixa)}</td><td class="r">${int(i.caixas * i.pecas_caixa)}</td><td class="r">${brl(Number(i.preco_peca))}</td><td class="r"><b>${brl(Number(i.total))}</b></td></tr>`).join('');
+  const v = p.versao ?? 1; const mud = new Map((p.alteracoes ?? []).map((a) => [a.codigo, a]));
+  const saiu = (p.alteracoes ?? []).filter((a) => !a.para);
+  const linhas = itens.map((i) => `<tr${mud.has(i.codigo) ? ' class="mud"' : ''}><td class="im">${img[i.codigo] ? `<img src="${esc(img[i.codigo])}" alt="">` : ''}</td><td class="c">${esc(i.codigo)}</td><td><b>${esc(i.nome)}</b></td><td class="r">${int(i.caixas)}${mud.has(i.codigo) ? `<small class="de">${mud.get(i.codigo)!.de ? `antes ${int(mud.get(i.codigo)!.de)}` : 'novo'}</small>` : ''}</td><td class="r">${int(i.pecas_caixa)}</td><td class="r">${int(i.caixas * i.pecas_caixa)}</td><td class="r">${brl(Number(i.preco_peca))}</td><td class="r"><b>${brl(Number(i.total))}</b></td></tr>`).join('');
   return `<section class="ped">
-<div class="hd"><img src="/black/selo-black.webp" alt=""><div class="t"><h1>Pedido ${esc(p.numero)}</h1><p>Black Cardoso · enviado em ${dataHora(p.criado_em)} · ${esc(ST[p.status] ?? p.status)}</p></div>
+<div class="hd"><img src="/black/selo-black.webp" alt=""><div class="t"><h1>Pedido ${esc(p.numero)}${(p.versao ?? 1) > 1 ? ` · v${p.versao}` : ''}</h1><p>Black Cardoso · enviado em ${dataHora(p.criado_em)} · ${esc(ST[p.status] ?? p.status)}</p></div>
 <div class="kp"><div><b>${int(p.caixas)}</b><small>caixas</small></div><div><b>${int(p.pecas)}</b><small>peças</small></div><div class="r"><b>${brl(comIpi)}</b><small>total c/ IPI</small></div></div></div>
+${v > 1 ? `<div class="alt">ALTERADO PELO CLIENTE · versão ${v} · ${p.alterado_em ? dataHora(p.alterado_em) : ''} · substitui a versão anterior. Os itens em destaque mudaram${saiu.length ? `; saíram do pedido: ${saiu.map((a) => `${esc(a.codigo)} ${esc(a.nome)} (${int(a.de)} cx)`).join(', ')}` : ''}.</div>` : ''}
 <div class="rep">Representante: <b>${esc(p.representante || '—')}</b> · lançar este pedido no sistema com os preços abaixo</div>
 <div class="g">
 <div class="bx"><h3>Cliente</h3><div><span>Razão social</span><b>${esc(p.razao_social)}</b></div><div><span>Fantasia</span><b>${esc(p.fantasia || '—')}</b></div><div><span>CNPJ</span><b>${esc(cnpjFmt(p.cnpj))}</b></div><div><span>Cidade/UF</span><b>${esc(p.cidade)}/${esc(p.uf)}</b></div>${cart ? `<div><span>Carteira</span><b>${esc([cart.grupo, cart.situacao].filter(Boolean).join(' · ') || 'na carteira')}</b></div>` : '<div><span>Carteira</span><b>fora da carteira</b></div>'}</div>

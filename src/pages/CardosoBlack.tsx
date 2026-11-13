@@ -36,7 +36,9 @@ type Pedido = {
   id: string; numero: string; inscrito_id: string; cnpj: string; razao_social: string; fantasia: string; cidade: string; uf: string;
   representante: string; comprador: string; email: string; celular: string; observacao: string; caixas: number; pecas: number;
   total: number; ipi?: number; total_com_ipi?: number; frete: string; status: 'recebido' | 'confirmado' | 'cancelado'; criado_em: string;
+  versao?: number; alterado_em?: string | null; alteracoes?: { codigo: string; nome: string; de: number; para: number }[] | null;
 };
+const difTxt = (a: { codigo: string; nome: string; de: number; para: number }) => (!a.de ? `+ ${a.para} cx ${a.codigo} ${a.nome} (novo)` : !a.para ? `− ${a.codigo} ${a.nome} (saiu, eram ${a.de} cx)` : `${a.codigo} ${a.nome}: ${a.de} → ${a.para} cx`);
 type Item = { pedido_id: string; codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number };
 type BP = { codigo: string; ordem: number; nome?: string; familia: string; preco_peca: number | null; desconto_pct: number | null; caixa_qtd: number | null; estoque_caixas: number | null; ativo: boolean };
 type Prod = { id: string; code: string; name: string; packaging_name: string; line: string; image_url: string; carton_quantity: number | null; brand?: { label: string } | { label: string }[] | null };
@@ -651,14 +653,14 @@ function Carrinhos() {
 
 function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; recarregar: () => void }) {
   const { profile } = useAuth();
-  const [flt, setFlt] = useState<'todos' | Pedido['status']>('todos');
+  const [flt, setFlt] = useState<'todos' | 'alterados' | Pedido['status']>('todos');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
   const [aviso, setAviso] = useState('');
   const [fx, setFx] = useState<{ rep: string; uf: string; prod: string; ordem: Ordem }>({ rep: '', uf: '', prod: '', ordem: 'recente' });
   const comProd = useMemo(() => { const m = new Map<string, Set<string>>(); itens.forEach((i) => { if (!m.has(i.codigo)) m.set(i.codigo, new Set()); m.get(i.codigo)!.add(i.pedido_id); }); return m; }, [itens]);
   const prodsPed = useMemo(() => { const m = new Map<string, string>(); itens.forEach((i) => m.set(i.codigo, i.nome)); return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])); }, [itens]);
-  const vis = peds.filter((p) => (flt === 'todos' || p.status === flt)
+  const vis = peds.filter((p) => (flt === 'todos' || (flt === 'alterados' ? (p.versao ?? 1) > 1 : p.status === flt))
     && (!busca.trim() || `${p.numero} ${p.razao_social} ${p.fantasia} ${p.cnpj} ${p.representante}`.toLowerCase().includes(busca.trim().toLowerCase()))
     && (!fx.rep || (p.representante ?? '').trim() === fx.rep) && (!fx.uf || p.uf === fx.uf)
     && (!fx.prod || !!comProd.get(fx.prod)?.has(p.id)))
@@ -687,7 +689,7 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
     <>
       <div className="cbx-kpis"><Kpi l="Valor em produtos (sem IPI)" v={brl0(tv)} c="#DA3A2F" /><Kpi l="Pedidos" v={int(val.length)} /><Kpi l="Confirmados" v={int(peds.filter((p) => p.status === 'confirmado').length)} c="#1F7F88" /><Kpi l="A confirmar" v={int(peds.filter((p) => p.status === 'recebido').length)} c="#F2B84B" /></div>
       <div className="cbx-bar">
-        {(['todos', 'recebido', 'confirmado', 'cancelado'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : ST[k]}<b>{k === 'todos' ? peds.length : peds.filter((p) => p.status === k).length}</b></button>)}
+        {(['todos', 'recebido', 'confirmado', 'cancelado', 'alterados'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : k === 'alterados' ? 'Alterados' : ST[k]}<b>{k === 'todos' ? peds.length : k === 'alterados' ? peds.filter((p) => (p.versao ?? 1) > 1).length : peds.filter((p) => p.status === k).length}</b></button>)}
         <input type="search" placeholder="Pedido, loja, CNPJ ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <button className="btn sm" onClick={() => guarani(true)}>Planilha Guarani (confirmados)</button>
         <button className="btn ghost sm" onClick={() => guarani(false)}>Todos os pedidos</button>
@@ -704,20 +706,21 @@ function Pedidos({ peds, itens, cart, porCodigo, recarregar }: { peds: Pedido[];
             <tbody>{vis.map((p) => (
               <Fragment key={p.id}>
                 <tr className="click" onClick={() => setAberto(aberto === p.id ? null : p.id)}>
-                  <td><b>{p.numero}</b><small>{dt(p.criado_em)}</small></td>
+                  <td><b>{p.numero}</b>{(p.versao ?? 1) > 1 && <span style={{ marginLeft: 6, background: '#DA3A2F', color: '#fff', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>ALTERADO · v{p.versao}</span>}<small>{dt(p.criado_em)}{p.alterado_em ? ` · alterado ${dt(p.alterado_em)}` : ''}</small></td>
                   <td><b>{p.fantasia || p.razao_social}</b><small>{cnpjFmt(p.cnpj)} · {p.cidade}/{p.uf}</small></td>
                   <td>{p.representante || '—'}</td>
                   <td className="num">{p.caixas}</td>
                   <td className="num">{brl(Number(p.total))}</td>
                   <td className="num"><b>{brl(Number(p.total_com_ipi ?? p.total))}</b>{Number(p.ipi) > 0 && <small>IPI {brl(Number(p.ipi))}</small>}</td>
                   <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                    <button className="btn sm" title="Imprimir ou salvar o PDF deste pedido" onClick={() => pdf([p], arq(p.numero, p.fantasia || p.razao_social))}>PDF</button>{' '}
+                    <button className="btn sm" title="Imprimir ou salvar o PDF deste pedido" onClick={() => pdf([p], arq((p.versao ?? 1) > 1 ? `${p.numero}-V${p.versao}` : p.numero, p.fantasia || p.razao_social))}>PDF</button>{' '}
                     <select value={p.status} onChange={(e) => status(p, e.target.value as Pedido['status'])}>{(['recebido', 'confirmado', 'cancelado'] as const).map((s) => <option key={s} value={s}>{ST[s]}</option>)}</select>
                   </td>
                 </tr>
                 {aberto === p.id && (
                   <tr><td colSpan={6} style={{ background: 'var(--surface-2)' }}>
                     <div style={{ display: 'grid', gap: 6 }}>
+                      {(p.versao ?? 1) > 1 && !!p.alteracoes?.length && <div className="alert" style={{ margin: 0 }}><b>Alterado pelo cliente em {dt(p.alterado_em ?? null)} (versão {p.versao}):</b> {p.alteracoes.map(difTxt).join(' · ')}</div>}
                       {itens.filter((i) => i.pedido_id === p.id).map((i) => <div key={i.codigo} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{i.codigo} · {i.nome} <small style={{ display: 'inline' }}>({i.caixas} cx × {i.pecas_caixa} pç · {brl(Number(i.preco_peca))})</small></span><b>{brl(Number(i.total))}</b></div>)}
                       <small>Comprador: {p.comprador} · {p.email} · {p.celular} · {p.frete}{p.observacao ? ` · Obs.: ${p.observacao}` : ''}</small>
                       
