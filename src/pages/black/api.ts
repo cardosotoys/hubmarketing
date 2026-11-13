@@ -35,7 +35,7 @@ export type BlackFicha = BlackItem & {
   materiais: BlackMaterial[];
 };
 export type BlackPedido = {
-  numero: string; criado_em: string; caixas: number; total: number; ipi?: number; total_com_ipi?: number; status: string;
+  numero: string; criado_em: string; caixas: number; total: number; ipi?: number; total_com_ipi?: number; status: string; versao?: number; alterado_em?: string | null;
   itens: { codigo: string; nome: string; caixas: number; pecas_caixa: number; preco_peca: number; total: number }[];
 };
 

@@ -341,7 +341,8 @@ function Loja(p: LojaProps) {
         </>
       ))}
 
-      {view === 'pedidos' && <MeusPedidos pedidos={pedidos} representante={sessao.representante} comprar={podeComprar ? () => ir('produtos') : null} />}
+      {view === 'pedidos' && <MeusPedidos pedidos={pedidos} representante={sessao.representante} comprar={podeComprar ? () => ir('produtos') : null}
+        alterar={podeComprar ? { itens, cfg, token: p.token, previa: !!p.previa, pronto: (m: string) => { setToast(m); carregar(); } } : null} />}
 
       {view === 'conta' && <MinhaConta sessao={sessao} cfg={cfg} sair={p.sair} />}
 
@@ -507,8 +508,80 @@ function Andamento({ status, representante }: { status: string; representante: s
   );
 }
 
-function MeusPedidos({ pedidos, representante, comprar }: { pedidos: Pedido[]; representante: string; comprar: (() => void) | null }) {
+type AlterarCtx = { itens: BlackItem[]; cfg: BlackConfig; token: string; previa: boolean; pronto: (msg: string) => void };
+
+/* alteração do pedido enviado: o cliente muda as quantidades, tira ou inclui produtos até o fechamento.
+   O pedido mantém o número e vira uma nova versão; o representante recebe a versão nova. */
+function AlterarPedido({ ped, ctx, fechar }: { ped: Pedido; ctx: AlterarCtx; fechar: () => void }) {
+  const porCod = useMemo(() => Object.fromEntries(ctx.itens.map((i) => [i.codigo, i])), [ctx.itens]);
+  const orig = useMemo(() => Object.fromEntries((ped.itens ?? []).map((i) => [i.codigo, i.caixas])), [ped.itens]);
+  const [q, setQ] = useState<Record<string, number>>(orig);
+  const [novo, setNovo] = useState('');
+  const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const info = (c: string) => {
+    const it = porCod[c]; const o = ped.itens?.find((x) => x.codigo === c);
+    return { nome: it?.nome ?? o?.nome ?? c, caixa: it?.caixa ?? o?.pecas_caixa ?? 1, preco: Number(it?.preco_peca ?? o?.preco_peca ?? 0),
+      max: it?.disponivel == null ? 9999 : it.disponivel + (orig[c] ?? 0), imagem: it?.imagem ?? '' };
+  };
+  const cods = [...new Set([...Object.keys(orig), ...Object.keys(q)])];
+  const mudar = (c: string, d: number) => setQ((x) => ({ ...x, [c]: Math.max(0, Math.min(info(c).max, (x[c] ?? 0) + d)) }));
+  const total = cods.reduce((t, c) => t + (q[c] ?? 0) * info(c).caixa * info(c).preco, 0);
+  const lim = cods.filter((c) => ehLimitado(c, ctx.cfg)).reduce((t, c) => t + (q[c] ?? 0) * info(c).caixa * info(c).preco, 0);
+  const limPct = Number(ctx.cfg.limite_pct ?? 10);
+  const minimo = Number(ctx.cfg.pedido_minimo);
+  const mudou = cods.some((c) => (q[c] ?? 0) !== (orig[c] ?? 0));
+  const motivo = total < minimo ? `Faltam ${brl(minimo - total)} para o pedido mínimo de ${brl(minimo)}.`
+    : lim > total * limPct / 100 ? `Totokinha Clássica (0300 e 0301): juntas, no máximo ${limPct}% do valor do pedido.`
+    : !mudou ? 'Mude alguma quantidade ou inclua um produto para enviar a alteração.' : '';
+  const opcoes = ctx.itens.filter((i) => !cods.includes(i.codigo) && i.disponivel !== 0 && i.preco_peca != null).sort((a, b) => a.ordem - b.ordem);
+  async function enviar() {
+    if (ctx.previa) { setErro('Prévia da equipe: a alteração não é enviada.'); return; }
+    setEnviando(true); setErro('');
+    const { data, error } = await supabase.rpc('black_pedido_alterar', { p_token: ctx.token, p_numero: ped.numero,
+      p_itens: cods.filter((c) => (q[c] ?? 0) > 0).map((c) => ({ codigo: c, caixas: q[c] })) });
+    setEnviando(false);
+    if (error || !data) { setErro(error?.message.includes('black_pedido_alterar') ? 'A alteração de pedido ainda não está disponível. Fale com o seu representante.' : 'Não consegui enviar agora. Espere alguns segundos e tente de novo.'); return; }
+    const r = data as { erro?: string; codigo?: string; disponivel?: number; minimo?: number; versao?: number };
+    if (r.erro) {
+      if (r.erro === 'estoque' && r.codigo) { setQ((x) => ({ ...x, [r.codigo!]: r.disponivel ?? 0 })); setErro(`${info(r.codigo).nome}: dá para ficar com até ${r.disponivel ?? 0} caixas. Ajustei.`); return; }
+      setErro(({ igual: 'Nada mudou no pedido.', pedido: 'Não encontrei este pedido.', cancelado: 'Este pedido foi cancelado.', encerrado: 'Os pedidos da Cardoso Black foram encerrados.', sessao: 'Sua sessão terminou. Entre de novo com CNPJ e senha.', minimo: `O pedido não chegou ao mínimo de ${brl(Number(r.minimo ?? minimo))}.`, limite: `Totokinha Clássica (0300 e 0301): juntas, no máximo ${limPct}% do valor do pedido.`, produto: `${info(r.codigo ?? '').nome} não está mais disponível.`, vazio: 'O pedido não pode ficar vazio.' } as Record<string, string>)[r.erro] ?? 'Não consegui enviar agora. Tente de novo.');
+      return;
+    }
+    fechar(); ctx.pronto(`Pedido ${ped.numero} alterado (versão ${r.versao}). Seu representante recebe a versão nova.`);
+  }
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div className="cb-alert">Mude as quantidades, tire ou inclua produtos. O pedido continua com o número <b>{ped.numero}</b> e o seu representante recebe a versão nova. Pode alterar até o fechamento.</div>
+      {cods.map((c) => { const f = info(c); const n = q[c] ?? 0; return (
+        <div key={c} className="cb-it" style={{ alignItems: 'center', opacity: n ? 1 : 0.55 }}>
+          <span>{f.nome}<small>{c} · caixa com {f.caixa} · {brl(f.preco)}/pç{!(orig[c] ?? 0) ? ' · novo no pedido' : n !== orig[c] ? ` · antes: ${orig[c]} cx` : ''}</small></span>
+          <Stepper q={n} menos={() => mudar(c, -1)} mais={() => mudar(c, 1)} maisOff={n >= f.max} />
+          <b style={{ minWidth: 92, textAlign: 'right' }}>{brl(n * f.caixa * f.preco)}</b>
+        </div>); })}
+      {opcoes.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <select className="cb-sel" value={novo} onChange={(e) => setNovo(e.target.value)} style={{ flex: 1, minWidth: 220 }}>
+            <option value="">Incluir outro produto…</option>
+            {opcoes.map((i) => <option key={i.codigo} value={i.codigo}>{i.codigo} · {i.nome} · {brl(i.preco_peca ?? 0)}/pç</option>)}
+          </select>
+          <button type="button" className="cb-btn gh sm" disabled={!novo} onClick={() => { setQ((x) => ({ ...x, [novo]: 1 })); setNovo(''); }}>Incluir</button>
+        </div>
+      )}
+      <div className="cb-it"><span>Produtos (preços líquidos)</span><b>{brl(total)}</b></div>
+      <div className="cb-it"><span>IPI ({String(ctx.cfg.ipi_pct ?? 6.5).replace('.', ',')}%) somado no fechamento</span><b>{brl(total * Number(ctx.cfg.ipi_pct ?? 6.5) / 100)}</b></div>
+      {erro ? <div className="cb-alert err">{erro}</div> : motivo && <div className="cb-alert">{motivo}</div>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="cb-btn" disabled={!!motivo || enviando} onClick={enviar}>{enviando ? 'Enviando…' : 'Enviar alteração'}</button>
+        <button type="button" className="cb-btn gh" onClick={fechar}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function MeusPedidos({ pedidos, representante, comprar, alterar }: { pedidos: Pedido[]; representante: string; comprar: (() => void) | null; alterar: AlterarCtx | null }) {
   const [aberto, setAberto] = useState<string | null>(pedidos[0]?.numero ?? null);
+  const [editando, setEditando] = useState<string | null>(null);
   if (!pedidos.length) return (
     <div className="cb-card cb-pad cb-narrow cb-res">
       <div className="bd" style={{ ['--c' as string]: 'var(--navy)' }}><Ic n="receipt" /></div>
@@ -526,14 +599,17 @@ function MeusPedidos({ pedidos, representante, comprar }: { pedidos: Pedido[]; r
         return (
           <div key={x.numero} className="cb-card cb-ped">
             <button type="button" className="h" onClick={() => setAberto(on ? null : x.numero)} aria-expanded={on}>
-              <b>{x.numero}</b><span className={`cb-st ${x.status}`}><i />{ST[x.status] ?? x.status}</span>
+              <b>{x.numero}{(x.versao ?? 1) > 1 ? ` · versão ${x.versao}` : ''}</b><span className={`cb-st ${x.status}`}><i />{ST[x.status] ?? x.status}</span>
               <small>{fmtData(x.criado_em)} · {x.caixas} caixas</small>
               <span className="tt">{brl(Number(x.total_com_ipi ?? x.total))}</span><span className="ch">{on ? '−' : '+'}</span>
             </button>
-            {on && (
+            {on && editando === x.numero && alterar && <AlterarPedido ped={x} ctx={alterar} fechar={() => setEditando(null)} />}
+            {on && editando !== x.numero && (
               <div style={{ display: 'grid', gap: 10 }}>
+                {x.alterado_em && <small style={{ color: 'var(--ink3)' }}>Alterado em {fmtData(x.alterado_em)}</small>}
                 {x.itens?.map((it) => <div key={it.codigo} className="cb-it"><span>{it.nome}<small>{it.caixas} cx × {it.pecas_caixa} pç · {brl(Number(it.preco_peca))}/pç</small></span><b>{brl(Number(it.total))}</b></div>)}
                 {Number(x.ipi) > 0 && <div className="cb-it"><span>IPI sobre o pedido</span><b>{brl(Number(x.ipi))}</b></div>}
+                {alterar && x.status !== 'cancelado' && <div><button type="button" className="cb-btn gh sm" onClick={() => setEditando(x.numero)}>Alterar pedido</button></div>}
                 <Andamento status={x.status} representante={representante} />
               </div>
             )}
