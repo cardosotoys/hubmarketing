@@ -155,7 +155,7 @@ export default function CardosoBlack() {
             {aba === 'inscritos' && <Inscritos ins={ins} cfg={cfg} recarregar={carregar} />}
             {aba === 'pedidos' && <Pedidos peds={peds} itens={itens} recarregar={carregar} />}
             {aba === 'carrinhos' && <Carrinhos />}
-            {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} />}
+            {aba === 'mensagens' && <Mensagens ins={ins} cfg={cfg} peds={peds} />}
             {aba === 'produtos' && <Produtos bps={bps} prods={prods} porCodigo={porCodigo} itens={itens} peds={peds} fichas={fichas} mats={mats} recarregar={carregar} />}
             {aba === 'carteira' && <Carteira cart={cart} ins={ins} recarregar={carregar} />}
             {aba === 'links' && <Links cart={cart} ins={ins} bps={bps} porCodigo={porCodigo} />}
@@ -264,64 +264,161 @@ const lerLS = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem
 const telWa = (c: string) => { const d = (c || '').replace(/\D/g, ''); if (!d) return ''; return d.length <= 11 ? `55${d}` : d; };
 const nomeRep = (r: string) => { const s = slugDoRepresentante(r); return (s && REPRESENTANTES[s]?.n) || r || 'Equipe Cardoso'; };
 const primeiroNome = (n: string) => { const p = (n || '').trim().split(/\s+/)[0] ?? ''; return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : ''; };
-function Mensagens({ ins, cfg }: { ins: Inscrito[]; cfg: Cfg }) {
-  const [modelo, setModelo] = useState<string>(() => lerLS(LS_MSG, MSG_PADRAO));
+/* campanhas de mensagem: cada uma com o seu público, o seu texto e as suas marcas de enviado */
+type Camp = 'live' | 'abandonado' | 'andamento' | 'semcompra' | 'comprou';
+const ASSIN = `Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.`;
+const CAMPS: { k: Camp; nome: string; publico: string; padrao: string }[] = [
+  { k: 'live', nome: 'Convite da live', publico: 'Todos os aprovados', padrao: MSG_PADRAO },
+  { k: 'abandonado', nome: 'Carrinho abandonado', publico: 'Deixaram produtos no carrinho, saíram da página e não enviaram o pedido', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+Vi que a *{loja}* deixou produtos no carrinho da *Black Cardoso* e o pedido ainda não foi enviado:
+{itens}
+
+⚠️ O estoque só fica garantido quando o pedido é enviado. Alguns itens já esgotaram, e os que estão no seu carrinho podem acabar também.
+
+⏰ *Os pedidos encerram HOJE, 13/11, às 12h.* Depois disso o link fecha.
+
+🛒 Finalize aqui: {pedido}
+Entre com o *CNPJ* e a *senha*. O seu carrinho continua salvo.
+
+Para fechar: *Carrinho → Continuar → marque "Estou de acordo" → Enviar pedido*.
+Pedido mínimo de R$ 2.500 em produtos, caixa fechada.
+
+Travou em alguma etapa? É só responder esta mensagem que eu te ajudo. Seu representante: *{representante}*.` },
+  { k: 'andamento', nome: 'Em andamento', publico: 'Estão montando o carrinho agora e ainda não enviaram', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+Vi que a *{loja}* está montando o pedido da *Black Cardoso* agora. Que bom! 🙌
+
+Só um lembrete para não perder nada:
+• O estoque só fica garantido quando o pedido é *enviado*
+• Para fechar: *Carrinho → Continuar → marque "Estou de acordo" → Enviar pedido*
+• Pedido mínimo de R$ 2.500 em produtos, caixa fechada
+
+⏰ *Os pedidos encerram HOJE, 13/11, às 12h.*
+
+🛒 {pedido}
+
+Qualquer dúvida, responda aqui que eu te ajudo na hora. Seu representante: *{representante}*.` },
+  { k: 'semcompra', nome: 'Ainda não compraram', publico: 'Aprovados sem pedido e sem carrinho', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+A *Black Cardoso* está no ar e a *{loja}* ainda não aproveitou. 🖤
+
+⏰ *Os pedidos encerram HOJE, 13/11, às 12h.* Depois disso o link fecha.
+
+Ainda dá tempo de garantir:
+• Produtos com *até 60% de desconto*
+• Licenciados Disney, Pocoyo, Smurfs, Galinha Pintadinha e Warner
+• Fotos e vídeos de cada produto para usar na sua loja e nos marketplaces
+• Frete grátis para a cidade de São Paulo
+
+🛒 Faça seu pedido aqui: {pedido}
+Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*.
+
+Esqueceu a senha ou ficou alguma dúvida? Responda esta mensagem que eu te ajudo. Seu representante: *{representante}*.
+
+Pagamento antecipado · caixa fechada · pedido mínimo de R$ 2.500 · IPI de 6,5% somado no fechamento.` },
+  { k: 'comprou', nome: 'Agradecimento', publico: 'Lojas que enviaram pedido', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+Passando para agradecer: o pedido *{numero}* da *{loja}* chegou certinho! 🎉
+
+A Black Cardoso foi a primeira feita só para quem vende online. Preparamos tudo pensando em você: preço para ter margem no marketplace, fotos e vídeos de cada produto prontos para usar e uma live para mostrar tudo de perto. Ver a *{loja}* com a gente fez valer cada detalhe.
+
+Próximos passos: o *{representante}* entra em contato para confirmar o pagamento e a entrega.
+
+📸 As fotos e os vídeos dos produtos continuam na ficha de cada um (pelo QR ou pelo link de pedido). Use à vontade nos seus anúncios.
+
+Obrigado pela confiança e boas vendas! 🖤
+Equipe Cardoso Toys` },
+];
+const lsMod = (k: Camp) => (k === 'live' ? LS_MSG : `cb-msg-${k}-modelo`);
+const lsEnv = (k: Camp) => (k === 'live' ? LS_ENV : `cb-msg-${k}-enviados`);
+const soDig = (c: string) => (c || '').replace(/\D/g, '');
+
+function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido[] }) {
+  const [camp, setCamp] = useState<Camp>('live');
+  const C = CAMPS.find((c) => c.k === camp)!;
+  const [modelos, setModelos] = useState<Record<Camp, string>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsMod(c.k), c.padrao)])) as Record<Camp, string>);
+  const [envs, setEnvs] = useState<Record<Camp, Record<string, string>>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsEnv(c.k), {})])) as Record<Camp, Record<string, string>>);
   const [live, setLive] = useState(cfg.live_link || 'https://meet.google.com/tfw-dcqi-xyr');
-  const [env, setEnv] = useState<Record<string, string>>(() => lerLS(LS_ENV, {}));
   const [flt, setFlt] = useState<'pendentes' | 'enviados' | 'todos'>('pendentes');
   const [busca, setBusca] = useState('');
   const [editar, setEditar] = useState(false);
-  useEffect(() => { try { localStorage.setItem(LS_MSG, JSON.stringify(modelo)); } catch { /* sem armazenamento */ } }, [modelo]);
-  useEffect(() => { try { localStorage.setItem(LS_ENV, JSON.stringify(env)); } catch { /* sem armazenamento */ } }, [env]);
+  const [cars, setCars] = useState<CarRel[]>([]);
+  useEffect(() => { CAMPS.forEach((c) => { try { localStorage.setItem(lsMod(c.k), JSON.stringify(modelos[c.k])); } catch { /* sem armazenamento */ } }); }, [modelos]);
+  useEffect(() => { CAMPS.forEach((c) => { try { localStorage.setItem(lsEnv(c.k), JSON.stringify(envs[c.k])); } catch { /* sem armazenamento */ } }); }, [envs]);
+  const carregar = useCallback(async () => { const { data } = await supabase.rpc('black_carrinhos_relatorio'); setCars(Array.isArray(data) ? (data as CarRel[]) : []); }, []);
+  useEffect(() => { carregar(); const t = setInterval(carregar, 60000); return () => clearInterval(t); }, [carregar]);
+  const modelo = modelos[camp]; const env = envs[camp];
+  const setModelo = (v: string) => setModelos((m) => ({ ...m, [camp]: v }));
+  const setEnv = (f: (e: Record<string, string>) => Record<string, string>) => setEnvs((x) => ({ ...x, [camp]: f(x[camp]) }));
   const pedido = `${window.location.origin}/black/pedido`;
   const aprov = ins.filter((i) => i.status === 'aprovado' && i.origem !== 'previa');
-  const msg = (i: Inscrito) => modelo
-    .replaceAll('{comprador}', primeiroNome(i.comprador) || 'tudo bem')
-    .replaceAll('{loja}', i.fantasia || i.razao_social)
-    .replaceAll('{representante}', nomeRep(i.representante))
-    .replaceAll('{live}', live).replaceAll('{pedido}', pedido);
-  const lista = aprov.filter((i) => (flt === 'todos' || (flt === 'enviados' ? !!env[i.id] : !env[i.id]))
+  // quem comprou (pedido não cancelado) e a situação do carrinho, pelo CNPJ
+  const pedPor = useMemo(() => { const m = new Map<string, Pedido[]>(); peds.filter((p) => p.status !== 'cancelado').forEach((p) => { const k = soDig(p.cnpj); m.set(k, [...(m.get(k) ?? []), p]); }); return m; }, [peds]);
+  const carPor = useMemo(() => { const m = new Map<string, CarRel>(); cars.filter((c) => c.situacao === 'ativo' || c.situacao === 'abandonado').forEach((c) => { if (c.itens.length) m.set(soDig(c.cnpj), c); }); return m; }, [cars]);
+  const grupo = (i: Inscrito): Camp => { const k = soDig(i.cnpj); if (pedPor.has(k)) return 'comprou'; const c = carPor.get(k); if (c) return c.situacao === 'ativo' ? 'andamento' : 'abandonado'; return 'semcompra'; };
+  const publico = camp === 'live' ? aprov : aprov.filter((i) => grupo(i) === camp);
+  const nGrupo = (k: Camp) => (k === 'live' ? aprov.length : aprov.filter((i) => grupo(i) === k).length);
+  const msg = (i: Inscrito) => {
+    const c = carPor.get(soDig(i.cnpj)); const ps = pedPor.get(soDig(i.cnpj)) ?? [];
+    return modelo
+      .replaceAll('{comprador}', primeiroNome(i.comprador) || 'tudo bem')
+      .replaceAll('{loja}', i.fantasia || i.razao_social)
+      .replaceAll('{representante}', nomeRep(i.representante))
+      .replaceAll('{itens}', c ? c.itens.map((x) => `• ${x.caixas} cx · ${x.nome}`).join('\n') : '')
+      .replaceAll('{numero}', ps.map((p) => p.numero).join(', '))
+      .replaceAll('{live}', live).replaceAll('{pedido}', pedido);
+  };
+  const lista = publico.filter((i) => (flt === 'todos' || (flt === 'enviados' ? !!env[i.id] : !env[i.id]))
     && (!busca.trim() || `${i.fantasia} ${i.razao_social} ${i.comprador} ${i.representante} ${i.cidade}`.toLowerCase().includes(busca.trim().toLowerCase())));
   function abrir(i: Inscrito) {
     const tel = telWa(i.celular); if (!tel) return;
     window.open(`https://web.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(msg(i))}`, 'cb-whatsapp');
     setEnv((e) => ({ ...e, [i.id]: new Date().toISOString() }));
   }
-  const proximo = aprov.find((i) => !env[i.id] && telWa(i.celular));
-  const nEnv = aprov.filter((i) => env[i.id]).length;
+  const proximo = publico.find((i) => !env[i.id] && telWa(i.celular));
+  const nEnv = publico.filter((i) => env[i.id]).length;
+  const detalhe = (i: Inscrito) => { const c = carPor.get(soDig(i.cnpj)); const ps = pedPor.get(soDig(i.cnpj)); if (ps) return `${ps.map((p) => p.numero).join(', ')} · ${brl(ps.reduce((t, p) => t + Number(p.total), 0))}`; if (c) return `${c.caixas} cx · ${brl(Number(c.valor))} no carrinho`; return ''; };
   return (
     <>
+      <div className="cbx-bar" style={{ marginBottom: 10 }}>
+        {CAMPS.map((c) => <button key={c.k} className={`cbx-pill${camp === c.k ? ' on' : ''}`} onClick={() => { setCamp(c.k); setEditar(false); setFlt('pendentes'); }}>{c.nome}<b>{nGrupo(c.k)}</b></button>)}
+      </div>
       <div className="cbx-kpis">
-        <Kpi l="Aprovados" v={int(aprov.length)} c="#0A2530" />
+        <Kpi l={C.nome} v={int(publico.length)} c="#0A2530" />
         <Kpi l="Enviados" v={int(nEnv)} c="#1F7F88" />
-        <Kpi l="Faltam" v={int(aprov.length - nEnv)} c="#DA3A2F" />
-        <Kpi l="Sem WhatsApp" v={int(aprov.filter((i) => !telWa(i.celular)).length)} c="#7C8A90" />
+        <Kpi l="Faltam" v={int(publico.length - nEnv)} c="#DA3A2F" />
+        <Kpi l="Sem WhatsApp" v={int(publico.filter((i) => !telWa(i.celular)).length)} c="#7C8A90" />
       </div>
       <div className="cbx-box" style={{ display: 'grid', gap: 10 }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <b style={{ flex: 1, minWidth: 220 }}>Como funciona</b>
+          <b style={{ flex: 1, minWidth: 220 }}>{C.nome} <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· {C.publico}</small></b>
           <button className="btn sm" onClick={() => setEditar((v) => !v)}>{editar ? 'Fechar o modelo' : 'Editar a mensagem'}</button>
           <button className="btn sm primary" disabled={!proximo} onClick={() => proximo && abrir(proximo)}>{proximo ? `Abrir o próximo: ${proximo.fantasia || proximo.razao_social}` : 'Todos enviados'}</button>
         </div>
-        <p className="cbx-hint" style={{ margin: 0 }}>Clique em <b>Abrir no WhatsApp</b>: a conversa abre no WhatsApp Web (sempre na mesma aba) com a mensagem já escrita. Confira e aperte <b>Enviar</b>. O inscrito fica marcado como enviado neste computador.</p>
-        <label className="cbx-hint" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0 }}>Link da live
-          <input value={live} onChange={(e) => setLive(e.target.value)} style={{ flex: 1, minWidth: 260 }} /></label>
+        <p className="cbx-hint" style={{ margin: 0 }}>Clique em <b>Abrir no WhatsApp</b>: a conversa abre no WhatsApp Web (sempre na mesma aba) com a mensagem já escrita. Confira e aperte <b>Enviar</b>. Cada campanha marca os seus enviados neste computador. As listas de carrinho se atualizam a cada minuto: quem fecha o pedido sai de Abandonado/Em andamento e entra em Agradecimento.</p>
+        {camp === 'live' && <label className="cbx-hint" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0 }}>Link da live
+          <input value={live} onChange={(e) => setLive(e.target.value)} style={{ flex: 1, minWidth: 260 }} /></label>}
         {editar && <>
-          <textarea value={modelo} onChange={(e) => setModelo(e.target.value)} rows={16} style={{ width: '100%', font: 'inherit', fontSize: 13.5, lineHeight: 1.45 }} />
-          <div className="cbx-hint" style={{ margin: 0 }}>Campos trocados em cada mensagem: <code>{'{comprador}'}</code> <code>{'{loja}'}</code> <code>{'{representante}'}</code> <code>{'{live}'}</code> <code>{'{pedido}'}</code> · <button className="btn ghost sm" onClick={() => setModelo(MSG_PADRAO)}>voltar ao texto original</button></div>
+          <textarea value={modelo} onChange={(e) => setModelo(e.target.value)} rows={18} style={{ width: '100%', font: 'inherit', fontSize: 13.5, lineHeight: 1.45 }} />
+          <div className="cbx-hint" style={{ margin: 0 }}>Campos trocados em cada mensagem: <code>{'{comprador}'}</code> <code>{'{loja}'}</code> <code>{'{representante}'}</code> <code>{'{pedido}'}</code> <code>{'{itens}'}</code> (carrinho) <code>{'{numero}'}</code> (nº do pedido) <code>{'{live}'}</code> · <button className="btn ghost sm" onClick={() => setModelo(C.padrao)}>voltar ao texto original</button></div>
         </>}
       </div>
       <div className="cbx-bar">
-        {(['pendentes', 'enviados', 'todos'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'pendentes' ? 'A enviar' : k === 'enviados' ? 'Enviados' : 'Todos'}<b>{k === 'todos' ? aprov.length : k === 'enviados' ? nEnv : aprov.length - nEnv}</b></button>)}
+        {(['pendentes', 'enviados', 'todos'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'pendentes' ? 'A enviar' : k === 'enviados' ? 'Enviados' : 'Todos'}<b>{k === 'todos' ? publico.length : k === 'enviados' ? nEnv : publico.length - nEnv}</b></button>)}
         <input type="search" placeholder="Loja, comprador, cidade ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
-      {lista.length === 0 ? <EmptyState title={flt === 'pendentes' ? 'Mensagens enviadas para todos os aprovados' : 'Nenhum inscrito'} hint="Só os inscritos aprovados recebem a mensagem da live." /> : (
+      {lista.length === 0 ? <EmptyState title={flt === 'pendentes' && publico.length ? 'Mensagens enviadas para todos desta lista' : 'Ninguém nesta lista agora'} hint={C.publico} /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
           <table className="cbx-table">
             <thead><tr><th>Loja</th><th>Comprador</th><th>WhatsApp</th><th>Representante</th><th>Situação</th><th></th></tr></thead>
-            <tbody>{lista.map((i) => { const tel = telWa(i.celular); return (
+            <tbody>{lista.map((i) => { const tel = telWa(i.celular); const d = detalhe(i); return (
               <tr key={i.id}>
-                <td><b>{i.fantasia || i.razao_social}</b><small>{i.cidade}/{i.uf}</small></td>
+                <td><b>{i.fantasia || i.razao_social}</b><small>{i.cidade}/{i.uf}{d ? ` · ${d}` : ''}</small></td>
                 <td>{i.comprador}</td>
                 <td>{i.celular || '—'}</td>
                 <td>{nomeRep(i.representante)}</td>
