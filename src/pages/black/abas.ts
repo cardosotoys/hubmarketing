@@ -1,9 +1,9 @@
 import type { IconeMarca } from './Icones';
 
-export type Aba = 'resumo' | 'inscritos' | 'pedidos' | 'carrinhos' | 'mensagens' | 'produtos' | 'carteira' | 'links' | 'ajustes';
+export type Aba = 'resumo' | 'inscritos' | 'pedidos' | 'carrinhos' | 'mensagens' | 'relatorio' | 'produtos' | 'carteira' | 'links' | 'ajustes';
 // menu na ordem do onboarding aprovado (Carteira → Inscritos → Pedidos → Medição) + a operação
 export const ABAS: [Aba, string, IconeMarca, 1 | 2][] = [
-  ['carteira', 'Carteira', 'store', 1], ['inscritos', 'Inscritos', 'users', 1], ['pedidos', 'Pedidos', 'cart', 1], ['carrinhos', 'Carrinhos', 'receipt', 1], ['mensagens', 'Mensagens da live', 'chat', 1], ['resumo', 'Medição', 'target', 1],
+  ['carteira', 'Carteira', 'store', 1], ['inscritos', 'Inscritos', 'users', 1], ['pedidos', 'Pedidos', 'cart', 1], ['carrinhos', 'Carrinhos', 'receipt', 1], ['mensagens', 'Mensagens da live', 'chat', 1], ['resumo', 'Medição', 'target', 1], ['relatorio', 'Relatório da diretoria', 'star', 1],
   ['produtos', 'Produtos da Black', 'tag', 2], ['links', 'Links e QR', 'marketing', 2], ['ajustes', 'Ajustes', 'bolt', 2],
 ];
 export const abaValida = (v: string | null): Aba => (ABAS.some((a) => a[0] === v) ? (v as Aba) : 'resumo');
