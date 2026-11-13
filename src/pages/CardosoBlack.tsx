@@ -434,12 +434,34 @@ type CarRel = {
 const SIT: Record<CarRel['situacao'], string> = { ativo: 'Em andamento', abandonado: 'Abandonado', finalizado: 'Finalizado', vazio: 'Vazio' };
 const SITC: Record<CarRel['situacao'], string> = { ativo: '#F2B84B', abandonado: '#DA3A2F', finalizado: '#1F7F88', vazio: '#7C8A90' };
 /* carrinhos da Black: abandonados, em andamento e finalizados (cada mudança de quantidade fica registrada) */
+/* filtros comuns de Pedidos e Carrinhos: representante, UF, produto e ordem */
+type Ordem = 'recente' | 'antigo' | 'valor' | 'caixas';
+function Filtros({ reps, ufs, prods, f, set }: {
+  reps: string[]; ufs: string[]; prods: [string, string][];
+  f: { rep: string; uf: string; prod: string; ordem: Ordem }; set: (k: 'rep' | 'uf' | 'prod' | 'ordem', v: string) => void;
+}) {
+  const ativo = f.rep || f.uf || f.prod || f.ordem !== 'recente';
+  return (
+    <div className="cbx-bar">
+      <select value={f.rep} onChange={(e) => set('rep', e.target.value)}><option value="">Todos os representantes</option>{reps.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+      <select value={f.uf} onChange={(e) => set('uf', e.target.value)}><option value="">Todos os estados</option>{ufs.map((u) => <option key={u} value={u}>{u}</option>)}</select>
+      <select value={f.prod} onChange={(e) => set('prod', e.target.value)}><option value="">Todos os produtos</option>{prods.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select>
+      <select value={f.ordem} onChange={(e) => set('ordem', e.target.value)}>
+        <option value="recente">Mais recentes primeiro</option><option value="antigo">Mais antigos primeiro</option><option value="valor">Maior valor</option><option value="caixas">Mais caixas</option>
+      </select>
+      {ativo && <button className="btn ghost sm" onClick={() => { set('rep', ''); set('uf', ''); set('prod', ''); set('ordem', 'recente'); }}>Limpar filtros</button>}
+    </div>
+  );
+}
+const unicos = (v: (string | null | undefined)[]) => [...new Set(v.map((x) => (x ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
 function Carrinhos() {
   const [rel, setRel] = useState<CarRel[] | null>(null);
   const [erro, setErro] = useState('');
   const [flt, setFlt] = useState<'todos' | CarRel['situacao']>('todos');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
+  const [fx, setFx] = useState<{ rep: string; uf: string; prod: string; ordem: Ordem }>({ rep: '', uf: '', prod: '', ordem: 'recente' });
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.rpc('black_carrinhos_relatorio');
     if (error) { setErro(error.message.includes('black_carrinhos_relatorio') ? 'Para ver os carrinhos, rode o SQL 0172 no Supabase.' : error.message); setRel([]); return; }
@@ -451,7 +473,13 @@ function Carrinhos() {
   const soma = (x: CarRel[]) => x.reduce((t, c) => t + Number(c.valor), 0);
   const conv = L.length ? Math.round((n('finalizado').length / L.length) * 100) : 0;
   const vis = L.filter((c) => (flt === 'todos' || c.situacao === flt)
-    && (!busca.trim() || `${c.fantasia} ${c.razao_social} ${c.cnpj} ${c.representante} ${c.cidade}`.toLowerCase().includes(busca.trim().toLowerCase())));
+    && (!busca.trim() || `${c.fantasia} ${c.razao_social} ${c.cnpj} ${c.representante} ${c.cidade}`.toLowerCase().includes(busca.trim().toLowerCase()))
+    && (!fx.rep || (c.representante ?? '').trim() === fx.rep) && (!fx.uf || c.uf === fx.uf)
+    && (!fx.prod || c.itens.some((i) => i.codigo === fx.prod)))
+    .sort((a, b) => fx.ordem === 'valor' ? Number(b.valor) - Number(a.valor) : fx.ordem === 'caixas' ? b.caixas - a.caixas
+      : fx.ordem === 'antigo' ? a.atualizado_em.localeCompare(b.atualizado_em) : b.atualizado_em.localeCompare(a.atualizado_em));
+  const prodsCar = useMemo(() => { const m = new Map<string, string>(); (rel ?? []).forEach((c) => c.itens.forEach((i) => m.set(i.codigo, i.nome))); return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])); }, [rel]);
+  const cxProd = (c: CarRel) => (fx.prod ? c.itens.find((i) => i.codigo === fx.prod)?.caixas ?? 0 : c.caixas);
   // produtos deixados em carrinhos abandonados
   const prodAb = useMemo(() => {
     const m: Record<string, { nome: string; caixas: number; lojas: number }> = {};
@@ -461,7 +489,7 @@ function Carrinhos() {
   function csv() {
     baixarCsv('carrinhos-cardoso-black.csv', [
       ['situacao', 'loja', 'razao_social', 'cnpj', 'cidade', 'uf', 'representante', 'comprador', 'whatsapp', 'email', 'criado_em', 'ultima_mudanca', 'ultima_visita', 'finalizado_em', 'pedido', 'caixas', 'valor_produtos', 'mudancas', 'itens', 'retirou_do_carrinho'],
-      ...L.map((c) => [SIT[c.situacao], c.fantasia, c.razao_social, c.cnpj, c.cidade, c.uf, c.representante, c.comprador, c.celular, c.email, dt(c.criado_em), dt(c.atualizado_em), dt(c.visto_em), dt(c.finalizado_em), c.pedido ?? '', c.caixas, Number(c.valor).toFixed(2).replace('.', ','), c.mudancas,
+      ...vis.map((c) => [SIT[c.situacao], c.fantasia, c.razao_social, c.cnpj, c.cidade, c.uf, c.representante, c.comprador, c.celular, c.email, dt(c.criado_em), dt(c.atualizado_em), dt(c.visto_em), dt(c.finalizado_em), c.pedido ?? '', c.caixas, Number(c.valor).toFixed(2).replace('.', ','), c.mudancas,
         c.itens.map((i) => `${i.codigo} ${i.nome} (${i.caixas} cx)`).join(' | '), c.retirados.map((r) => `${r.codigo} (chegou a ${r.max} cx)`).join(' | ')]),
     ]);
   }
@@ -480,6 +508,8 @@ function Carrinhos() {
         <input type="search" placeholder="Loja, CNPJ, cidade ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <button className="btn sm" onClick={csv}>Baixar relatório (CSV)</button>
       </div>
+      <Filtros reps={unicos(L.map((c) => c.representante))} ufs={unicos(L.map((c) => c.uf))} prods={prodsCar} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
+      <p className="cbx-hint"><b>{int(vis.length)} carrinho{vis.length === 1 ? '' : 's'}</b> · {brl(soma(vis))} em produtos · {int(vis.reduce((t, c) => t + cxProd(c), 0))} caixas{fx.prod ? ` de ${fx.prod}` : ''}. O CSV baixa só o que está filtrado.</p>
       <p className="cbx-hint">A caixa no carrinho sai do estoque de todos na hora. Carrinho parado há mais de 30 minutos (cliente saiu da página) devolve o estoque e passa a <b>Abandonado</b>; se o cliente voltar, ele reserva de novo o que ainda houver. Atualiza a cada minuto.</p>
       {vis.length === 0 ? <EmptyState title="Nenhum carrinho" hint="Os carrinhos aparecem aqui assim que o cliente coloca a primeira caixa." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
@@ -527,8 +557,17 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
   const [aviso, setAviso] = useState('');
+  const [fx, setFx] = useState<{ rep: string; uf: string; prod: string; ordem: Ordem }>({ rep: '', uf: '', prod: '', ordem: 'recente' });
+  const comProd = useMemo(() => { const m = new Map<string, Set<string>>(); itens.forEach((i) => { if (!m.has(i.codigo)) m.set(i.codigo, new Set()); m.get(i.codigo)!.add(i.pedido_id); }); return m; }, [itens]);
+  const prodsPed = useMemo(() => { const m = new Map<string, string>(); itens.forEach((i) => m.set(i.codigo, i.nome)); return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])); }, [itens]);
   const vis = peds.filter((p) => (flt === 'todos' || p.status === flt)
-    && (!busca.trim() || `${p.numero} ${p.razao_social} ${p.fantasia} ${p.cnpj} ${p.representante}`.toLowerCase().includes(busca.trim().toLowerCase())));
+    && (!busca.trim() || `${p.numero} ${p.razao_social} ${p.fantasia} ${p.cnpj} ${p.representante}`.toLowerCase().includes(busca.trim().toLowerCase()))
+    && (!fx.rep || (p.representante ?? '').trim() === fx.rep) && (!fx.uf || p.uf === fx.uf)
+    && (!fx.prod || !!comProd.get(fx.prod)?.has(p.id)))
+    .sort((a, b) => fx.ordem === 'valor' ? Number(b.total) - Number(a.total) : fx.ordem === 'caixas' ? b.caixas - a.caixas
+      : fx.ordem === 'antigo' ? a.criado_em.localeCompare(b.criado_em) : b.criado_em.localeCompare(a.criado_em));
+  const visOk = vis.filter((p) => p.status !== 'cancelado');
+  const itProd = fx.prod ? itens.filter((i) => i.codigo === fx.prod && visOk.some((p) => p.id === i.pedido_id)) : [];
   const val = peds.filter((p) => p.status !== 'cancelado'); const tv = val.reduce((s, p) => s + Number(p.total), 0);
   async function status(p: Pedido, s: Pedido['status']) {
     const { error } = await supabase.from('black_pedidos').update({ status: s, atualizado_em: new Date().toISOString(), atualizado_por: profile?.id ?? null }).eq('id', p.id);
@@ -551,6 +590,8 @@ function Pedidos({ peds, itens, recarregar }: { peds: Pedido[]; itens: Item[]; r
         <button className="btn sm" onClick={() => guarani(true)}>Planilha Guarani (confirmados)</button>
         <button className="btn ghost sm" onClick={() => guarani(false)}>Todos os pedidos</button>
       </div>
+      <Filtros reps={unicos(peds.map((p) => p.representante))} ufs={unicos(peds.map((p) => p.uf))} prods={prodsPed} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
+      <p className="cbx-hint"><b>{int(vis.length)} pedido{vis.length === 1 ? '' : 's'}</b> no filtro · {brl(visOk.reduce((t, p) => t + Number(p.total), 0))} em produtos, sem IPI · {int(visOk.reduce((t, p) => t + p.caixas, 0))} caixas (sem os cancelados){fx.prod ? ` · ${fx.prod}: ${int(itProd.reduce((t, i) => t + i.caixas, 0))} cx, ${int(itProd.reduce((t, i) => t + i.caixas * i.pecas_caixa, 0))} pç, ${brl(itProd.reduce((t, i) => t + Number(i.total), 0))}` : ''}</p>
       <p className="cbx-hint">Mude para <b>Confirmado</b> quando o pedido for lançado no Guarani: a partir daí o estoque dele passa a ser contado pelo saldo do Guarani.</p>
       {aviso && <div className="alert">{aviso}</div>}
       {vis.length === 0 ? <EmptyState title="Nenhum pedido" hint="Os pedidos enviados pelo link aparecem aqui na hora." /> : (
