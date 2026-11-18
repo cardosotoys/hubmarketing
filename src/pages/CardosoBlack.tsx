@@ -275,6 +275,31 @@ const primeiroNome = (n: string) => { const p = (n || '').trim().split(/\s+/)[0]
 type Camp = 'vespera' | 'live' | 'andamento' | 'abandonado' | 'semcompra' | 'comprou';
 const ASSIN = `Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.`;
 const CAMPS: { k: Camp; nome: string; quando: string; publico: string; padrao: string }[] = [
+  { k: 'live', nome: 'Dia D', quando: 'Ter 24/11 · 8h', publico: 'Todos os aprovados', padrao: `Olá, *{comprador}*! Tudo bem?
+Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.
+
+⏰ *É HOJE: BLACK CARDOSO VAREJO - 24.11 às 10h*
+
+O cadastro da *{loja}* está aprovado e você já pode participar da Black feita para as lojas físicas.
+
+📺 *Link da live (videochamada):*
+{live}
+
+🛒 *Link para fazer seu pedido:*
+{pedido}
+Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*.
+
+🚨 *As compras são feitas somente pelo link de pedido, a partir das 10h.*
+
+*Condições:*
+• Produtos com *até 60% de desconto*, incluindo licenciados
+• Pagamento antecipado · caixa fechada · pedido mínimo de R$ 2.500
+• Frete grátis para a cidade de São Paulo
+• IPI de 6,5% somado no fechamento do pedido
+• Estoque limitado: a caixa fica garantida quando entra no seu carrinho
+
+Seu representante: *{representante}*.
+Te esperamos às 10h! 🖤` },
   { k: 'vespera', nome: 'Véspera', quando: 'Seg 23/11 · 10h', publico: 'Todos os aprovados', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
@@ -284,25 +309,6 @@ O cadastro da *{loja}* está aprovado. Faça um teste hoje: entre no link com o 
 🛒 {pedido}
 
 Teve alguma dificuldade? Responda esta mensagem que eu te ajudo. Seu representante: *{representante}*.` },
-  { k: 'live', nome: 'Dia D', quando: 'Ter 24/11 · 8h', publico: 'Todos os aprovados', padrao: `Olá, *{comprador}*! Tudo bem?
-${ASSIN}
-
-⏰ *É HOJE: BLACK CARDOSO, 24/11, às 10h*
-
-📺 *Link da live:*
-{live}
-
-🛒 *Link para fazer seu pedido:*
-{pedido}
-Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*. Deixe o login feito antes de começar.
-
-🚨 *As compras são feitas somente pelo link de pedido, a partir das 10h.*
-
-• Caixa fechada · pedido mínimo de R$ 2.500
-• Estoque limitado: a caixa fica garantida quando entra no seu carrinho
-
-Seu representante: *{representante}*.
-Te esperamos às 10h! 🖤` },
   { k: 'abandonado', nome: 'Carrinho abandonado', quando: 'Ter 24/11 · 15h', publico: 'Deixaram produtos no carrinho, saíram da página e não enviaram o pedido', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
