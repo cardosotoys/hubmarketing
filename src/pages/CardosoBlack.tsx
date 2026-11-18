@@ -273,10 +273,10 @@ const nomeRep = (r: string) => { const s = slugDoRepresentante(r); return (s && 
 const primeiroNome = (n: string) => { const p = (n || '').trim().split(/\s+/)[0] ?? ''; return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : ''; };
 /* campanhas de mensagem: cada uma com o seu público, o seu texto e as suas marcas de enviado */
 type Camp = 'vespera' | 'live' | 'andamento' | 'abandonado' | 'semcompra' | 'comprou';
-const ASSIN = `Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.`;
+const ASSIN = `Aqui é da *Cardoso*.`;
 const CAMPS: { k: Camp; nome: string; quando: string; publico: string; padrao: string }[] = [
   { k: 'live', nome: 'Dia D', quando: 'Ter 24/11 · 8h', publico: 'Todos os aprovados', padrao: `Olá, *{comprador}*! Tudo bem?
-Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.
+Aqui é da *Cardoso*.
 
 ⏰ *É HOJE: BLACK CARDOSO VAREJO - 24.11 às 10h*
 
@@ -308,11 +308,11 @@ ${ASSIN}
 O cadastro da *{loja}* está aprovado. Faça um teste hoje: entre no link com o *CNPJ da loja* e a *senha criada no pré-cadastro* e veja se está tudo certo.
 🛒 {pedido}
 
-Teve alguma dificuldade? Responda esta mensagem que eu te ajudo. Seu representante: *{representante}*.` },
+Teve alguma dificuldade? Responda esta mensagem que a gente te ajuda. Seu representante: *{representante}*.` },
   { k: 'abandonado', nome: 'Carrinho abandonado', quando: 'Ter 24/11 · 15h', publico: 'Deixaram produtos no carrinho, saíram da página e não enviaram o pedido', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
-Vi que a *{loja}* deixou produtos no carrinho da *Black Cardoso* e o pedido ainda não foi enviado:
+Vimos que a *{loja}* deixou produtos no carrinho da *Black Cardoso* e o pedido ainda não foi enviado:
 {itens}
 
 ⚠️ O estoque só fica garantido quando o pedido é enviado. Alguns itens já estão acabando.
@@ -325,7 +325,7 @@ Entre com o *CNPJ* e a *senha*. O seu carrinho continua salvo.
 Para fechar: *Carrinho → Continuar → marque "Estou de acordo" → Enviar pedido*.
 Pedido mínimo de R$ 2.500 em produtos, caixa fechada.
 
-Travou em alguma etapa? É só responder esta mensagem que eu te ajudo. Seu representante: *{representante}*.` },
+Travou em alguma etapa? É só responder esta mensagem que a gente te ajuda. Seu representante: *{representante}*.` },
   { k: 'semcompra', nome: 'Ainda não compraram', quando: 'Qua 25/11 · 10h', publico: 'Aprovados sem pedido e sem carrinho', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
@@ -338,13 +338,13 @@ Produtos selecionados, condição especial e estoque limitado: quem coloca no ca
 🛒 Faça seu pedido aqui: {pedido}
 Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*.
 
-Esqueceu a senha ou ficou alguma dúvida? Responda esta mensagem que eu te ajudo. Seu representante: *{representante}*.
+Esqueceu a senha ou ficou alguma dúvida? Responda esta mensagem que a gente te ajuda. Seu representante: *{representante}*.
 
 Caixa fechada · pedido mínimo de R$ 2.500.` },
   { k: 'andamento', nome: 'Em andamento', quando: 'Qui 26/11 · 8h', publico: 'Estão montando o carrinho agora e ainda não enviaram', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
-Vi que a *{loja}* está montando o pedido da *Black Cardoso*. Que bom! 🙌
+Vimos que a *{loja}* está montando o pedido da *Black Cardoso*. Que bom! 🙌
 
 Só um lembrete para não perder nada:
 • O estoque só fica garantido quando o pedido é *enviado*
@@ -355,7 +355,7 @@ Só um lembrete para não perder nada:
 
 🛒 {pedido}
 
-Qualquer dúvida, responda aqui que eu te ajudo na hora. Seu representante: *{representante}*.` },
+Qualquer dúvida, responda aqui que a gente te ajuda na hora. Seu representante: *{representante}*.` },
   { k: 'comprou', nome: 'Agradecimento', quando: 'Qui 26/11 · 14h', publico: 'Lojas que enviaram pedido', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
@@ -366,7 +366,7 @@ Próximos passos: o *{representante}* entra em contato para confirmar o pagament
 📸 As fotos e os vídeos dos produtos continuam na ficha de cada um (pelo QR ou pelo link de pedido). Use à vontade na sua loja e nas redes.
 
 Obrigado pela confiança e boas vendas! 🖤
-Equipe Cardoso Toys` },
+Cardoso` },
 ];
 const lsMod = (k: Camp) => `cb-msg-${k}-${LS_V}-modelo`;
 const lsEnv = (k: Camp) => `cb-msg-${k}-${LS_V}-enviados`;
