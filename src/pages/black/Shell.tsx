@@ -15,7 +15,7 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true,
   useRedonda();
   useEffect(() => {
     const t = document.title;
-    document.title = 'Cardoso Black · Cardoso Toys';
+    document.title = 'Cardoso Black · Cardoso';
     // as páginas públicas são sempre claras, independente do tema do Hub
     const prev = document.documentElement.getAttribute('data-theme');
     document.documentElement.setAttribute('data-theme', 'light');
@@ -51,7 +51,7 @@ export default function Shell({ sub, clock, children, wide = true, faixa = true,
       </div>}
       </>}
       <main className="cb-main"><div className="cb-wrap" style={wide ? undefined : { maxWidth: 640 }}>{children}</div></main>
-      <footer className="cb-foot">Cardoso Toys · Cardoso Black 2026 · exclusivo para lojistas</footer>
+      <footer className="cb-foot">Cardoso · Cardoso Black 2026 · exclusivo para lojistas</footer>
     </div>
   );
 }

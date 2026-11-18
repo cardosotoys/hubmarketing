@@ -265,13 +265,13 @@ export default function BlackCadastro() {
               <div className="cb-note" style={{ justifyContent: 'flex-start' }}>Você usará o CNPJ e esta senha para entrar no pedido e na ficha dos produtos durante a live.</div>
               <label className={`cb-check${erros.lgpd ? ' bad' : ''}`}>
                 <input type="checkbox" checked={lgpd} onChange={(e) => setLgpd(e.target.checked)} />
-                <span>Autorizo a Cardoso Toys a utilizar estes dados para contato sobre a Cardoso Black, conforme a LGPD.</span>
+                <span>Autorizo a Cardoso a utilizar estes dados para contato sobre a Cardoso Black, conforme a LGPD.</span>
               </label>
               <button className="cb-btn full" type="submit" disabled={enviando || encerrado}>{enviando ? 'Enviando…' : 'Enviar pré-cadastro'}</button>
             </>
           )}
           {aviso && <div className="cb-alert err">{aviso}</div>}
-          <div className="cb-note"><Sv.lock />Dados utilizados somente pela Cardoso Toys</div>
+          <div className="cb-note"><Sv.lock />Dados utilizados somente pela Cardoso</div>
         </form>
       </div>
     </Shell>
