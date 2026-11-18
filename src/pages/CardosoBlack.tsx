@@ -14,7 +14,7 @@ import { abrirRelacao } from './black/relacao';
 import { gerarRelatorio, type DadosRelatorio } from './black/relatorioDiretoria';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
-import { CADENCIA, MSG_CANAL, QUEM_CAD, type QuemCad } from './black/cadencia';
+import { CADENCIA, MSG_CANAL, MSG_CONVITE, MSG_REP, QUEM_CAD, REPS_FORA, type QuemCad } from './black/cadencia';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -376,11 +376,11 @@ const soDig = (c: string) => (c || '').replace(/\D/g, '');
 function campDoDia(): Camp {
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   let k: Camp = 'vespera';
-  CADENCIA.forEach((d) => { if (d.iso <= hoje) d.itens.forEach((i) => { if (i.camp) k = i.camp as Camp; }); });
+  CADENCIA.forEach((d) => { if (d.iso <= hoje) d.itens.forEach((i) => { if (i.camp && i.camp !== 'reps') k = i.camp as Camp; }); });
   return k;
 }
 
-function Cadencia({ live, pedido, irPara }: { live: string; pedido: string; irPara: (k: Camp) => void }) {
+function Cadencia({ live, pedido, irPara, irReps }: { live: string; pedido: string; irPara: (k: Camp) => void; irReps: () => void }) {
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   const [ok, setOk] = useState('');
   const txt = (k: string) => MSG_CANAL[k].txt.replaceAll('{live}', live || '[link da live]').replaceAll('{pedido}', pedido);
@@ -400,7 +400,7 @@ function Cadencia({ live, pedido, irPara }: { live: string; pedido: string; irPa
                   <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: cor[i.quem], borderRadius: 99, padding: '2px 8px' }}>{QUEM_CAD[i.quem]}</span>
                   <span style={{ flex: 1, minWidth: 180 }}>{i.o}</span>
                   {i.msg && <button className="btn sm" onClick={() => copiar(i.msg!)}>{ok === i.msg ? 'Copiado' : `Copiar texto do canal`}</button>}
-                  {i.camp && <button className="btn sm primary" onClick={() => irPara(i.camp as Camp)}>Abrir a lista</button>}
+                  {i.camp && <button className="btn sm primary" onClick={() => (i.camp === 'reps' ? irReps() : irPara(i.camp as Camp))}>Abrir a lista</button>}
                 </div>))}
             </div>
           </div>); })}
@@ -409,8 +409,65 @@ function Cadencia({ live, pedido, irPara }: { live: string; pedido: string; irPa
   );
 }
 
+/** disparo para os representantes: cada um recebe a mensagem com o link dele e o convite pronto para encaminhar */
+const LS_REP = `cb-msg-reps-${LS_V}-enviados`;
+function DisparoReps() {
+  const o = window.location.origin;
+  const reps = useMemo(() => Object.entries(REPRESENTANTES).filter(([s]) => !REPS_FORA.includes(s)).sort((a, b) => a[1].n.localeCompare(b[1].n, 'pt-BR')), []);
+  const [env, setEnv] = useState<Record<string, string>>(() => lerLS(LS_REP, {}));
+  useEffect(() => { try { localStorage.setItem(LS_REP, JSON.stringify(env)); } catch { /* sem armazenamento */ } }, [env]);
+  const [busca, setBusca] = useState('');
+  const [flt, setFlt] = useState<'pendentes' | 'enviados' | 'todos'>('pendentes');
+  const [ok, setOk] = useState('');
+  const link = (s: string) => `${o}/black/r/${s}`;
+  const m1 = (i: number, s: string, n: string) => MSG_REP[i % 4].replaceAll('{n}', n).replaceAll('{l}', link(s));
+  const m2 = (i: number, s: string) => MSG_CONVITE[(i + 1) % 4].replaceAll('{l}', link(s));
+  const copiar = async (k: string, t: string) => { try { await navigator.clipboard.writeText(t); setOk(k); setTimeout(() => setOk(''), 1500); } catch { /* sem área de transferência */ } };
+  const nEnv = reps.filter(([s]) => env[s]).length;
+  const q = busca.trim().toLowerCase();
+  const lista = reps.map((x, i) => [x, i] as const).filter(([[s, v]]) => (flt === 'todos' || (flt === 'enviados' ? !!env[s] : !env[s])) && (!q || `${v.n} ${v.r}`.toLowerCase().includes(q)));
+  return (
+    <>
+      <div className="cbx-kpis">
+        <Kpi l="Representantes" v={int(reps.length)} c="#0A2530" />
+        <Kpi l="Enviados" v={int(nEnv)} c="#1F7F88" />
+        <Kpi l="Faltam" v={int(reps.length - nEnv)} c="#DA3A2F" />
+      </div>
+      <div className="cbx-box" style={{ display: 'grid', gap: 8 }}>
+        <b>Kit dos representantes <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· Qua 18/11 · cada um recebe duas mensagens, já com o link dele</small></b>
+        <p className="cbx-hint" style={{ margin: 0 }}>Clique em <b>1 · Copiar mensagem</b>, cole na conversa do representante e envie. Depois <b>2 · Copiar convite</b>, que ele encaminha aos clientes de loja física. Os textos variam de um representante para outro. Para o número não ser bloqueado: salve o representante nos contatos, espere de 1 a 2 minutos entre um e outro, faça blocos de 15 com 10 minutos de pausa e não use lista de transmissão. As marcas de enviado ficam neste computador.</p>
+      </div>
+      <div className="cbx-bar">
+        {(['pendentes', 'enviados', 'todos'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'pendentes' ? 'A enviar' : k === 'enviados' ? 'Enviados' : 'Todos'}<b>{k === 'todos' ? reps.length : k === 'enviados' ? nEnv : reps.length - nEnv}</b></button>)}
+        <input type="search" placeholder="Representante ou escritório" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      </div>
+      {lista.length === 0 ? <EmptyState title={flt === 'pendentes' ? 'Kit enviado para todos os representantes' : 'Ninguém nesta lista'} hint="" /> : (
+        <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
+          <table className="cbx-table">
+            <thead><tr><th>Representante</th><th>Link de pré-cadastro</th><th>Situação</th><th /></tr></thead>
+            <tbody>{lista.map(([[s, v], i]) => (
+              <tr key={s}>
+                <td><b>{v.n}</b><small>{v.r}</small></td>
+                <td><small style={{ wordBreak: 'break-all' }}>{link(s)}</small></td>
+                <td>{env[s] ? <span style={{ color: '#1F7F88', fontWeight: 700 }}>Enviado {dt(env[s])}</span> : <span style={{ color: '#7C8A90' }}>A enviar</span>}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button className="btn sm primary" title={m1(i, s, v.n)} onClick={() => copiar(s + '1', m1(i, s, v.n))}>{ok === s + '1' ? 'Copiada' : '1 · Copiar mensagem'}</button>
+                  {' '}<button className="btn sm primary" title={m2(i, s)} onClick={() => copiar(s + '2', m2(i, s))}>{ok === s + '2' ? 'Copiado' : '2 · Copiar convite'}</button>
+                  {' '}{env[s]
+                    ? <button className="btn ghost sm" onClick={() => setEnv((e) => { const x = { ...e }; delete x[s]; return x; })}>desmarcar</button>
+                    : <button className="btn sm" onClick={() => setEnv((e) => ({ ...e, [s]: new Date().toISOString() }))}>Marcar enviado</button>}
+                </td>
+              </tr>))}</tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido[] }) {
   const [camp, setCamp] = useState<Camp>(() => campDoDia());
+  const [reps, setReps] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) <= '2026-11-20');
   const C = CAMPS.find((c) => c.k === camp)!;
   const [modelos, setModelos] = useState<Record<Camp, string>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsMod(c.k), c.padrao)])) as Record<Camp, string>);
   const [envs, setEnvs] = useState<Record<Camp, Record<string, string>>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsEnv(c.k), {})])) as Record<Camp, Record<string, string>>);
@@ -457,10 +514,12 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
   const detalhe = (i: Inscrito) => { const c = carPor.get(soDig(i.cnpj)); const ps = pedPor.get(soDig(i.cnpj)); if (ps) return `${ps.map((p) => p.numero).join(', ')} · ${brl(ps.reduce((t, p) => t + Number(p.total), 0))}`; if (c) return `${c.caixas} cx · ${brl(Number(c.valor))} no carrinho`; return ''; };
   return (
     <>
-      <Cadencia live={live} pedido={pedido} irPara={(k) => { setCamp(k); setEditar(false); setFlt('pendentes'); }} />
+      <Cadencia live={live} pedido={pedido} irPara={(k) => { setReps(false); setCamp(k); setEditar(false); setFlt('pendentes'); }} irReps={() => setReps(true)} />
       <div className="cbx-bar" style={{ marginBottom: 10 }}>
-        {CAMPS.map((c) => <button key={c.k} className={`cbx-pill${camp === c.k ? ' on' : ''}`} title={c.quando} onClick={() => { setCamp(c.k); setEditar(false); setFlt('pendentes'); }}>{c.nome}<b>{nGrupo(c.k)}</b></button>)}
+        <button className={`cbx-pill${reps ? ' on' : ''}`} title="Qua 18/11" onClick={() => setReps(true)}>Kit dos representantes</button>
+        {CAMPS.map((c) => <button key={c.k} className={`cbx-pill${!reps && camp === c.k ? ' on' : ''}`} title={c.quando} onClick={() => { setReps(false); setCamp(c.k); setEditar(false); setFlt('pendentes'); }}>{c.nome}<b>{nGrupo(c.k)}</b></button>)}
       </div>
+      {reps ? <DisparoReps /> : <>
       <div className="cbx-kpis">
         <Kpi l={C.nome} v={int(publico.length)} c="#0A2530" />
         <Kpi l="Enviados" v={int(nEnv)} c="#1F7F88" />
@@ -505,6 +564,7 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
           </table>
         </div>
       )}
+      </>}
     </>
   );
 }
