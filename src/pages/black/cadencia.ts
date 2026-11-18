@@ -44,7 +44,7 @@ Até a próxima!` },
 
 export const CADENCIA: DiaCad[] = [
   { dia: 'Qua', data: '18/11', iso: '2026-11-18', tag: 'D-6', itens: [
-    { h: '9h', quem: 'eq', o: 'Kit enviado aos representantes, cada um com o seu link (aba Links e QR)' },
+    { h: '9h', quem: 'eq', o: 'Kit enviado aos representantes, cada um com o seu link e o convite pronto', camp: 'reps' },
     { h: '10h', quem: 'rep', o: 'Disparo do convite com o link do pré-cadastro' },
     { h: '17h', quem: 'rep', o: 'Reforço do convite para quem não respondeu' },
     { h: '17h', quem: 'eq', o: 'Relação de inscritos para cada representante (aba Inscritos)' }] },
@@ -84,4 +84,21 @@ export const CADENCIA: DiaCad[] = [
   { dia: 'Sex', data: '27/11', iso: '2026-11-27', tag: 'D+3', itens: [
     { h: '10h', quem: 'rep', o: 'Confirma o pedido com o cliente e lança no Pdex' },
     { h: '10h', quem: 'eq', o: 'Relatório final para a diretoria' }] },
+];
+
+/* Disparo para os representantes: 1) mensagem ao representante com o link dele; 2) convite pronto para ele encaminhar.
+   Quatro versões de cada, alternadas, para os textos não saírem iguais (o WhatsApp bloqueia envios repetidos). */
+export const REPS_FORA = ['aldair-bras', 'alexandre-boo', 'angela']; // equipe e links antigos
+const ASS = '\n\nAldair Brás, do Marketing Digital';
+export const MSG_REP = [
+  `Oi, *{n}*! Tudo bem?\n\nA Black Cardoso volta, agora para o varejo. A live é na *terça, 24/11, às 10h*.\n\nEste é o seu link de pré-cadastro. Quem se cadastrar por ele aparece na sua carteira:\n{l}\n\nNa próxima mensagem vai o convite pronto, já com o seu link. É só encaminhar para os seus clientes de loja física. Quem já participou da Black do e-commerce não precisa receber.${ASS}`,
+  `Bom dia, *{n}*!\n\nTemos Black Cardoso de novo, desta vez para o varejo: live na *terça-feira, 24/11, às 10h*.\n\nSeu link exclusivo para o pré-cadastro dos clientes:\n{l}\n\nLogo abaixo te mando o convite já com esse link. Pode encaminhar para as lojas físicas da sua carteira. Os clientes de e-commerce que estiveram na primeira Black ficam de fora desta vez.${ASS}`,
+  `Olá, *{n}*!\n\nVem aí a segunda Black Cardoso, focada no varejo. Live na *terça, 24/11, às 10h*.\n\nPara os seus clientes se inscreverem, use este link (os cadastros ficam vinculados a você):\n{l}\n\nA seguir vai o texto do convite com o link já colocado. Encaminhe para os lojistas de loja física. Não precisa mandar para quem comprou na Black do e-commerce.${ASS}`,
+  `*{n}*, bom dia! Tudo certo?\n\nA Black Cardoso está de volta, agora para as lojas físicas. A live acontece na *terça, 24/11, às 10h*.\n\nSegue o seu link de pré-cadastro:\n{l}\n\nNa mensagem seguinte está o convite pronto para encaminhar aos seus clientes de varejo. Os clientes de e-commerce da primeira Black não entram nesta.${ASS}`,
+];
+export const MSG_CONVITE = [
+  `Olá! Tudo bem?\n\nNa terça-feira, *24/11, às 10h*, a Cardoso Toys faz uma *Black Friday ao vivo, exclusiva para lojistas*. Produtos selecionados, condição especial e estoque limitado.\n\nPara participar, faça o cadastro com o CNPJ da sua loja:\n{l}\n\nAprovado o cadastro, você entra no canal da Black e recebe o link da live por lá.`,
+  `Oi, tudo certo?\n\nA Cardoso Toys vai fazer uma *Black Friday ao vivo só para lojistas*, na *terça, 24/11, às 10h*. Serão produtos selecionados, com condição especial e estoque limitado.\n\nO cadastro é feito com o CNPJ da loja, por aqui:\n{l}\n\nDepois da aprovação, você entra no canal da Black e recebe o link da live.`,
+  `Olá, tudo bem?\n\nQuero te convidar para a *Black Friday da Cardoso Toys*, uma live *exclusiva para lojistas* na *terça-feira, 24/11, às 10h*. Produtos selecionados, condição especial e estoque limitado.\n\nPara garantir sua vaga, cadastre o CNPJ da sua loja neste link:\n{l}\n\nCom o cadastro aprovado, você entra no canal da Black e recebe o acesso à live.`,
+  `Oi! Tudo bem por aí?\n\nTerça-feira, *24/11, às 10h*, tem *Black Friday ao vivo da Cardoso Toys, exclusiva para lojistas*. Produtos selecionados, condição especial e estoque limitado.\n\nO pré-cadastro é com o CNPJ da loja:\n{l}\n\nAssim que o cadastro for aprovado, você entra no canal da Black e recebe o link da live.`,
 ];
