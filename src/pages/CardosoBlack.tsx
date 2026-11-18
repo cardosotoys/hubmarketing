@@ -366,6 +366,7 @@ Próximos passos: o *{representante}* entra em contato para confirmar o pagament
 📸 As fotos e os vídeos dos produtos continuam na ficha de cada um (pelo QR ou pelo link de pedido). Use à vontade na sua loja e nas redes.
 
 Obrigado pela confiança e boas vendas! 🖤
+*Time Comercial*
 Cardoso` },
 ];
 const lsMod = (k: Camp) => `cb-msg-${k}-${LS_V}-modelo`;
