@@ -55,7 +55,7 @@ const brl0 = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency
 const int = (v: number) => Number(v).toLocaleString('pt-BR');
 const cnpjFmt = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
 const dt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
-const CANAL: Record<string, string> = { site: 'Site', ml: 'Mercado Livre', amz: 'Amazon', shp: 'Shopee', mgl: 'Magalu', out: 'Outro' };
+const CANAL: Record<string, string> = { loja: 'Loja física', site: 'Site', ml: 'Mercado Livre', amz: 'Amazon', shp: 'Shopee', mgl: 'Magalu', out: 'Outro' };
 const ST: Record<string, string> = { aprovado: 'Aprovado', analise: 'Em análise', recusado: 'Recusado', recebido: 'Recebido', confirmado: 'Confirmado', cancelado: 'Cancelado' };
 const ALERTA: Record<string, string> = {
   fora_carteira: 'Fora da carteira', receita_fora: 'Receita indisponível na hora', receita_inativa: 'CNPJ inativo na Receita',

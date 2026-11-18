@@ -16,6 +16,7 @@ type Consulta = { empresa: Empresa | null; carteira: { representante: string } |
 type Resultado = { status: 'aprovado' | 'analise'; fantasia: string; representante: string; canal_link: string; live_data: string; live_link: string };
 
 const CANAIS: [string, string, string][] = [
+  ['loja', 'Loja física', 'cidade e bairro da loja'],
   ['site', 'Loja própria (site)', 'www.sualoja.com.br'],
   ['ml', 'Mercado Livre', 'link da loja ou nome do vendedor'],
   ['amz', 'Amazon', 'link da loja ou nome do vendedor'],
@@ -117,7 +118,7 @@ export default function BlackCadastro() {
     const nome = res.fantasia || emp?.razao || 'Sua loja';
     const canal = res.canal_link || cfg?.canal_link || '';
     return (
-      <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce" wide={false} faixa={false}>
+      <Shell sub="Pré-cadastro · exclusivo para lojistas" wide={false} faixa={false}>
         <div className="cb-rs">
           <div className="hdr">
             <div className="bd" style={{ ['--c' as string]: ok ? 'var(--teal)' : 'var(--gold)', color: ok ? '#fff' : 'var(--navy)' }}>{ok ? <Ic n="check" /> : <Sv.hg />}</div>
@@ -155,7 +156,7 @@ export default function BlackCadastro() {
   }
 
   return (
-    <Shell sub="Pré-cadastro · exclusivo para lojas de e-commerce">
+    <Shell sub="Pré-cadastro · exclusivo para lojistas">
       {/* celular: título + destaques curtos, o formulário logo em seguida (sem rolar) e os detalhes depois */}
       <div className="cb-grid2 cb-pre">
         <div className="cb-pre-hd">
