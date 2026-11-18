@@ -89,7 +89,7 @@ export const CADENCIA: DiaCad[] = [
 /* Disparo para os representantes: 1) mensagem ao representante com o link dele; 2) convite pronto para ele encaminhar.
    Quatro versões de cada, alternadas, para os textos não saírem iguais (o WhatsApp bloqueia envios repetidos). */
 export const REPS_FORA = ['aldair-bras', 'alexandre-boo', 'angela']; // equipe e links antigos
-const ASS = '\n\nCardoso';
+const ASS = '\n\n*Time Comercial*\nCardoso';
 export const MSG_REP = [
   `Oi, *{n}*! Tudo bem?\n\nA Black Cardoso volta, agora para o varejo. A live é na *terça, 24/11, às 10h*.\n\nEste é o seu link de pré-cadastro. Quem se cadastrar por ele aparece na sua carteira:\n{l}\n\nNa próxima mensagem vai o convite pronto, já com o seu link. É só encaminhar para os seus clientes de loja física. Quem já participou da Black do e-commerce não precisa receber.${ASS}`,
   `Bom dia, *{n}*!\n\nTemos Black Cardoso de novo, desta vez para o varejo: live na *terça-feira, 24/11, às 10h*.\n\nSeu link exclusivo para o pré-cadastro dos clientes:\n{l}\n\nLogo abaixo vai o convite já com esse link. Pode encaminhar para as lojas físicas da sua carteira. Os clientes de e-commerce que estiveram na primeira Black ficam de fora desta vez.${ASS}`,
