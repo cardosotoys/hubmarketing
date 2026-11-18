@@ -44,8 +44,8 @@ Até a próxima!` },
 
 export const CADENCIA: DiaCad[] = [
   { dia: 'Qua', data: '18/11', iso: '2026-11-18', tag: 'D-6', itens: [
-    { h: '9h', quem: 'eq', o: 'Kit enviado aos representantes, cada um com o seu link e o convite pronto', camp: 'reps' },
-    { h: '10h', quem: 'rep', o: 'Disparo do convite com o link do pré-cadastro' },
+    { h: '9h', quem: 'eq', o: 'Kit para cada representante: mensagem, imagem e convite com o link dele', camp: 'reps' },
+    { h: '10h', quem: 'rep', o: 'Representantes encaminham o convite (imagem + texto) aos clientes de loja física' },
     { h: '17h', quem: 'rep', o: 'Reforço do convite para quem não respondeu' },
     { h: '17h', quem: 'eq', o: 'Relação de inscritos para cada representante (aba Inscritos)' }] },
   { dia: 'Qui', data: '19/11', iso: '2026-11-19', tag: 'D-5', itens: [

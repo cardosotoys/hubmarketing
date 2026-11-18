@@ -14,7 +14,7 @@ import { abrirRelacao } from './black/relacao';
 import { gerarRelatorio, type DadosRelatorio } from './black/relatorioDiretoria';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
-import { CADENCIA, MSG_CANAL, MSG_CONVITE, MSG_REP, QUEM_CAD, REPS_FORA, type QuemCad } from './black/cadencia';
+import { CADENCIA, MSG_CANAL, MSG_CONVITE, MSG_REP, QUEM_CAD, REPS_FORA } from './black/cadencia';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -382,30 +382,41 @@ function campDoDia(): Camp {
 
 function Cadencia({ live, pedido, irPara, irReps }: { live: string; pedido: string; irPara: (k: Camp) => void; irReps: () => void }) {
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const [aberto, setAberto] = useState(true);
+  const [ver, setVer] = useState('');
   const [ok, setOk] = useState('');
   const txt = (k: string) => MSG_CANAL[k].txt.replaceAll('{live}', live || '[link da live]').replaceAll('{pedido}', pedido);
   const copiar = async (k: string) => { try { await navigator.clipboard.writeText(txt(k)); setOk(k); setTimeout(() => setOk(''), 1500); } catch { /* sem área de transferência */ } };
-  const cor: Record<QuemCad, string> = { canal: '#1F7F88', rep: '#B5651D', eq: '#0A2530' };
+  const MARCOS: [string, string][] = [['Convite aos clientes', 'Qua 18/11 · 10h'], ['Canal novo no ar', 'Qui 19/11 · 10h'], ['Fim do pré-cadastro', 'Seg 23/11 · 18h'], ['Live e pedidos abertos', 'Ter 24/11 · 10h'], ['Prazo de 48h anunciado', 'Ter 24/11 · fim da live'], ['Pedidos encerrados', 'Qui 26/11 · 10h'], ['Agradecimento', 'Qui 26/11 · 14h']];
   return (
-    <details className="cbx-box" style={{ marginBottom: 14 }} open>
-      <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Cadência da Black Varejo <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· live na terça, 24/11, às 10h · o prazo de 48h só é anunciado no fim da live</small></summary>
-      <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+    <div className="cbv">
+      <section className="cbv-hero">
+        <div>
+          <span className="cbv-tag">Black Varejo · lojas físicas</span>
+          <h2>Live na terça, 24/11, às 10h.<br /><em>Siga o dia de hoje, de cima para baixo.</em></h2>
+          <p>Cada linha diz quem faz e o que fazer. <b>Abrir a lista</b> leva para as mensagens individuais já prontas. <b>Ver mensagem</b> mostra o texto do canal: toque no balão para copiar. O prazo de 48h dos pedidos só é anunciado no fim da live.</p>
+          <button className="cbv-tg" onClick={() => setAberto((v) => !v)}>{aberto ? 'Esconder a cadência' : 'Mostrar a cadência'}</button>
+        </div>
+        <div className="cbv-marcos">{MARCOS.map(([l, d]) => <div key={l}><span>{l}</span><b>{d}</b></div>)}</div>
+      </section>
+      {aberto && <div className="cbv-days">
         {CADENCIA.map((d) => { const atual = d.iso === hoje; const passou = d.iso < hoje; return (
-          <div key={d.iso} style={{ display: 'grid', gridTemplateColumns: '92px 1fr', gap: 12, padding: '10px 12px', borderRadius: 12, background: atual ? '#FFF4E5' : 'transparent', opacity: passou ? 0.55 : 1, border: atual ? '1px solid #F2C27A' : '1px solid var(--border, #E6E6E6)' }}>
-            <div><b>{d.dia} {d.data}</b><br /><small style={{ color: 'var(--text-2)' }}>{atual ? 'Hoje' : d.tag}</small></div>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {d.itens.map((i, n) => (
-                <div key={n} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13.5 }}>
-                  <b style={{ minWidth: 34 }}>{i.h}</b>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: cor[i.quem], borderRadius: 99, padding: '2px 8px' }}>{QUEM_CAD[i.quem]}</span>
-                  <span style={{ flex: 1, minWidth: 180 }}>{i.o}</span>
-                  {i.msg && <button className="btn sm" onClick={() => copiar(i.msg!)}>{ok === i.msg ? 'Copiado' : `Copiar texto do canal`}</button>}
-                  {i.camp && <button className="btn sm primary" onClick={() => (i.camp === 'reps' ? irReps() : irPara(i.camp as Camp))}>Abrir a lista</button>}
-                </div>))}
-            </div>
+          <div key={d.iso} className={`cbv-day${d.tag === 'Dia D' ? ' dday' : ''}${atual ? ' hoje' : ''}${passou ? ' passou' : ''}`}>
+            <div className="cbv-dd"><small>{d.dia}</small><b>{d.data}</b><span>{atual ? 'Hoje' : d.tag}</span></div>
+            <ul>{d.itens.map((i, n) => { const k = `${d.iso}-${n}`; return (
+              <li key={n}>
+                <span className="h">{i.h}</span>
+                <span className={`cbv-chip ${i.quem}`}>{QUEM_CAD[i.quem]}</span>
+                <span className="o">{i.o}</span>
+                <span className="go">
+                  {i.msg && <button className="cbv-go" onClick={() => setVer(ver === k ? '' : k)}>{ver === k ? 'Fechar' : 'Ver mensagem'}</button>}
+                  {i.camp && <button className="cbv-go red" onClick={() => (i.camp === 'reps' ? irReps() : irPara(i.camp as Camp))}>Abrir a lista</button>}
+                </span>
+                {i.msg && ver === k && <div className="cbv-wa"><div className="cbv-bub" role="button" tabIndex={0} onClick={() => copiar(i.msg!)} onKeyDown={(e) => { if (e.key === 'Enter') copiar(i.msg!); }}>{txt(i.msg)}<em>{ok === i.msg ? 'Copiado ✓' : 'toque para copiar'}</em></div></div>}
+              </li>); })}</ul>
           </div>); })}
-      </div>
-    </details>
+      </div>}
+    </div>
   );
 }
 
@@ -423,6 +434,15 @@ function DisparoReps() {
   const m1 = (i: number, s: string, n: string) => MSG_REP[i % 4].replaceAll('{n}', n).replaceAll('{l}', link(s));
   const m2 = (i: number, s: string) => MSG_CONVITE[(i + 1) % 4].replaceAll('{l}', link(s));
   const copiar = async (k: string, t: string) => { try { await navigator.clipboard.writeText(t); setOk(k); setTimeout(() => setOk(''), 1500); } catch { /* sem área de transferência */ } };
+  const IMG = '/black/convite-varejo.jpg';
+  const copiarImg = async (k: string) => {
+    try {
+      const im = new Image(); im.src = IMG; await im.decode();
+      const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d')!.drawImage(im, 0, 0);
+      const blob = await new Promise<Blob>((r, j) => c.toBlob((b) => (b ? r(b) : j(new Error('imagem'))), 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setOk(k); setTimeout(() => setOk(''), 1500);
+    } catch { window.open(IMG, '_blank'); }
+  };
   const nEnv = reps.filter(([s]) => env[s]).length;
   const q = busca.trim().toLowerCase();
   const lista = reps.map((x, i) => [x, i] as const).filter(([[s, v]]) => (flt === 'todos' || (flt === 'enviados' ? !!env[s] : !env[s])) && (!q || `${v.n} ${v.r}`.toLowerCase().includes(q)));
@@ -433,9 +453,19 @@ function DisparoReps() {
         <Kpi l="Enviados" v={int(nEnv)} c="#1F7F88" />
         <Kpi l="Faltam" v={int(reps.length - nEnv)} c="#DA3A2F" />
       </div>
-      <div className="cbx-box" style={{ display: 'grid', gap: 8 }}>
-        <b>Kit dos representantes <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· Qua 18/11 · cada um recebe duas mensagens, já com o link dele</small></b>
-        <p className="cbx-hint" style={{ margin: 0 }}>Clique em <b>1 · Copiar mensagem</b>, cole na conversa do representante e envie. Depois <b>2 · Copiar convite</b>, que ele encaminha aos clientes de loja física. Os textos variam de um representante para outro. Para o número não ser bloqueado: salve o representante nos contatos, espere de 1 a 2 minutos entre um e outro, faça blocos de 15 com 10 minutos de pausa e não use lista de transmissão. As marcas de enviado ficam neste computador.</p>
+      <div className="cbx-box cbv-kit">
+        <img src={IMG} alt="Arte do convite da Black Cardoso Varejo" />
+        <div>
+          <b>Kit dos representantes <small>· Qua 18/11 · cada linha já tem o link do representante</small></b>
+          <ol>
+            <li><b>1 · Mensagem</b>: copie, cole na conversa do representante e envie.</li>
+            <li><b>2 · Imagem</b>: copie e cole na mesma conversa. O WhatsApp abre o campo de legenda.</li>
+            <li><b>3 · Legenda</b>: copie e cole como legenda da imagem. Envie. É esse convite que o representante encaminha aos clientes de loja física.</li>
+            <li><b>Marcar enviado</b> e siga para o próximo.</li>
+          </ol>
+          <p className="cbx-hint" style={{ margin: 0 }}>Para o número não ser bloqueado: salve o representante nos contatos, espere de 1 a 2 minutos entre um e outro, faça blocos de 15 com 10 minutos de pausa e não use lista de transmissão. Os textos variam de um representante para outro. As marcas de enviado ficam neste computador.</p>
+          <div className="cbx-acts" style={{ marginTop: 8 }}><a className="btn sm" href={IMG} download="Black-Cardoso-Varejo-convite.jpg">Baixar a imagem</a></div>
+        </div>
       </div>
       <div className="cbx-bar">
         {(['pendentes', 'enviados', 'todos'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'pendentes' ? 'A enviar' : k === 'enviados' ? 'Enviados' : 'Todos'}<b>{k === 'todos' ? reps.length : k === 'enviados' ? nEnv : reps.length - nEnv}</b></button>)}
@@ -451,8 +481,9 @@ function DisparoReps() {
                 <td><small style={{ wordBreak: 'break-all' }}>{link(s)}</small></td>
                 <td>{env[s] ? <span style={{ color: '#1F7F88', fontWeight: 700 }}>Enviado {dt(env[s])}</span> : <span style={{ color: '#7C8A90' }}>A enviar</span>}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn sm primary" title={m1(i, s, v.n)} onClick={() => copiar(s + '1', m1(i, s, v.n))}>{ok === s + '1' ? 'Copiada' : '1 · Copiar mensagem'}</button>
-                  {' '}<button className="btn sm primary" title={m2(i, s)} onClick={() => copiar(s + '2', m2(i, s))}>{ok === s + '2' ? 'Copiado' : '2 · Copiar convite'}</button>
+                  <button className="btn sm primary" title={m1(i, s, v.n)} onClick={() => copiar(s + '1', m1(i, s, v.n))}>{ok === s + '1' ? 'Copiada ✓' : '1 · Mensagem'}</button>
+                  {' '}<button className="btn sm primary" onClick={() => copiarImg(s + 'i')}>{ok === s + 'i' ? 'Copiada ✓' : '2 · Imagem'}</button>
+                  {' '}<button className="btn sm primary" title={m2(i, s)} onClick={() => copiar(s + '2', m2(i, s))}>{ok === s + '2' ? 'Copiada ✓' : '3 · Legenda'}</button>
                   {' '}{env[s]
                     ? <button className="btn ghost sm" onClick={() => setEnv((e) => { const x = { ...e }; delete x[s]; return x; })}>desmarcar</button>
                     : <button className="btn sm" onClick={() => setEnv((e) => ({ ...e, [s]: new Date().toISOString() }))}>Marcar enviado</button>}
