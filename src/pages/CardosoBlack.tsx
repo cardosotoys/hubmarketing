@@ -14,6 +14,7 @@ import { abrirRelacao } from './black/relacao';
 import { gerarRelatorio, type DadosRelatorio } from './black/relatorioDiretoria';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
+import { CADENCIA, MSG_CANAL, QUEM_CAD, type QuemCad } from './black/cadencia';
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -265,50 +266,52 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
 
 /* ================= Inscritos ================= */
 /* mensagem 1 a 1 para cada inscrito, aberta no WhatsApp Web já preenchida */
-const MSG_PADRAO = `Olá, *{comprador}*! Tudo bem?
-Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.
-
-⏰ *É HOJE: BLACK CARDOSO - 12.11 às 16h*
-
-O cadastro da *{loja}* está aprovado e você já pode participar.
-
-📺 *Link da live (videochamada):*
-{live}
-
-🛒 *Link para fazer seu pedido:*
-{pedido}
-Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*.
-
-🚨 *As compras são feitas somente pelo link de pedido, a partir das 16h.*
-
-*Condições:*
-• Produtos com *até 60% de desconto*, incluindo licenciados Disney, Pocoyo, Smurfs, Galinha Pintadinha e Warner
-• Pagamento antecipado · caixa fechada · pedido mínimo de R$ 2.500
-• Frete grátis para a cidade de São Paulo
-• IPI de 6,5% somado no fechamento do pedido
-• Estoque limitado: a caixa fica garantida quando entra no seu carrinho
-
-Seu representante: *{representante}*.
-Te esperamos às 16h! 🖤`;
-const LS_MSG = 'cb-msg-live-modelo', LS_ENV = 'cb-msg-live-enviados';
+const LS_V = 'varejo'; // muda a cada edição: textos editados e marcas de enviado da edição anterior não voltam
 const lerLS = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } };
 const telWa = (c: string) => { const d = (c || '').replace(/\D/g, ''); if (!d) return ''; return d.length <= 11 ? `55${d}` : d; };
 const nomeRep = (r: string) => { const s = slugDoRepresentante(r); return (s && REPRESENTANTES[s]?.n) || r || 'Equipe Cardoso'; };
 const primeiroNome = (n: string) => { const p = (n || '').trim().split(/\s+/)[0] ?? ''; return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : ''; };
 /* campanhas de mensagem: cada uma com o seu público, o seu texto e as suas marcas de enviado */
-type Camp = 'live' | 'abandonado' | 'andamento' | 'semcompra' | 'comprou';
+type Camp = 'vespera' | 'live' | 'andamento' | 'abandonado' | 'semcompra' | 'comprou';
 const ASSIN = `Aqui é o *Aldair Brás*, do Marketing Digital da Cardoso Toys.`;
-const CAMPS: { k: Camp; nome: string; publico: string; padrao: string }[] = [
-  { k: 'live', nome: 'Convite da live', publico: 'Todos os aprovados', padrao: MSG_PADRAO },
-  { k: 'abandonado', nome: 'Carrinho abandonado', publico: 'Deixaram produtos no carrinho, saíram da página e não enviaram o pedido', padrao: `Olá, *{comprador}*! Tudo bem?
+const CAMPS: { k: Camp; nome: string; quando: string; publico: string; padrao: string }[] = [
+  { k: 'vespera', nome: 'Véspera', quando: 'Seg 23/11 · 10h', publico: 'Todos os aprovados', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+⏰ *É amanhã!* A live da *Black Cardoso* começa na *terça, 24/11, às 10h*.
+
+O cadastro da *{loja}* está aprovado. Faça um teste hoje: entre no link com o *CNPJ da loja* e a *senha criada no pré-cadastro* e veja se está tudo certo.
+🛒 {pedido}
+
+Teve alguma dificuldade? Responda esta mensagem que eu te ajudo. Seu representante: *{representante}*.` },
+  { k: 'live', nome: 'Dia D', quando: 'Ter 24/11 · 8h', publico: 'Todos os aprovados', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+⏰ *É HOJE: BLACK CARDOSO, 24/11, às 10h*
+
+📺 *Link da live:*
+{live}
+
+🛒 *Link para fazer seu pedido:*
+{pedido}
+Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*. Deixe o login feito antes de começar.
+
+🚨 *As compras são feitas somente pelo link de pedido, a partir das 10h.*
+
+• Caixa fechada · pedido mínimo de R$ 2.500
+• Estoque limitado: a caixa fica garantida quando entra no seu carrinho
+
+Seu representante: *{representante}*.
+Te esperamos às 10h! 🖤` },
+  { k: 'abandonado', nome: 'Carrinho abandonado', quando: 'Ter 24/11 · 15h', publico: 'Deixaram produtos no carrinho, saíram da página e não enviaram o pedido', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
 Vi que a *{loja}* deixou produtos no carrinho da *Black Cardoso* e o pedido ainda não foi enviado:
 {itens}
 
-⚠️ O estoque só fica garantido quando o pedido é enviado. Alguns itens já esgotaram, e os que estão no seu carrinho podem acabar também.
+⚠️ O estoque só fica garantido quando o pedido é enviado. Alguns itens já estão acabando.
 
-⏰ *Os pedidos encerram HOJE, 13/11, às 12h.* Depois disso o link fecha.
+⏰ *Os pedidos ficam abertos até quinta, 26/11, às 10h.* Depois disso o link fecha.
 
 🛒 Finalize aqui: {pedido}
 Entre com o *CNPJ* e a *senha*. O seu carrinho continua salvo.
@@ -317,64 +320,95 @@ Para fechar: *Carrinho → Continuar → marque "Estou de acordo" → Enviar ped
 Pedido mínimo de R$ 2.500 em produtos, caixa fechada.
 
 Travou em alguma etapa? É só responder esta mensagem que eu te ajudo. Seu representante: *{representante}*.` },
-  { k: 'andamento', nome: 'Em andamento', publico: 'Estão montando o carrinho agora e ainda não enviaram', padrao: `Olá, *{comprador}*! Tudo bem?
+  { k: 'semcompra', nome: 'Ainda não compraram', quando: 'Qua 25/11 · 10h', publico: 'Aprovados sem pedido e sem carrinho', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
-Vi que a *{loja}* está montando o pedido da *Black Cardoso* agora. Que bom! 🙌
+A *Black Cardoso* está no ar e a *{loja}* ainda não fez o pedido. 🖤
 
-Só um lembrete para não perder nada:
-• O estoque só fica garantido quando o pedido é *enviado*
-• Para fechar: *Carrinho → Continuar → marque "Estou de acordo" → Enviar pedido*
-• Pedido mínimo de R$ 2.500 em produtos, caixa fechada
+⏰ *Os pedidos ficam abertos até quinta, 26/11, às 10h.* Depois disso o link fecha.
 
-⏰ *Os pedidos encerram HOJE, 13/11, às 12h.*
-
-🛒 {pedido}
-
-Qualquer dúvida, responda aqui que eu te ajudo na hora. Seu representante: *{representante}*.` },
-  { k: 'semcompra', nome: 'Ainda não compraram', publico: 'Aprovados sem pedido e sem carrinho', padrao: `Olá, *{comprador}*! Tudo bem?
-${ASSIN}
-
-A *Black Cardoso* está no ar e a *{loja}* ainda não aproveitou. 🖤
-
-⏰ *Os pedidos encerram HOJE, 13/11, às 12h.* Depois disso o link fecha.
-
-Ainda dá tempo de garantir:
-• Produtos com *até 60% de desconto*
-• Licenciados Disney, Pocoyo, Smurfs, Galinha Pintadinha e Warner
-• Fotos e vídeos de cada produto para usar na sua loja e nos marketplaces
-• Frete grátis para a cidade de São Paulo
+Produtos selecionados, condição especial e estoque limitado: quem coloca no carrinho primeiro garante.
 
 🛒 Faça seu pedido aqui: {pedido}
 Entre com o *CNPJ da loja* e a *senha criada no pré-cadastro*.
 
 Esqueceu a senha ou ficou alguma dúvida? Responda esta mensagem que eu te ajudo. Seu representante: *{representante}*.
 
-Pagamento antecipado · caixa fechada · pedido mínimo de R$ 2.500 · IPI de 6,5% somado no fechamento.` },
-  { k: 'comprou', nome: 'Agradecimento', publico: 'Lojas que enviaram pedido', padrao: `Olá, *{comprador}*! Tudo bem?
+Caixa fechada · pedido mínimo de R$ 2.500.` },
+  { k: 'andamento', nome: 'Em andamento', quando: 'Qui 26/11 · 8h', publico: 'Estão montando o carrinho agora e ainda não enviaram', padrao: `Olá, *{comprador}*! Tudo bem?
+${ASSIN}
+
+Vi que a *{loja}* está montando o pedido da *Black Cardoso*. Que bom! 🙌
+
+Só um lembrete para não perder nada:
+• O estoque só fica garantido quando o pedido é *enviado*
+• Para fechar: *Carrinho → Continuar → marque "Estou de acordo" → Enviar pedido*
+• Pedido mínimo de R$ 2.500 em produtos, caixa fechada
+
+⏰ *Os pedidos encerram HOJE, 26/11, às 10h.*
+
+🛒 {pedido}
+
+Qualquer dúvida, responda aqui que eu te ajudo na hora. Seu representante: *{representante}*.` },
+  { k: 'comprou', nome: 'Agradecimento', quando: 'Qui 26/11 · 14h', publico: 'Lojas que enviaram pedido', padrao: `Olá, *{comprador}*! Tudo bem?
 ${ASSIN}
 
 Passando para agradecer: o pedido *{numero}* da *{loja}* chegou certinho! 🎉
 
-A Black Cardoso foi a primeira feita só para quem vende online. Preparamos tudo pensando em você: preço para ter margem no marketplace, fotos e vídeos de cada produto prontos para usar e uma live para mostrar tudo de perto. Ver a *{loja}* com a gente fez valer cada detalhe.
-
 Próximos passos: o *{representante}* entra em contato para confirmar o pagamento e a entrega.
 
-📸 As fotos e os vídeos dos produtos continuam na ficha de cada um (pelo QR ou pelo link de pedido). Use à vontade nos seus anúncios.
+📸 As fotos e os vídeos dos produtos continuam na ficha de cada um (pelo QR ou pelo link de pedido). Use à vontade na sua loja e nas redes.
 
 Obrigado pela confiança e boas vendas! 🖤
 Equipe Cardoso Toys` },
 ];
-const lsMod = (k: Camp) => (k === 'live' ? LS_MSG : `cb-msg-${k}-modelo`);
-const lsEnv = (k: Camp) => (k === 'live' ? LS_ENV : `cb-msg-${k}-enviados`);
+const lsMod = (k: Camp) => `cb-msg-${k}-${LS_V}-modelo`;
+const lsEnv = (k: Camp) => `cb-msg-${k}-${LS_V}-enviados`;
 const soDig = (c: string) => (c || '').replace(/\D/g, '');
 
+/** campanha que vale para hoje, pela cadência */
+function campDoDia(): Camp {
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  let k: Camp = 'vespera';
+  CADENCIA.forEach((d) => { if (d.iso <= hoje) d.itens.forEach((i) => { if (i.camp) k = i.camp as Camp; }); });
+  return k;
+}
+
+function Cadencia({ live, pedido, irPara }: { live: string; pedido: string; irPara: (k: Camp) => void }) {
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const [ok, setOk] = useState('');
+  const txt = (k: string) => MSG_CANAL[k].txt.replaceAll('{live}', live || '[link da live]').replaceAll('{pedido}', pedido);
+  const copiar = async (k: string) => { try { await navigator.clipboard.writeText(txt(k)); setOk(k); setTimeout(() => setOk(''), 1500); } catch { /* sem área de transferência */ } };
+  const cor: Record<QuemCad, string> = { canal: '#1F7F88', rep: '#B5651D', eq: '#0A2530' };
+  return (
+    <details className="cbx-box" style={{ marginBottom: 14 }} open>
+      <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Cadência da Black Varejo <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· live na terça, 24/11, às 10h · o prazo de 48h só é anunciado no fim da live</small></summary>
+      <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+        {CADENCIA.map((d) => { const atual = d.iso === hoje; const passou = d.iso < hoje; return (
+          <div key={d.iso} style={{ display: 'grid', gridTemplateColumns: '92px 1fr', gap: 12, padding: '10px 12px', borderRadius: 12, background: atual ? '#FFF4E5' : 'transparent', opacity: passou ? 0.55 : 1, border: atual ? '1px solid #F2C27A' : '1px solid var(--border, #E6E6E6)' }}>
+            <div><b>{d.dia} {d.data}</b><br /><small style={{ color: 'var(--text-2)' }}>{atual ? 'Hoje' : d.tag}</small></div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {d.itens.map((i, n) => (
+                <div key={n} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13.5 }}>
+                  <b style={{ minWidth: 34 }}>{i.h}</b>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: cor[i.quem], borderRadius: 99, padding: '2px 8px' }}>{QUEM_CAD[i.quem]}</span>
+                  <span style={{ flex: 1, minWidth: 180 }}>{i.o}</span>
+                  {i.msg && <button className="btn sm" onClick={() => copiar(i.msg!)}>{ok === i.msg ? 'Copiado' : `Copiar texto do canal`}</button>}
+                  {i.camp && <button className="btn sm primary" onClick={() => irPara(i.camp as Camp)}>Abrir a lista</button>}
+                </div>))}
+            </div>
+          </div>); })}
+      </div>
+    </details>
+  );
+}
+
 function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido[] }) {
-  const [camp, setCamp] = useState<Camp>('live');
+  const [camp, setCamp] = useState<Camp>(() => campDoDia());
   const C = CAMPS.find((c) => c.k === camp)!;
   const [modelos, setModelos] = useState<Record<Camp, string>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsMod(c.k), c.padrao)])) as Record<Camp, string>);
   const [envs, setEnvs] = useState<Record<Camp, Record<string, string>>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsEnv(c.k), {})])) as Record<Camp, Record<string, string>>);
-  const [live, setLive] = useState(cfg.live_link || 'https://meet.google.com/tfw-dcqi-xyr');
+  const [live, setLive] = useState(cfg.live_link || '');
   const [flt, setFlt] = useState<'pendentes' | 'enviados' | 'todos'>('pendentes');
   const [busca, setBusca] = useState('');
   const [editar, setEditar] = useState(false);
@@ -392,8 +426,9 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
   const pedPor = useMemo(() => { const m = new Map<string, Pedido[]>(); peds.filter((p) => p.status !== 'cancelado').forEach((p) => { const k = soDig(p.cnpj); m.set(k, [...(m.get(k) ?? []), p]); }); return m; }, [peds]);
   const carPor = useMemo(() => { const m = new Map<string, CarRel>(); cars.filter((c) => c.situacao === 'ativo' || c.situacao === 'abandonado').forEach((c) => { if (c.itens.length) m.set(soDig(c.cnpj), c); }); return m; }, [cars]);
   const grupo = (i: Inscrito): Camp => { const k = soDig(i.cnpj); if (pedPor.has(k)) return 'comprou'; const c = carPor.get(k); if (c) return c.situacao === 'ativo' ? 'andamento' : 'abandonado'; return 'semcompra'; };
-  const publico = camp === 'live' ? aprov : aprov.filter((i) => grupo(i) === camp);
-  const nGrupo = (k: Camp) => (k === 'live' ? aprov.length : aprov.filter((i) => grupo(i) === k).length);
+  const todos = (k: Camp) => k === 'live' || k === 'vespera';
+  const publico = todos(camp) ? aprov : aprov.filter((i) => grupo(i) === camp);
+  const nGrupo = (k: Camp) => (todos(k) ? aprov.length : aprov.filter((i) => grupo(i) === k).length);
   const msg = (i: Inscrito) => {
     const c = carPor.get(soDig(i.cnpj)); const ps = pedPor.get(soDig(i.cnpj)) ?? [];
     return modelo
@@ -416,8 +451,9 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
   const detalhe = (i: Inscrito) => { const c = carPor.get(soDig(i.cnpj)); const ps = pedPor.get(soDig(i.cnpj)); if (ps) return `${ps.map((p) => p.numero).join(', ')} · ${brl(ps.reduce((t, p) => t + Number(p.total), 0))}`; if (c) return `${c.caixas} cx · ${brl(Number(c.valor))} no carrinho`; return ''; };
   return (
     <>
+      <Cadencia live={live} pedido={pedido} irPara={(k) => { setCamp(k); setEditar(false); setFlt('pendentes'); }} />
       <div className="cbx-bar" style={{ marginBottom: 10 }}>
-        {CAMPS.map((c) => <button key={c.k} className={`cbx-pill${camp === c.k ? ' on' : ''}`} onClick={() => { setCamp(c.k); setEditar(false); setFlt('pendentes'); }}>{c.nome}<b>{nGrupo(c.k)}</b></button>)}
+        {CAMPS.map((c) => <button key={c.k} className={`cbx-pill${camp === c.k ? ' on' : ''}`} title={c.quando} onClick={() => { setCamp(c.k); setEditar(false); setFlt('pendentes'); }}>{c.nome}<b>{nGrupo(c.k)}</b></button>)}
       </div>
       <div className="cbx-kpis">
         <Kpi l={C.nome} v={int(publico.length)} c="#0A2530" />
@@ -427,7 +463,7 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
       </div>
       <div className="cbx-box" style={{ display: 'grid', gap: 10 }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <b style={{ flex: 1, minWidth: 220 }}>{C.nome} <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· {C.publico}</small></b>
+          <b style={{ flex: 1, minWidth: 220 }}>{C.nome} <small style={{ fontWeight: 500, color: 'var(--text-2)' }}>· {C.quando} · {C.publico}</small></b>
           <button className="btn sm" onClick={() => setEditar((v) => !v)}>{editar ? 'Fechar o modelo' : 'Editar a mensagem'}</button>
           <button className="btn sm primary" disabled={!proximo} onClick={() => proximo && abrir(proximo)}>{proximo ? `Abrir o próximo: ${proximo.fantasia || proximo.razao_social}` : 'Todos enviados'}</button>
         </div>
