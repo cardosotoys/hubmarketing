@@ -435,7 +435,7 @@ function DisparoReps() {
   const m1 = (i: number, s: string, n: string) => MSG_REP[i % 4].replaceAll('{n}', n).replaceAll('{l}', link(s));
   const m2 = (i: number, s: string) => MSG_CONVITE[(i + 1) % 4].replaceAll('{l}', link(s));
   const copiar = async (k: string, t: string) => { try { await navigator.clipboard.writeText(t); setOk(k); setTimeout(() => setOk(''), 1500); } catch { /* sem área de transferência */ } };
-  const IMG = '/black/convite-varejo.jpg';
+  const IMG = '/black/convite-varejo-loja.jpg';
   const copiarImg = async (k: string) => {
     try {
       const im = new Image(); im.src = IMG; await im.decode();
