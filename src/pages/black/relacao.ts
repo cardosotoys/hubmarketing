@@ -12,7 +12,7 @@ const dh = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digi
 const rep = (r: string | null | undefined) => (r ?? '').trim() || 'Sem representante';
 const ST: Record<string, string> = { recebido: 'A confirmar', confirmado: 'Confirmado' };
 
-const CSS = `
+export const CSS = `
 @font-face{font-family:'CB Figtree';src:url('/black/fonts/figtree.woff2') format('woff2');font-weight:300 900}
 @page{size:A4;margin:11mm 10mm 13mm}
 *{box-sizing:border-box}body{margin:0;font-family:'CB Figtree',Arial,sans-serif;color:#141416;font-size:9.4pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}

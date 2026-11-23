@@ -11,6 +11,7 @@ import { useRedonda } from './black/fonte';
 import { ABAS, abaValida, linkComoCliente, type Aba } from './black/abas';
 import { abrirEspelhos } from './black/espelho';
 import { abrirRelacao } from './black/relacao';
+import { abrirInscritos, repsInscritos } from './black/relacaoInscritos';
 import { gerarRelatorio, type DadosRelatorio } from './black/relatorioDiretoria';
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
@@ -413,6 +414,7 @@ function Cadencia({ live, pedido, irPara, irReps }: { live: string; pedido: stri
                   {i.msg && <button className="cbv-go" onClick={() => setVer(ver === k ? '' : k)}>{ver === k ? 'Fechar' : 'Ver mensagem'}</button>}
                   {i.camp && <button className="cbv-go red" onClick={() => (i.camp === 'reps' ? irReps() : irPara(i.camp as Camp))}>Abrir a lista</button>}
                 </span>
+                {i.msg && ver === k && i.video && <div className="cbv-wa cbv-vid"><video src={i.video} controls playsInline preload="metadata" /><div><b>1 · Envie o vídeo</b><span>Baixe e mande no canal. Em seguida, mande a mensagem abaixo.</span><a className="cbv-go red" href={i.video} download={i.video.split('/').pop()}>Baixar o vídeo</a></div></div>}
                 {i.msg && ver === k && <div className="cbv-wa"><div className="cbv-bub" role="button" tabIndex={0} onClick={() => copiar(i.msg!)} onKeyDown={(e) => { if (e.key === 'Enter') copiar(i.msg!); }}>{txt(i.msg)}<em>{ok === i.msg ? 'Copiado ✓' : 'toque para copiar'}</em></div></div>}
               </li>); })}</ul>
           </div>); })}
@@ -608,6 +610,11 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
   const [link, setLink] = useState('');
   const [pedLink, setPedLink] = useState('');
   const [aviso, setAviso] = useState('');
+  const [pdfRep, setPdfRep] = useState('');
+  const repsPdf = useMemo(() => repsInscritos(window.location.origin), []);
+  const nRep = (o: string) => ins.filter((x) => x.origem !== 'previa' && x.status !== 'recusado' && (x.representante ?? '').trim() === o).length;
+  const prazoIns = (() => { const d = new Date(cfg.inscricoes_ate); const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }); const dia = d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }); const h = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(':00', 'h'); return dia === hoje ? `hoje, às ${h}` : `${d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })}, às ${h}`; })();
+  const gerarPdf = () => { const r = repsPdf.find((x) => x.ofc === pdfRep); const nome = r ? r.nome.toUpperCase().replace(/\s+/g, '-') : 'TODOS'; if (!abrirInscritos(ins, repsPdf, pdfRep, `BLACK-CARDOSO_INSCRITOS_${nome}`, prazoIns)) setAviso('O navegador bloqueou a janela do PDF. Libere pop-ups para o Hub.'); };
   const vis = ins.filter((x) => (flt === 'todos' || x.status === flt)
     && (!busca.trim() || `${x.razao_social} ${x.fantasia} ${x.cnpj} ${x.comprador} ${x.representante}`.toLowerCase().includes(busca.trim().toLowerCase())));
   const n = (s: string) => ins.filter((x) => x.status === s).length;
@@ -634,6 +641,11 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
         {(['todos', 'analise', 'aprovado', 'recusado'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : ST[k]}<b>{k === 'todos' ? ins.length : n(k)}</b></button>)}
         <input type="search" placeholder="Loja, CNPJ, comprador ou representante" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <button className="btn ghost sm" onClick={() => baixarCsv('convidados-live-cardoso-black.csv', [['nome', 'email', 'loja', 'cnpj', 'representante'], ...ins.filter((x) => x.status === 'aprovado').map((x) => [x.comprador, x.email, x.fantasia || x.razao_social, x.cnpj, x.representante])])}>Exportar convidados da live</button>
+      </div>
+      <div className="cbx-box" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+        <b style={{ flex: 1, minWidth: 240 }}>Inscritos por representante <small style={{ fontWeight: 500, display: 'block' }}>PDF com os clientes inscritos de cada representante e o link dele para convidar quem falta. Pré-cadastro fecha {prazoIns}.</small></b>
+        <select value={pdfRep} onChange={(e) => setPdfRep(e.target.value)} style={{ borderRadius: 999, padding: '7px 12px' }}><option value="">Todos (uma folha por representante)</option>{repsPdf.map((r) => <option key={r.ofc} value={r.ofc}>{r.nome} · {r.ofc} ({nRep(r.ofc)})</option>)}</select>
+        <button className="btn sm primary" onClick={gerarPdf}>Gerar PDF</button>
       </div>
       {aviso && <div className="alert">{aviso}</div>}
       {vis.length === 0 ? <EmptyState title="Nenhum pré-cadastro" hint="Os cadastros feitos em /black aparecem aqui na hora." /> : (

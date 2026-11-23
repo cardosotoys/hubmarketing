@@ -676,3 +676,7 @@
   .cbv-day ul { padding: 4px 16px; } .cbv-day li { grid-template-columns: auto 1fr; gap: 6px 10px; } .cbv-day li .o { grid-column: 1 / -1; } .cbv-day li .go { grid-column: 1 / -1; justify-content: flex-start; }
   .cbv-kit { grid-template-columns: 1fr; } .cbv-kit img { max-width: 240px; }
 }
+.cbv-vid { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.cbv-vid video { width: 220px; max-width: 100%; border-radius: 12px; background: #000; display: block; }
+.cbv-vid div { display: grid; gap: 8px; justify-items: start; font-size: 14px; max-width: 320px; }
+.cbv-vid a { text-decoration: none; }
