@@ -15,6 +15,9 @@ const ofc = (r: string | null | undefined) => (r ?? '').trim() || 'Sem represent
 const CSS_INS = `.meta{margin-top:10px;background:#DA3A2F;color:#fff;border-radius:10px;padding:10px 14px;display:grid;gap:3px}.meta b{font-size:11pt;font-weight:900}.meta span{font-size:8.8pt}.meta a{color:#fff;font-weight:800;word-break:break-all}
 .tg.v{background:#1F7F88}`;
 
+/** valor do seletor: uma folha para cada representante que tem ao menos um inscrito */
+export const COM_INSCRITOS = '__com_inscritos';
+
 export type RepIns = { ofc: string; nome: string; link: string };
 
 /** todos os representantes ativos (escritório da carteira, nome da pessoa e link de pré-cadastro) */
@@ -43,7 +46,8 @@ export function abrirInscritos(ins: Ins[], reps: RepIns[], so: string, titulo: s
   const L = ins.filter((i) => i.origem !== 'previa' && i.status !== 'recusado');
   const conhecidos = new Set(reps.map((r) => r.ofc));
   const extras = [...new Set(L.map((i) => ofc(i.representante)))].filter((o) => !conhecidos.has(o)).map((o) => ({ ofc: o, nome: o, link: '' }));
-  const todos = [...reps, ...extras].filter((r) => !so || r.ofc === so);
+  const temIns = new Set(L.map((i) => ofc(i.representante)));
+  const todos = [...reps, ...extras].filter((r) => (so === COM_INSCRITOS ? temIns.has(r.ofc) : !so || r.ofc === so));
   const quando = dh(new Date().toISOString());
   const corpo = todos.map((r) => folha(r, L.filter((i) => ofc(i.representante) === r.ofc).sort((a, b) => (a.fantasia || a.razao_social).localeCompare(b.fantasia || b.razao_social, 'pt-BR')), quando, prazo)).join('');
   const doc = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>${CSS}${CSS_INS}</style></head><body>
