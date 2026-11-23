@@ -1,6 +1,6 @@
 -- Cardoso Black: preço por região (Black Varejo, 24/11).
 -- O preço fixo da Black (black_produtos.preco_peca) é o de São Paulo. Para as outras UFs aplica o desconto
--- da região, produto a produto, arredondado ao centavo: Sul, RJ e MG −6%; Norte, Nordeste e ES −9%.
+-- da região, produto a produto, arredondado ao centavo: Sul, RJ e MG −6%; Norte, Nordeste, Centro-Oeste e ES −9%.
 -- A UF é a do cadastro do cliente (black_inscritos.uf). Vale para a vitrine, a ficha, o carrinho e o pedido,
 -- porque todos usam black_preco(). Os percentuais ficam em black_config.desconto_regiao (UF → %).
 begin;
@@ -11,7 +11,8 @@ update public.black_config set desconto_regiao = jsonb_build_object(
   'PR', 6, 'SC', 6, 'RS', 6, 'RJ', 6, 'MG', 6,
   'AC', 9, 'AP', 9, 'AM', 9, 'PA', 9, 'RO', 9, 'RR', 9, 'TO', 9,
   'AL', 9, 'BA', 9, 'CE', 9, 'MA', 9, 'PB', 9, 'PE', 9, 'PI', 9, 'RN', 9, 'SE', 9,
-  'ES', 9)
+  'ES', 9,
+  'GO', 9, 'MT', 9, 'MS', 9, 'DF', 9)
 where id = 1;
 
 -- % de desconto da região de uma UF (0 = preço de SP)
