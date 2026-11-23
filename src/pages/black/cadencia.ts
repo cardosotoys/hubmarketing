@@ -1,7 +1,7 @@
 /* Cadência da Black Varejo (live ter 24/11, 10h). Textos do canal e marcos de cada dia.
    O prazo de 48h dos pedidos só aparece a partir do fim da live (M6). */
 export type QuemCad = 'canal' | 'rep' | 'eq';
-export type ItemCad = { h: string; quem: QuemCad; o: string; msg?: string; camp?: string };
+export type ItemCad = { h: string; quem: QuemCad; o: string; msg?: string; camp?: string; video?: string };
 export type DiaCad = { dia: string; data: string; iso: string; tag: string; itens: ItemCad[] };
 
 export const QUEM_CAD: Record<QuemCad, string> = { canal: 'Canal', rep: 'Representantes', eq: 'Equipe' };
@@ -16,6 +16,24 @@ Funciona assim:
 3. Caixa fechada e estoque limitado: quem coloca no carrinho primeiro garante.
 
 Até lá, é por aqui que chegam os destaques e o link da live. Ative as notificações.` },
+  M4C: { t: 'É amanhã (canal)', txt: `É amanhã!
+
+Nossa live exclusiva para lojistas da Black Cardoso acontece amanhã, terça-feira (24/11), às 10h.
+
+*Link da live:*
+{live}
+
+*Como participar:*
+
+1. Na hora da live, clique no link acima para entrar na transmissão
+2. Cada produto vai aparecer com um QR Code na tela
+3. Aponte a câmera, entre com o CNPJ da sua loja e a senha criada no pré-cadastro e adicione ao seu pedido
+
+
+Deixe seu CNPJ e sua senha à mão e entre alguns minutos antes. Se tiver qualquer dificuldade, fale com o seu representante.
+
+Time Comercial
+Cardoso` },
   M5: { t: 'Dia D', txt: `*É hoje, às 10h!*
 
 Live: {live}
@@ -61,7 +79,7 @@ export const CADENCIA: DiaCad[] = [
   { dia: 'Sáb', data: '21/11', iso: '2026-11-21', tag: 'D-3', itens: [
     { h: '10h', quem: 'canal', o: 'Teaser 3: o brinquedo mais vendido da primeira Black' }] },
   { dia: 'Seg', data: '23/11', iso: '2026-11-23', tag: 'D-1', itens: [
-    { h: '10h', quem: 'canal', o: '"É amanhã às 10h" e como entrar (CNPJ e senha)' },
+    { h: '10h', quem: 'canal', o: 'Vídeo "É amanhã às 10h" com a mensagem de como participar (link da live, QR Code, CNPJ e senha)', msg: 'M4C', video: '/black/e-amanha-10h.mp4' },
     { h: '10h', quem: 'eq', o: 'Lembrete individual para cada aprovado', camp: 'vespera' },
     { h: '18h', quem: 'eq', o: 'Pré-cadastro encerrado' },
     { h: '18h', quem: 'canal', o: 'Passo a passo do acesso (vídeo ou prints)' }] },
