@@ -34,6 +34,27 @@ Deixe seu CNPJ e sua senha à mão e entre alguns minutos antes. Se tiver qualqu
 
 Time Comercial
 Cardoso` },
+  M4D: { t: 'Passo a passo (canal)', txt: `*Passo a passo da Black Cardoso*
+
+Para você chegar pronto à live de amanhã, preparamos um vídeo com todo o caminho, do pré-cadastro ao envio do pedido.
+
+Antes da live:
+
+1. Faça o pré-cadastro com o CNPJ da sua loja
+2. Crie a sua senha de acesso
+
+
+Na live, terça-feira (24/11), às 10h:
+3. Entre com o CNPJ e a senha
+4. Escolha os produtos por caixa fechada, pela lista ou pelo QR Code da tela
+5. Atinja o pedido mínimo de R$ 2.500,00
+6. Revise o carrinho, marque "Estou de acordo" e toque em Enviar pedido
+
+Depois do envio, o seu representante recebe o pedido e confirma tudo com você.
+Deixe o CNPJ e a senha à mão. Qualquer dúvida, fale com o seu representante.
+
+*Time Comercial*
+Cardoso` },
   M5: { t: 'Dia D', txt: `*É hoje, às 10h!*
 
 Live: {live}
@@ -81,11 +102,11 @@ export const CADENCIA: DiaCad[] = [
   { dia: 'Seg', data: '23/11', iso: '2026-11-23', tag: 'D-1', itens: [
     { h: '10h', quem: 'canal', o: 'Vídeo "É amanhã às 10h" com a mensagem de como participar (link da live, QR Code, CNPJ e senha)', msg: 'M4C', video: '/black/e-amanha-10h.mp4' },
     { h: '10h', quem: 'eq', o: 'Lembrete individual para cada aprovado', camp: 'vespera' },
-    { h: '18h', quem: 'eq', o: 'Pré-cadastro encerrado' },
-    { h: '18h', quem: 'canal', o: 'Passo a passo do acesso (vídeo ou prints)' }] },
+    { h: '16h30', quem: 'canal', o: 'Vídeo do passo a passo, do pré-cadastro ao envio do pedido, com a mensagem', msg: 'M4D', video: '/black/passo-a-passo-cadastro-ao-pedido.mp4' }] },
   { dia: 'Ter', data: '24/11', iso: '2026-11-24', tag: 'Dia D', itens: [
     { h: '8h', quem: 'canal', o: '"Hoje às 10h" com os links da live e do pedido', msg: 'M5' },
     { h: '8h', quem: 'eq', o: 'Mensagem individual com os links para cada aprovado', camp: 'live' },
+    { h: '9h', quem: 'eq', o: 'Pré-cadastro encerrado (horário em Ajustes)' },
     { h: '10h', quem: 'canal', o: 'Live no ar; pedidos abertos' },
     { h: 'Fim', quem: 'canal', o: 'Anúncio do prazo: pedidos abertos por 48h, até quinta às 10h', msg: 'M6' },
     { h: '15h', quem: 'eq', o: 'Contato com quem tem carrinho parado', camp: 'abandonado' }] },
