@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
 import { ROLE_LABELS } from '../types/database';
 import { Ic } from '../pages/black/Icones';
-import { ABAS, abaValida, verComoCliente, type Aba } from '../pages/black/abas';
+import { ABAS, UFS, abaValida, verComoCliente, type Aba } from '../pages/black/abas';
 
 const dt = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
@@ -18,6 +18,7 @@ export default function BlackNav({ onClose }: { onClose: () => void }) {
   const [analise, setAnalise] = useState(0);
   const [janela, setJanela] = useState('');
   const [aviso, setAviso] = useState('');
+  const [uf, setUf] = useState(() => { try { return localStorage.getItem('cb-previa-uf') || 'SP'; } catch { return 'SP'; } });
 
   useEffect(() => {
     supabase.from('black_inscritos').select('id', { count: 'exact', head: true }).eq('status', 'analise').neq('origem', 'previa')
@@ -42,7 +43,12 @@ export default function BlackNav({ onClose }: { onClose: () => void }) {
       <span className="bnv-gp">Operação</span>
       {ABAS.filter((x) => x[3] === 2).map(item)}
       <div className="bnv-lk">
-        <button type="button" onClick={async () => setAviso(await verComoCliente())}>Ver como cliente</button>
+        <div className="bnv-uf">
+          <button type="button" onClick={async () => setAviso(await verComoCliente(uf))}>Ver como cliente</button>
+          <select aria-label="Estado da loja na prévia" value={uf} onChange={(e) => { setUf(e.target.value); try { localStorage.setItem('cb-previa-uf', e.target.value); } catch { /* sem armazenamento */ } }}>
+            {UFS.map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
         {aviso && <small>{aviso}</small>}
         <a href="/black" target="_blank" rel="noreferrer">Pré-cadastro ↗</a>
         <a href="/black/pedido" target="_blank" rel="noreferrer">Página de pedido ↗</a>
