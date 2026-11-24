@@ -8,15 +8,20 @@ export const ABAS: [Aba, string, IconeMarca, 1 | 2][] = [
 ];
 export const abaValida = (v: string | null): Aba => (ABAS.some((a) => a[0] === v) ? (v as Aba) : 'resumo');
 
-/** prévia da equipe: entra na página de pedido como a loja de demonstração (não envia pedido). Devolve o erro, se houver. */
-export async function verComoCliente(): Promise<string> {
+export const UFS = ['SP', 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SE', 'TO'];
+
+/** prévia da equipe: entra na página de pedido como a loja de demonstração do estado escolhido
+ *  (vê os preços da região daquele estado; não reserva estoque nem envia pedido). Devolve o erro, se houver. */
+export async function verComoCliente(uf = 'SP'): Promise<string> {
   const { supabase } = await import('../../lib/supabaseClient');
   const aba = window.open('about:blank', '_blank');
-  const { data, error } = await supabase.rpc('black_previa_entrar');
+  let { data, error } = await supabase.rpc('black_previa_entrar', { p_uf: uf });
+  // antes do SQL 0181 a função não recebe UF: entra como SP
+  if (error && uf === 'SP' && /p_uf|function/i.test(error.message)) ({ data, error } = await supabase.rpc('black_previa_entrar'));
   const tok = (data as { token?: string } | null)?.token;
   if (error || !tok) {
     aba?.close();
-    return error?.message.includes('black_previa_entrar') ? 'Para usar a prévia, rode o SQL 0164 no Supabase.' : `Não consegui abrir a prévia: ${error?.message ?? 'sem resposta'}`;
+    return /p_uf|black_previa_entrar/.test(error?.message ?? '') ? 'Para ver por estado, rode o SQL 0181 no Supabase.' : `Não consegui abrir a prévia: ${error?.message ?? 'sem resposta'}`;
   }
   try { localStorage.setItem('cb-token', JSON.stringify(tok)); sessionStorage.removeItem('cb-token'); } catch { /* sem armazenamento */ }
   if (aba) aba.location.href = '/black/pedido'; else window.location.href = '/black/pedido';
