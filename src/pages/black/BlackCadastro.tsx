@@ -125,20 +125,21 @@ export default function BlackCadastro() {
             <span className="cb-chip" style={ok ? { ['--c' as string]: 'var(--mint)', ['--fg' as string]: 'var(--teal)' } : { ['--c' as string]: '#FFF4E0', ['--fg' as string]: '#8a5d00' }}>{ok ? 'Cadastro aprovado' : 'Em análise'}</span>
             <h2>{ok ? nome : 'Cadastro recebido'}</h2>
             <p>{ok
-              ? `${emp?.razao && emp.razao !== nome ? emp.razao : nome} está confirmada na Cardoso Black. Acesse o canal para receber o link da live.`
+              ? `${emp?.razao && emp.razao !== nome ? emp.razao : nome} está confirmada na Cardoso Black.${res.live_link ? ' O link da live já está aqui embaixo.' : ' Acesse o canal para receber o link da live.'}`
               : `Estamos conferindo os dados de ${nome}. Enquanto isso, entre no canal da Cardoso Black: o link da live chega por lá.`}</p>
           </div>
           {/* próximo passo de todo mundo: seguir o canal (link da live, lembretes e avisos) */}
           {canal && <a className="cb-wab cb-wab-xl" href={canal} target="_blank" rel="noreferrer"><Sv.wa />Entrar no canal da Cardoso Black</a>}
-          {canal && <p className="cb-wab-tip">Toque em <b>Seguir</b> e ative as notificações 🔔 para receber o link da live.</p>}
+          {canal && <p className="cb-wab-tip">Toque em <b>Seguir</b> e ative as notificações 🔔 para receber os avisos da live.</p>}
           {ok ? (
             <>
               <div className="cb-lvc">
                 <div className="dt"><b>{cfg ? diaBadge(cfg.abre_em).dia : '12'}</b><small>{cfg ? diaBadge(cfg.abre_em).mes : 'NOV'}</small></div>
                 <div className="l1">Live · {cfg ? diaSemana(cfg.abre_em) : 'quinta-feira'}</div>
                 <div className="l2">Produtos, condições e pedido ao vivo</div>
-                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 16h'}</span><span>Link enviado no canal</span></div>
+                <div className="l3"><span>{cfg ? `Às ${hora(cfg.abre_em)}` : 'Às 16h'}</span><span>{res.live_link ? 'Link liberado abaixo' : 'Link enviado no canal'}</span></div>
               </div>
+              {res.live_link && <a className="cb-btn dk full" href={res.live_link} target="_blank" rel="noreferrer"><Ic n="laptop" />Entrar na live</a>}
               <div className="cb-buy"><span className="ic"><Ic n="cart" /></span><span><b>Pedidos durante a live,</b> somente pelo link de pedido. Entre com este CNPJ e a senha criada.</span></div>
               <Link className="cb-btn gh" to="/black/pedido">Ir para a página de pedido</Link>
             </>
