@@ -1336,9 +1336,21 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
   // aberturas do pré-cadastro por link ('' = link geral), contadas a partir da versão de 07/11
   type Ac = { rep: string; aberturas: number; pessoas: number };
   const [ac, setAc] = useState<Record<string, Ac>>({});
+  const { arq } = useEd();
   useEffect(() => {
-    supabase.rpc('black_acessos_resumo').then(({ data }) => setAc(Object.fromEntries((Array.isArray(data) ? (data as Ac[]) : []).map((x) => [x.rep, x]))));
-  }, []);
+    if (!arq) {
+      supabase.rpc('black_acessos_resumo').then(({ data }) => setAc(Object.fromEntries((Array.isArray(data) ? (data as Ac[]) : []).map((x) => [x.rep, x]))));
+      return;
+    }
+    // edição encerrada: conta direto das aberturas guardadas (black_arq_acessos)
+    paginar<{ rep: string | null; visitante: string | null }>((a, z) => ler('acessos', 'rep, visitante', arq).eq('pagina', 'precadastro').range(a, z) as unknown as PromiseLike<{ data: { rep: string | null; visitante: string | null }[] | null; error: { message: string } | null }>)
+      .then((L) => {
+        const m: Record<string, { ab: number; pe: Set<string> }> = {};
+        L.forEach((x) => { const k = x.rep ?? ''; m[k] ??= { ab: 0, pe: new Set() }; m[k].ab++; if (x.visitante) m[k].pe.add(x.visitante); });
+        setAc(Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { rep: k, aberturas: v.ab, pessoas: v.pe.size }])));
+      })
+      .catch(() => setAc({}));
+  }, [arq]);
   const cadPorLink = useMemo(() => { const m: Record<string, number> = {}; ins.forEach((x) => { const k = x.rep_link ?? ''; m[k] = (m[k] ?? 0) + 1; }); return m; }, [ins]);
   const comAcesso = Object.keys(ac).filter((k) => k && !reps.some(([r]) => r === k));
   const linhas: [string, { cli: number; ins: number }][] = [...reps, ...comAcesso.map((k) => [k, { cli: 0, ins: 0 }] as [string, { cli: number; ins: number }])]
