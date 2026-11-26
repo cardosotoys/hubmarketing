@@ -187,7 +187,7 @@ export default function CardosoBlack() {
       <div className="cbx-ed" role="tablist" aria-label="Edição da Black">
         {EDICOES.map((e) => <button key={e.id} type="button" role="tab" aria-selected={e.id === ed.id} className={e.id === ed.id ? 'on' : ''} onClick={() => trocarEd(e)}><b>{e.nome}</b><small>{e.datas}</small></button>)}
       </div>
-      {arq && <div className="cbx-arq"><b>{ed.nome} · encerrada.</b> Os dados estão guardados e só podem ser consultados: medição, inscritos, pedidos, carrinhos, PDFs e relatório da diretoria saem com os números desta edição.</div>}
+      {arq && <div className="cbx-arq"><b>{ed.nome} · encerrada.</b> Todas as abas abrem com os dados desta edição, só para consulta: nada aqui altera a edição guardada. PDFs, planilhas e o relatório da diretoria saem com os números dela.</div>}
       <nav className="cbx-mtabs" aria-label="Cardoso Black">{abasEd.map(([k, l]) => <button key={k} type="button" className={aba === k ? 'on' : ''} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn}` : ''}</button>)}</nav>
       <div className="cbx-main">
         <div className="cbx-ht">
@@ -389,8 +389,8 @@ Obrigado pela confiança e boas vendas! 🖤
 *Time Comercial*
 Cardoso` },
 ];
-const lsMod = (k: Camp) => `cb-msg-${k}-${LS_V}-modelo`;
-const lsEnv = (k: Camp) => `cb-msg-${k}-${LS_V}-enviados`;
+const lsModBase = (k: Camp) => `cb-msg-${k}-${LS_V}-modelo`;
+const lsEnvBase = (k: Camp) => `cb-msg-${k}-${LS_V}-enviados`;
 const soDig = (c: string) => (c || '').replace(/\D/g, '');
 
 /** campanha que vale para hoje, pela cadência */
@@ -519,8 +519,13 @@ function DisparoReps() {
 }
 
 function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido[] }) {
-  const [camp, setCamp] = useState<Camp>(() => campDoDia());
-  const [reps, setReps] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) <= '2026-11-20');
+  const { arq } = useEd();
+  // edição encerrada: sem cadência nem kit dos representantes (são da edição em andamento); os enviados ficam marcados à parte
+  const suf = arq ? `-${arq}` : '';
+  const lsMod = (k: Camp) => lsModBase(k) + suf;
+  const lsEnv = (k: Camp) => lsEnvBase(k) + suf;
+  const [camp, setCamp] = useState<Camp>(() => (arq ? 'comprou' : campDoDia()));
+  const [reps, setReps] = useState(() => !arq && new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) <= '2026-11-20');
   const C = CAMPS.find((c) => c.k === camp)!;
   const [modelos, setModelos] = useState<Record<Camp, string>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsMod(c.k), c.padrao)])) as Record<Camp, string>);
   const [envs, setEnvs] = useState<Record<Camp, Record<string, string>>>(() => Object.fromEntries(CAMPS.map((c) => [c.k, lerLS(lsEnv(c.k), {})])) as Record<Camp, Record<string, string>>);
@@ -529,9 +534,9 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
   const [busca, setBusca] = useState('');
   const [editar, setEditar] = useState(false);
   const [cars, setCars] = useState<CarRel[]>([]);
-  useEffect(() => { CAMPS.forEach((c) => { try { localStorage.setItem(lsMod(c.k), JSON.stringify(modelos[c.k])); } catch { /* sem armazenamento */ } }); }, [modelos]);
-  useEffect(() => { CAMPS.forEach((c) => { try { localStorage.setItem(lsEnv(c.k), JSON.stringify(envs[c.k])); } catch { /* sem armazenamento */ } }); }, [envs]);
-  const carregar = useCallback(async () => { const { data } = await supabase.rpc('black_carrinhos_relatorio'); setCars(Array.isArray(data) ? (data as CarRel[]) : []); }, []);
+  useEffect(() => { CAMPS.forEach((c) => { try { localStorage.setItem(lsModBase(c.k) + suf, JSON.stringify(modelos[c.k])); } catch { /* sem armazenamento */ } }); }, [modelos, suf]);
+  useEffect(() => { CAMPS.forEach((c) => { try { localStorage.setItem(lsEnvBase(c.k) + suf, JSON.stringify(envs[c.k])); } catch { /* sem armazenamento */ } }); }, [envs, suf]);
+  const carregar = useCallback(async () => { const { data } = await carrinhosRel(arq); setCars(Array.isArray(data) ? (data as CarRel[]) : []); }, [arq]);
   useEffect(() => { carregar(); const t = setInterval(carregar, 60000); return () => clearInterval(t); }, [carregar]);
   const modelo = modelos[camp]; const env = envs[camp];
   const setModelo = (v: string) => setModelos((m) => ({ ...m, [camp]: v }));
@@ -567,9 +572,10 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
   const detalhe = (i: Inscrito) => { const c = carPor.get(soDig(i.cnpj)); const ps = pedPor.get(soDig(i.cnpj)); if (ps) return `${ps.map((p) => p.numero).join(', ')} · ${brl(ps.reduce((t, p) => t + Number(p.total), 0))}`; if (c) return `${c.caixas} cx · ${brl(Number(c.valor))} no carrinho`; return ''; };
   return (
     <>
-      <Cadencia live={live} pedido={pedido} irPara={(k) => { setReps(false); setCamp(k); setEditar(false); setFlt('pendentes'); }} irReps={() => setReps(true)} />
+      {arq ? <div className="cbx-hint" style={{ margin: 0 }}>A cadência e o kit dos representantes são da edição em andamento. Aqui ficam as listas da 1ª edição (quem comprou, quem não comprou, carrinhos parados), para falar de novo com essas lojas pelo WhatsApp.</div>
+        : <Cadencia live={live} pedido={pedido} irPara={(k) => { setReps(false); setCamp(k); setEditar(false); setFlt('pendentes'); }} irReps={() => setReps(true)} />}
       <div className="cbx-bar" style={{ marginBottom: 10 }}>
-        <button className={`cbx-pill${reps ? ' on' : ''}`} title="Qua 18/11" onClick={() => setReps(true)}>Kit dos representantes</button>
+        {!arq && <button className={`cbx-pill${reps ? ' on' : ''}`} title="Qua 18/11" onClick={() => setReps(true)}>Kit dos representantes</button>}
         {CAMPS.map((c) => <button key={c.k} className={`cbx-pill${!reps && camp === c.k ? ' on' : ''}`} title={c.quando} onClick={() => { setReps(false); setCamp(c.k); setEditar(false); setFlt('pendentes'); }}>{c.nome}<b>{nGrupo(c.k)}</b></button>)}
       </div>
       {reps ? <DisparoReps /> : <>
@@ -1124,7 +1130,47 @@ function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: {
 }
 
 /* ================= Produtos da Black ================= */
-function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar }: {
+function Produtos(props: {
+  bps: BP[]; prods: Prod[]; porCodigo: Record<string, Prod>; itens: Item[]; peds: Pedido[]; fichas: Record<string, number>; mats: Record<string, number>; recarregar: () => void;
+}) {
+  return useEd().arq ? <ProdutosArq {...props} /> : <ProdutosOp {...props} />;
+}
+/* edição encerrada: a lista de produtos daquela Black, com o que cada um vendeu (só leitura) */
+function ProdutosArq({ bps, porCodigo, itens, peds, fichas }: { bps: BP[]; porCodigo: Record<string, Prod>; itens: Item[]; peds: Pedido[]; fichas: Record<string, number> }) {
+  const vivos = new Set(peds.filter((p) => p.status !== 'cancelado').map((p) => p.id));
+  const v: Record<string, { cx: number; pc: number; val: number; lojas: Set<string> }> = {};
+  const pedDe = new Map(peds.map((p) => [p.id, p]));
+  itens.filter((i) => vivos.has(i.pedido_id)).forEach((i) => { const x = (v[i.codigo] ??= { cx: 0, pc: 0, val: 0, lojas: new Set() }); x.cx += i.caixas; x.pc += i.caixas * i.pecas_caixa; x.val += Number(i.total); x.lojas.add(pedDe.get(i.pedido_id)?.cnpj ?? ''); });
+  const L = [...bps].sort((a, b) => a.ordem - b.ordem);
+  const tot = Object.values(v).reduce((t, x) => ({ cx: t.cx + x.cx, pc: t.pc + x.pc, val: t.val + x.val }), { cx: 0, pc: 0, val: 0 });
+  const csv = () => baixarCsv('produtos-black-1a-edicao.csv', [['ordem', 'codigo', 'produto', 'familia', 'preco_peca', 'caixa', 'cota_cx', 'vendido_cx', 'vendido_pecas', 'valor', 'lojas', 'qr_abertos'],
+    ...L.map((b) => { const p = porCodigo[b.codigo]; const x = v[b.codigo]; return [b.ordem, b.codigo, b.nome || p?.packaging_name || p?.name || '', b.familia, String(b.preco_peca ?? '').replace('.', ','), b.caixa_qtd ?? p?.carton_quantity ?? '', b.estoque_caixas ?? '', x?.cx ?? 0, x?.pc ?? 0, (x?.val ?? 0).toFixed(2).replace('.', ','), x?.lojas.size ?? 0, fichas[b.codigo] ?? 0]; })]);
+  return (
+    <>
+      <div className="cbx-kpis"><Kpi l="Produtos na Black" v={int(L.length)} /><Kpi l="Caixas vendidas" v={int(tot.cx)} c="#1F7F88" /><Kpi l="Peças vendidas" v={int(tot.pc)} c="#0A2530" /><Kpi l="Valor (sem IPI)" v={brl0(tot.val)} c="#DA3A2F" /></div>
+      <div className="cbx-bar"><span className="cbx-hint" style={{ flex: 1, margin: 0 }}>Produtos, preços e cotas como estavam nesta edição.</span><button className="btn ghost sm" onClick={csv}>Baixar planilha</button></div>
+      <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
+        <table className="cbx-table">
+          <thead><tr><th>Ordem</th><th>Produto</th><th>Família</th><th className="num">Preço/peça</th><th className="num">Caixa</th><th className="num">Cota (cx)</th><th className="num">Vendido (cx)</th><th className="num">Valor</th><th className="num">Lojas</th><th className="num">QR abertos</th></tr></thead>
+          <tbody>{L.map((b) => { const p = porCodigo[b.codigo]; const x = v[b.codigo]; return (
+            <tr key={b.codigo} style={b.ativo ? undefined : { opacity: 0.45 }}>
+              <td>{b.ordem}</td>
+              <td><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{p?.image_url ? <img className="cbx-thumb" src={p.image_url} alt="" /> : <span className="cbx-thumb" />}<div><b>{b.nome || p?.packaging_name || p?.name || '—'}</b><small>{b.codigo}</small></div></div></td>
+              <td>{b.familia}</td>
+              <td className="num">{b.preco_peca != null ? brl(Number(b.preco_peca)) : 'tabela'}</td>
+              <td className="num">{b.caixa_qtd ?? p?.carton_quantity ?? '—'}</td>
+              <td className="num">{b.estoque_caixas ?? '—'}</td>
+              <td className="num"><b>{int(x?.cx ?? 0)}</b></td>
+              <td className="num">{brl0(x?.val ?? 0)}</td>
+              <td className="num">{x?.lojas.size ?? 0}</td>
+              <td className="num">{fichas[b.codigo] ?? 0}</td>
+            </tr>); })}</tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+function ProdutosOp({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar }: {
   bps: BP[]; prods: Prod[]; porCodigo: Record<string, Prod>; itens: Item[]; peds: Pedido[]; fichas: Record<string, number>; mats: Record<string, number>; recarregar: () => void;
 }) {
   const { profile } = useAuth();
@@ -1263,12 +1309,16 @@ function Produtos({ bps, prods, porCodigo, itens, peds, fichas, mats, recarregar
 
 /* ================= Carteira ================= */
 function Carteira({ cart, ins, recarregar }: { cart: Cart[]; ins: Inscrito[]; recarregar: () => void }) {
+  const ed = useEd(); const ro = !!ed.arq;
   const [aviso, setAviso] = useState('');
   const [busca, setBusca] = useState('');
   const [flt, setFlt] = useState<'todos' | 'inscritos' | 'falta'>('todos');
   const [rep, setRep] = useState('');
   const [indo, setIndo] = useState(false);
-  const inscritos = new Set(ins.map((x) => x.carteira_id).filter(Boolean));
+  // inscrito na edição: pelo cliente da carteira ou, na edição encerrada, também pelo CNPJ (a carteira pode ter sido trocada depois)
+  const cnpjIns = new Set(ins.map((x) => soDig(x.cnpj)).filter(Boolean));
+  const idIns = new Set(ins.map((x) => x.carteira_id).filter(Boolean));
+  const inscritos = new Set(cart.filter((c) => idIns.has(c.id) || (!!c.cnpj && cnpjIns.has(soDig(c.cnpj)))).map((c) => c.id));
   const reps = [...new Set(cart.map((c) => c.representante).filter(Boolean))].sort();
   const vis = cart.filter((c) => (flt === 'todos' || (flt === 'inscritos' ? inscritos.has(c.id) : !inscritos.has(c.id)))
     && (!rep || c.representante === rep)
@@ -1296,14 +1346,15 @@ function Carteira({ cart, ins, recarregar }: { cart: Cart[]; ins: Inscrito[]; re
         return <div className="cbx-box cbx-last"><span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><ellipse cx="12" cy="5.5" rx="8" ry="3" /><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></svg></span>
           <div><b>Última importação: {dt(ult)}</b><small>{int(cart.length)} clientes · {int(cart.filter((c) => c.cnpj).length)} com CNPJ</small></div></div>;
       })()}
-      <div className="cbx-box">
+      {ro && <div className="cbx-hint" style={{ margin: 0 }}>A carteira é a atual (a única guardada no sistema). <b>Inscritos</b> e <b>Faltam inscrever</b> mostram quem se inscreveu na {ed.nome}.</div>}
+      {!ro && <div className="cbx-box">
         <h3>Importar carteira (CSV)</h3>
         <p className="cbx-hint">Colunas: <b>razao_social; cnpj; fantasia; cidade; uf; representante; grupo; situacao</b>. Sem CNPJ, a checagem usa a razão social oficial da Receita + UF. Estes dados ficam só no banco; nunca vão para o Git.</p>
         <div className="cbx-acts" style={{ marginTop: 10 }}>
           <label className="btn">{indo ? 'Importando…' : 'Substituir carteira'}<input type="file" accept=".csv,text/csv" hidden disabled={indo} onChange={(e) => { const f = e.target.files?.[0]; if (f && window.confirm('Substituir a carteira inteira por este arquivo?')) importar(f, true); e.target.value = ''; }} /></label>
           <label className="btn ghost">Acrescentar / atualizar<input type="file" accept=".csv,text/csv" hidden disabled={indo} onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f, false); e.target.value = ''; }} /></label>
         </div>
-      </div>
+      </div>}
       {aviso && <div className="alert">{aviso}</div>}
       <div className="cbx-bar">
         {(['todos', 'inscritos', 'falta'] as const).map((k) => <button key={k} className={`cbx-pill${flt === k ? ' on' : ''}`} onClick={() => setFlt(k)}>{k === 'todos' ? 'Todos' : k === 'inscritos' ? 'Inscritos' : 'Faltam inscrever'}</button>)}
@@ -1391,6 +1442,7 @@ function Links({ cart, ins, bps, porCodigo }: { cart: Cart[]; ins: Inscrito[]; b
 const local = (iso: string) => { const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
   const { profile } = useAuth();
+  const ed = useEd(); const ro = !!ed.arq;
   const [f, setF] = useState({ ...cfg, inscricoes_ate: local(cfg.inscricoes_ate), abre_em: local(cfg.abre_em), fecha_em: local(cfg.fecha_em) });
   const [aviso, setAviso] = useState('');
   async function salvar() {
@@ -1403,10 +1455,11 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
     setAviso(error ? `Não consegui salvar: ${error.message}` : 'Ajustes salvos.'); if (!error) recarregar();
   }
   const campo = (l: string, k: keyof typeof f, type = 'text', hint = '') => (
-    <div className="form-field"><label>{l}</label><input type={type} value={String(f[k] ?? '')} onChange={(e) => setF({ ...f, [k]: e.target.value })} />{hint && <small className="cbx-hint">{hint}</small>}</div>
+    <div className="form-field"><label>{l}</label><input type={type} value={String(f[k] ?? '')} disabled={ro} onChange={(e) => setF({ ...f, [k]: e.target.value })} />{hint && <small className="cbx-hint">{hint}</small>}</div>
   );
   return (
     <div className="cbx-box">
+      {ro && <p className="cbx-hint" style={{ marginTop: 0 }}>Ajustes como ficaram na {ed.nome} (só consulta).</p>}
       <div className="cbx-cfg">
         {campo('Inscrições até', 'inscricoes_ate', 'datetime-local')}
         {campo('Pedidos abrem em', 'abre_em', 'datetime-local', 'O preço só aparece para o cliente a partir daqui.')}
@@ -1419,7 +1472,7 @@ function Ajustes({ cfg, recarregar }: { cfg: Cfg; recarregar: () => void }) {
         {campo('Link da live (Meet ou Zoom)', 'live_link', 'url', 'Só aparece para cadastro aprovado.')}
         {campo('Link do canal no WhatsApp', 'canal_link', 'url', 'Só aparece para cadastro aprovado.')}
       </div>
-      <div className="modal-actions" style={{ marginTop: 14 }}><button className="btn" onClick={salvar}>Salvar ajustes</button></div>
+      {!ro && <div className="modal-actions" style={{ marginTop: 14 }}><button className="btn" onClick={salvar}>Salvar ajustes</button></div>}
       {aviso && <p className="cbx-hint">{aviso}</p>}
     </div>
   );
