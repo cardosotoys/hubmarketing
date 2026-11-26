@@ -5915,3 +5915,7 @@ a.sp-ebtn{display:inline-block;text-decoration:none}
 .bnv-foot .name { color: #fff !important; }
 .bnv-foot .role { color: #9FB3BA !important; }
 .bnv-foot .logout-btn { background: #12384A !important; color: #C9D3D7 !important; border-color: #12384A !important; }
+.bnv-ed { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #071C25; border-radius: 12px; padding: 4px; margin: 0 2px 4px; }
+.bnv-ed a { text-align: center; color: #9FB3BA; font-size: 12px; font-weight: 800; padding: 7px 4px; border-radius: 9px; text-decoration: none; white-space: nowrap; }
+.bnv-ed a:hover { color: #fff; background: #12384A; }
+.bnv-ed a.on { background: #fff; color: #0A2530; }
