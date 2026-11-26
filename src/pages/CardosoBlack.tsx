@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
@@ -16,6 +16,11 @@ import { gerarRelatorio, type DadosRelatorio } from './black/relatorioDiretoria'
 import { driveId, midia } from './black/api';
 import { REPRESENTANTES, slugDoRepresentante } from './black/representantes';
 import { CADENCIA, MSG_CANAL, MSG_CONVITE, MSG_REP, QUEM_CAD, REPS_FORA } from './black/cadencia';
+import { ABAS_ARQ, carrinhosRel, EDICOES, edicaoDe, ler, urlAba, type EdInfo } from './black/edicoes';
+
+/* edição aberta na tela: a em andamento (tabelas black_*) ou uma arquivada (black_arq_*, só leitura) */
+const EdCtx = createContext<EdInfo>(EDICOES[0]);
+const useEd = () => useContext(EdCtx);
 
 /* Cardoso Black — o lado de dentro (Hub). Tudo o que o lojista faz em /black cai aqui:
  *   Resumo      funil, valor, canais de venda, representantes, produtos mais abertos pelo QR
@@ -103,8 +108,14 @@ export default function CardosoBlack() {
   useRedonda();
   // a aba fica na URL (?aba=...): o menu navy da lateral (BlackNav) troca a aba pelo link
   const [params, setParams] = useSearchParams();
-  const aba = abaValida(params.get('aba'));
-  const setAba = (k: Aba) => setParams(k === 'resumo' ? {} : { aba: k });
+  const ed = edicaoDe(params.get('ed'));
+  const arq = ed.arq;
+  const abasEd = arq ? ABAS.filter((a) => ABAS_ARQ.includes(a[0])) : ABAS;
+  const abaUrl = abaValida(params.get('aba'));
+  const aba: Aba = abasEd.some((a) => a[0] === abaUrl) ? abaUrl : 'resumo';
+  const qs = (k: Aba, e: EdInfo) => Object.fromEntries(new URLSearchParams(urlAba(k, e).split('?')[1] ?? ''));
+  const setAba = (k: Aba) => setParams(qs(k, ed));
+  const trocarEd = (e: EdInfo) => { if (e.id === ed.id) return; setCarregando(true); setParams(qs(e.arq && !ABAS_ARQ.includes(aba) ? 'resumo' : aba, e)); };
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [ins, setIns] = useState<Inscrito[]>([]);
   const [peds, setPeds] = useState<Pedido[]>([]);
@@ -120,32 +131,32 @@ export default function CardosoBlack() {
   const carregar = useCallback(async () => {
     try {
       const [c, i, p, it, b, pr, ca, ev, m] = await Promise.all([
-        supabase.from('black_config').select('*').eq('id', 1).maybeSingle(),
-        paginar<Inscrito>((a, z) => supabase.from('black_inscritos').select('*').neq('origem', 'previa').order('criado_em', { ascending: false }).range(a, z)),
-        paginar<Pedido>((a, z) => supabase.from('black_pedidos').select('*').order('criado_em', { ascending: false }).range(a, z)),
-        paginar<Item>((a, z) => supabase.from('black_pedido_itens').select('*').range(a, z)),
-        supabase.from('black_produtos').select('*').order('ordem'),
+        ler('config', '*', arq).eq('id', 1).maybeSingle(),
+        paginar<Inscrito>((a, z) => ler('inscritos', '*', arq).neq('origem', 'previa').order('criado_em', { ascending: false }).range(a, z) as unknown as PromiseLike<{ data: Inscrito[] | null; error: { message: string } | null }>),
+        paginar<Pedido>((a, z) => ler('pedidos', '*', arq).order('criado_em', { ascending: false }).range(a, z) as unknown as PromiseLike<{ data: Pedido[] | null; error: { message: string } | null }>),
+        paginar<Item>((a, z) => ler('pedido_itens', '*', arq).range(a, z) as unknown as PromiseLike<{ data: Item[] | null; error: { message: string } | null }>),
+        ler('produtos', '*', arq).order('ordem'),
         paginar<Prod>((a, z) => supabase.from('products').select('id, code, name, packaging_name, line, image_url, carton_quantity, brand:brands(label)').order('code').range(a, z)),
         paginar<Cart>((a, z) => supabase.from('black_carteira').select('id, razao_social, cnpj, uf, representante, grupo, situacao, dias_sem_compra, importado_em').order('razao_social').range(a, z)),
-        paginar<{ codigo: string }>((a, z) => supabase.from('black_eventos').select('codigo').eq('tipo', 'ficha').range(a, z)),
+        paginar<{ codigo: string }>((a, z) => ler('eventos', 'codigo', arq).eq('tipo', 'ficha').range(a, z) as unknown as PromiseLike<{ data: { codigo: string }[] | null; error: { message: string } | null }>),
         paginar<{ product_id: string }>((a, z) => supabase.from('content_materials').select('product_id').eq('status', 'liberado').range(a, z)),
       ]);
       if (c.error) throw new Error(c.error.message);
-      setCfg(c.data as Cfg); setIns(i); setPeds(p); setItens(it); setBps((b.data as BP[]) ?? []); setProds(pr); setCart(ca);
+      setCfg(c.data as unknown as Cfg); setIns(i); setPeds(p); setItens(it); setBps((b.data as unknown as BP[]) ?? []); setProds(pr); setCart(ca);
       const f: Record<string, number> = {}; ev.forEach((e) => { f[e.codigo] = (f[e.codigo] ?? 0) + 1; }); setFichas(f);
       const mm: Record<string, number> = {}; m.forEach((x) => { mm[x.product_id] = (mm[x.product_id] ?? 0) + 1; }); setMats(mm);
       setErro('');
     } catch (e) {
-      setErro((e as Error).message.includes('black_') ? 'As tabelas da Cardoso Black ainda não existem no banco: rode o SQL 0160_cardoso_black.sql no Supabase.' : (e as Error).message);
+      setErro(arq ? `Não consegui abrir a ${ed.nome}: ${(e as Error).message}` : (e as Error).message.includes('black_') ? 'As tabelas da Cardoso Black ainda não existem no banco: rode o SQL 0160_cardoso_black.sql no Supabase.' : (e as Error).message);
     }
     setCarregando(false);
-  }, []);
+  }, [arq, ed.nome]);
   useEffect(() => { carregar(); }, [carregar]);
   // durante a Black os números mudam a todo momento: pedidos, itens, inscritos e estoque se atualizam sozinhos a cada minuto
   // (e quando a aba volta a ficar visível), sem recarregar a página
   const [atualizado, setAtualizado] = useState<Date | null>(null);
   const atualizar = useCallback(async () => {
-    if (document.hidden) return;
+    if (document.hidden || arq) return; // edição encerrada não muda
     try {
       const [i, p, it, b] = await Promise.all([
         paginar<Inscrito>((a, z) => supabase.from('black_inscritos').select('*').neq('origem', 'previa').order('criado_em', { ascending: false }).range(a, z)),
@@ -156,7 +167,7 @@ export default function CardosoBlack() {
       if (b.error) return;
       setIns(i); setPeds(p); setItens(it); setBps((b.data as BP[]) ?? []); setAtualizado(new Date());
     } catch { /* tenta de novo no próximo minuto */ }
-  }, []);
+  }, [arq]);
   useEffect(() => {
     const t = setInterval(atualizar, 60000);
     const vis = () => { if (!document.hidden) atualizar(); };
@@ -171,14 +182,19 @@ export default function CardosoBlack() {
 
   const titulo = ABAS.find((x) => x[0] === aba)?.[1] ?? '';
   return (
+    <EdCtx.Provider value={ed}>
     <div className="page cbx cbx-app">
-      <nav className="cbx-mtabs" aria-label="Cardoso Black">{ABAS.map(([k, l]) => <button key={k} type="button" className={aba === k ? 'on' : ''} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn}` : ''}</button>)}</nav>
+      <div className="cbx-ed" role="tablist" aria-label="Edição da Black">
+        {EDICOES.map((e) => <button key={e.id} type="button" role="tab" aria-selected={e.id === ed.id} className={e.id === ed.id ? 'on' : ''} onClick={() => trocarEd(e)}><b>{e.nome}</b><small>{e.datas}</small></button>)}
+      </div>
+      {arq && <div className="cbx-arq"><b>{ed.nome} · encerrada.</b> Os dados estão guardados e só podem ser consultados: medição, inscritos, pedidos, carrinhos, PDFs e relatório da diretoria saem com os números desta edição.</div>}
+      <nav className="cbx-mtabs" aria-label="Cardoso Black">{abasEd.map(([k, l]) => <button key={k} type="button" className={aba === k ? 'on' : ''} onClick={() => setAba(k)}>{l}{k === 'inscritos' && nAn ? ` · ${nAn}` : ''}</button>)}</nav>
       <div className="cbx-main">
         <div className="cbx-ht">
           <h2>{titulo}</h2>
-          {aba === 'resumo' && <span className="ex">atualizado agora</span>}
+          {aba === 'resumo' && <span className="ex">{arq ? ed.nome : 'atualizado agora'}</span>}
           {aba === 'pedidos' && cfg && <span className="ex">{dt(cfg.abre_em)} a {dt(cfg.fecha_em)}</span>}
-          <div className="r"><small style={{ color: 'var(--text-3, #7C8A90)', marginRight: 8 }}>Atualiza sozinho a cada minuto{atualizado ? ` · ${atualizado.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</small><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></div>
+          <div className="r">{arq ? <small style={{ color: 'var(--text-3, #7C8A90)' }}>{ed.nome} · dados arquivados</small> : <><small style={{ color: 'var(--text-3, #7C8A90)', marginRight: 8 }}>Atualiza sozinho a cada minuto{atualizado ? ` · ${atualizado.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</small><button className="btn ghost sm" type="button" onClick={carregar}>Atualizar</button></>}</div>
         </div>
         {erro && <div className="alert">{erro}</div>}
         {!erro && cfg && (
@@ -197,6 +213,7 @@ export default function CardosoBlack() {
         )}
       </div>
     </div>
+    </EdCtx.Provider>
   );
 }
 
@@ -219,6 +236,7 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
   const pres = cfg.presentes_live ?? null;
   const [presTxt, setPresTxt] = useState(pres == null ? '' : String(pres));
   const [aviso, setAviso] = useState('');
+  const ro = !!useEd().arq;
   async function salvarPresentes() {
     const n = presTxt.trim() === '' ? null : Math.max(0, Math.round(Number(presTxt.replace(/\D/g, ''))));
     const { error } = await supabase.from('black_config').update({ presentes_live: n }).eq('id', 1);
@@ -241,8 +259,9 @@ function Resumo({ ins, peds, itens, cart, fichas, porCodigo, cfg, recarregar }: 
         <div className="cbx-funil">{F.map(([l, v, c]) => <div key={l} className="cbx-fu" style={{ ['--c' as string]: c }}><span>{l}</span><i><u style={{ width: `${(v / mx) * 100}%` }} /></i><b>{int(v)}</b></div>)}</div>
         <div className="cbx-acts cbx-noprint cbx-pres">
           <span className="cbx-hint">Presentes na live (relatório do Meet ou do Zoom)</span>
+          {ro ? <b>{pres != null ? `${int(pres)} lojas` : 'não informado'}</b> : <>
           <input className="cbx-in" inputMode="numeric" style={{ width: 110 }} value={presTxt} placeholder="nº de lojas" onChange={(e) => setPresTxt(e.target.value)} />
-          <button className="btn sm" type="button" onClick={salvarPresentes}>Salvar</button>
+          <button className="btn sm" type="button" onClick={salvarPresentes}>Salvar</button></>}
           {aviso && <span className="cbx-hint">{aviso}</span>}
         </div>
       </div>
@@ -604,6 +623,7 @@ function Mensagens({ ins, cfg, peds }: { ins: Inscrito[]; cfg: Cfg; peds: Pedido
 }
 
 function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarregar: () => void }) {
+  const ro = !!useEd().arq;
   const [flt, setFlt] = useState<'todos' | Inscrito['status']>('todos');
   const [busca, setBusca] = useState('');
   const [sel, setSel] = useState<Inscrito | null>(null);
@@ -661,7 +681,7 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
                 <td><div style={{ display: 'grid', gap: 5, justifyItems: 'start' }}>
                   <span className={`cbx-st ${x.status}`}>{ST[x.status]}</span>
                   {x.alertas?.filter((a) => a !== 'ddd_outra_uf').length > 0 && <small>{x.alertas.filter((a) => a !== 'ddd_outra_uf').map((a) => ALERTA[a] ?? a).join(' · ')}</small>}
-                  {x.status === 'analise' && <button className="btn sm cbx-ok" type="button" onClick={(e) => { e.stopPropagation(); decidir(x, 'aprovado'); }}>Aprovar</button>}
+                  {x.status === 'analise' && !ro && <button className="btn sm cbx-ok" type="button" onClick={(e) => { e.stopPropagation(); decidir(x, 'aprovado'); }}>Aprovar</button>}
                 </div></td>
               </tr>))}</tbody>
           </table>
@@ -680,12 +700,14 @@ function Inscritos({ ins, cfg, recarregar }: { ins: Inscrito[]; cfg: Cfg; recarr
               {sel.motivo && <div><dt>Motivo</dt><dd>{sel.motivo}</dd></div>}
             </dl>
             <div className="cbx-acts">
+              {!ro && <>
               {sel.status !== 'aprovado' && <button className="btn" onClick={() => decidir(sel, 'aprovado')}>Aprovar</button>}
               {sel.status !== 'recusado' && <button className="btn ghost" onClick={() => decidir(sel, 'recusado')}>Recusar</button>}
               {sel.status === 'recusado' && <button className="btn ghost" onClick={() => decidir(sel, 'analise')}>Voltar para análise</button>}
               {sel.status === 'aprovado' && <button className="btn" onClick={async () => { setPedLink(''); const r = await linkComoCliente(sel.id); if (r.link) { setPedLink(r.link); try { await navigator.clipboard.writeText(r.link); } catch { /* sem área de transferência */ } setAviso(''); } else setAviso(r.erro ?? ''); }}>Fazer pedido por este cliente</button>}
               {sel.status === 'aprovado' && <button className="btn ghost" onClick={() => copiar(msgAprovado(sel))}>Copiar mensagem de aprovação</button>}
               <button className="btn ghost" onClick={() => gerarLink(sel)}>Gerar link de nova senha</button>
+              </>}
               {sel.celular && <a className="btn ghost" href={`https://wa.me/55${sel.celular.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">Abrir WhatsApp</a>}
             </div>
             {pedLink && <div className="alert"><b>Link copiado.</b> Cole no Google Chrome para fazer o pedido como {sel.fantasia || sel.razao_social} (vale 3 horas; use um cliente por vez em cada navegador): <b style={{ wordBreak: 'break-all' }}>{pedLink}</b> <button className="btn sm" onClick={() => copiar(pedLink)}>Copiar de novo</button></div>}
@@ -730,6 +752,7 @@ function Filtros({ reps, ufs, prods, f, set }: {
 const unicos = (v: (string | null | undefined)[]) => [...new Set(v.map((x) => (x ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
 function Carrinhos({ ins, peds, fechaEm }: { ins: Inscrito[]; peds: Pedido[]; fechaEm: string | null }) {
+  const { arq } = useEd();
   const congelado = !!fechaEm && Date.now() >= new Date(fechaEm).getTime();
   const [rel, setRel] = useState<CarRel[] | null>(null);
   const [erro, setErro] = useState('');
@@ -741,10 +764,10 @@ function Carrinhos({ ins, peds, fechaEm }: { ins: Inscrito[]; peds: Pedido[]; fe
   const repsRel = useMemo(() => unicos([...ins.filter((i) => i.status === 'aprovado').map((i) => i.representante), ...peds.map((p) => p.representante)]), [ins, peds]);
   const arqRel = (r: string) => 'CARDOSO_BLACK-CARDOSO_RELACAO_' + (r || 'TODOS').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
   const carregar = useCallback(async () => {
-    const { data, error } = await supabase.rpc('black_carrinhos_relatorio');
-    if (error) { setErro(error.message.includes('black_carrinhos_relatorio') ? 'Para ver os carrinhos, rode o SQL 0172 no Supabase.' : error.message); setRel([]); return; }
+    const { data, error } = await carrinhosRel(arq);
+    if (error) { setErro(error.message.includes('black_carrinhos_relatorio') ? `Para ver os carrinhos${arq ? ' desta edição' : ''}, rode o SQL ${arq ? '0181' : '0172'} no Supabase.` : error.message); setRel([]); return; }
     setErro(''); setRel(Array.isArray(data) ? (data as CarRel[]) : []);
-  }, []);
+  }, [arq]);
   useEffect(() => { carregar(); const t = setInterval(carregar, 60000); return () => clearInterval(t); }, [carregar]);
   const L = (rel ?? []).filter((c) => c.situacao !== 'vazio');
   const n = (k: CarRel['situacao']) => L.filter((c) => c.situacao === k);
@@ -938,6 +961,7 @@ function EditarPedido({ p, itens, bps, porCodigo, fechar, salvo }: { p: Pedido; 
 
 function Pedidos({ peds, itens, cart, porCodigo, bps, fechaEm, recarregar }: { peds: Pedido[]; itens: Item[]; cart: Cart[]; porCodigo: Record<string, Prod>; bps: BP[]; fechaEm: string | null; recarregar: () => void }) {
   const [editando, setEditando] = useState<string | null>(null);
+  const ro = !!useEd().arq;
   const aposFechar = (p: Pedido) => !!fechaEm && (p.criado_em > fechaEm || (!!p.alterado_em && p.alterado_em > fechaEm));
   const { profile } = useAuth();
   const [flt, setFlt] = useState<'todos' | 'alterados' | Pedido['status']>('todos');
@@ -984,7 +1008,7 @@ function Pedidos({ peds, itens, cart, porCodigo, bps, fechaEm, recarregar }: { p
       </div>
       <Filtros reps={unicos(peds.map((p) => p.representante))} ufs={unicos(peds.map((p) => p.uf))} prods={prodsPed} f={fx} set={(k, v) => setFx((x) => ({ ...x, [k]: v }))} />
       <p className="cbx-hint"><b>{int(vis.length)} pedido{vis.length === 1 ? '' : 's'}</b> no filtro · {brl(visOk.reduce((t, p) => t + Number(p.total), 0))} em produtos, sem IPI · {int(visOk.reduce((t, p) => t + p.caixas, 0))} caixas (sem os cancelados){fx.prod ? ` · ${fx.prod}: ${int(itProd.reduce((t, i) => t + i.caixas, 0))} cx, ${int(itProd.reduce((t, i) => t + i.caixas * i.pecas_caixa, 0))} pç, ${brl(itProd.reduce((t, i) => t + Number(i.total), 0))}` : ''}</p>
-      <p className="cbx-hint">Mude para <b>Confirmado</b> quando o pedido for lançado no Guarani: a partir daí o estoque dele passa a ser contado pelo saldo do Guarani.</p>
+      {!ro && <p className="cbx-hint">Mude para <b>Confirmado</b> quando o pedido for lançado no Guarani: a partir daí o estoque dele passa a ser contado pelo saldo do Guarani.</p>}
       {aviso && <div className="alert">{aviso}</div>}
       {vis.length === 0 ? <EmptyState title="Nenhum pedido" hint="Os pedidos enviados pelo link aparecem aqui na hora." /> : (
         <div className="cbx-box cbx-scroll" style={{ padding: 0 }}>
@@ -1001,7 +1025,7 @@ function Pedidos({ peds, itens, cart, porCodigo, bps, fechaEm, recarregar }: { p
                   <td className="num"><b>{brl(Number(p.total_com_ipi ?? p.total))}</b>{Number(p.ipi) > 0 && <small>IPI {brl(Number(p.ipi))}</small>}</td>
                   <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
                     <button className="btn sm" title="Imprimir ou salvar o PDF deste pedido" onClick={() => pdf([p], arq((p.versao ?? 1) > 1 ? `${p.numero}-V${p.versao}` : p.numero, p.fantasia || p.razao_social))}>PDF</button>{' '}
-                    <select value={p.status} onChange={(e) => status(p, e.target.value as Pedido['status'])}>{(['recebido', 'confirmado', 'cancelado'] as const).map((s) => <option key={s} value={s}>{ST[s]}</option>)}</select>
+                    {ro ? <span className={`cbx-st ${p.status}`}>{ST[p.status]}</span> : <select value={p.status} onChange={(e) => status(p, e.target.value as Pedido['status'])}>{(['recebido', 'confirmado', 'cancelado'] as const).map((s) => <option key={s} value={s}>{ST[s]}</option>)}</select>}
                   </td>
                 </tr>
                 {aberto === p.id && (
@@ -1009,7 +1033,7 @@ function Pedidos({ peds, itens, cart, porCodigo, bps, fechaEm, recarregar }: { p
                     <div style={{ display: 'grid', gap: 6 }}>
                       {(p.versao ?? 1) > 1 && !!p.alteracoes?.length && <div className="alert" style={{ margin: 0 }}><b>Alterado {quemAlterou(p)} em {dt(p.alterado_em ?? null)} (versão {p.versao}):</b> {p.alteracoes.map(difTxt).join(' · ')}</div>}
                       {editando === p.id ? <EditarPedido p={p} itens={itens.filter((i) => i.pedido_id === p.id)} bps={bps} porCodigo={porCodigo} fechar={() => setEditando(null)} salvo={(m) => { setEditando(null); setAviso(m); recarregar(); }} />
-                        : <div><button className="btn sm primary" onClick={() => setEditando(p.id)}>Editar pedido (dados do cliente e produtos)</button></div>}
+                        : !ro && <div><button className="btn sm primary" onClick={() => setEditando(p.id)}>Editar pedido (dados do cliente e produtos)</button></div>}
                       {itens.filter((i) => i.pedido_id === p.id).map((i) => <div key={i.codigo} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{i.codigo} · {i.nome} <small style={{ display: 'inline' }}>({i.caixas} cx × {i.pecas_caixa} pç · {brl(Number(i.preco_peca))})</small></span><b>{brl(Number(i.total))}</b></div>)}
                       <small>Comprador: {p.comprador} · {p.email} · {p.celular} · {p.frete}{p.observacao ? ` · Obs.: ${p.observacao}` : ''}</small>
                       {!!p.edicoes?.length && <div style={{ display: 'grid', gap: 2 }}><b style={{ fontSize: 12 }}>Edições da equipe</b>{p.edicoes.map((e, k) => <small key={k}>{dt(e.em)} · {e.por} · {e.tipo === 'itens' ? `produtos (v${e.versao}): ` : `dados${e.cadastro ? ' (e cadastro)' : ''}: `}{e.mudou.map((m) => ('campo' in m ? `${CAMPO[m.campo] ?? m.campo}: ${m.de || '—'} → ${m.para || '—'}` : difTxt(m))).join(' · ')}{e.motivo ? ` · motivo: ${e.motivo}` : ''}</small>)}</div>}
@@ -1028,16 +1052,17 @@ function Pedidos({ peds, itens, cart, porCodigo, bps, fechaEm, recarregar }: { p
 
 /* ================= Relatório da diretoria ================= */
 function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: { cfg: Cfg; ins: Inscrito[]; peds: Pedido[]; itens: Item[]; bps: BP[]; porCodigo: Record<string, Prod>; fichas: Record<string, number> }) {
+  const ed = useEd(); const { arq } = ed;
   const [cars, setCars] = useState<CarRel[] | null>(null);
   const [ev, setEv] = useState<{ inscrito_id: string | null; tipo: string }[]>([]);
   const [aviso, setAviso] = useState('');
   const carregar = useCallback(async () => {
     const [c, e] = await Promise.all([
-      supabase.rpc('black_carrinhos_relatorio'),
-      paginar<{ inscrito_id: string | null; tipo: string }>((a, z) => supabase.from('black_eventos').select('inscrito_id, tipo').in('tipo', ['login', 'login_falhou']).range(a, z)),
+      carrinhosRel(arq),
+      paginar<{ inscrito_id: string | null; tipo: string }>((a, z) => ler('eventos', 'inscrito_id, tipo', arq).in('tipo', ['login', 'login_falhou']).range(a, z) as unknown as PromiseLike<{ data: { inscrito_id: string | null; tipo: string }[] | null; error: { message: string } | null }>),
     ]);
     setCars(Array.isArray(c.data) ? (c.data as CarRel[]) : []); setEv(e);
-  }, []);
+  }, [arq]);
   useEffect(() => { carregar(); const t = setInterval(carregar, 60000); return () => clearInterval(t); }, [carregar]);
   const dados = useMemo<DadosRelatorio | null>(() => {
     if (!cars) return null;
@@ -1066,6 +1091,7 @@ function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: {
     const insIds = new Set(aprov.map((i) => i.id));
     const comCarrinho = new Set([...cars.filter((c) => c.itens.length || c.situacao === 'finalizado').map((c) => dig(c.cnpj)), ...comprou]);
     return {
+      ed: { nome: ed.nome, sobre: ed.sobre, geral: ed.geral, objetivo: ed.objetivo, live: ed.live },
       geradoEm: new Date().toISOString(), abreEm: cfg.abre_em, fechaEm: cfg.fecha_em, minimo: Number(cfg.pedido_minimo), ipiPct: Number(cfg.ipi_pct ?? 6.5),
       produtos,
       pedidos: [...val].sort((a, b) => a.criado_em.localeCompare(b.criado_em)).map((p) => ({ n: p.numero, em: p.criado_em, loja: p.fantasia || p.razao_social, cid: p.cidade, uf: p.uf, rep: rep(p.representante),
@@ -1077,9 +1103,9 @@ function RelatorioDiretoria({ cfg, ins, peds, itens, bps, porCodigo, fichas }: {
       // carrinhos abandonados ficam no sistema (aba Carrinhos), fora do relatório: não contam nem sujam o resultado
       carros: [],
     };
-  }, [cars, ev, ins, peds, itens, bps, porCodigo, fichas, cfg]);
+  }, [cars, ev, ins, peds, itens, bps, porCodigo, fichas, cfg, ed]);
   const html = useMemo(() => (dados ? gerarRelatorio(dados) : ''), [dados]);
-  const nomeArq = () => `CARDOSO_BLACK-CARDOSO_RELATORIO-DIRETORIA_${new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\D+/g, '-')}.html`;
+  const nomeArq = () => `CARDOSO_BLACK-CARDOSO_RELATORIO-DIRETORIA_${ed.arq ? `${ed.id}A-EDICAO_` : ''}${new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\D+/g, '-')}.html`;
   function telaCheia() { const w = window.open('', '_blank'); if (!w) { setAviso('O navegador bloqueou a janela. Libere pop-ups para o Hub.'); return; } w.document.open(); w.document.write(html); w.document.close(); }
   function baixar() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = nomeArq(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
   if (!dados) return <div className="cbx-hint">Montando o relatório…</div>;
