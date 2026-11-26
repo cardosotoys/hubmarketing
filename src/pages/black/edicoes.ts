@@ -32,8 +32,8 @@ export const EDICOES: EdInfo[] = [
 
 export const edicaoDe = (v: string | null): EdInfo => EDICOES.find((e) => e.id === v) ?? EDICOES[0];
 
-/** abas que fazem sentido numa edição encerrada (só leitura: medição, listas, PDFs e relatório) */
-export const ABAS_ARQ: Aba[] = ['resumo', 'inscritos', 'pedidos', 'carrinhos', 'relatorio'];
+/** abas que fazem sentido numa edição encerrada (só leitura: medição, listas, PDFs, relatório e aberturas dos links) */
+export const ABAS_ARQ: Aba[] = ['resumo', 'inscritos', 'pedidos', 'carrinhos', 'relatorio', 'links'];
 
 /** URL de uma aba dentro de uma edição */
 export const urlAba = (k: Aba, ed: EdInfo) => {
